@@ -74,6 +74,18 @@ class ManualControlRecorder:
         self.throttle = 0.0
         self.steer = 0.0
         self.brake = 0.0
+
+        # 平滑控制参数
+        self.throttle_accel = 0.15  # 油门加速度（每帧增加量）
+        self.throttle_decel = 0.1   # 油门减速度（每帧减少量）
+        self.brake_accel = 0.2      # 刹车加速度
+        self.brake_decel = 0.15     # 刹车减速度
+        self.steer_accel = 0.003    # 转向加速度（基于时间）
+        self.steer_decel = 0.05     # 转向减速度（每帧衰减率）
+        self.steer_cache = 0.0      # 转向缓存值
+
+        # 时间跟踪
+        self.last_time = time.time()
         
         # 数据记录
         self.current_episode = {
@@ -98,24 +110,59 @@ class ManualControlRecorder:
         """处理键盘输入"""
         keys = pygame.key.get_pressed()
         
-        # 重置控制
-        self.throttle = 0.0
-        self.steer = 0.0
-        self.brake = 0.0
+        # 计算时间增量（用于平滑控制）
+        current_time = time.time()
+        dt = current_time - self.last_time
+        dt = min(dt, 0.1)  # 限制最大时间步，避免跳跃
+        self.last_time = current_time
         
-        # 油门
+        # 处理油门（平滑增加/减少）
         if keys[K_w] or keys[K_UP]:
-            self.throttle = 1.0
+            # 按下时逐渐增加油门
+            self.throttle = min(self.throttle + self.throttle_accel, 1.0)
+            # 如果同时按下刹车，优先处理刹车
+            if keys[K_s] or keys[K_DOWN]:
+                self.throttle = max(self.throttle - self.throttle_decel * 2, 0.0)
+        else:
+            # 释放时逐渐减少油门
+            self.throttle = max(self.throttle - self.throttle_decel, 0.0)
         
-        # 刹车
+        # 处理刹车（平滑增加/减少）
         if keys[K_s] or keys[K_DOWN]:
-            self.brake = 1.0
+            # 按下时逐渐增加刹车
+            self.brake = min(self.brake + self.brake_accel, 1.0)
+            # 如果同时按下油门，优先处理刹车
+            if keys[K_w] or keys[K_UP]:
+                self.throttle = max(self.throttle - self.throttle_decel * 2, 0.0)
+        else:
+            # 释放时逐渐减少刹车
+            self.brake = max(self.brake - self.brake_decel, 0.0)
         
-        # 转向
+        # 处理转向（平滑累积/衰减）
+        steer_increment = self.steer_accel * (dt * 1000)  # 转换为毫秒增量
+        
         if keys[K_a] or keys[K_LEFT]:
-            self.steer = -1.0
+            # 左转：如果当前是右转，先归零
+            if self.steer_cache > 0:
+                self.steer_cache = 0.0
+            # 累积左转值
+            self.steer_cache -= steer_increment
         elif keys[K_d] or keys[K_RIGHT]:
-            self.steer = 1.0
+            # 右转：如果当前是左转，先归零
+            if self.steer_cache < 0:
+                self.steer_cache = 0.0
+            # 累积右转值
+            self.steer_cache += steer_increment
+        else:
+            # 释放时逐渐衰减转向
+            if abs(self.steer_cache) < 0.01:
+                self.steer_cache = 0.0
+            else:
+                self.steer_cache *= (1.0 - self.steer_decel)
+        
+        # 限制转向范围
+        self.steer_cache = max(-1.0, min(1.0, self.steer_cache))
+        self.steer = self.steer_cache
         
         # 处理事件
         for event in pygame.event.get():
@@ -128,6 +175,37 @@ class ManualControlRecorder:
                     return 'quit'
         
         return 'continue'
+
+        # # 重置控制
+        # self.throttle = 0.0
+        # self.steer = 0.0
+        # self.brake = 0.0
+        
+        # # 油门
+        # if keys[K_w] or keys[K_UP]:
+        #     self.throttle = 1.0
+        
+        # # 刹车
+        # if keys[K_s] or keys[K_DOWN]:
+        #     self.brake = 1.0
+        
+        # # 转向
+        # if keys[K_a] or keys[K_LEFT]:
+        #     self.steer = -1.0
+        # elif keys[K_d] or keys[K_RIGHT]:
+        #     self.steer = 1.0
+        
+        # # 处理事件
+        # for event in pygame.event.get():
+        #     if event.type == pygame.QUIT:
+        #         return 'quit'
+        #     elif event.type == pygame.KEYDOWN:
+        #         if event.key == K_ESCAPE:
+        #             return 'end_episode'
+        #         elif event.key == pygame.K_q:
+        #             return 'quit'
+        
+        # return 'continue'
     
     def _render_hud(self, step: int, reward: float, episode: int):
         """渲染HUD信息"""
@@ -207,6 +285,14 @@ class ManualControlRecorder:
             "dones": [],
             "next_observations": []
         }
+
+        # 重置控制状态
+        self.throttle = 0.0
+        self.steer = 0.0
+        self.brake = 0.0
+        self.steer_cache = 0.0
+        self.last_time = time.time()
+        
         
         step = 0
         total_reward = 0.0

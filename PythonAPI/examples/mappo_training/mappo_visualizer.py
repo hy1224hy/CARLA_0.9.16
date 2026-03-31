@@ -585,7 +585,7 @@ class MAPPOVisualizer:
             
             self.draw_reward_panel(agent_id, current_reward, ep_reward, curr_x, curr_y, col_width)
 
-        # ==================== 底部说明 ====================
+        
         instructions = [
             "Press ESC to close visualization | Red: Agent 0 | Blue: Agent 1",
         ]

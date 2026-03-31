@@ -34,7 +34,7 @@ def pretrain_with_manual_data(
         pretrain_steps: 预训练步数
         batch_size: 批次大小
     """
-    print(f"\n开始预训练（使用手动驾驶数据）...")
+    print(f"\n开始训练（使用手动驾驶数据）...")
     print(f"数据目录: {manual_data_dir}")
     print(f"预训练步数: {pretrain_steps}")
     
@@ -114,7 +114,7 @@ def main():
     # ray.init(ignore_reinit_error=True)
     ray.init(local_mode=True, ignore_reinit_error=True)
 
-    # 2. 注册自定义环境
+    # 2. 注册环境
     register_env("carla_env", lambda config: RLlibCarlaEnv(config))
 
     # 3. 准备环境配置
@@ -169,7 +169,7 @@ def main():
         .resources(num_gpus=args.num_gpus)
     )
     
-    # 如果提供了预训练模型，加载它
+    # 如果提供了预训练模型，加载
     if args.pretrained_model and os.path.exists(args.pretrained_model):
         print(f"\n加载预训练模型: {args.pretrained_model}")
         # 注意：这里需要在创建Tuner之前设置，但RLlib的架构使得这比较复杂
@@ -192,7 +192,7 @@ def main():
             storage_path=os.path.abspath(os.path.join(CURRENT_DIR, "logs/rllib_results")),
             name="mappo_carla_experiment",
             checkpoint_config=tune.CheckpointConfig(
-                checkpoint_frequency=10,
+                checkpoint_frequency=100,
                 checkpoint_at_end=True,
                 num_to_keep=5,
             )

@@ -11,7 +11,9 @@ from typing import Dict, List, Tuple, Optional
 import math
 import weakref
 from carla import ColorConverter as cc
-
+from torch.utils.tensorboard import SummaryWriter
+import os
+from datetime import datetime
 
 class CarlaMultiAgentEnv:
     """CARLA多智能体环境"""
@@ -74,13 +76,14 @@ class CarlaMultiAgentEnv:
         #车道偏离传感器
         self.lane_sensors = {}  # {agent_id: sensor_actor}
         self.lane_invasion_events = {}   # {agent_id: bool} 记录当前步是否发生车道偏离
-
+        self.crosswalk_invasion_events = {}  # {agent_id: bool} 压人行横道(NONE)，按碰撞处理
 
         # 状态信息
         self.current_step = 0
         self.straight_waypoints: List[carla.Waypoint] = []
         self.start_waypoints: List[carla.Waypoint] = []
         self.target_waypoints: List[carla.Waypoint] = []
+        self.reached_target: Dict[int, bool] = {}
         
         # 找到直道
         self._find_straight_road()
@@ -92,32 +95,84 @@ class CarlaMultiAgentEnv:
         self.traffic_manager = self.client.get_trafficmanager(8000)
         self.traffic_manager.set_synchronous_mode(True)
 
-    # def _get_local_location(self, vehicle, target_location):
-    #     """
-    #     将世界坐标系的点转换为车辆局部坐标系
-    #     返回: (forward_dist, lateral_dist)
-    #     """
-    #     v_trans = vehicle.get_transform()
-    #     v_loc = v_trans.location
-        
-    #     # 1. 计算世界坐标系下的相对偏移量
-    #     d_vec = [
-    #         target_location.x - v_loc.x,
-    #         target_location.y - v_loc.y,
-    #         target_location.z - v_loc.z
-    #     ]
-        
-    #     # 2. 获取车辆的旋转矩阵
-    #     rad_yaw = math.radians(v_trans.rotation.yaw)
-    #     cos_y = math.cos(rad_yaw)
-    #     sin_y = math.sin(rad_yaw)
-        
-    #     # 3. 旋转变换
-    #     forward_dist = d_vec[0] * cos_y + d_vec[1] * sin_y
-    #     lateral_dist = d_vec[1] * cos_y - d_vec[0] * sin_y
-        
-    #     return forward_dist, lateral_dist
 
+        # TensorBoard记录
+        self.use_tensorboard = True  # 可以通过参数控制是否启用
+        
+        # 获取进程ID和worker ID（用于多进程环境）
+        import os
+        worker_id = os.environ.get('RAY_WORKER_ID', '0')
+        process_id = os.getpid()
+        
+        # 使用绝对路径，并为每个worker创建独立目录
+        base_log_dir = os.path.abspath('logs/carla_training_reward')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # 为每个worker创建独立的日志目录
+        self.tb_log_dir = os.path.join(base_log_dir, f"{timestamp}_worker_{worker_id}_pid_{process_id}")
+        
+        if self.use_tensorboard:
+            try:
+                # 确保目录存在（使用绝对路径）
+                os.makedirs(self.tb_log_dir, exist_ok=True)
+                self.tb_writer = SummaryWriter(self.tb_log_dir)
+                print(f"TensorBoard日志目录: {self.tb_log_dir}")
+            except Exception as e:
+                print(f"警告: 无法初始化TensorBoard writer: {e}")
+                print("继续运行，但不记录TensorBoard日志")
+                self.use_tensorboard = False
+                self.tb_writer = None
+        else:
+            self.tb_writer = None
+        
+        # 用于记录累计奖励（用于计算平均值）
+        self.episode_reward_buffer = {i: [] for i in range(self.num_agents)}
+        self.episode_reward_details_buffer = {i: [] for i in range(self.num_agents)}
+        self.episode_step = 0
+   
+
+    def _log_to_tensorboard(self, rewards: Dict[int, float], reward_details: Dict[int, Dict], step: int):
+        """
+        将奖励信息记录到TensorBoard
+        
+        Args:
+            rewards: 每个agent的总奖励
+            reward_details: 每个agent的奖励明细
+            step: 当前步数
+        """
+        if not self.use_tensorboard or self.tb_writer is None:
+            return
+        
+        for agent_id in range(self.num_agents):
+            if agent_id not in rewards or agent_id not in reward_details:
+                continue
+            
+            total_reward = rewards[agent_id]
+            details = reward_details[agent_id]
+            
+            # 计算每部分奖励占总奖励的比例
+            # 使用绝对值来计算占比，避免负值问题
+            abs_total = sum(abs(v) for v in details.values())
+            
+            # 记录总奖励
+            self.tb_writer.add_scalar(f'Agent_{agent_id}/Reward/Total', total_reward, step)
+            
+            # 记录每个奖励分量及其占比
+            for key, value in details.items():
+                # 记录奖励分量值
+                self.tb_writer.add_scalar(f'Agent_{agent_id}/Reward/{key.capitalize()}', value, step)
+                
+                # 计算并记录占比
+                if abs_total > 0:
+                    percentage = (abs(value) / abs_total) * 100.0
+                    self.tb_writer.add_scalar(f'Agent_{agent_id}/Reward_Percentage/{key.capitalize()}', percentage, step)
+                else:
+                    self.tb_writer.add_scalar(f'Agent_{agent_id}/Reward_Percentage/{key.capitalize()}', 0.0, step)
+            
+            # 记录奖励分量的堆叠图（可选，用于可视化）
+            # 创建一个字典，包含所有奖励分量
+            reward_dict = {f'{k}': v for k, v in details.items()}
+            reward_dict['total'] = total_reward
+            self.tb_writer.add_scalars(f'Agent_{agent_id}/Reward_Components', reward_dict, step)
     # 新增方法：挂载碰撞传感器
     def _attach_collision_sensor(self, agent_id: int, vehicle: carla.Actor):
         """为车辆附加碰撞传感器"""
@@ -142,14 +197,57 @@ class CarlaMultiAgentEnv:
         
         self.lane_sensors[agent_id] = sensor
         self.lane_invasion_events[agent_id] = False
+        self.crosswalk_invasion_events[agent_id] = False
+        # 添加详细的车道偏离信息存储
+        self.lane_invasion_details = getattr(self, 'lane_invasion_details', {})
+        self.lane_invasion_details[agent_id] = {
+            'has_invasion': False,
+            'crossed_markings': [],
+            'marking_types': []
+        }
+        
+        # 使用weakref避免循环引用（参考碰撞传感器的实现方式）
+        weak_self = weakref.ref(self)
         
         # 回调函数
         def _on_invasion(event):
-            # 记录发生了偏离
-            self.lane_invasion_events[agent_id] = True
-            # 可以打印是压了实线还是虚线: event.crossed_lane_markings
+            """车道偏离事件回调"""
+            self = weak_self()
+            if not self:
+                return
             
+            # 记录发生了偏离
+            self.lane_invasion_events[agent_id] = True           
+            # 获取详细的车道线信息
+            if hasattr(event, 'crossed_lane_markings') and event.crossed_lane_markings:
+                marking_types = []
+                for marking in event.crossed_lane_markings:
+                    # 获取车道线类型（实线、虚线等）
+                    marking_type = str(marking.type).split('.')[-1] if hasattr(marking, 'type') else 'Unknown'
+                    marking_types.append(marking_type)
+                
+                self.lane_invasion_details[agent_id] = {
+                    'has_invasion': True,
+                    'crossed_markings': event.crossed_lane_markings,
+                    'marking_types': marking_types
+                }
+                # 若压过 NONE（人行横道），按碰撞处理
+                if 'NONE' in marking_types:
+                    self.crosswalk_invasion_events[agent_id] = True
+                    print(f"Agent {agent_id} 压人行横道(NONE)，按碰撞处理")
+                
+                # 打印调试信息（可选，用于验证传感器是否工作）
+                print(f"Agent {agent_id} 车道偏离检测到! 压过的车道线类型: {marking_types}")
+            else:
+                self.lane_invasion_details[agent_id] = {
+                    'has_invasion': True,
+                    'crossed_markings': [],
+                    'marking_types': []
+                }
+                print(f"Agent {agent_id} 车道偏离检测到! (无详细车道线信息)")
+        
         sensor.listen(_on_invasion)
+        print(f"Agent {agent_id} 车道偏离传感器已挂载")
 
     def _find_straight_road(self):
         """在Town02中找到一条直道"""
@@ -362,6 +460,7 @@ class CarlaMultiAgentEnv:
                 sensor.destroy()
         self.lane_sensors.clear()
         self.lane_invasion_events.clear()
+        self.crosswalk_invasion_events.clear()
         
         for sensor in self.sensors:
             if sensor.is_alive:
@@ -452,6 +551,36 @@ class CarlaMultiAgentEnv:
             observations: 每个智能体的观察
             info: 额外信息
         """
+
+        # 如果上一轮有数据，记录episode平均奖励到TensorBoard
+        if self.use_tensorboard and self.tb_writer is not None:
+            if any(self.episode_reward_buffer.values()):
+                for agent_id in range(self.num_agents):
+                    if self.episode_reward_buffer[agent_id]:
+                        avg_reward = np.mean(self.episode_reward_buffer[agent_id])
+                        self.tb_writer.add_scalar(f'Agent_{agent_id}/Episode_Reward/Average', 
+                                                 avg_reward, self.episode_step)
+                        
+                        # 记录episode平均奖励明细
+                        if self.episode_reward_details_buffer[agent_id]:
+                            avg_details = {}
+                            for key in ["progress", "speed", "centering", "yaw", "collision", 
+                                       "lane_invasion", "step", "success"]:
+                                values = [d[key] for d in self.episode_reward_details_buffer[agent_id] 
+                                         if key in d]
+                                if values:
+                                    avg_details[key] = np.mean(values)
+                            
+                            for key, value in avg_details.items():
+                                self.tb_writer.add_scalar(f'Agent_{agent_id}/Episode_Reward/{key.capitalize()}', 
+                                                         value, self.episode_step)
+                
+                # 清空缓冲区
+                for agent_id in range(self.num_agents):
+                    self.episode_reward_buffer[agent_id] = []
+                    self.episode_reward_details_buffer[agent_id] = []
+        
+        self.episode_step += 1
         self.current_step = 0
         
         # 重新生成车辆
@@ -459,13 +588,17 @@ class CarlaMultiAgentEnv:
 
         # 初始化上一帧的距离
         self.prev_distances = {}
+
+        # 初始化是否到达目标
         for i, vehicle in enumerate(self.vehicles):
             if vehicle.is_alive:
                 target_loc = self.target_waypoints[i].transform.location
                 curr_loc = vehicle.get_location()
                 self.prev_distances[i] = curr_loc.distance(target_loc)
+                self.reached_target[i] = False
             else:
                 self.prev_distances[i] = 0.0
+                self.reached_target[i] = False
         
         # 获取初始观察
         observations = self._get_observations()
@@ -561,8 +694,9 @@ class CarlaMultiAgentEnv:
             info: 额外信息
         """
         # 应用动作
+        # 应用动作 - 如果车辆已经到达终点，不应用动作（让车辆停止）
         for i, vehicle in enumerate(self.vehicles):
-            if vehicle.is_alive and i in actions:
+            if vehicle.is_alive and i in actions and not self.reached_target.get(i, False):
                 action = actions[i]
                 # 确保动作在有效范围内
                 throttle = np.clip(action[0], 0.0, 1.0)
@@ -575,18 +709,39 @@ class CarlaMultiAgentEnv:
                     brake=float(brake)
                 )
                 vehicle.apply_control(control)
+            elif vehicle.is_alive and self.reached_target.get(i, False):
+                # 如果已经到达终点，强制停止车辆
+                control = carla.VehicleControl(
+                    throttle=0.0,
+                    steer=0.0,
+                    brake=1.0
+                )
+                vehicle.apply_control(control)
         
         # 更新世界
         self.world.tick()
         self.current_step += 1
         
         # 获取新观察
-        observations = self._get_observations()
+        observations = self._get_observations() 
         
         # 计算奖励
         rewards, reward_details = self._compute_rewards() 
+
+        # 累积到episode缓冲区（用于计算episode平均值）
+        if self.use_tensorboard:
+            for agent_id in range(self.num_agents):
+                if agent_id in rewards:
+                    self.episode_reward_buffer[agent_id].append(rewards[agent_id])
+                if agent_id in reward_details:
+                    self.episode_reward_details_buffer[agent_id].append(reward_details[agent_id])
+
         
-        # 检查是否完成
+
+        # 记录到TensorBoard
+        self._log_to_tensorboard(rewards, reward_details, self.current_step)
+        
+        # 检查是否完成（这会更新reached_target状态）
         dones = self._check_dones()
         
         info = {
@@ -600,110 +755,11 @@ class CarlaMultiAgentEnv:
 
         for i in self.lane_invasion_events: # 重置车道偏离状态，避免重复惩罚
             self.lane_invasion_events[i] = False
+        for i in self.crosswalk_invasion_events:
+            self.crosswalk_invasion_events[i] = False
         
         return observations, rewards, dones, info
-    
-    # def _compute_rewards(self) -> Dict[int, float]:
-    #     """计算奖励"""
-    #     rewards = {}
-        
-    #     for i, vehicle in enumerate(self.vehicles):
-    #         if not vehicle.is_alive:
-    #             rewards[i] = -100.0  # 车辆被销毁的惩罚
-    #             continue
-            
-    #         transform = vehicle.get_transform()
-    #         velocity = vehicle.get_velocity()
-    #         target_wp = self.target_waypoints[i]
-            
-    #         # 当前位置
-    #         current_location = transform.location
-    #         target_location = target_wp.transform.location
-            
-    #         # 计算到目标的距离
-    #         dx = target_location.x - current_location.x
-    #         dy = target_location.y - current_location.y
-    #         distance = math.sqrt(dx**2 + dy**2)
-            
-    #         # 速度
-    #         speed = math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2)
-            
-    #         # 奖励设计
-    #         reward = 0.0
-            
-    #         # 距离奖励（越近越好）
-    #         distance_reward = -distance / 100.0
-            
-    #         # 速度奖励（保持合理速度）
-    #         if speed > 5.0 and speed < 15.0:  # 理想速度范围
-    #             speed_reward = 5.0
-    #         elif speed > 15.0:
-    #             speed_reward = 5.0 - (speed - 15.0) / 10.0  # 超速惩罚
-    #         else:
-    #             speed_reward = speed / 5.0  # 低速奖励
-            
-    #         # 方向奖励（朝向目标）
-    #         vehicle_yaw = math.radians(transform.rotation.yaw)
-    #         target_yaw = math.atan2(dy, dx)
-    #         angle_diff = abs(target_yaw - vehicle_yaw)
-    #         if angle_diff > math.pi:
-    #             angle_diff = 2 * math.pi - angle_diff
-            
-    #         direction_reward = 1.0 - (angle_diff / math.pi)  # 角度越小越好
-            
-    #         # 无碰撞时综合奖励
-    #         reward = distance_reward + 0.5 * speed_reward + 0.3 * direction_reward
 
-    #         # 车道偏离奖励惩罚
-    #         # 如果检测到压线
-    #         if self.lane_invasion_events.get(i, False):
-    #             reward -= 1.0  # 给予压线惩罚
-    #             print(f"Agent {i} 压线，给予惩罚。")
-            
-    #         # 车道居中鼓励
-    #         # 获取当前位置对应的最近路点
-    #         current_waypoint = self.map.get_waypoint(transform.location)
-            
-    #         if current_waypoint:
-    #             # 计算车辆位置与路点位置的向量
-    #             veh_loc = transform.location
-    #             wp_loc = current_waypoint.transform.location
-                
-    #             # 向量: 路点 -> 车辆
-    #             vec_wp_to_veh = carla.Vector3D(veh_loc.x - wp_loc.x, veh_loc.y - wp_loc.y, 0)
-                
-    #             # 获取路点的右向量 (用于计算横向偏移)
-    #             right_vector = current_waypoint.transform.get_right_vector()
-                
-    #             # 计算点积，得到在横向方向上的投影长度 (即横向偏移距离)
-    #             lateral_offset = vec_wp_to_veh.x * right_vector.x + vec_wp_to_veh.y * right_vector.y
-    #             lateral_dist = abs(lateral_offset)
-                
-    #             # 获取车道宽度的一半
-    #             lane_half_width = current_waypoint.lane_width / 2.0
-                
-    #             # 计算居中系数: 0 (在边缘) -> 1 (在中心)
-    #             # 限制在 [0, 1] 范围内
-    #             centering_factor = max(0.0, 1.0 - (lateral_dist / lane_half_width))
-                
-    #             # 添加到总奖励 (系数设为 0.5，根据需要调整权重)
-    #             centering_reward = 5 * centering_factor
-    #             # print(centering_reward)
-    #             reward += centering_reward
-
-
-    #         # 碰撞惩罚
-    #         if self.collision_events.get(i, False):
-    #             reward -= 100.0  # 给予巨大的惩罚
-    #             print(f"Agent {i} 发生碰撞！给予惩罚。")
-            
-    #         # 如果到达目标附近
-    #         if distance < 1.0:
-    #             reward += 500.0  # 到达奖励
-            
-    #         rewards[i] = reward
-        
-    #     return rewards
 
     def _compute_rewards(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
         """计算奖励 (优化版)"""
@@ -713,6 +769,31 @@ class CarlaMultiAgentEnv:
         for i, vehicle in enumerate(self.vehicles):
             if not vehicle.is_alive:
                 rewards[i] = -100.0
+                reward_details[i] = {
+                    "progress": 0.0,
+                    "speed": 0.0,
+                    "centering": 0.0,
+                    "yaw": 0.0,
+                    "collision": -100.0,  # 车辆被销毁的惩罚
+                    "lane_invasion": 0.0,
+                    "step": 0.0,
+                    "success": 0.0
+                }
+                continue
+
+            # 如果车辆已经到达终点，不再计算奖励（返回0奖励）
+            if self.reached_target.get(i, False):
+                rewards[i] = 0.0
+                reward_details[i] = {
+                    "progress": 0.0,
+                    "speed": 0.0,
+                    "centering": 0.0,
+                    "yaw": 0.0,
+                    "collision": 0.0,
+                    "lane_invasion": 0.0,
+                    "step": 0.0,
+                    "success": 0.0
+                }
                 continue
             
             transform = vehicle.get_transform()
@@ -723,8 +804,7 @@ class CarlaMultiAgentEnv:
             current_dist = transform.location.distance(target_wp.transform.location)
             prev_dist = self.prev_distances.get(i, current_dist)
             
-            # [核心] 进度奖励：这一步前进了多少米 (单位: m)
-            # 乘以系数，比如 10，让它成为主导奖励
+            # [核心] 进度奖励：这一步前进了多少米 
             progress = prev_dist - current_dist
             progress_reward = progress * 20.0 
             
@@ -736,16 +816,17 @@ class CarlaMultiAgentEnv:
             speed_kmh = speed * 3.6
             
             if speed_kmh < 1.0:
-                # [惩罚] 停车惩罚：防止它停在原地刷居中奖励
+                # 停车惩罚：防止它停在原地刷居中奖励
                 speed_reward = -0.1
             elif speed_kmh > 25.0:
-                 # [惩罚] 超速惩罚 (假设限速40km/h)
+                # 超速惩罚 (假设限速25km/h)
                 speed_reward = -1.0
             else:
-                # [鼓励] 正常行驶给予微小奖励，鼓励动起来
+                # 正常行驶给予微小奖励，鼓励动起来
                 speed_reward = 0.1
 
-            # 3. 车道居中奖励 (权重降低)
+            # 3. 车道居中奖励 这里赋值有点问题
+            # 3. 车道居中奖励：只有在完全居中时给予0.5奖励，其余情况为0
             current_waypoint = self.map.get_waypoint(transform.location)
             centering_reward = 0.0
             if current_waypoint:
@@ -754,12 +835,13 @@ class CarlaMultiAgentEnv:
                 vec_wp_to_veh = carla.Vector3D(veh_loc.x - wp_loc.x, veh_loc.y - wp_loc.y, 0)
                 right_vector = current_waypoint.transform.get_right_vector()
                 lateral_dist = abs(vec_wp_to_veh.x * right_vector.x + vec_wp_to_veh.y * right_vector.y)
-                lane_half_width = current_waypoint.lane_width / 2.0
                 
-                # 只有当偏离较小时才给奖励，避免它为了回正而剧烈偏移
-                centering_factor = max(0.0, 1.0 - (lateral_dist / lane_half_width))
-                # 权重从 5.0 降到 0.5，确保它小于进度奖励
-                centering_reward = 0.5 * centering_factor
+                # 设置完全居中的阈值（0.1米），只有横向距离小于此值才给予奖励
+                CENTERING_THRESHOLD = 0.05  # 米
+                if lateral_dist < CENTERING_THRESHOLD:
+                    centering_reward = 0.5
+                else:
+                    centering_reward = 0.0
 
             # 4. 角度/朝向奖励
             vehicle_yaw = math.radians(transform.rotation.yaw)
@@ -775,18 +857,56 @@ class CarlaMultiAgentEnv:
             yaw_reward = 0.0
             if angle_diff < 0.2:
                 yaw_reward = 0.1
-
             # 5. 事件惩罚
-            collision_penalty = -100.0 if self.collision_events.get(i, False) else 0.0
-            lane_invasion_penalty = -5.0 if self.lane_invasion_events.get(i, False) else 0.0 # 提高压线惩罚
-
+            crosswalk = self.crosswalk_invasion_events.get(i, False)
+            collision_penalty = -100.0 if (self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False)) else 0.0
+            # collision_penalty = -100.0 if self.collision_events.get(i, False) else 0.0
+           
+            # 车道偏离惩罚：使用传感器检测；压人行横道已按碰撞处理，不再重复扣车道偏离
+            sensor_invasion = self.lane_invasion_events.get(i, False)
+            
+            if crosswalk:
+                lane_invasion_penalty = 0.0
+            elif sensor_invasion:
+                lane_invasion_penalty = -5.0
+                details_inv = getattr(self, 'lane_invasion_details', {}).get(i, {})
+                marking_types = details_inv.get('marking_types', [])
+                if self.current_step % 50 == 0:
+                    print(f"Agent {i} 车道偏离惩罚触发! 传感器检测: {sensor_invasion}, "
+                          f"车道线类型: {marking_types}")
+            else:
+                lane_invasion_penalty = 0.0
             # 6. 时间步惩罚 (Living Penalty)
             # 每活一步扣一点分，迫使它尽快到达终点
             step_penalty = -0.05
 
             # 7. 终点奖励
+            # success_reward = 0.0
+            # if current_dist < 1.5: # 放宽一点判定范围
+            #     success_reward = 100.0
+
+            # 与 _check_dones 中一致
+            veh_loc = transform.location
+            center_loc = target_wp.transform.location
+            forward = target_wp.transform.get_forward_vector()
+            right = target_wp.transform.get_right_vector()
+
+            rel = carla.Vector3D(
+                veh_loc.x - center_loc.x,
+                veh_loc.y - center_loc.y,
+                0.0
+            )
+
+            x_along = rel.x * forward.x + rel.y * forward.y
+            y_lat   = rel.x * right.x   + rel.y * right.y
+
+            half_len = 3.0
+            half_width = 1.75
+
+            in_goal_region = (abs(x_along) <= half_len) and (abs(y_lat) <= half_width)
+
             success_reward = 0.0
-            if current_dist < 2.0: # 放宽一点判定范围
+            if in_goal_region:
                 success_reward = 100.0
 
             # 总奖励汇总
@@ -818,8 +938,8 @@ class CarlaMultiAgentEnv:
             rewards[i] = reward
             reward_details[i] = details
 
-            print(f"Agent {i} reward: {reward:.2f}")
-            print(f"Details: {details}")
+            # print(f"Agent {i} reward: {reward:.2f}")
+            # print(f"Details: {details}")
             
             # 打印调试 (可选，训练时建议注释掉)
             # if i == 0 and self.current_step % 10 == 0:
@@ -841,11 +961,78 @@ class CarlaMultiAgentEnv:
             target_wp = self.target_waypoints[i]
             
             distance = transform.location.distance(target_wp.transform.location)
-            is_collided = self.collision_events.get(i, False)
+            # is_collided = self.collision_events.get(i, False)
+            is_collided = self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False)
 
-            done = distance < 5.0 or self.current_step >= self.max_steps or is_collided
-            dones[i] = done
-           
+            # 检查是否到达终点区域
+            veh_loc = transform.location
+            center_loc = target_wp.transform.location
+
+            forward = target_wp.transform.get_forward_vector()
+            right = target_wp.transform.get_right_vector()
+
+            # 相对向量
+            rel = carla.Vector3D(
+                veh_loc.x - center_loc.x,
+                veh_loc.y - center_loc.y,
+                0.0
+            )
+
+            # 在车道前向 / 横向坐标
+            x_along = rel.x * forward.x + rel.y * forward.y
+            y_lat   = rel.x * right.x   + rel.y * right.y
+
+            # 终点矩形区域尺寸（你可以按需要调）
+            half_len = 3.0     # 沿车道方向半长 3m，总长 6m
+            half_width = 1.75  # 车道横向半宽，约等于一条车道宽的一半
+
+            in_goal_region = (abs(x_along) <= half_len) and (abs(y_lat) <= half_width)
+
+            if in_goal_region:
+                if not self.reached_target.get(i, False):
+                    self.traffic_manager.ignore_vehicles_percentage(vehicle, 100.0)
+                    print(f"Agent {i} 到达终点区域，已设置为无碰撞模式")
+                self.reached_target[i] = True
+                dones[i] = True
+            elif self.current_step >= self.max_steps or is_collided:
+                dones[i] = True
+            else:
+                dones[i] = False
+
+
+            # # 如果到达终点，标记为已完成，并设置车辆为无碰撞模式
+            # if distance < 1.0:
+            #     if not self.reached_target.get(i, False):
+            #         # 第一次到达终点，设置车辆忽略与其他车辆的碰撞
+            #         # 这样其他车辆可以穿过它到达终点
+            #         self.traffic_manager.ignore_vehicles_percentage(vehicle, 100.0)
+            #         print(f"Agent {i} 到达终点，已设置为无碰撞模式")
+            #     self.reached_target[i] = True
+            #     dones[i] = True
+            # elif self.current_step >= self.max_steps or is_collided:
+            #     dones[i] = True
+            # else:
+            #     dones[i] = False
+        
+        # 如果所有智能体都到达了终点，将所有智能体的 dones 设置为 True，结束回合
+        all_reached_target = all(self.reached_target.get(i, False) for i in range(self.num_agents))
+        if all_reached_target:
+            print("所有智能体都已到达终点，结束本回合")
+            for i in range(self.num_agents):
+                dones[i] = True
+
+        # 如果任何一个智能体发生严重碰撞（碰撞或压人行横道），将所有智能体的 dones 设置为 True，结束回合
+        any_severe_collision = any(
+            # self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False) 
+            # for i in range(self.num_agents)
+            (self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False))
+            and not self.reached_target.get(i, False)
+            for i in range(self.num_agents)
+        )
+        if any_severe_collision:
+            print("检测到严重碰撞（碰撞或压人行横道），结束本回合")
+            for i in range(self.num_agents):
+                dones[i] = True
         
         return dones
     
@@ -894,10 +1081,13 @@ class CarlaMultiAgentEnv:
         return np.array(global_features, dtype=np.float32)
     
     def close(self):
-        """关闭环境"""
+        """关闭环境"""    
+        # 关闭TensorBoard writer
+        if self.use_tensorboard and self.tb_writer is not None:
+            self.tb_writer.close()
+            print(f"TensorBoard日志已保存到: {self.tb_log_dir}")
         self._cleanup()
         settings = self.world.get_settings()
         settings.synchronous_mode = False
         self.world.apply_settings(settings)
-        
 

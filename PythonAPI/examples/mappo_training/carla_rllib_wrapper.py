@@ -2,8 +2,9 @@ import gymnasium as gym
 import numpy as np
 from datetime import datetime
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
 import os
+
 
 try:
     from carla_multi_agent_env import CarlaMultiAgentEnv
@@ -35,7 +36,7 @@ class RLlibCarlaEnv(MultiAgentEnv):
         # 记录已经完成的智能体
         self._done_agents = set()
 
-        # 定义空间 (必须是 Dict)
+        # 定义空间 
         single_action_space = gym.spaces.Box(
             low=np.array([0.0, -1.0, 0.0]), 
             high=np.array([1.0, 1.0, 1.0]), 
@@ -189,6 +190,58 @@ class RLlibCarlaEnv(MultiAgentEnv):
             max_steps=self.env.max_steps,
             camera_images=camera_images
         )
+
+
+    def evaluate(self, policy, episodes: int = 5, max_steps: int = None, explore: bool = False) -> Dict[str, Any]:
+        """使用当前包装环境执行评估，并返回统计指标。"""
+        episode_returns = []
+        episode_lengths = []
+        per_agent_episode_returns = []
+
+        rollout_max_steps = max_steps if max_steps is not None else self.env.max_steps
+
+        for ep in range(1, episodes + 1):
+            obs, _ = self.reset()
+            done_all = False
+            step_count = 0
+            ep_return = {agent_id: 0.0 for agent_id in self._agent_ids}
+
+            while not done_all and step_count < rollout_max_steps:
+                action_dict = {}
+                for agent_id, agent_obs in obs.items():
+                    action = policy.compute_single_action(agent_obs, explore=explore)
+                    action_dict[agent_id] = np.asarray(action, dtype=np.float32)
+
+                next_obs, rewards, terminateds, truncateds, _ = self.step(action_dict)
+
+                for agent_id, reward in rewards.items():
+                    if agent_id in ep_return:
+                        ep_return[agent_id] += float(reward)
+
+                done_all = bool(terminateds.get("__all__", False) or truncateds.get("__all__", False))
+                obs = next_obs
+                step_count += 1
+
+            ep_avg = float(np.mean(list(ep_return.values()))) if ep_return else 0.0
+            episode_returns.append(ep_avg)
+            episode_lengths.append(step_count)
+            per_agent_episode_returns.append(ep_return)
+
+            detail = ", ".join([f"agent_{aid}: {ret:.2f}" for aid, ret in ep_return.items()])
+            print(f"[Episode {ep}/{episodes}] steps={step_count}, avg_return={ep_avg:.2f}, {detail}")
+
+        per_agent_return_mean = {}
+        for aid in self._agent_ids:
+            vals = [ret.get(aid, 0.0) for ret in per_agent_episode_returns]
+            per_agent_return_mean[aid] = float(np.mean(vals)) if vals else 0.0
+
+        return {
+            "episodes": episodes,
+            "episode_return_mean": float(np.mean(episode_returns)) if episode_returns else 0.0,
+            "episode_return_std": float(np.std(episode_returns)) if episode_returns else 0.0,
+            "episode_len_mean": float(np.mean(episode_lengths)) if episode_lengths else 0.0,
+            "per_agent_return_mean": per_agent_return_mean,
+        }
 
     def close(self):
         if self.visualizer:
