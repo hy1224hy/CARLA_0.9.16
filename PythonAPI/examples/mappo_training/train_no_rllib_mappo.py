@@ -1,3 +1,6 @@
+"""
+脱离rilib的MAPPO训练，直接使用carla_multi_agent_env和mappo_visualizer进行训练和评估
+"""
 import argparse
 import os
 from dataclasses import dataclass

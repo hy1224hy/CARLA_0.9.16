@@ -18,6 +18,13 @@ from torch.distributions import Normal
 
 from carla_multi_agent_env import CarlaMultiAgentEnv
 
+# 可视化器导入
+try:
+    from visualize_adversarial_training import AdversarialVisualizer
+    HAS_VISUALIZER = True
+except ImportError:
+    HAS_VISUALIZER = False
+
 
 def set_seed(seed: int):
     np.random.seed(seed)
@@ -160,11 +167,44 @@ def train(args):
         max_steps=args.max_steps,
     )
 
-    # 加载预训练checkpoint
-    if not os.path.exists(args.pretrained_ckpt):
-        raise FileNotFoundError(f"预训练checkpoint不存在: {args.pretrained_ckpt}")
+    # 创建可视化器（如果可用）
+    visualizer = None
+    if HAS_VISUALIZER and not args.no_viz:
+        try:
+            import threading
+            visualizer = AdversarialVisualizer(
+                host=args.host,
+                port=args.port,
+                width=800,
+                height=750,
+                fps=30
+            )
+            # 在单独线程中运行可视化
+            viz_thread = threading.Thread(target=visualizer.run, daemon=True)
+            viz_thread.start()
+            print("可视化已启动")
+        except Exception as e:
+            print(f"无法启动可视化: {e}")
+            visualizer = None
 
-    ckpt = torch.load(args.pretrained_ckpt, map_location=device)
+    # 加载预训练checkpoint（处理路径格式问题）
+    pretrained_path = args.pretrained_ckpt
+
+    # 去除开头的反斜杠
+    while pretrained_path.startswith('\\') or pretrained_path.startswith('/'):
+        pretrained_path = pretrained_path[1:]
+
+    # 转换路径分隔符
+    pretrained_path = pretrained_path.replace('\\', os.sep).replace('/', os.sep)
+
+    print(f"正在加载预训练checkpoint: {pretrained_path}")
+    print(f"当前工作目录: {os.getcwd()}")
+    print(f"文件是否存在: {os.path.exists(pretrained_path)}")
+
+    if not os.path.exists(pretrained_path):
+        raise FileNotFoundError(f"预训练checkpoint不存在: {pretrained_path}")
+
+    ckpt = torch.load(pretrained_path, map_location=device)
     pretrained_actors_state = ckpt.get("actors", {})
 
     # 创建冻结的预训练智能体
@@ -244,6 +284,10 @@ def train(args):
                 # 执行动作
                 next_obs, rewards, dones, _ = env.step(action_dict)
 
+                # 更新可视化器奖励
+                if visualizer is not None:
+                    visualizer.update_rewards(current_rewards=rewards, episode_rewards=episode_rewards)
+
                 # 计算对抗智能体的奖励：负的平均奖励（零和博弈）
                 if adversarial_id in obs_dict:
                     # 前两个智能体的平均奖励
@@ -300,7 +344,7 @@ def train(args):
                 adv_arr = (adv_arr - adv_arr.mean()) / (adv_arr.std() + 1e-8)
 
                 obs_t = torch.as_tensor(obs_arr, dtype=torch.float32, device=device)
-                act_t = torch.as_tensor(act_arr, dtype=np.float32, device=device)
+                act_t = torch.as_tensor(act_arr, dtype=torch.float32, device=device)
                 old_logp_t = torch.as_tensor(old_logp_arr, dtype=torch.float32, device=device)
                 adv_t = torch.as_tensor(adv_arr, dtype=torch.float32, device=device)
                 ret_t = torch.as_tensor(ret_arr, dtype=torch.float32, device=device)
@@ -370,6 +414,8 @@ def train(args):
     except KeyboardInterrupt:
         print("Training interrupted by user")
     finally:
+        if visualizer is not None:
+            visualizer.close()
         env.close()
 
 
@@ -409,6 +455,7 @@ def build_parser():
     parser.add_argument("--save-dir", type=str, default="./logs/adversarial_ppo_ckpts")
     parser.add_argument("--save-interval", type=int, default=50)
     parser.add_argument("--log-interval", type=int, default=5)
+    parser.add_argument("--no-viz", action="store_true", help="不启动可视化")
 
     return parser
 

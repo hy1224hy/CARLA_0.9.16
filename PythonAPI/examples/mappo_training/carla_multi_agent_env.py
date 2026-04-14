@@ -324,14 +324,26 @@ class CarlaMultiAgentEnv:
         # 设置起始和目标waypoint
         if len(self.straight_waypoints) >= self.num_agents:
             # 为每个智能体分配起始位置（沿道路分布）
-            step = max(1, len(self.straight_waypoints) // (self.num_agents + 1))
-            for i in range(self.num_agents):
-                idx = (i + 1) * step
-                if idx < len(self.straight_waypoints):
-                    self.start_waypoints.append(self.straight_waypoints[idx])
-                else:
-                    self.start_waypoints.append(self.straight_waypoints[-1])
-            
+            if self.num_agents == 3:
+                # 特殊处理：Agent 2 生成在 Agent 0 和 Agent 1 之间
+                # Agent 0: 20%
+                # Agent 2: 35% (在0和1中间)
+                # Agent 1: 50%
+                total_wp = len(self.straight_waypoints)
+                self.start_waypoints.append(self.straight_waypoints[int(total_wp * 0.20)])  # Agent 0
+                self.start_waypoints.append(self.straight_waypoints[int(total_wp * 0.50)])  # Agent 1
+                self.start_waypoints.append(self.straight_waypoints[int(total_wp * 0.35)])  # Agent 2
+                print(f"3个智能体特殊位置分配: Agent0={int(total_wp * 0.20)}, Agent1={int(total_wp * 0.50)}, Agent2={int(total_wp * 0.35)}")
+            else:
+                # 默认均匀分布
+                step = max(1, len(self.straight_waypoints) // (self.num_agents + 1))
+                for i in range(self.num_agents):
+                    idx = (i + 1) * step
+                    if idx < len(self.straight_waypoints):
+                        self.start_waypoints.append(self.straight_waypoints[idx])
+                    else:
+                        self.start_waypoints.append(self.straight_waypoints[-1])
+
             # 目标位置是道路的末端
             self.target_waypoints = [self.straight_waypoints[-1]] * self.num_agents
         else:
