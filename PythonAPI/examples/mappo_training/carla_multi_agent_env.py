@@ -26,7 +26,8 @@ class CarlaMultiAgentEnv:
         num_agents: int = 2,
         straight_road_length: float = 100.0,
         timestep: float = 0.1,
-        max_steps: int = 1000
+        max_steps: int = 1000,
+        spawn_vehicles: bool = True
     ):
         """
         初始化CARLA多智能体环境
@@ -84,12 +85,18 @@ class CarlaMultiAgentEnv:
         self.start_waypoints: List[carla.Waypoint] = []
         self.target_waypoints: List[carla.Waypoint] = []
         self.reached_target: Dict[int, bool] = {}
+
+        # 自定义起始位置（优先级高于start_waypoints）
+        self.custom_start_transforms: Optional[List[carla.Transform]] = None
+        # 自定义终点位置
+        self.custom_target_transforms: Optional[List[carla.Transform]] = None
         
         # 找到直道
         self._find_straight_road()
-        
-        # 生成车辆
-        self._spawn_vehicles()
+
+        # 生成车辆（可选）
+        if spawn_vehicles:
+            self._spawn_vehicles()
         
         # 交通管理器
         self.traffic_manager = self.client.get_trafficmanager(8000)
@@ -356,22 +363,29 @@ class CarlaMultiAgentEnv:
         """生成车辆"""
         # 清理现有车辆
         self._cleanup()
-        
+
         # 车辆蓝图
         vehicle_bp = self.blueprint_library.filter('vehicle.tesla.model3')[0]
         vehicle_bp.set_attribute('color', '255,0,0')  # 红色
-        
+
         for i in range(self.num_agents):
-            spawn_transform = self.start_waypoints[i].transform
-            
+            # 优先使用自定义位置，否则使用start_waypoints
+            if self.custom_start_transforms and i < len(self.custom_start_transforms) and self.custom_start_transforms[i] is not None:
+                spawn_transform = self.custom_start_transforms[i]
+                print(f"车辆 {i} 使用自定义位置")
+            elif i < len(self.start_waypoints):
+                spawn_transform = self.start_waypoints[i].transform
+            else:
+                raise RuntimeError(f"无法获取车辆 {i} 的起始位置")
+
             # 尝试生成车辆
             vehicle = self.world.try_spawn_actor(vehicle_bp, spawn_transform)
-            
+
             if vehicle is None:
                 # 如果生成失败，稍微调整位置
                 spawn_transform.location.z += 0.5
                 vehicle = self.world.try_spawn_actor(vehicle_bp, spawn_transform)
-            
+
             if vehicle:
                 self.vehicles.append(vehicle)
                 print(f"车辆 {i} 生成成功，位置: {spawn_transform.location}")
@@ -383,7 +397,7 @@ class CarlaMultiAgentEnv:
                 self._attach_collision_sensor(i, vehicle)
             else:
                 raise RuntimeError(f"无法生成车辆 {i}")
-        
+
         # 等待世界更新
         self.world.tick()
         time.sleep(0.5)
@@ -489,11 +503,70 @@ class CarlaMultiAgentEnv:
     def get_camera_images(self) -> Dict[int, np.ndarray]:
         """
         获取所有车辆的摄像头图像
-        
+
         Returns:
             camera_images: {agent_id: image_array}
         """
         return self.camera_images.copy()
+
+    def set_custom_start_positions(self, positions_dict: Dict):
+        """
+        设置自定义车辆起始位置（下次reset时生效）
+
+        Args:
+            positions_dict: 格式为 {"agent0": {"x": 100, "y": -257, "z": 0.5, "yaw": 0.0}, ...}
+                           如果不指定 yaw，会自动对齐道路方向
+        """
+        import carla
+
+        print(f"正在设置自定义起始位置...")
+        self.custom_start_transforms = []
+
+        for i in range(self.num_agents):
+            agent_key = f"agent{i}"
+            if agent_key in positions_dict:
+                pos = positions_dict[agent_key]
+                # 创建自定义transform
+                location = carla.Location(
+                    x=float(pos.get("x", 0.0)),
+                    y=float(pos.get("y", 0.0)),
+                    z=float(pos.get("z", 0.5))
+                )
+
+                # 检查是否显式指定了yaw
+                if "yaw" in pos:
+                    rotation = carla.Rotation(
+                        pitch=float(pos.get("pitch", 0.0)),
+                        yaw=float(pos.get("yaw", 0.0)),
+                        roll=float(pos.get("roll", 0.0))
+                    )
+                    yaw_source = "用户指定"
+                else:
+                    # 没有指定yaw，自动获取道路方向
+                    try:
+                        waypoint = self.map.get_waypoint(
+                            location,
+                            project_to_road=True,
+                            lane_type=carla.LaneType.Driving
+                        )
+                        if waypoint:
+                            rotation = waypoint.transform.rotation
+                            yaw_source = "自动对齐道路"
+                        else:
+                            rotation = carla.Rotation()
+                            yaw_source = "默认(0)"
+                    except:
+                        rotation = carla.Rotation()
+                        yaw_source = "默认(0)"
+
+                transform = carla.Transform(location, rotation)
+                self.custom_start_transforms.append(transform)
+                print(f"  智能体 {i} 起始位置已设置: x={location.x:.2f}, y={location.y:.2f}, z={location.z:.2f}, yaw={rotation.yaw:.2f} ({yaw_source})")
+            elif i < len(self.start_waypoints):
+                # 没有自定义位置的智能体，使用默认位置
+                self.custom_start_transforms.append(self.start_waypoints[i].transform)
+            else:
+                self.custom_start_transforms.append(None)
 
 
     def _get_ray_detection(self, vehicle: carla.Actor, ray_length: float = 10.0, num_rays: int = 11) -> np.ndarray:
@@ -952,10 +1025,29 @@ class CarlaMultiAgentEnv:
 
             # print(f"Agent {i} reward: {reward:.2f}")
             # print(f"Details: {details}")
-            
+
             # 打印调试 (可选，训练时建议注释掉)
             # if i == 0 and self.current_step % 10 == 0:
             #     print(f"R_prog:{progress_reward:.2f} R_cen:{centering_reward:.2f} R_spd:{speed_reward:.2f}")
+
+        # === 对抗智能体特殊处理 ===
+        ADVERSARIAL_AGENT_ID = 2
+        if ADVERSARIAL_AGENT_ID in rewards:
+            base_reward = rewards[ADVERSARIAL_AGENT_ID]
+            base_details = reward_details[ADVERSARIAL_AGENT_ID]
+
+            # 计算对抗专用奖励
+            adv_reward, adv_details = self._compute_adversarial_reward(
+                ADVERSARIAL_AGENT_ID, base_details
+            )
+
+            # 保存原始基础奖励供训练脚本使用
+            reward_details[ADVERSARIAL_AGENT_ID]["base_reward"] = base_reward
+            reward_details[ADVERSARIAL_AGENT_ID].update(adv_details)
+
+            # 将环境返回的奖励替换为对抗专用奖励（不含负其他智能体项，该项在训练脚本中添加）
+            rewards[ADVERSARIAL_AGENT_ID] = adv_reward
+        # =========================
 
         return rewards, reward_details
     
@@ -1048,12 +1140,103 @@ class CarlaMultiAgentEnv:
         
         return dones
     
+    def _get_relative_position_to_agents(self, ego_id: int) -> Dict[int, Dict[str, float]]:
+        """
+        计算自车相对于其他智能体的位置关系
+        返回: {other_agent_id: {'lateral_dist': 横向距离, 'longitudinal_dist': 纵向距离,
+                               'is_left': 是否在左侧, 'is_behind': 是否在后方}}
+        """
+        relative_positions = {}
+        ego_vehicle = self.vehicles[ego_id]
+        if not ego_vehicle.is_alive:
+            return relative_positions
+
+        ego_transform = ego_vehicle.get_transform()
+        ego_loc = ego_transform.location
+        ego_yaw = math.radians(ego_transform.rotation.yaw)
+
+        # 前向和右向向量
+        forward = np.array([math.cos(ego_yaw), math.sin(ego_yaw)])
+        right = np.array([-math.sin(ego_yaw), math.cos(ego_yaw)])
+
+        for other_id, other_vehicle in enumerate(self.vehicles):
+            if other_id == ego_id or not other_vehicle.is_alive:
+                continue
+
+            other_loc = other_vehicle.get_location()
+            rel_vec = np.array([other_loc.x - ego_loc.x, other_loc.y - ego_loc.y])
+
+            # 投影到前向和侧向
+            longitudinal_dist = float(np.dot(rel_vec, forward))  # 正值：其他车在前方
+            lateral_dist = float(np.dot(rel_vec, right))          # 正值：其他车在右侧
+
+            relative_positions[other_id] = {
+                'lateral_dist': lateral_dist,
+                'longitudinal_dist': longitudinal_dist,
+                'is_left': lateral_dist < 0,
+                'is_behind': longitudinal_dist < 0,
+                'distance': math.sqrt(longitudinal_dist**2 + lateral_dist**2)
+            }
+
+        return relative_positions
+
+    def _compute_adversarial_reward(self, agent_id: int, base_reward_details: Dict) -> Tuple[float, Dict]:
+        """
+        计算对抗智能体的专用奖励
+        组合: 基础驾驶奖励 + 对抗干扰奖励 + 侧面切入奖励
+        """
+        # 1. 基础驾驶奖励（权重调低，保留但不主导）
+        base_reward = (
+            base_reward_details["progress"] * 0.3 +      # 降低进度权重
+            base_reward_details["speed"] * 0.3 +         # 保留速度奖励
+            base_reward_details["centering"] * 0.2 +     # 降低居中要求
+            base_reward_details["yaw"] * 0.1 +
+            base_reward_details["collision"] * 1.0 +     # 碰撞惩罚保持
+            base_reward_details["lane_invasion"] * 0.5 + # 降低车道偏离惩罚
+            base_reward_details["step"] * 0.1 +
+            base_reward_details["success"] * 0.3          # 降低成功奖励
+        )
+
+        # 2. 获取与其他智能体的相对位置
+        relative_positions = self._get_relative_position_to_agents(agent_id)
+
+        cutting_in_reward = 0.0
+        blocking_reward = 0.0
+
+        for other_id, rel in relative_positions.items():
+            # 侧面切入奖励：在其他车辆侧面近距离行驶
+            # 目标：横向距离小，纵向距离接近（并排或略前）
+            lateral_abs = abs(rel['lateral_dist'])
+            long_abs = abs(rel['longitudinal_dist'])
+
+            # 理想切入位置：侧面 1-3米，纵向在 -5~+10米范围内
+            if 1.0 < lateral_abs < 3.0 and -5.0 < rel['longitudinal_dist'] < 10.0:
+                # 根据距离远近给予奖励，越近奖励越高（但不小于安全距离）
+                proximity_score = 1.0 - (lateral_abs - 1.0) / 2.0  # 1米时=1.0, 3米时=0.0
+                cutting_in_reward += proximity_score * 0.5
+
+            # 阻挡奖励：在其他车辆正前方近距离
+            if lateral_abs < 1.5 and 0.0 < rel['longitudinal_dist'] < 8.0:
+                blocking_score = 1.0 - rel['longitudinal_dist'] / 8.0
+                blocking_reward += blocking_score * 0.3
+
+        # 3. 最终对抗奖励 = 基础驾驶 + 切入/阻挡
+        adversarial_details = {
+            "base_driving": base_reward,
+            "cutting_in": cutting_in_reward,
+            "blocking": blocking_reward,
+        }
+
+        total_adversarial_reward = base_reward + cutting_in_reward + blocking_reward
+
+        return total_adversarial_reward, adversarial_details
+
     def _check_collisions(self) -> Dict[int, bool]:
         """检查碰撞"""
         collisions = {}
         for i in range(self.num_agents):
             collisions[i] = False  # 简化版本，可以添加碰撞检测
-        
+
         return collisions
     
     def get_global_state(self) -> np.ndarray:

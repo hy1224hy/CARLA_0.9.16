@@ -42,10 +42,20 @@ def main():
     parser.add_argument("--save-dir", type=str, default="./logs/adversarial_ppo_ckpts")
     parser.add_argument("--save-interval", type=int, default=50)
     parser.add_argument("--log-interval", type=int, default=5)
+    parser.add_argument("--no-viz", action="store_true", help="不启动可视化")
+
+    # 对抗训练参数
+    parser.add_argument("--adversarial-coef", type=float, default=1.0,
+                        help="对抗项的权重系数")
+    parser.add_argument("--curriculum-learning", action="store_true",
+                        help="启用课程学习")
+    parser.add_argument("--warmup-updates", type=int, default=100,
+                        help="课程学习热身轮数（只用基础奖励）")
+    parser.add_argument("--ramp-up-updates", type=int, default=200,
+                        help="课程学习对抗系数渐增轮数")
 
     # 可视化参数
     parser.add_argument("--viz-refresh-rate", type=float, default=0.05)
-    parser.add_argument("--no-viz", action="store_true", help="不启动可视化")
 
     args = parser.parse_args()
 
@@ -80,10 +90,17 @@ def main():
         "--save-dir", args.save_dir,
         "--save-interval", str(args.save_interval),
         "--log-interval", str(args.log_interval),
+        "--adversarial-coef", str(args.adversarial_coef),
     ]
 
     if args.cpu:
         train_args.append("--cpu")
+    if args.no_viz:
+        train_args.append("--no-viz")
+    if args.curriculum_learning:
+        train_args.append("--curriculum-learning")
+        train_args.extend(["--warmup-updates", str(args.warmup_updates)])
+        train_args.extend(["--ramp-up-updates", str(args.ramp_up_updates)])
 
     # 构建可视化命令
     viz_args = [

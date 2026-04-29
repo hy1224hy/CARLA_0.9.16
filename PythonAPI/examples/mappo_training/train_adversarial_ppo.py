@@ -15,6 +15,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Normal
+from torch.utils.tensorboard import SummaryWriter
 
 from carla_multi_agent_env import CarlaMultiAgentEnv
 
@@ -167,6 +168,14 @@ def train(args):
         max_steps=args.max_steps,
     )
 
+    # 创建 TensorBoard SummaryWriter（直接使用，不通过有问题的 MAPPOLogger）
+    import datetime
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_dir = os.path.join('./logs/adversarial_training', current_time)
+    os.makedirs(log_dir, exist_ok=True)
+    writer = SummaryWriter(log_dir=log_dir)
+    print(f"TensorBoard 日志目录: {log_dir}")
+
     # 创建可视化器（如果可用）
     visualizer = None
     if HAS_VISUALIZER and not args.no_viz:
@@ -225,7 +234,20 @@ def train(args):
 
     # 创建对抗智能体（Agent 2）的Actor-Critic网络
     adversarial_id = 2
+
+    # === 新增：用预训练权重初始化对抗智能体 ===
     adv_actor = Actor(obs_dim=19, act_dim=3, hidden=args.hidden_dim).to(device)
+    if adversarial_id in pretrained_actors_state:
+        adv_actor.load_state_dict(pretrained_actors_state[adversarial_id])
+        print("对抗智能体已使用预训练权重初始化")
+    else:
+        # 如果没有Agent 2的预训练权重，用Agent 0或1的权重
+        fallback_agent_id = 0
+        if fallback_agent_id in pretrained_actors_state:
+            adv_actor.load_state_dict(pretrained_actors_state[fallback_agent_id])
+            print(f"对抗智能体使用 Agent {fallback_agent_id} 的预训练权重初始化")
+    # ===========================================
+
     adv_critic = Critic(obs_dim=19, hidden=args.hidden_dim).to(device)
 
     adv_actor_optim = optim.Adam(adv_actor.parameters(), lr=args.lr_actor)
@@ -239,9 +261,10 @@ def train(args):
     print(f"对抗智能体ID: {adversarial_id}")
     print(f"预训练智能体(冻结): {list(pretrained_actors.keys())}")
 
-    try:
-        episode_idx = 1
+    global_step = 0
+    episode_idx = 1
 
+    try:
         for update in range(1, args.updates + 1):
             buffer = RolloutBuffer()
             obs_dict, _ = env.reset()
@@ -249,8 +272,21 @@ def train(args):
             episode_step = 0
             completed_episode_returns = []
 
+            # 计算当前对抗系数
+            if args.curriculum_learning:
+                if update < args.warmup_updates:
+                    current_adversarial_coef = 0.0
+                elif update < args.warmup_updates + args.ramp_up_updates:
+                    progress = (update - args.warmup_updates) / args.ramp_up_updates
+                    current_adversarial_coef = args.adversarial_coef * progress
+                else:
+                    current_adversarial_coef = args.adversarial_coef
+            else:
+                current_adversarial_coef = args.adversarial_coef
+
             # 收集rollout
             for _ in range(args.rollout_steps):
+                global_step += 1
                 episode_step += 1
                 action_dict: Dict[int, np.ndarray] = {}
                 step_cache = {}
@@ -284,16 +320,30 @@ def train(args):
                 # 执行动作
                 next_obs, rewards, dones, _ = env.step(action_dict)
 
+                # 记录 step 级别指标到 TensorBoard（轻量级，只记录关键指标）
+                if global_step % args.log_interval == 0:
+                    for aid, r in rewards.items():
+                        writer.add_scalar(f'Agent_{aid}/Reward/Step', r, global_step)
+
+                    if adversarial_id in step_cache:
+                        writer.add_scalar(f'Agent_{adversarial_id}/Value', step_cache[adversarial_id]["value"], global_step)
+
+                    writer.add_scalar('Adversarial/Coef', current_adversarial_coef, global_step)
+
                 # 更新可视化器奖励
                 if visualizer is not None:
                     visualizer.update_rewards(current_rewards=rewards, episode_rewards=episode_rewards)
 
-                # 计算对抗智能体的奖励：负的平均奖励（零和博弈）
+                # 计算对抗智能体的奖励：混合奖励
                 if adversarial_id in obs_dict:
-                    # 前两个智能体的平均奖励
+                    # 1. 获取环境返回的基础对抗奖励（含驾驶和切入奖励）
+                    base_adv_reward = rewards.get(adversarial_id, 0.0)
+
+                    # 2. 获取其他智能体的奖励（用于零和对抗项）
                     avg_pretrained_reward = (rewards.get(0, 0.0) + rewards.get(1, 0.0)) / 2.0
-                    # 对抗智能体的奖励为负值
-                    adversarial_reward = -avg_pretrained_reward
+
+                    # 3. 组合奖励 = 基础对抗奖励 + 对抗系数 * (-avg_others)
+                    adversarial_reward = base_adv_reward + current_adversarial_coef * (-avg_pretrained_reward) * 0.01
 
                     # 存储transition
                     buffer.add(
@@ -320,12 +370,23 @@ def train(args):
                 episode_done = all(dones.get(aid, False) for aid in range(3))
                 if episode_done:
                     completed_episode_returns.append(episode_rewards[adversarial_id])
+
+                    # 记录 episode 级别指标
+                    writer.add_scalar(f'Agent_{adversarial_id}/Reward/Episode_Total', episode_rewards[adversarial_id], episode_idx)
+                    writer.add_scalar(f'Agent_0/Reward/Episode_Total', episode_rewards[0], episode_idx)
+                    writer.add_scalar(f'Agent_1/Reward/Episode_Total', episode_rewards[1], episode_idx)
+                    writer.add_scalar('Global/Episode_Length', episode_step, episode_idx)
+
                     obs_dict, _ = env.reset()
                     episode_rewards = {0: 0.0, 1: 0.0, 2: 0.0}
                     episode_step = 0
                     episode_idx += 1
 
             # PPO更新对抗智能体
+            final_actor_loss = 0.0
+            final_critic_loss = 0.0
+            final_entropy = 0.0
+
             if len(buffer.data) > 0:
                 obs_arr = np.array([t.obs for t in buffer.data], dtype=np.float32)
                 act_arr = np.array([t.action_tanh for t in buffer.data], dtype=np.float32)
@@ -353,7 +414,7 @@ def train(args):
                 idx = np.arange(n)
 
                 # PPO epochs
-                for _ in range(args.ppo_epochs):
+                for epoch in range(args.ppo_epochs):
                     np.random.shuffle(idx)
                     for start in range(0, n, args.minibatch_size):
                         mb = idx[start : start + args.minibatch_size]
@@ -379,6 +440,20 @@ def train(args):
                         nn.utils.clip_grad_norm_(adv_critic.parameters(), args.max_grad_norm)
                         adv_critic_optim.step()
 
+                        # 保存最后一个batch的损失用于记录
+                        if epoch == args.ppo_epochs - 1 and start + args.minibatch_size >= n:
+                            final_actor_loss = actor_loss.item()
+                            final_critic_loss = critic_loss.item()
+                            final_entropy = entropy.mean().item()
+
+            # 记录 update 级别指标
+            writer.add_scalar(f'Agent_{adversarial_id}/Training/Loss_Actor', final_actor_loss, update)
+            writer.add_scalar(f'Agent_{adversarial_id}/Training/Loss_Critic', final_critic_loss, update)
+            writer.add_scalar(f'Agent_{adversarial_id}/Training/Entropy', final_entropy, update)
+
+            pretrained_avg = (episode_rewards[0] + episode_rewards[1]) / 2.0
+            writer.add_scalar('Adversarial/Pretrained_Avg_Reward', pretrained_avg, update)
+
             # 日志
             if update % args.log_interval == 0:
                 if completed_episode_returns:
@@ -391,7 +466,8 @@ def train(args):
                     f"[Update {update}/{args.updates}] "
                     f"episodes_finished={len(completed_episode_returns)}, "
                     f"{ret_text}, "
-                    f"pretrained_avg={ (episode_rewards[0] + episode_rewards[1]) / 2.0:.2f}"
+                    f"pretrained_avg={pretrained_avg:.2f}, "
+                    f"adv_coef={current_adversarial_coef:.2f}"
                 )
 
             # 保存checkpoint
@@ -414,6 +490,10 @@ def train(args):
     except KeyboardInterrupt:
         print("Training interrupted by user")
     finally:
+        # 关闭 TensorBoard writer
+        writer.close()
+        print("TensorBoard 日志已保存")
+
         if visualizer is not None:
             visualizer.close()
         env.close()
@@ -457,9 +537,20 @@ def build_parser():
     parser.add_argument("--log-interval", type=int, default=5)
     parser.add_argument("--no-viz", action="store_true", help="不启动可视化")
 
+    # 对抗训练参数
+    parser.add_argument("--adversarial-coef", type=float, default=1.0,
+                        help="对抗项的权重系数")
+    parser.add_argument("--curriculum-learning", action="store_true",
+                        help="启用课程学习")
+    parser.add_argument("--warmup-updates", type=int, default=100,
+                        help="课程学习热身轮数（只用基础奖励）")
+    parser.add_argument("--ramp-up-updates", type=int, default=200,
+                        help="课程学习对抗系数渐增轮数")
+
     return parser
 
 
 if __name__ == "__main__":
     args = build_parser().parse_args()
     train(args)
+
