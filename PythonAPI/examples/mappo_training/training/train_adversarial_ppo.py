@@ -4,6 +4,10 @@
 - Agent 2: 对抗智能体，使用PPO训练
 - 对抗智能体奖励 = -(Agent 0 + Agent 1)的平均奖励
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 import argparse
 import os
@@ -17,11 +21,11 @@ import torch.optim as optim
 from torch.distributions import Normal
 from torch.utils.tensorboard import SummaryWriter
 
-from carla_multi_agent_env import CarlaMultiAgentEnv
+from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 
 # 可视化器导入
 try:
-    from visualize_adversarial_training import AdversarialVisualizer
+    from visualization.visualize_adversarial_training import AdversarialVisualizer
     HAS_VISUALIZER = True
 except ImportError:
     HAS_VISUALIZER = False

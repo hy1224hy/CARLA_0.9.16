@@ -7,15 +7,15 @@ import os
 
 
 try:
-    from carla_multi_agent_env import CarlaMultiAgentEnv
-    from mappo_visualizer import MAPPOVisualizer
-    from mappo_logger import MAPPOLogger
+    from environment.carla_multi_agent_env import CarlaMultiAgentEnv
+    from visualization.mappo_visualizer import MAPPOVisualizer
+    from utils.mappo_logger import MAPPOLogger
 except ImportError:
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from carla_multi_agent_env import CarlaMultiAgentEnv
-    from mappo_visualizer import MAPPOVisualizer
+    from environment.carla_multi_agent_env import CarlaMultiAgentEnv
+    from visualization.mappo_visualizer import MAPPOVisualizer
 
 class RLlibCarlaEnv(MultiAgentEnv):
     def __init__(self, env_config: Dict):

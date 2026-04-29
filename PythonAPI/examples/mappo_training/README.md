@@ -3,6 +3,18 @@
 
 基于 CARLA 模拟器的多智能体强化学习项目，实现 MAPPO（Multi-Agent PPO）训练和对抗智能体训练。
 
+---
+
+## 快速导航
+
+| 文档 | 用途 |
+|------|------|
+| **[RUN_COMMANDS.md](RUN_COMMANDS.md)** | ⭐ **必读！** 所有脚本的运行方式和参数参考 |
+| **[FILE_INDEX.md](FILE_INDEX.md)** | 各文件功能详解索引 |
+| **[MANUAL_DATA_USAGE.md](MANUAL_DATA_USAGE.md)** | 手动驾驶数据采集指南 |
+
+---
+
 ## 项目结构
 
 所有脚本文件位于根目录，按功能分类如下：
@@ -42,9 +54,10 @@ mappo_training/
 │   ├── logs/                  # 训练日志
 │   └── checkpoints/           # 检查点
 ├── 文档
-│   ├── MANUAL_DATA_USAGE.md  # 手动数据使用指南
+│   ├── README.md             # 本文件
 │   ├── FILE_INDEX.md         # 文件功能索引
-│   └── README.md             # 本文件
+│   ├── RUN_COMMANDS.md       # 运行指令参考（必读！）
+│   └── MANUAL_DATA_USAGE.md  # 手动数据使用指南
 └── requirements.txt          # 依赖
 ```
 
@@ -87,6 +100,23 @@ Agent 2 作为对抗智能体，专用奖励函数包括：
 
 ```bash
 pip install -r requirements.txt
+```
+
+## 运行脚本
+
+有两种方式运行子目录中的脚本：
+
+**方式1：从子目录运行**
+```bash
+cd training
+python train_adversarial_ppo.py --pretrained-ckpt <path>
+```
+
+**方式2：从根目录使用模块运行（推荐）**
+```bash
+python -m training.train_adversarial_ppo --pretrained-ckpt <path>
+python -m evaluation.evaluate_adversarial_ppo --checkpoint <path>
+python -m utils.record_manual_control --agent-id 0
 ```
 
 依赖包括：

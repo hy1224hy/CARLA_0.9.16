@@ -2,6 +2,10 @@
 MAPPO训练日志记录模块
 使用TensorBoard记录训练过程中的各种指标
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 import os
 from typing import Dict, Optional

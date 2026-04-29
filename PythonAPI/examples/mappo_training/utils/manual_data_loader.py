@@ -2,6 +2,10 @@
 手动驾驶数据加载器
 将采集的手动驾驶数据转换为RLlib可用的格式
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 import json
 import os

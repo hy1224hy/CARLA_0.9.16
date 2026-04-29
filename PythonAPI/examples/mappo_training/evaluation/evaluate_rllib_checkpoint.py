@@ -1,10 +1,14 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 import os
 import argparse
 import ray
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.tune.registry import register_env
 
-from carla_rllib_wrapper import RLlibCarlaEnv
+from environment.carla_rllib_wrapper import RLlibCarlaEnv
 
 
 def _build_eval_env_creator(render: bool):

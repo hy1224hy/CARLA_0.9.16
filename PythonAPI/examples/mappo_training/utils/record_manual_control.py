@@ -2,6 +2,10 @@
 手动驾驶数据采集脚本
 用于采集专家驾驶数据，作为MAPPO训练的专家示范
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 import argparse
 import json
@@ -13,11 +17,11 @@ import pygame
 from pygame.locals import K_ESCAPE, K_w, K_s, K_a, K_d, K_UP, K_DOWN, K_LEFT, K_RIGHT, K_SPACE
 
 try:
-    from carla_multi_agent_env import CarlaMultiAgentEnv
+    from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from carla_multi_agent_env import CarlaMultiAgentEnv
+    from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 
 
 class ManualControlRecorder:

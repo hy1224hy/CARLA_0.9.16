@@ -2,6 +2,10 @@
 使用手动驾驶数据进行预训练（行为克隆）
 在正式训练前运行此脚本，将手动驾驶数据用于初始化策略网络
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 import os
 import argparse
@@ -11,14 +15,14 @@ from typing import Dict
 import ray
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.tune.registry import register_env
-from carla_rllib_wrapper import RLlibCarlaEnv
+from environment.carla_rllib_wrapper import RLlibCarlaEnv
 
 try:
-    from manual_data_loader import ManualDataLoader
+    from utils.manual_data_loader import ManualDataLoader
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from manual_data_loader import ManualDataLoader
+    from utils.manual_data_loader import ManualDataLoader
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 

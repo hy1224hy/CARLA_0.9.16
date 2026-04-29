@@ -2,6 +2,10 @@
 MAPPO训练可视化模块
 使用pygame显示训练过程中的车辆观测和状态信息
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 import pygame
 import numpy as np

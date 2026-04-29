@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 """
 对抗策略评估脚本
@@ -22,7 +26,7 @@ from torch.distributions import Normal
 # 添加当前目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from carla_multi_agent_env import CarlaMultiAgentEnv
+from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 
 
 # =============================================================================

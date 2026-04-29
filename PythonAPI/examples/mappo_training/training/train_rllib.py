@@ -1,20 +1,24 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 import os
 import argparse
 import ray
 from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.tune.registry import register_env
-from carla_rllib_wrapper import RLlibCarlaEnv
+from environment.carla_rllib_wrapper import RLlibCarlaEnv
 import torch
 import numpy as np
 from typing import Optional
 
 try:
-    from manual_data_loader import ManualDataLoader
+    from utils.manual_data_loader import ManualDataLoader
 except ImportError:
     import sys
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from manual_data_loader import ManualDataLoader
+    from utils.manual_data_loader import ManualDataLoader
 
 # 获取当前脚本所在目录
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))

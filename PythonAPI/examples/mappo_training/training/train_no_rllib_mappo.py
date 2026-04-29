@@ -1,6 +1,10 @@
 """
 脱离rilib的MAPPO训练，直接使用carla_multi_agent_env和mappo_visualizer进行训练和评估
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 import argparse
 import os
 from dataclasses import dataclass
@@ -12,8 +16,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Normal
 
-from carla_multi_agent_env import CarlaMultiAgentEnv
-from mappo_visualizer import MAPPOVisualizer
+from environment.carla_multi_agent_env import CarlaMultiAgentEnv
+from visualization.mappo_visualizer import MAPPOVisualizer
 
 
 def set_seed(seed: int):

@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 """
 基于提速环境的对抗策略评估脚本
 功能：
@@ -20,8 +24,8 @@ from torch.distributions import Normal
 # 添加当前目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from carla_multi_agent_env import CarlaMultiAgentEnv
-from speedup_env_wrapper import SpeedupEnvWrapper, AdaptiveSpeedupWrapper, create_speedup_env
+from environment.carla_multi_agent_env import CarlaMultiAgentEnv
+from environment.speedup_env_wrapper import SpeedupEnvWrapper, AdaptiveSpeedupWrapper, create_speedup_env
 
 
 # =============================================================================

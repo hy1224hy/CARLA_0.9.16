@@ -4,6 +4,10 @@
 - Agent 2: 加载对抗PPO策略
 - 用于评估对抗效果
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 import argparse
 import os
@@ -13,7 +17,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from carla_multi_agent_env import CarlaMultiAgentEnv
+from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 
 
 def set_seed(seed: int):

@@ -1,6 +1,10 @@
 """
 同时运行对抗训练和可视化
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 import argparse
 import subprocess

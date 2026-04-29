@@ -95,9 +95,9 @@
 
 | 文件名 | 说明 |
 |--------|------|
-| **custom_positions_example.json** | 自定义车辆起始位置示例 |
-| **manual_driving_data/** | 手动驾驶数据存储目录 |
-| **mappo_models/** | MAPPO模型定义目录 |
+| **data/custom_positions_example.json** | 自定义车辆起始位置示例 |
+| **data/manual_driving_data/** | 手动驾驶数据存储目录 |
+| **models/mappo_models/** | MAPPO模型定义目录 |
 | **logs/** | TensorBoard训练日志目录 |
 | **checkpoints/** | 模型检查点保存目录 |
 | **requirements.txt** | Python依赖包列表 |

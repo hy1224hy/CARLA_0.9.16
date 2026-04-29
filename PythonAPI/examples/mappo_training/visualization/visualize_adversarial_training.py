@@ -2,6 +2,10 @@
 对抗训练可视化模块
 使用CARLA俯视摄像头显示训练区域，并显示实时收益
 """
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 
 import pygame
 from pygame import transform
