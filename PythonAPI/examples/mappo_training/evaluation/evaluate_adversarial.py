@@ -14,77 +14,14 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 import argparse
 import os
-import sys
 import json
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.distributions import Normal
-
-# 添加当前目录到路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
-
-
-# =============================================================================
-# 网络定义（与训练脚本保持一致）
-# =============================================================================
-
-class Actor(nn.Module):
-    """Actor network for policy."""
-
-    def __init__(self, obs_dim: int = 19, act_dim: int = 3, hidden: int = 128):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(obs_dim, hidden),
-            nn.Tanh(),
-            nn.Linear(hidden, hidden),
-            nn.Tanh(),
-        )
-        self.mu_head = nn.Linear(hidden, act_dim)
-        self.log_std = nn.Parameter(torch.zeros(act_dim))
-
-    def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        h = self.net(obs)
-        mu = self.mu_head(h)
-        log_std = self.log_std.expand_as(mu)
-        return mu, log_std
-
-    def sample_action(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        mu, log_std = self.forward(obs)
-        std = torch.exp(log_std)
-        dist = Normal(mu, std)
-        z = dist.rsample()
-        action_tanh = torch.tanh(z)
-        log_prob = dist.log_prob(z).sum(-1)
-        log_prob -= torch.log(1 - action_tanh.pow(2) + 1e-6).sum(-1)
-        return action_tanh, log_prob
-
-    def get_deterministic_action(self, obs: torch.Tensor) -> np.ndarray:
-        """获取确定性动作（用于评估）"""
-        mu, _ = self.forward(obs)
-        action_tanh = torch.tanh(mu)
-        return action_tanh.squeeze(0).cpu().numpy()
-
-
-class Critic(nn.Module):
-    """Critic network for value estimation."""
-
-    def __init__(self, obs_dim: int = 19, hidden: int = 128):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(obs_dim, hidden),
-            nn.Tanh(),
-            nn.Linear(hidden, hidden),
-            nn.Tanh(),
-            nn.Linear(hidden, 1),
-        )
-
-    def forward(self, obs: torch.Tensor) -> torch.Tensor:
-        return self.net(obs).squeeze(-1)
+from models.actor_critic import Actor, PerAgentCritic
 
 
 # =============================================================================
@@ -278,7 +215,7 @@ class AdversarialEvaluator:
                         if aid not in obs_dict or aid in done_agents:
                             continue
                         obs_t = torch.as_tensor(obs_dict[aid], dtype=torch.float32, device=self.device).unsqueeze(0)
-                        action_tanh = self.normal_actors[aid].get_deterministic_action(obs_t)
+                        action_tanh = self.normal_actors[aid].get_deterministic_action(obs_t).squeeze(0).cpu().numpy()
                         action_dict[aid] = action_tanh_to_env(action_tanh)
 
                     # 对抗智能体
@@ -286,13 +223,13 @@ class AdversarialEvaluator:
                         if adv_agent_id in obs_dict and adv_agent_id not in done_agents:
                             if self.adversarial_actor is not None:
                                 obs_t = torch.as_tensor(obs_dict[adv_agent_id], dtype=torch.float32, device=self.device).unsqueeze(0)
-                                action_tanh = self.adversarial_actor.get_deterministic_action(obs_t)
+                                action_tanh = self.adversarial_actor.get_deterministic_action(obs_t).squeeze(0).cpu().numpy()
                                 action_dict[adv_agent_id] = action_tanh_to_env(action_tanh)
                             else:
                                 # 没有对抗策略时，用正常智能体策略代替
                                 fallback_aid = 0
                                 obs_t = torch.as_tensor(obs_dict[adv_agent_id], dtype=torch.float32, device=self.device).unsqueeze(0)
-                                action_tanh = self.normal_actors[fallback_aid].get_deterministic_action(obs_t)
+                                action_tanh = self.normal_actors[fallback_aid].get_deterministic_action(obs_t).squeeze(0).cpu().numpy()
                                 action_dict[adv_agent_id] = action_tanh_to_env(action_tanh)
 
                 # 执行动作

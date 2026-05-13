@@ -27,11 +27,12 @@ class CarlaMultiAgentEnv:
         straight_road_length: float = 100.0,
         timestep: float = 0.1,
         max_steps: int = 1000,
-        spawn_vehicles: bool = True
+        spawn_vehicles: bool = True,
+        adversarial_agent_ids: Optional[List[int]] = None,
     ):
         """
         初始化CARLA多智能体环境
-        
+
         Args:
             host: CARLA服务器地址
             port: CARLA服务器端口
@@ -40,6 +41,7 @@ class CarlaMultiAgentEnv:
             straight_road_length: 直道长度（米）
             timestep: 时间步长（秒）
             max_steps: 最大步数
+            adversarial_agent_ids: 对抗智能体ID列表，None表示无对抗智能体
         """
         self.host = host
         self.port = port
@@ -48,6 +50,7 @@ class CarlaMultiAgentEnv:
         self.straight_road_length = straight_road_length
         self.timestep = timestep
         self.max_steps = max_steps
+        self.adversarial_agent_ids = adversarial_agent_ids if adversarial_agent_ids is not None else []
         
         # 连接CARLA客户端
         self.client = carla.Client(host, port)
@@ -330,26 +333,44 @@ class CarlaMultiAgentEnv:
         
         # 设置起始和目标waypoint
         if len(self.straight_waypoints) >= self.num_agents:
-            # 为每个智能体分配起始位置（沿道路分布）
-            if self.num_agents == 3:
-                # 特殊处理：Agent 2 生成在 Agent 0 和 Agent 1 之间
-                # Agent 0: 20%
-                # Agent 2: 35% (在0和1中间)
-                # Agent 1: 50%
-                total_wp = len(self.straight_waypoints)
-                self.start_waypoints.append(self.straight_waypoints[int(total_wp * 0.20)])  # Agent 0
-                self.start_waypoints.append(self.straight_waypoints[int(total_wp * 0.50)])  # Agent 1
-                self.start_waypoints.append(self.straight_waypoints[int(total_wp * 0.35)])  # Agent 2
-                print(f"3个智能体特殊位置分配: Agent0={int(total_wp * 0.20)}, Agent1={int(total_wp * 0.50)}, Agent2={int(total_wp * 0.35)}")
+            total_wp = len(self.straight_waypoints)
+            # 按角色分配位置：合作车在道路前段（20%~50%），对抗车穿插其间
+            cooperative_ids = [i for i in range(self.num_agents) if i not in self.adversarial_agent_ids]
+            adversarial_ids = self.adversarial_agent_ids
+
+            # 为每个agent计算waypoint索引
+            # 确保任意两车之间至少有 min_gap 个waypoint（每个2m，即至少保持间距）
+            min_gap = 5  # 至少10米间距
+            agent_indices = {}
+            if cooperative_ids and adversarial_ids:
+                total_agents_count = len(cooperative_ids) + len(adversarial_ids)
+                # 所有车辆均匀分布在 20%~60% 位置，按agent_id交错排列
+                # 合作车在前，对抗车在后，各自留有足够间距
+                for ci, aid in enumerate(sorted(cooperative_ids)):
+                    agent_indices[aid] = int(total_wp * (0.20 + ci * min_gap / total_wp))
+                # 对抗车从合作车后方开始放置
+                adv_start = int(total_wp * 0.40)
+                for ai, aid in enumerate(sorted(adversarial_ids)):
+                    agent_indices[aid] = int(total_wp * (0.40 + ai * min_gap / total_wp))
+                # 检查是否有碰撞索引，重新均匀分配
+                all_indices = list(agent_indices.values())
+                if len(set(all_indices)) < len(all_indices):
+                    # 有重复索引，均匀分配全部agent
+                    step = max(1, total_wp // (total_agents_count + 1))
+                    all_ids = sorted(list(range(self.num_agents)))
+                    for i, aid in enumerate(all_ids):
+                        agent_indices[aid] = min((i + 1) * step, total_wp - 1)
             else:
-                # 默认均匀分布
-                step = max(1, len(self.straight_waypoints) // (self.num_agents + 1))
+                # 无角色区分时均匀分布
+                step = max(1, total_wp // (self.num_agents + 1))
                 for i in range(self.num_agents):
-                    idx = (i + 1) * step
-                    if idx < len(self.straight_waypoints):
-                        self.start_waypoints.append(self.straight_waypoints[idx])
-                    else:
-                        self.start_waypoints.append(self.straight_waypoints[-1])
+                    agent_indices[i] = min((i + 1) * step, total_wp - 1)
+
+            for i in range(self.num_agents):
+                idx = min(agent_indices[i], total_wp - 1)
+                self.start_waypoints.append(self.straight_waypoints[idx])
+
+            print(f"智能体位置分配: { {i: f'{agent_indices[i]}/{total_wp}' for i in range(self.num_agents)} }")
 
             # 目标位置是道路的末端
             self.target_waypoints = [self.straight_waypoints[-1]] * self.num_agents
@@ -364,11 +385,12 @@ class CarlaMultiAgentEnv:
         # 清理现有车辆
         self._cleanup()
 
-        # 车辆蓝图
-        vehicle_bp = self.blueprint_library.filter('vehicle.tesla.model3')[0]
-        vehicle_bp.set_attribute('color', '255,0,0')  # 红色
-
         for i in range(self.num_agents):
+            is_adversarial = i in self.adversarial_agent_ids
+            vehicle_bp = self.blueprint_library.filter('vehicle.tesla.model3')[0]
+            # 自车红色，对抗车蓝色
+            vehicle_bp.set_attribute('color', '0,0,255' if is_adversarial else '255,0,0')
+
             # 优先使用自定义位置，否则使用start_waypoints
             if self.custom_start_transforms and i < len(self.custom_start_transforms) and self.custom_start_transforms[i] is not None:
                 spawn_transform = self.custom_start_transforms[i]
@@ -381,10 +403,27 @@ class CarlaMultiAgentEnv:
             # 尝试生成车辆
             vehicle = self.world.try_spawn_actor(vehicle_bp, spawn_transform)
 
-            if vehicle is None:
-                # 如果生成失败，稍微调整位置
-                spawn_transform.location.z += 0.5
-                vehicle = self.world.try_spawn_actor(vehicle_bp, spawn_transform)
+            # 碰撞时尝试多种偏移
+            retry_offsets = [
+                (0, 0, 0.5),       # 垂直
+                (1.5, 0, 0),       # 横向右
+                (-1.5, 0, 0),      # 横向左
+                (0, 1.0, 0.3),     # 前移+抬高
+                (0, -1.0, 0.3),    # 后移+抬高
+            ]
+            retry_idx = 0
+            while vehicle is None and retry_idx < len(retry_offsets):
+                dx, dy, dz = retry_offsets[retry_idx]
+                retry_transform = carla.Transform(
+                    carla.Location(
+                        x=spawn_transform.location.x + dx,
+                        y=spawn_transform.location.y + dy,
+                        z=spawn_transform.location.z + dz,
+                    ),
+                    spawn_transform.rotation
+                )
+                vehicle = self.world.try_spawn_actor(vehicle_bp, retry_transform)
+                retry_idx += 1
 
             if vehicle:
                 self.vehicles.append(vehicle)
@@ -569,15 +608,15 @@ class CarlaMultiAgentEnv:
                 self.custom_start_transforms.append(None)
 
 
-    def _get_ray_detection(self, vehicle: carla.Actor, ray_length: float = 10.0, num_rays: int = 11) -> np.ndarray:
+    def _get_ray_detection(self, vehicle: carla.Actor, ray_length: float = 4.0, num_rays: int = 11) -> np.ndarray:
         """
         模拟激光雷达探测（射线检测）
-        
+
         Args:
             vehicle: 车辆对象
             ray_length: 射线最大探测距离（米）
-            num_rays: 射线数量（覆盖前方180度）
-            
+            num_rays: 射线数量（覆盖全周360度）
+
         Returns:
             distances: 归一化的距离数组 (shape: [num_rays])
                        1.0 表示范围内无障碍，0.0 表示紧贴障碍
@@ -585,12 +624,12 @@ class CarlaMultiAgentEnv:
         transform = vehicle.get_transform()
         start_loc = transform.location
         start_loc.z += 1.0  # 抬高起点，避免射到地面
-        
+
         # 车辆朝向（弧度）
         yaw = math.radians(transform.rotation.yaw)
-        
-        # 定义射线角度范围：从左(-90度)到右(+90度)
-        fov = math.pi  # 180度视野
+
+        # 定义射线角度范围：全周360度
+        fov = 2 * math.pi  # 360度视野
         angles = np.linspace(-fov/2, fov/2, num_rays)
         
         distances = []
@@ -696,7 +735,7 @@ class CarlaMultiAgentEnv:
         observations = {}
         # 设定雷达参数
         NUM_RAYS = 11      # 射线数量
-        RAY_LENGTH = 10.0   # 探测距离
+        RAY_LENGTH = 4.0   # 探测距离（全周360度）
         
         for i, vehicle in enumerate(self.vehicles):
             if not vehicle.is_alive:
@@ -1030,23 +1069,20 @@ class CarlaMultiAgentEnv:
             # if i == 0 and self.current_step % 10 == 0:
             #     print(f"R_prog:{progress_reward:.2f} R_cen:{centering_reward:.2f} R_spd:{speed_reward:.2f}")
 
-        # === 对抗智能体特殊处理 ===
-        ADVERSARIAL_AGENT_ID = 2
-        if ADVERSARIAL_AGENT_ID in rewards:
-            base_reward = rewards[ADVERSARIAL_AGENT_ID]
-            base_details = reward_details[ADVERSARIAL_AGENT_ID]
+        # === 对抗智能体特殊处理（支持多个对抗智能体） ===
+        for adv_id in self.adversarial_agent_ids:
+            if adv_id in rewards:
+                base_reward = rewards[adv_id]
+                base_details = reward_details[adv_id]
 
-            # 计算对抗专用奖励
-            adv_reward, adv_details = self._compute_adversarial_reward(
-                ADVERSARIAL_AGENT_ID, base_details
-            )
+                adv_reward, adv_details = self._compute_adversarial_reward(
+                    adv_id, base_details
+                )
 
-            # 保存原始基础奖励供训练脚本使用
-            reward_details[ADVERSARIAL_AGENT_ID]["base_reward"] = base_reward
-            reward_details[ADVERSARIAL_AGENT_ID].update(adv_details)
+                reward_details[adv_id]["base_reward"] = base_reward
+                reward_details[adv_id].update(adv_details)
 
-            # 将环境返回的奖励替换为对抗专用奖励（不含负其他智能体项，该项在训练脚本中添加）
-            rewards[ADVERSARIAL_AGENT_ID] = adv_reward
+                rewards[adv_id] = adv_reward
         # =========================
 
         return rewards, reward_details
@@ -1240,43 +1276,114 @@ class CarlaMultiAgentEnv:
         return collisions
     
     def get_global_state(self) -> np.ndarray:
+        """获取全局状态：拼接所有智能体的完整观测（19维/agent），用于集中式Critic"""
+        obs = self._get_observations()
+        features = [obs[i] for i in range(self.num_agents)]
+        return np.concatenate(features)
+
+    def get_adversarial_global_state(self) -> np.ndarray:
+        """获取对抗团队全局状态：拼接对抗智能体的完整观测（19维/agent），用于对抗团队集中式Critic"""
+        obs = self._get_observations()
+        features = [obs[aid] for aid in self.adversarial_agent_ids]
+        return np.concatenate(features) if features else np.array([], dtype=np.float32)
+
+    def load_random_scenario(self, scenario_dir: Optional[str] = None,
+                            scenario_files: Optional[List[str]] = None) -> Optional[Dict]:
         """
-        获取全局状态（用于集中式critic）
-        
+        从场景目录随机加载一个场景配置
+
+        Args:
+            scenario_dir: 场景文件目录，默认是 data/training_scenarios
+            scenario_files: 可选的场景文件列表，从中随机选择
+
         Returns:
-            global_state: 所有智能体的全局状态
+            场景配置字典，如果加载失败返回 None
         """
-        global_features = []
-        
-        for i, vehicle in enumerate(self.vehicles):
-            if not vehicle.is_alive:
-                global_features.extend([0.0] * 6)
-                continue
-            
-            transform = vehicle.get_transform()
-            velocity = vehicle.get_velocity()
-            target_wp = self.target_waypoints[i]
-            
-            # 位置
-            global_features.append(transform.location.x / 100.0)
-            global_features.append(transform.location.y / 100.0)
-            
-            # 速度
-            speed = math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2)
-            global_features.append(speed / 30.0)
-            
-            # 朝向
-            global_features.append(math.sin(math.radians(transform.rotation.yaw)))
-            global_features.append(math.cos(math.radians(transform.rotation.yaw)))
-            
-            # 到目标的距离
-            distance = transform.location.distance(target_wp.transform.location)
-            global_features.append(distance / 100.0)
-        
-        return np.array(global_features, dtype=np.float32)
-    
+        import json
+        import random
+
+        if scenario_dir is None:
+            scenario_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                      'data', 'training_scenarios')
+
+        if not os.path.exists(scenario_dir):
+            print(f"场景目录不存在: {scenario_dir}")
+            return None
+
+        if scenario_files is None:
+            scenario_files = [f for f in os.listdir(scenario_dir) if f.endswith('.json')]
+
+        if not scenario_files:
+            print("未找到场景文件")
+            return None
+
+        random_scenario_file = random.choice(scenario_files)
+        scenario_path = os.path.join(scenario_dir, random_scenario_file)
+
+        try:
+            with open(scenario_path, 'r', encoding='utf-8') as f:
+                scenario_config = json.load(f)
+            print(f"已加载场景: {scenario_config.get('description', random_scenario_file)}")
+            return scenario_config
+        except Exception as e:
+            print(f"加载场景失败 {scenario_path}: {e}")
+            return None
+
+    def load_scenario_by_name(self, scenario_name: str,
+                            scenario_dir: Optional[str] = None) -> Optional[Dict]:
+        """
+        按名称加载指定场景
+
+        Args:
+            scenario_name: 场景文件名（如 'scenario_01_basic.json'）
+            scenario_dir: 场景目录
+
+        Returns:
+            场景配置字典
+        """
+        import json
+
+        if scenario_dir is None:
+            scenario_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                      'data', 'training_scenarios')
+
+        scenario_path = os.path.join(scenario_dir, scenario_name)
+
+        if not os.path.exists(scenario_path):
+            print(f"场景文件不存在: {scenario_path}")
+            return None
+
+        try:
+            with open(scenario_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"加载场景失败: {e}")
+            return None
+
+    def set_scenario(self, scenario_config: Dict):
+        """
+        应用场景配置
+
+        Args:
+            scenario_config: 从 JSON 加载的场景配置字典
+        """
+        self.set_custom_start_positions(scenario_config)
+
+    def reset_with_random_scenario(self, scenario_dir: Optional[str] = None,
+                                scenario_files: Optional[List[str]] = None) -> Tuple[Dict[int, np.ndarray], Dict]:
+        """
+        随机加载场景并重置环境
+
+        Returns:
+            observations, info
+        """
+        scenario_config = self.load_random_scenario(scenario_dir, scenario_files)
+        if scenario_config is not None:
+            self.set_scenario(scenario_config)
+        return self.reset()
+
     def close(self):
-        """关闭环境"""    
+        """关闭环境"""
         # 关闭TensorBoard writer
         if self.use_tensorboard and self.tb_writer is not None:
             self.tb_writer.close()

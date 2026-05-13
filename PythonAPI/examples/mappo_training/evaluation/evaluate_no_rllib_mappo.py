@@ -11,34 +11,16 @@ from typing import Dict, Tuple
 
 import numpy as np
 import torch
-import torch.nn as nn
 
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 from visualization.mappo_visualizer import MAPPOVisualizer
+from models.actor_critic import Actor
 
 
 def set_seed(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
-
-class Actor(nn.Module):
-    def __init__(self, obs_dim: int = 19, act_dim: int = 3, hidden: int = 128):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(obs_dim, hidden),
-            nn.Tanh(),
-            nn.Linear(hidden, hidden),
-            nn.Tanh(),
-        )
-        self.mu_head = nn.Linear(hidden, act_dim)
-        self.log_std = nn.Parameter(torch.zeros(act_dim))
-
-    def forward(self, obs: torch.Tensor) -> torch.Tensor:
-        h = self.net(obs)
-        mu = self.mu_head(h)
-        return mu
 
 
 def action_tanh_to_env(action_tanh: np.ndarray) -> np.ndarray:
@@ -124,8 +106,7 @@ def evaluate(args):
                 with torch.no_grad():
                     for aid, obs in obs_dict.items():
                         obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
-                        mu = actors[aid](obs_t).squeeze(0)
-                        action_tanh = torch.tanh(mu).cpu().numpy()
+                        action_tanh = actors[aid].get_deterministic_action(obs_t).squeeze(0).cpu().numpy()
                         action_dict[aid] = action_tanh_to_env(action_tanh)
 
                 next_obs, rewards, dones, _ = env.step(action_dict)
