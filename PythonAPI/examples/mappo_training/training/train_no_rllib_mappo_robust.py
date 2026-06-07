@@ -193,6 +193,8 @@ def train(args):
         timestep=args.timestep,
         max_steps=args.max_steps,
         spawn_vehicles=True,  # 先生成车辆以获取正确的 state_dim
+        reward_version=args.reward_version,
+        disable_tensorboard=True,  # 训练脚本自行管理TB，避免重复/混乱
     )
 
     # 初始化课程学习
@@ -238,20 +240,20 @@ def train(args):
     os.makedirs(tb_log_dir, exist_ok=True)
     tb_writer = SummaryWriter(tb_log_dir)
 
-    # 训练统计
-    training_stats = {
-        'total_episodes': 0,
-        'successful_episodes': 0,
-        'scenario_episodes': {},
-        'scenario_successes': {},
-    }
+    # 训练统计（累计，用于控制台打印）
+    total_episodes = 0
+    total_successes = 0
 
     try:
         for update in range(1, args.updates + 1):
             buffer = RolloutBuffer(agent_ids)
-            episode_rewards = {aid: 0.0 for aid in agent_ids}
-            completed_episode_returns: List[float] = []
-            episode_step = 0
+
+            # 当前 update 窗口的 episode 级统计
+            window_episode_returns: List[float] = []
+            window_episode_lengths: List[int] = []
+            window_successes: List[float] = []
+            window_per_agent_returns: Dict[int, List[float]] = {aid: [] for aid in agent_ids}
+            window_reward_components: Dict[str, List[float]] = {}  # 按分量名累积
 
             # 获取当前阶段可用的场景
             available_scenarios = curriculum.get_available_scenarios(update)
@@ -268,12 +270,15 @@ def train(args):
                     env.set_scenario(scenario_config)
 
                 obs_dict, info = env.reset()
-                training_stats['total_episodes'] += 1
+                total_episodes += 1
 
-                episode_buffer: Dict[int, List[Transition]] = {aid: [] for aid in agent_ids}
+                episode_rewards = {aid: 0.0 for aid in agent_ids}
+                ep_length = 0
+                ep_done_cleanly = False
+                ep_success = False
 
                 for step in range(args.max_steps):
-                    episode_step += 1
+                    ep_length += 1
                     action_dict: Dict[int, np.ndarray] = {}
                     step_cache: Dict[int, Dict] = {}
 
@@ -318,37 +323,41 @@ def train(args):
                             scenario_name=scenario_name,
                         )
                         buffer.add(aid, transition)
-                        episode_buffer[aid].append(transition)
 
                     if visualizer is not None:
                         visualizer.handle_events()
                         if not visualizer.running:
                             raise KeyboardInterrupt
 
+                    # 收集奖励分量（用最后一个 step 的 info 作为代表）
+                    if 'reward_details' in info:
+                        for aid, details in info['reward_details'].items():
+                            for key, val in details.items():
+                                comp_name = f"reward/{key}"
+                                if comp_name not in window_reward_components:
+                                    window_reward_components[comp_name] = []
+                                window_reward_components[comp_name].append(float(val))
+
                     obs_dict = next_obs
 
                     if all(dones.values()):
-                        # 记录该episode是否成功
-                        success = not any(info.get('collisions', {}).values())
-                        training_stats['successful_episodes'] += 1 if success else 0
-
-                        # 记录场景统计
-                        if scenario_name not in training_stats['scenario_episodes']:
-                            training_stats['scenario_episodes'][scenario_name] = 0
-                            training_stats['scenario_successes'][scenario_name] = 0
-                        training_stats['scenario_episodes'][scenario_name] += 1
-                        training_stats['scenario_successes'][scenario_name] += 1 if success else 0
-
-                        curriculum.record_scenario_result(scenario_name, success)
-
-                        avg_return = float(np.mean([episode_rewards[aid] for aid in agent_ids]))
-                        completed_episode_returns.append(avg_return)
-
-                        episode_rewards = {aid: 0.0 for aid in agent_ids}
-                        episode_step = 0
+                        ep_done_cleanly = True
+                        ep_success = not any(info.get('collisions', {}).values())
+                        total_successes += 1 if ep_success else 0
                         break
 
-            # PPO 更新
+                # 记录 episode（不丢弃！无论是否 clean done 都记录）
+                avg_ret = float(np.mean([episode_rewards[aid] for aid in agent_ids]))
+                window_episode_returns.append(avg_ret)
+                window_episode_lengths.append(ep_length)
+                window_successes.append(1.0 if ep_success else 0.0)
+                for aid in agent_ids:
+                    window_per_agent_returns[aid].append(episode_rewards[aid])
+
+                # 记录场景结果到课程学习器
+                curriculum.record_scenario_result(scenario_name, ep_success)
+
+            # ===== PPO 更新（收集训练诊断指标） =====
             per_agent_tensors = {}
             critic_states = []
             critic_returns = []
@@ -387,14 +396,31 @@ def train(args):
                 critic_states.append(state_arr)
                 critic_returns.append(ret_arr)
 
+            # 累计 PPO 指标（跨 epoch 取均值）
+            ppo_metrics = {
+                "critic_loss": [],
+                "explained_variance": 0.0,
+            }
+            for aid in agent_ids:
+                ppo_metrics.update({
+                    f"actor_loss_{aid}": [],
+                    f"entropy_{aid}": [],
+                    f"approx_kl_{aid}": [],
+                    f"clip_frac_{aid}": [],
+                    f"grad_norm_actor_{aid}": [],
+                })
+            ppo_metrics["grad_norm_critic"] = []
+
             if len(critic_states) > 0:
                 critic_state_t = torch.as_tensor(np.concatenate(critic_states, axis=0), dtype=torch.float32, device=device)
                 critic_ret_t = torch.as_tensor(np.concatenate(critic_returns, axis=0), dtype=torch.float32, device=device)
 
-                for _ in range(args.ppo_epochs):
+                for epoch in range(args.ppo_epochs):
+                    # --- Critic 更新 ---
                     c_n = critic_state_t.shape[0]
                     c_idx = np.arange(c_n)
                     np.random.shuffle(c_idx)
+                    epoch_critic_losses = []
                     for start in range(0, c_n, args.minibatch_size):
                         mb = c_idx[start: start + args.minibatch_size]
                         value_pred = critic(critic_state_t[mb])
@@ -402,9 +428,15 @@ def train(args):
 
                         critic_optim.zero_grad()
                         critic_loss.backward()
-                        nn.utils.clip_grad_norm_(critic.parameters(), args.max_grad_norm)
+                        critic_grad_norm = nn.utils.clip_grad_norm_(critic.parameters(), args.max_grad_norm)
                         critic_optim.step()
 
+                        epoch_critic_losses.append(float(critic_loss.item()))
+                        ppo_metrics["grad_norm_critic"].append(float(critic_grad_norm))
+
+                    ppo_metrics["critic_loss"].append(float(np.mean(epoch_critic_losses)))
+
+                    # --- Actor 更新 ---
                     for aid in agent_ids:
                         if aid not in per_agent_tensors:
                             continue
@@ -418,6 +450,11 @@ def train(args):
                         a_idx = np.arange(a_n)
                         np.random.shuffle(a_idx)
 
+                        epoch_actor_losses = []
+                        epoch_entropies = []
+                        epoch_approx_kls = []
+                        epoch_clip_fracs = []
+
                         for start in range(0, a_n, args.minibatch_size):
                             mb = a_idx[start: start + args.minibatch_size]
                             new_logp, entropy = actors[aid].evaluate_actions(agent_obs_t[mb], agent_act_t[mb])
@@ -429,25 +466,98 @@ def train(args):
 
                             actor_optims[aid].zero_grad()
                             actor_loss.backward()
-                            nn.utils.clip_grad_norm_(actors[aid].parameters(), args.max_grad_norm)
+                            actor_grad_norm = nn.utils.clip_grad_norm_(actors[aid].parameters(), args.max_grad_norm)
                             actor_optims[aid].step()
 
-            # 记录日志
-            if update % args.log_interval == 0:
-                avg_return = float(np.mean(completed_episode_returns)) if completed_episode_returns else 0.0
-                success_rate = training_stats['successful_episodes'] / max(training_stats['total_episodes'], 1)
+                            # 收集指标
+                            epoch_actor_losses.append(float(actor_loss.item()))
+                            epoch_entropies.append(float(entropy.mean().item()))
+                            with torch.no_grad():
+                                epoch_approx_kls.append(float((new_logp - agent_old_logp_t[mb]).pow(2).mean().item()))
+                                epoch_clip_fracs.append(float(
+                                    ((ratio - 1.0).abs() > args.clip_eps).float().mean().item()
+                                ))
 
-                print(f"更新 {update}: 平均回报 {avg_return:.2f}, 总成功率 {success_rate:.2%}")
+                        ppo_metrics[f"actor_loss_{aid}"].append(float(np.mean(epoch_actor_losses)))
+                        ppo_metrics[f"entropy_{aid}"].append(float(np.mean(epoch_entropies)))
+                        ppo_metrics[f"approx_kl_{aid}"].append(float(np.mean(epoch_approx_kls)))
+                        ppo_metrics[f"clip_frac_{aid}"].append(float(np.mean(epoch_clip_fracs)))
+                        ppo_metrics[f"grad_norm_actor_{aid}"].append(float(actor_grad_norm))
 
-                tb_writer.add_scalar('train/avg_return', avg_return, update)
-                tb_writer.add_scalar('train/success_rate', success_rate, update)
+                # 计算 explained variance（最后更新完后用整个数据集评估一次）
+                with torch.no_grad():
+                    all_value_preds = critic(critic_state_t)
+                    var_residual = torch.var(critic_ret_t - all_value_preds)
+                    var_total = torch.var(critic_ret_t)
+                    explained_var = float(1.0 - var_residual / (var_total + 1e-8))
+                    ppo_metrics["explained_variance"] = explained_var
 
-                # 各场景成功率
-                for scenario_name in training_stats['scenario_episodes']:
-                    n_ep = training_stats['scenario_episodes'][scenario_name]
-                    n_succ = training_stats['scenario_successes'][scenario_name]
-                    succ_rate = n_succ / max(n_ep, 1)
-                    tb_writer.add_scalar(f'scenarios/{scenario_name[:20]}', succ_rate, update)
+            # ===== TensorBoard 记录 =====
+            if update % args.log_interval == 0 and len(window_episode_returns) > 0:
+                # --- Episode 性能指标 ---
+                tb_writer.add_scalar('episode/avg_return',
+                    float(np.mean(window_episode_returns)), update)
+                tb_writer.add_scalar('episode/std_return',
+                    float(np.std(window_episode_returns)), update)
+                tb_writer.add_scalar('episode/avg_length',
+                    float(np.mean(window_episode_lengths)), update)
+                tb_writer.add_scalar('episode/success_rate_window',
+                    float(np.mean(window_successes)), update)
+                tb_writer.add_scalar('episode/success_rate_cumulative',
+                    total_successes / max(total_episodes, 1), update)
+
+                for aid in agent_ids:
+                    if window_per_agent_returns[aid]:
+                        tb_writer.add_scalar(f'episode/return_agent_{aid}',
+                            float(np.mean(window_per_agent_returns[aid])), update)
+
+                # 控制台摘要
+                avg_r = float(np.mean(window_episode_returns))
+                win_succ = float(np.mean(window_successes))
+                print(f"更新 {update}: avg_return={avg_r:.2f}, "
+                      f"success_rate(窗口)={win_succ:.2%}, "
+                      f"cum_success={total_successes/max(total_episodes,1):.2%}, "
+                      f"avg_ep_len={float(np.mean(window_episode_lengths)):.0f}")
+
+                # --- 奖励分量（按 episode 聚合后取均值） ---
+                if window_reward_components:
+                    for comp_name, comp_values in window_reward_components.items():
+                        if comp_values:
+                            tb_writer.add_scalar(comp_name,
+                                float(np.mean(comp_values)), update)
+
+                # --- PPO 训练诊断（跨 epoch 取均值） ---
+                if len(critic_states) > 0:
+                    tb_writer.add_scalar('ppo/critic_loss',
+                        float(np.mean(ppo_metrics["critic_loss"])), update)
+                    tb_writer.add_scalar('ppo/critic_grad_norm',
+                        float(np.mean(ppo_metrics["grad_norm_critic"])), update)
+                    tb_writer.add_scalar('ppo/explained_variance',
+                        ppo_metrics["explained_variance"], update)
+
+                    for aid in agent_ids:
+                        if ppo_metrics[f"actor_loss_{aid}"]:
+                            tb_writer.add_scalar(f'ppo/actor_loss_agent{aid}',
+                                float(np.mean(ppo_metrics[f"actor_loss_{aid}"])), update)
+                            tb_writer.add_scalar(f'ppo/entropy_agent{aid}',
+                                float(np.mean(ppo_metrics[f"entropy_{aid}"])), update)
+                            tb_writer.add_scalar(f'ppo/approx_kl_agent{aid}',
+                                float(np.mean(ppo_metrics[f"approx_kl_{aid}"])), update)
+                            tb_writer.add_scalar(f'ppo/clip_frac_agent{aid}',
+                                float(np.mean(ppo_metrics[f"clip_frac_{aid}"])), update)
+                            tb_writer.add_scalar(f'ppo/grad_norm_actor_agent{aid}',
+                                float(np.mean(ppo_metrics[f"grad_norm_actor_{aid}"])), update)
+
+                # --- 场景指标（滑动窗口：最近 N 次该场景的成功率） ---
+                for scenario_name in curriculum.scenario_success_history:
+                    history = curriculum.scenario_success_history[scenario_name]
+                    if len(history) >= 3:  # 至少 3 次采样才记录
+                        win_rate = float(np.mean(history))
+                        safe_name = scenario_name.replace('.json', '').replace(' ', '_')[:40]
+                        tb_writer.add_scalar(f'scenarios/{safe_name}/success_rate_window',
+                            win_rate, update)
+                        tb_writer.add_scalar(f'scenarios/{safe_name}/sample_count',
+                            len(history), update)
 
             # 保存 checkpoint
             if update % args.save_interval == 0:
@@ -510,6 +620,8 @@ def build_parser():
     parser.add_argument("--save-dir", type=str, default="./logs/mappo_robust")
     parser.add_argument("--save-interval", type=int, default=5)
     parser.add_argument("--log-interval", type=int, default=1)
+    parser.add_argument("--reward-version", type=str, default="v2",
+                        choices=["v1", "v2"], help="奖励函数版本 (v1=原始, v2=优化)")
 
     return parser
 

@@ -12,7 +12,8 @@ from torch.distributions import Normal
 class Actor(nn.Module):
     """2层MLP (128, Tanh) → mu_head + log_std, 用于 tanh-squashed Gaussian 策略"""
 
-    def __init__(self, obs_dim: int = 19, act_dim: int = 3, hidden: int = 128):
+    def __init__(self, obs_dim: int = 19, act_dim: int = 3, hidden: int = 128,
+                 init_log_std: float = -0.5, min_log_std: float = -1.0):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(obs_dim, hidden),
@@ -21,12 +22,18 @@ class Actor(nn.Module):
             nn.Tanh(),
         )
         self.mu_head = nn.Linear(hidden, act_dim)
-        self.log_std = nn.Parameter(torch.zeros(act_dim))
+        # init_log_std=-0.5 → std≈0.6，对 tanh 输出更友好；
+        # 旧默认 0.0 (std=1.0) 会让动作大量饱和到 ±1，导致 PPO 早期 approx_kl 爆表
+        self.log_std = nn.Parameter(torch.full((act_dim,), float(init_log_std)))
+        # 破冻结(R5)：log_std 下限，防止策略过早收敛到"刹车/不动"使探索消失。
+        # min_log_std=-1.0 → std≥0.37，保证持续有探索噪声逃出局部最优。
+        self.min_log_std = float(min_log_std)
 
     def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         h = self.net(obs)
         mu = self.mu_head(h)
-        log_std = self.log_std.expand_as(mu)
+        # clamp 到下限：保证探索噪声不塌缩（上限放宽，不影响 init）
+        log_std = self.log_std.clamp(min=self.min_log_std).expand_as(mu)
         return mu, log_std
 
     def sample_action(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:

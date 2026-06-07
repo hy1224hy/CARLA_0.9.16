@@ -116,6 +116,7 @@ def train(args):
         straight_road_length=args.straight_road_length,
         timestep=args.timestep,
         max_steps=args.max_steps,
+        reward_version=args.reward_version,
     )
 
     agent_ids = list(range(env.num_agents))
@@ -384,6 +385,8 @@ def build_parser():
     parser.add_argument("--save-dir", type=str, default="./logs/minimal_mappo_ckpts")
     parser.add_argument("--save-interval", type=int, default=5)
     parser.add_argument("--log-interval", type=int, default=5)
+    parser.add_argument("--reward-version", type=str, default="v2",
+                        choices=["v1", "v2"], help="奖励函数版本 (v1=原始, v2=优化)")
     return parser
 
 
