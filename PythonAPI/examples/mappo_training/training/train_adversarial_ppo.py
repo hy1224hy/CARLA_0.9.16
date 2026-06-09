@@ -11,6 +11,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 import argparse
 import os
+import random
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -32,19 +33,25 @@ except ImportError:
 
 
 def set_seed(seed: int):
+    # 修复 #6：完整播种
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 @dataclass
 class Transition:
     obs: np.ndarray
-    action_tanh: np.ndarray
+    action_z: np.ndarray          # 修复 #4：存 pre-tanh z
     log_prob: float
     reward: float
-    done: float
+    done: float                   # 回合边界（切断 GAE trace）
+    terminated: float             # 真正终止（切断 value bootstrap）
     value: float
+    next_value: float = 0.0       # done 步：reset 前对终止状态的 bootstrap 值
 
 
 class RolloutBuffer:
@@ -79,20 +86,22 @@ def action_tanh_to_env(action_tanh: np.ndarray) -> np.ndarray:
 def compute_gae(
     rewards: np.ndarray,
     values: np.ndarray,
+    next_values: np.ndarray,
     dones: np.ndarray,
+    terminateds: np.ndarray,
     gamma: float,
     gae_lambda: float,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """GAE，区分真正终止与截断，并显式 bootstrap（修复 #2 + #3）。详见 train_no_rllib_mappo.py。"""
     advantages = np.zeros_like(rewards)
     gae = 0.0
-    next_value = 0.0
 
     for t in reversed(range(len(rewards))):
-        mask = 1.0 - dones[t]
-        delta = rewards[t] + gamma * next_value * mask - values[t]
-        gae = delta + gamma * gae_lambda * mask * gae
+        mask_value = 1.0 - terminateds[t]
+        mask_trace = 1.0 - dones[t]
+        delta = rewards[t] + gamma * next_values[t] * mask_value - values[t]
+        gae = delta + gamma * gae_lambda * mask_trace * gae
         advantages[t] = gae
-        next_value = values[t]
 
     returns = advantages + values
     return advantages, returns
@@ -111,6 +120,7 @@ def train(args):
         straight_road_length=args.straight_road_length,
         timestep=args.timestep,
         max_steps=args.max_steps,
+        seed=args.seed,
     )
 
     # 创建 TensorBoard SummaryWriter（直接使用，不通过有问题的 MAPPOLogger）
@@ -216,6 +226,8 @@ def train(args):
             episode_rewards = {0: 0.0, 1: 0.0, 2: 0.0}
             episode_step = 0
             completed_episode_returns = []
+            last_step_was_done = True   # rollout 尾部 bootstrap 用（#3）
+            last_transition = None
 
             # 计算当前对抗系数
             if args.curriculum_learning:
@@ -249,21 +261,24 @@ def train(args):
                     # 对抗智能体（训练策略）
                     if adversarial_id in obs_dict:
                         obs_t = torch.as_tensor(obs_dict[adversarial_id], dtype=torch.float32, device=device).unsqueeze(0)
-                        action_tanh_t, logp_t = adv_actor.sample_action(obs_t)
+                        # 修复 #4：取 pre-tanh z 一并存储
+                        action_tanh_t, logp_t, z_t = adv_actor.sample_action_z(obs_t)
                         value_t = adv_critic(obs_t)
 
                         action_tanh = action_tanh_t.squeeze(0).cpu().numpy()
+                        action_z = z_t.squeeze(0).cpu().numpy()
                         action_dict[adversarial_id] = action_tanh_to_env(action_tanh)
 
                         step_cache[adversarial_id] = {
                             "obs": obs_dict[adversarial_id],
-                            "action_tanh": action_tanh,
+                            "action_z": action_z,
                             "logp": float(logp_t.item()),
                             "value": float(value_t.item()),
                         }
 
                 # 执行动作
-                next_obs, rewards, dones, _ = env.step(action_dict)
+                next_obs, rewards, dones, info = env.step(action_dict)
+                terminated_info = info.get('terminated', {})
 
                 # 记录 step 级别指标到 TensorBoard（轻量级，只记录关键指标）
                 if global_step % args.log_interval == 0:
@@ -291,18 +306,20 @@ def train(args):
                     adversarial_reward = base_adv_reward + current_adversarial_coef * (-avg_pretrained_reward) * 0.01
 
                     # 存储transition
-                    buffer.add(
-                        Transition(
-                            obs=step_cache[adversarial_id]["obs"],
-                            action_tanh=step_cache[adversarial_id]["action_tanh"],
-                            log_prob=step_cache[adversarial_id]["logp"],
-                            reward=adversarial_reward,
-                            done=float(dones.get(adversarial_id, False)),
-                            value=step_cache[adversarial_id]["value"],
-                        )
+                    last_transition = Transition(
+                        obs=step_cache[adversarial_id]["obs"],
+                        action_z=step_cache[adversarial_id]["action_z"],
+                        log_prob=step_cache[adversarial_id]["logp"],
+                        reward=adversarial_reward,
+                        done=float(dones.get(adversarial_id, False)),
+                        terminated=float(terminated_info.get(adversarial_id, dones.get(adversarial_id, False))),
+                        value=step_cache[adversarial_id]["value"],
                     )
+                    buffer.add(last_transition)
 
                     episode_rewards[adversarial_id] += adversarial_reward
+                else:
+                    last_transition = None
 
                 # 累积其他智能体的奖励（仅用于监控）
                 for aid in [0, 1]:
@@ -313,7 +330,16 @@ def train(args):
 
                 # 检查episode是否结束
                 episode_done = all(dones.get(aid, False) for aid in range(3))
+                last_step_was_done = episode_done
                 if episode_done:
+                    # 修复 #2/#3：reset 前对终止状态算 bootstrap 值，回填到本步 transition
+                    if last_transition is not None and adversarial_id in obs_dict:
+                        with torch.no_grad():
+                            term_obs_t = torch.as_tensor(
+                                obs_dict[adversarial_id], dtype=torch.float32, device=device
+                            ).unsqueeze(0)
+                            last_transition.next_value = float(adv_critic(term_obs_t).item())
+
                     completed_episode_returns.append(episode_rewards[adversarial_id])
 
                     # 记录 episode 级别指标
@@ -333,17 +359,41 @@ def train(args):
             final_entropy = 0.0
 
             if len(buffer.data) > 0:
-                obs_arr = np.array([t.obs for t in buffer.data], dtype=np.float32)
-                act_arr = np.array([t.action_tanh for t in buffer.data], dtype=np.float32)
-                old_logp_arr = np.array([t.log_prob for t in buffer.data], dtype=np.float32)
-                reward_arr = np.array([t.reward for t in buffer.data], dtype=np.float32)
-                done_arr = np.array([t.done for t in buffer.data], dtype=np.float32)
-                value_arr = np.array([t.value for t in buffer.data], dtype=np.float32)
+                data = buffer.data
+                obs_arr = np.array([t.obs for t in data], dtype=np.float32)
+                act_arr = np.array([t.action_z for t in data], dtype=np.float32)
+                old_logp_arr = np.array([t.log_prob for t in data], dtype=np.float32)
+                reward_arr = np.array([t.reward for t in data], dtype=np.float32)
+                done_arr = np.array([t.done for t in data], dtype=np.float32)
+                terminated_arr = np.array([t.terminated for t in data], dtype=np.float32)
+                value_arr = np.array([t.value for t in data], dtype=np.float32)
+
+                # 修复 #3：rollout 中途结束时对最终 next state 算 bootstrap
+                final_value = 0.0
+                if not last_step_was_done and adversarial_id in obs_dict:
+                    with torch.no_grad():
+                        final_obs_t = torch.as_tensor(
+                            obs_dict[adversarial_id], dtype=torch.float32, device=device
+                        ).unsqueeze(0)
+                        final_value = float(adv_critic(final_obs_t).item())
+
+                # 构造每步 next_value（修复 #2/#3）
+                n_data = len(data)
+                next_value_arr = np.zeros(n_data, dtype=np.float32)
+                for t in range(n_data):
+                    if done_arr[t] > 0.5:
+                        next_value_arr[t] = data[t].next_value
+                    elif t == n_data - 1:
+                        next_value_arr[t] = final_value
+                    else:
+                        next_value_arr[t] = value_arr[t + 1]
 
                 adv_arr, ret_arr = compute_gae(
                     rewards=reward_arr,
                     values=value_arr,
+                    next_values=next_value_arr,
                     dones=done_arr,
+                    terminateds=terminated_arr,
                     gamma=args.gamma,
                     gae_lambda=args.gae_lambda,
                 )
@@ -364,8 +414,8 @@ def train(args):
                     for start in range(0, n, args.minibatch_size):
                         mb = idx[start : start + args.minibatch_size]
 
-                        # 更新Actor
-                        new_logp, entropy = adv_actor.evaluate_actions(obs_t[mb], act_t[mb])
+                        # 更新Actor（修复 #4：用存储的 pre-tanh z 重算 log_prob）
+                        new_logp, entropy = adv_actor.evaluate_actions_z(obs_t[mb], act_t[mb])
                         ratio = torch.exp(new_logp - old_logp_t[mb])
                         surr1 = ratio * adv_t[mb]
                         surr2 = torch.clamp(ratio, 1.0 - args.clip_eps, 1.0 + args.clip_eps) * adv_t[mb]

@@ -12,6 +12,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 import argparse
 import datetime
 import os
+import random
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -32,20 +33,26 @@ except ImportError:
 
 
 def set_seed(seed: int):
+    # 修复 #6：完整播种
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 @dataclass
 class Transition:
     obs: np.ndarray
     global_state: np.ndarray
-    action_tanh: np.ndarray
+    action_z: np.ndarray          # 修复 #4：存 pre-tanh z
     log_prob: float
     reward: float
-    done: float
-    value: float
+    done: float                   # 回合边界（切断 GAE trace）
+    terminated: float             # 场景真正终止（切断 value bootstrap）；超时截断时为 0
+    value: float                  # 团队共享 V(s)（联合奖励 → 单一 value，无 #1 冲突）
+    next_value: float = 0.0       # done 步：reset 前对终止状态的 bootstrap 值
 
 
 class RolloutBuffer:
@@ -82,20 +89,22 @@ def action_tanh_to_env(action_tanh: np.ndarray) -> np.ndarray:
 def compute_gae(
     rewards: np.ndarray,
     values: np.ndarray,
+    next_values: np.ndarray,
     dones: np.ndarray,
+    terminateds: np.ndarray,
     gamma: float,
     gae_lambda: float,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """GAE，区分真正终止与截断，显式 bootstrap（修复 #2 + #3）。"""
     advantages = np.zeros_like(rewards)
     gae = 0.0
-    next_value = 0.0
 
     for t in reversed(range(len(rewards))):
-        mask = 1.0 - dones[t]
-        delta = rewards[t] + gamma * next_value * mask - values[t]
-        gae = delta + gamma * gae_lambda * mask * gae
+        mask_value = 1.0 - terminateds[t]
+        mask_trace = 1.0 - dones[t]
+        delta = rewards[t] + gamma * next_values[t] * mask_value - values[t]
+        gae = delta + gamma * gae_lambda * mask_trace * gae
         advantages[t] = gae
-        next_value = values[t]
 
     returns = advantages + values
     return advantages, returns
@@ -124,6 +133,7 @@ def train(args):
         timestep=args.timestep,
         max_steps=args.max_steps,
         adversarial_agent_ids=adversarial_ids,
+        seed=args.seed,
     )
 
     # TensorBoard
@@ -223,6 +233,7 @@ def train(args):
             episode_rewards = {aid: 0.0 for aid in range(total_agents)}
             episode_step = 0
             completed_episode_returns: List[float] = []
+            last_step_was_done = True   # rollout 尾部 bootstrap 用（#3）
 
             # 课程学习：计算当前对抗系数
             if args.curriculum_learning:
@@ -266,27 +277,31 @@ def train(args):
                         if aid not in obs_dict:
                             continue
                         obs_t = torch.as_tensor(obs_dict[aid], dtype=torch.float32, device=device).unsqueeze(0)
-                        action_tanh_t, logp_t = adversarial_actors[aid].sample_action(obs_t)
+                        # 修复 #4：取 pre-tanh z
+                        action_tanh_t, logp_t, z_t = adversarial_actors[aid].sample_action_z(obs_t)
 
                         action_tanh_np = action_tanh_t.squeeze(0).cpu().numpy()
+                        action_z_np = z_t.squeeze(0).cpu().numpy()
                         action_dict[aid] = action_tanh_to_env(action_tanh_np)
 
                         step_cache[aid] = {
                             "obs": obs_dict[aid].copy(),
                             "global_state": adversarial_global_np.copy(),
-                            "action_tanh": action_tanh_np,
+                            "action_z": action_z_np,
                             "logp": float(logp_t.item()),
                             "value": adversarial_global_value,
                         }
 
                 # 执行动作
-                next_obs, rewards, dones, _ = env.step(action_dict)
+                next_obs, rewards, dones, info = env.step(action_dict)
+                terminated_info = info.get('terminated', {})
 
                 # 更新可视化器
                 if visualizer is not None:
                     visualizer.update_rewards(current_rewards=rewards, episode_rewards=episode_rewards)
 
                 # 计算对抗智能体的组合奖励并存储 transitions
+                step_transitions: Dict[int, Transition] = {}
                 for aid in adversarial_ids:
                     if aid not in step_cache:
                         continue
@@ -303,18 +318,18 @@ def train(args):
 
                     episode_rewards[aid] += combined_reward
 
-                    buffer.add(
-                        aid,
-                        Transition(
-                            obs=step_cache[aid]["obs"],
-                            global_state=step_cache[aid]["global_state"],
-                            action_tanh=step_cache[aid]["action_tanh"],
-                            log_prob=step_cache[aid]["logp"],
-                            reward=combined_reward,
-                            done=float(dones.get(aid, False)),
-                            value=step_cache[aid]["value"],
-                        ),
+                    tr = Transition(
+                        obs=step_cache[aid]["obs"],
+                        global_state=step_cache[aid]["global_state"],
+                        action_z=step_cache[aid]["action_z"],
+                        log_prob=step_cache[aid]["logp"],
+                        reward=combined_reward,
+                        done=float(dones.get(aid, False)),
+                        terminated=0.0,   # 在 episode 结束时按场景级别回填
+                        value=step_cache[aid]["value"],
                     )
+                    buffer.add(aid, tr)
+                    step_transitions[aid] = tr
 
                 # 累积合作团队奖励（仅监控）
                 for aid in cooperative_ids:
@@ -331,7 +346,24 @@ def train(args):
 
                 # Episode 终止
                 episode_done = all(dones.get(aid, False) for aid in range(total_agents))
+                last_step_was_done = episode_done
                 if episode_done:
+                    # 修复 #2/#3：场景级 terminated 判定 + 截断 bootstrap。
+                    # 任一 agent 真正终止（碰撞/到达）→ 场景终止，不 bootstrap；
+                    # 无人终止（纯 max_steps 超时）→ 截断，需 bootstrap。
+                    scene_terminated = 1.0 if any(
+                        terminated_info.get(aid, False) for aid in range(total_agents)
+                    ) else 0.0
+                    terminal_global_np = env.get_adversarial_global_state().astype(np.float32)
+                    terminal_global_t = torch.as_tensor(
+                        terminal_global_np, dtype=torch.float32, device=device
+                    ).unsqueeze(0)
+                    with torch.no_grad():
+                        boot_val = float(adversarial_critic(terminal_global_t).item())
+                    for aid, tr in step_transitions.items():
+                        tr.terminated = scene_terminated
+                        tr.next_value = boot_val
+
                     avg_adv_return = float(np.mean([episode_rewards[aid] for aid in adversarial_ids]))
                     completed_episode_returns.append(avg_adv_return)
 
@@ -355,22 +387,45 @@ def train(args):
             # 按时间步聚合：联合奖励 + 全局状态/价值（所有对抗agent共享）
             joint_rewards = np.zeros(num_steps, dtype=np.float32)
             joint_dones = np.zeros(num_steps, dtype=np.float32)
+            joint_terminated = np.zeros(num_steps, dtype=np.float32)
+            joint_next_value = np.zeros(num_steps, dtype=np.float32)
             global_values = np.zeros(num_steps, dtype=np.float32)
             global_states = np.zeros((num_steps, adversarial_state_dim), dtype=np.float32)
 
             for t in range(num_steps):
                 global_values[t] = first_agent_data[t].value
                 global_states[t] = first_agent_data[t].global_state
+                joint_dones[t] = first_agent_data[t].done
+                joint_terminated[t] = first_agent_data[t].terminated
                 for aid in adversarial_ids:
                     d = buffer.get_agent_data(aid)[t]
                     joint_rewards[t] += d.reward
                     joint_dones[t] = max(joint_dones[t], d.done)
 
+            # 修复 #3：rollout 中途结束时对最终状态 bootstrap
+            final_value = 0.0
+            if not last_step_was_done:
+                with torch.no_grad():
+                    final_gs = env.get_adversarial_global_state().astype(np.float32)
+                    final_gs_t = torch.as_tensor(final_gs, dtype=torch.float32, device=device).unsqueeze(0)
+                    final_value = float(adversarial_critic(final_gs_t).item())
+
+            # 构造每步 next_value（修复 #2/#3）
+            for t in range(num_steps):
+                if joint_dones[t] > 0.5:
+                    joint_next_value[t] = first_agent_data[t].next_value
+                elif t == num_steps - 1:
+                    joint_next_value[t] = final_value
+                else:
+                    joint_next_value[t] = global_values[t + 1]
+
             # 联合 GAE：一份 advantage 所有对抗 agent 共享
             joint_adv, joint_ret = compute_gae(
                 rewards=joint_rewards,
                 values=global_values,
+                next_values=joint_next_value,
                 dones=joint_dones,
+                terminateds=joint_terminated,
                 gamma=args.gamma,
                 gae_lambda=args.gae_lambda,
             )
@@ -381,7 +436,7 @@ def train(args):
             for aid in adversarial_ids:
                 data = buffer.get_agent_data(aid)
                 obs_arr = np.array([t.obs for t in data], dtype=np.float32)
-                act_arr = np.array([t.action_tanh for t in data], dtype=np.float32)
+                act_arr = np.array([t.action_z for t in data], dtype=np.float32)
                 old_logp_arr = np.array([t.log_prob for t in data], dtype=np.float32)
 
                 per_agent_tensors[aid] = {
@@ -431,7 +486,8 @@ def train(args):
 
                     for start in range(0, a_n, args.minibatch_size):
                         mb = a_idx[start: start + args.minibatch_size]
-                        new_logp, entropy = adversarial_actors[aid].evaluate_actions(
+                        # 修复 #4：用存储的 pre-tanh z 重算 log_prob
+                        new_logp, entropy = adversarial_actors[aid].evaluate_actions_z(
                             agent_obs_t[mb], agent_act_t[mb]
                         )
 

@@ -31,6 +31,8 @@ class CarlaMultiAgentEnv:
         adversarial_agent_ids: Optional[List[int]] = None,
         reward_version: str = 'v2',
         disable_tensorboard: bool = False,
+        seed: Optional[int] = None,
+        reward_gamma: float = 0.99,
     ):
         """
         初始化CARLA多智能体环境
@@ -56,6 +58,16 @@ class CarlaMultiAgentEnv:
         self.max_steps = max_steps
         self.adversarial_agent_ids = adversarial_agent_ids if adversarial_agent_ids is not None else []
         self.reward_version = reward_version
+        self.seed = seed
+        # R-1 修复：approach 势能塑形用的折扣因子，应与训练 gamma 一致（默认 0.99）
+        self.reward_gamma = reward_gamma
+
+        # ─── P2：观测归一化常量集中化 ───
+        # 观测本就归一化到约 [-1,1]（base 8 维 + lidar 11 维），此处把魔法数集中
+        # 便于维护，并在 _get_observations 末尾加防御性 clip 兜底极端/越界值。
+        self.OBS_POS_SCALE = 100.0    # dx/dy/distance 归一化尺度（米）
+        self.OBS_SPEED_SCALE = 30.0   # speed 归一化尺度（m/s）
+        self.OBS_CLIP = 5.0           # 防御性裁剪上限（正常范围内不触发，仅兜底）
         
         # 连接CARLA客户端
         self.client = carla.Client(host, port)
@@ -115,6 +127,14 @@ class CarlaMultiAgentEnv:
         # 交通管理器
         self.traffic_manager = self.client.get_trafficmanager(8000)
         self.traffic_manager.set_synchronous_mode(True)
+
+        # 修复 P1：把随机种子贯通到 TrafficManager，保证他车行为可复现。
+        # （torch/numpy/random 已由训练脚本 set_seed 播种；TM 是此前唯一未覆盖的非确定源）
+        if seed is not None:
+            try:
+                self.traffic_manager.set_random_device_seed(int(seed))
+            except Exception as e:
+                print(f"[警告] 无法设置 TrafficManager 随机种子: {e}")
 
 
         # TensorBoard记录
@@ -955,25 +975,30 @@ class CarlaMultiAgentEnv:
             brake = control.brake
             
             # 观察向量: [dx, dy, distance, angle_diff, speed, throttle, steer, brake]
+            # P2：使用集中化的归一化常量（throttle/steer/brake 本就在 [0,1]/[-1,1]）
             base_obs = np.array([
-                dx / 100.0,  # 归一化
-                dy / 100.0,
-                distance / 100.0,
-                angle_diff / math.pi,  # 归一化到[-1, 1]
-                speed / 30.0,  # 归一化速度（假设最大30 m/s）
+                dx / self.OBS_POS_SCALE,
+                dy / self.OBS_POS_SCALE,
+                distance / self.OBS_POS_SCALE,
+                angle_diff / math.pi,          # 归一化到 [-1, 1]
+                speed / self.OBS_SPEED_SCALE,  # 归一化速度
                 throttle,
                 steer,
                 brake
             ], dtype=np.float32)
 
-            # 获取雷达感知信息 
+            # 获取雷达感知信息（已归一化到 [0,1]）
             lidar_obs = self._get_ray_detection(vehicle, ray_length=RAY_LENGTH, num_rays=NUM_RAYS)
-            
+
             # 拼接观测向量 (8 + 11 = 19维)
             obs = np.concatenate([base_obs, lidar_obs])
-            
+
+            # P2：防御性裁剪 —— 正常范围（约 [-1,1]）内不触发，仅兜底长路/越界/数值异常，
+            # 避免极端输入直接进网络导致 Tanh 首层饱和或 NaN 传播。
+            obs = np.clip(obs, -self.OBS_CLIP, self.OBS_CLIP).astype(np.float32)
+
             observations[i] = obs
-        
+
         return observations
     
     def step(self, actions: Dict[int, np.ndarray]) -> Tuple[Dict[int, np.ndarray], Dict[int, float], Dict[int, bool], Dict]:
@@ -1061,7 +1086,10 @@ class CarlaMultiAgentEnv:
         info = {
             'step': self.current_step,
             'reward_details': reward_details,
-            'collisions': self._check_collisions()
+            'collisions': self._check_collisions(),
+            # 修复 #2：区分真正终止与时间截断，供训练侧 GAE 决定是否 bootstrap
+            'terminated': dict(getattr(self, 'last_terminated', {})),
+            'truncated': dict(getattr(self, 'last_truncated', {})),
         }
 
         for i in self.collision_events: # 重置碰撞状态，避免重复惩罚
@@ -1225,7 +1253,8 @@ class CarlaMultiAgentEnv:
 
         设计原则:
           - 所有形状分量提供从好到坏的平滑梯度，消除二元阶梯
-          - progress 主导 (8~20/步)，辅助信号合计 0.3~1.0/步
+          - 主前进信号 = Toromanoff desired-speed 期望速度带（progress 已停用，PROGRESS_WEIGHT=0），
+            方向由 centering/yaw 维持；与离终点距离无关 → 不存在远车停滞问题
           - 安全惩罚仅在风险出现时激活，形成可感知的梯度
         """
         rewards = {}
@@ -1239,12 +1268,26 @@ class CarlaMultiAgentEnv:
         #   progress ≈ 0.8*5*0.72 ≈ 2.9/step → 30步 ≈ +85
         #   collision = -300                  → 撞车 return ≈ -215（强负信号）
         #   safety_lidar 翻 3 倍 → 接近碰撞前就给出连续负梯度
-        PROGRESS_WEIGHT = 5.0    # was 20.0
-        TARGET_SPEED = 8.0
-        SIGMA_SPEED = 4.0
+        # ─── progress 项（Toromanoff 改造：停用无界 progress，避免"越快越赚"压过期望速度） ───
+        # 设 0 即关闭；>0 可回退为"progress + desired-speed"混合（建议同时给 progress 按目标速率封顶）。
+        PROGRESS_WEIGHT = 0.0    # was 5.0；Toromanoff desired-speed 模式下停用
+        # ─── 速度奖励（Toromanoff 2020 desired-speed：目标速度带内取峰，过快/过慢都减） ───
+        # 用"期望速度带"取代无界 progress 作为主前进信号：带内等价对待，越界两侧都减、超速转负。
+        # 带 = [5, 15] km/h；车按时间偏好会自然贴上沿 ~15km/h 巡航，等价"稳定 ≤15km/h"。
+        SPEED_LOW  = 5.0 / 3.6        # 舒适速度带下界 ≈1.39 m/s (5 km/h)
+        SPEED_HIGH = 15.0 / 3.6       # 舒适速度带上界 ≈4.17 m/s (15 km/h)
+        SPEED_PEAK = 1.0             # 带内奖励峰值（progress 已停用，这是主前进信号）
+        OVERSPEED_SLOPE = 0.4       # 超上界每 m/s 的下降斜率（可转负，超速惩罚）
+        SPEED_FLOOR = -1.0           # 速度奖励下限，防极端高速把该项拉爆
+        MOTION_GATE_SPEED = 2.0      # 运动门控/起步判定阈值 (m/s)
         SIGMA_CENTER = 0.3
+        # ─── R-4 车道保持：连续横向偏离惩罚（抑制 S 形画龙/无谓变道） ───
+        # 参考 Toromanoff 2020 / Stanley 代价：对偏离车道中心的横向距离连续扣分，
+        # 在"压到车道线"之前就给出回正梯度（替代只靠离散压线事件的旧设计）。
+        LANE_DEV_WEIGHT = 0.5      # 横向偏离惩罚斜率（每米）
+        LANE_DEV_DEADZONE = 0.3    # 死区（米），居中微抖不罚
         JERK_WEIGHT = 0.05
-        STEER_RATE_WEIGHT = 0.02
+        STEER_RATE_WEIGHT = 0.05   # was 0.02：加大转向变化率惩罚，直接压制来回打方向的 S 形
         # Phase B2 修正：safety_lidar 是 11 条 ray 求和，max=-11/step 会淹没所有学习信号
         # Town02 窄路 + 前后车时几乎所有 ray 都触发。回退到原值 0.3，max=-3.3/step
         SAFETY_LIDAR_WEIGHT = 0.3  # 原值（上一轮误判改到 1.0 导致 update 7 出现 -4711 return）
@@ -1303,39 +1346,47 @@ class CarlaMultiAgentEnv:
             progress_reward = progress * PROGRESS_WEIGHT
             self.prev_distances[i] = current_dist
 
-            # ─── 1b. 连续"接近终点"正向势能奖励（破冻结，纯正向引导，无惩罚） ───
-            # 按 (初始距离 − 当前距离)/初始距离 ∈ [0,1] 给单调上升的正奖励，
-            # 越靠近终点该项越大，形成把车"吸"向终点的连续吸引子。
-            # 势能塑形：总贡献被初始距离归一化、有界，不会 farm。
+            # ─── 1b. "接近终点"势能塑形（R-1 修复：改为 PBRS 势能差分，farm-proof） ───
+            # 旧实现按当前位置给 level 奖励 (APPROACH_WEIGHT * ratio) 且每步发放、未受
+            # motion_gate 约束 → 停在终点区外可每步刷 +0.47，累计可压过 success(+100)，
+            # 诱导"到终点不进、在边上刷分"。
+            # 改为势能塑形 F = γΦ(s') − Φ(s)（Ng et al. 1999，保证最优策略不变）：
+            #   Φ(s) = APPROACH_WEIGHT * approach_ratio(s)
+            #   停车 → Φ 不变 → F = Φ·(γ−1) < 0（微负），farm 消失；
+            #   向终点移动 → F > 0；远离 → F < 0。
             d0 = self.initial_distances.get(i, max(current_dist, 1.0))
-            approach_ratio = max(0.0, min(1.0, (d0 - current_dist) / d0))
-            approach_reward = APPROACH_WEIGHT * approach_ratio
+            ratio_prev = max(0.0, min(1.0, (d0 - prev_dist) / d0))
+            ratio_curr = max(0.0, min(1.0, (d0 - current_dist) / d0))
+            approach_reward = APPROACH_WEIGHT * (self.reward_gamma * ratio_curr - ratio_prev)
 
-            # ─── 2. 连续速度奖励（高斯曲线，峰值在目标速度，底部限 0） ───
-            # 修复：原公式在 speed=0 时仍 = 0.068/step，1000 步 = +68 让"不动"成为局部最优
-            # 减去 speed=0 时的 baseline 并 clamp，speed=0 → 0；speed=2 → +0.095；speed=8 → +0.432
-            speed_baseline = math.exp(-(TARGET_SPEED ** 2) / (2 * SIGMA_SPEED ** 2))
-            speed_reward = 0.5 * max(
-                0.0,
-                math.exp(-((speed - TARGET_SPEED) ** 2) / (2 * SIGMA_SPEED ** 2)) - speed_baseline
-            )
+            # ─── 2. 速度奖励（Toromanoff 2020 desired-speed：期望速度带，越界两侧都减） ───
+            # 取代无界 progress 作为主前进信号（progress 已停用，见 PROGRESS_WEIGHT=0）：
+            #   speed=0            → 0           （静止不刷分，保留防停滞起步梯度）
+            #   0 → SPEED_LOW      → 线性升到峰值  （鼓励起步进入舒适带）
+            #   [SPEED_LOW, HIGH]  → 峰值 plateau  （5~15 km/h 舒适带，等价对待）
+            #   > SPEED_HIGH       → 线性下降转负  （超速惩罚），下限 SPEED_FLOOR
+            # 零点（净惩罚起点）≈ SPEED_HIGH + SPEED_PEAK/OVERSPEED_SLOPE ≈ 6.67 m/s ≈ 24 km/h。
+            if speed < SPEED_LOW:
+                speed_reward = SPEED_PEAK * (speed / SPEED_LOW)
+            elif speed <= SPEED_HIGH:
+                speed_reward = SPEED_PEAK
+            else:
+                speed_reward = SPEED_PEAK - OVERSPEED_SLOPE * (speed - SPEED_HIGH)
+            speed_reward = max(SPEED_FLOOR, speed_reward)
 
-            # ─── 2b. Alive bonus：speed>0 才给，线性 ramp 到 2 m/s 后封顶 ───
-            ALIVE_BONUS_MAX = 0.3
-            ALIVE_BONUS_SPEED = 2.0
-            alive_bonus = ALIVE_BONUS_MAX * min(1.0, speed / ALIVE_BONUS_SPEED)
+            # alive_bonus 已并入速度奖励的起步线性段；保留 0 占位兼容 details["alive"] 日志。
+            alive_bonus = 0.0
 
             # ─── 运动门控（修"原地不动 farm 奖励"致命 bug） ───
             # centering(+0.5) 和 yaw(+0.15) 原本每步无条件发放：一辆停在车道中央、
-            # 车头对准目标的车，每步净拿 +0.5+0.15-step ≈ +0.55，1000 步 farm +550，
-            # 于是策略收敛到"原地不动"。把这两项乘上运动门控（与 alive 同一 2m/s ramp）：
-            # 停车 → gate=0 → 姿态奖励=0；正常行驶 → gate=1 → 姿态奖励照常。
-            # 站着不动每步只剩 step_penalty(-0.1)，严格劣于行驶。
-            motion_gate = min(1.0, speed / ALIVE_BONUS_SPEED)
+            # 车头对准目标的车，每步 farm 正奖励 → 策略收敛到"原地不动"。
+            # 把这两项乘上运动门控：停车 → gate=0 → 姿态奖励=0；正常行驶 → gate=1。
+            motion_gate = min(1.0, speed / MOTION_GATE_SPEED)
 
             # ─── 3. 连续车道居中奖励（指数衰减） ───
             current_waypoint = self.map.get_waypoint(transform.location)
             centering_reward = 0.0
+            lateral_dist = 0.0   # 到车道中心的横向距离，供居中奖励 + R-4 偏离惩罚共用
             if current_waypoint:
                 veh_loc = transform.location
                 wp_loc = current_waypoint.transform.location
@@ -1412,13 +1463,14 @@ class CarlaMultiAgentEnv:
                             if ttc < TTC_THRESHOLD:
                                 ttc_penalty += -TTC_WEIGHT * math.exp(-ttc / TTC_TAU)
 
-            # ─── 8. 碰撞惩罚（Phase B2: -100 → COLLISION_PENALTY=-300） ───
+            # ─── 8. 碰撞惩罚（COLLISION_PENALTY，当前 -150，见上方常量定义与调参注释） ───
             crosswalk = self.crosswalk_invasion_events.get(i, False)
             collision_penalty = COLLISION_PENALTY if (
                 self.collision_events.get(i, False) or crosswalk
             ) else 0.0
 
-            # ─── 9. 分级车道偏离惩罚 ───
+            # ─── 9. 车道纪律：离散压线惩罚 + 连续横向偏离惩罚（R-4） ───
+            # (a) 离散压线：传感器在跨越车道线那一刻触发，按线型分级重罚（硬约束）。
             sensor_invasion = self.lane_invasion_events.get(i, False)
             lane_invasion_penalty = 0.0
             if not crosswalk and sensor_invasion:
@@ -1437,6 +1489,12 @@ class CarlaMultiAgentEnv:
                     )
                 else:
                     lane_invasion_penalty = -12.0
+
+            # (b) R-4 连续横向偏离惩罚：偏离车道中心超过死区即线性扣分（每步、不依赖压线
+            #     传感器），在"还没压到线"之前就给出回正梯度，抑制 S 形画龙/无谓变道。
+            #     与居中奖励合在一起形成围绕车道中心的"势能阱"。
+            lane_dev_penalty = -LANE_DEV_WEIGHT * max(0.0, lateral_dist - LANE_DEV_DEADZONE)
+            lane_invasion_penalty += lane_dev_penalty
 
             # ─── 10. 步数惩罚 ───
             # 修复历程：-0.05 太轻（timeout=−50）不足以惩罚"原地不动"；
@@ -1528,12 +1586,20 @@ class CarlaMultiAgentEnv:
         return rewards, reward_details
     
     def _check_dones(self) -> Dict[int, bool]:
-        """检查是否完成"""
+        """检查是否完成。
+
+        同时维护 self.last_terminated / self.last_truncated（修复 #2）：
+          - terminated[i]: 真正终止（到达终点 / 自身严重碰撞 / 车辆销毁）→ value 不 bootstrap
+          - truncated[i]:  done 但非 terminated（超时，或被全局 override 连带结束）→ value 仍需 bootstrap
+        训练侧据此在 GAE 中只对 terminated 切断价值 bootstrap，对 truncated 保留。
+        """
         dones = {}
-        
+        terminated: Dict[int, bool] = {}
+
         for i, vehicle in enumerate(self.vehicles):
             if not vehicle.is_alive:
                 dones[i] = True
+                terminated[i] = True
                 continue
             
             # 检查是否到达目标
@@ -1568,10 +1634,16 @@ class CarlaMultiAgentEnv:
                     # print(f"Agent {i} 到达终点区域，已设置为无碰撞模式")
                 self.reached_target[i] = True
                 dones[i] = True
-            elif self.current_step >= self.max_steps or is_collided:
+                terminated[i] = True   # 到达终点：真正终止
+            elif is_collided:
                 dones[i] = True
+                terminated[i] = True   # 自身严重碰撞：真正终止
+            elif self.current_step >= self.max_steps:
+                dones[i] = True
+                terminated[i] = False  # 超时截断：value 仍需 bootstrap
             else:
                 dones[i] = False
+                terminated[i] = False
 
 
             # # 如果到达终点，标记为已完成，并设置车辆为无碰撞模式
@@ -1607,7 +1679,16 @@ class CarlaMultiAgentEnv:
             print("检测到严重碰撞（碰撞或压人行横道），结束本回合")
             for i in range(self.num_agents):
                 dones[i] = True
-        
+
+        # 全局 override（他人到达/他人碰撞导致本 agent 连带结束）对该 agent 而言不是
+        # 自身终止，应视为截断 → 仍保留 value bootstrap。terminated 只在上面的逐 agent
+        # 判定里为 True，这里不追加，因此 truncated = done and not terminated 自然成立。
+        self.last_terminated = {i: bool(terminated.get(i, False)) for i in range(self.num_agents)}
+        self.last_truncated = {
+            i: bool(dones.get(i, False) and not terminated.get(i, False))
+            for i in range(self.num_agents)
+        }
+
         return dones
     
     def _get_relative_position_to_agents(self, ego_id: int) -> Dict[int, Dict[str, float]]:

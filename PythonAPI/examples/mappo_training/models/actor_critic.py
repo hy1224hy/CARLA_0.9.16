@@ -46,6 +46,21 @@ class Actor(nn.Module):
         log_prob -= torch.log(1 - action_tanh.pow(2) + 1e-6).sum(-1)
         return action_tanh, log_prob
 
+    def sample_action_z(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """与 sample_action 相同，但额外返回 pre-tanh 隐变量 z。
+
+        训练时应存储 z（而非 action_tanh），评估走 evaluate_actions_z，
+        避免 atanh 反推带来的精度损失，保证未更新策略时 PPO ratio 严格为 1（修复 #4）。
+        """
+        mu, log_std = self.forward(obs)
+        std = torch.exp(log_std)
+        dist = Normal(mu, std)
+        z = dist.rsample()
+        action_tanh = torch.tanh(z)
+        log_prob = dist.log_prob(z).sum(-1)
+        log_prob -= torch.log(1 - action_tanh.pow(2) + 1e-6).sum(-1)
+        return action_tanh, log_prob, z
+
     def evaluate_actions(self, obs: torch.Tensor, action_tanh: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         mu, log_std = self.forward(obs)
         std = torch.exp(log_std)
@@ -54,6 +69,21 @@ class Actor(nn.Module):
         z = 0.5 * torch.log((1 + clipped) / (1 - clipped))
         log_prob = dist.log_prob(z).sum(-1)
         log_prob -= torch.log(1 - clipped.pow(2) + 1e-6).sum(-1)
+        entropy = dist.entropy().sum(-1)
+        return log_prob, entropy
+
+    def evaluate_actions_z(self, obs: torch.Tensor, z: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """用存储的 pre-tanh z 直接重算 log_prob/entropy（修复 #4）。
+
+        不经 atanh 反推，因此采样分布与评估分布完全一致：
+        策略参数未变时 new_logp == old_logp，ratio == 1。
+        """
+        mu, log_std = self.forward(obs)
+        std = torch.exp(log_std)
+        dist = Normal(mu, std)
+        action_tanh = torch.tanh(z)
+        log_prob = dist.log_prob(z).sum(-1)
+        log_prob -= torch.log(1 - action_tanh.pow(2) + 1e-6).sum(-1)
         entropy = dist.entropy().sum(-1)
         return log_prob, entropy
 
@@ -78,6 +108,44 @@ class CentralizedCritic(nn.Module):
 
     def forward(self, global_state: torch.Tensor) -> torch.Tensor:
         return self.net(global_state).squeeze(-1)
+
+
+class AgentConditionedCritic(nn.Module):
+    """Agent-id 条件化集中式 Critic（修复 #1）。
+
+    输入 [global_state, one_hot(agent_id)] → 该 agent 专属的 V(s, i)。
+    解决"同一 global_state 对应多个 per-agent return"导致单一 V(s) 回归目标
+    互相冲突、收敛到均值的问题：每个 agent 的 value 各自回归，互不污染。
+
+    参数在所有 agent 间共享（通过 one-hot 条件化区分），既保留 CTDE 的
+    全局信息，又允许每个 agent 拥有独立的价值估计。
+    """
+
+    def __init__(self, state_dim: int, num_agents: int, hidden: int = 128):
+        super().__init__()
+        self.num_agents = num_agents
+        self.net = nn.Sequential(
+            nn.Linear(state_dim + num_agents, hidden),
+            nn.Tanh(),
+            nn.Linear(hidden, hidden),
+            nn.Tanh(),
+            nn.Linear(hidden, 1),
+        )
+
+    def forward(self, global_state: torch.Tensor, agent_id) -> torch.Tensor:
+        """agent_id 可以是 int（整个 batch 同一 agent）或 LongTensor [B]。"""
+        if global_state.dim() == 1:
+            global_state = global_state.unsqueeze(0)
+        batch = global_state.shape[0]
+        device = global_state.device
+        onehot = torch.zeros(batch, self.num_agents, device=device)
+        if isinstance(agent_id, int):
+            onehot[:, agent_id] = 1.0
+        else:
+            idx = agent_id.to(device=device, dtype=torch.long).view(-1, 1)
+            onehot.scatter_(1, idx, 1.0)
+        x = torch.cat([global_state, onehot], dim=-1)
+        return self.net(x).squeeze(-1)
 
 
 class PerAgentCritic(nn.Module):

@@ -31,6 +31,7 @@ import datetime as _dt
 import math
 import os
 import re
+import random
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional
 
@@ -41,7 +42,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
-from models.actor_critic import Actor, CentralizedCritic
+from models.actor_critic import Actor, AgentConditionedCritic
 
 try:
     from visualization.mappo_visualizer import MAPPOVisualizer
@@ -51,9 +52,13 @@ except ImportError:
 
 
 def set_seed(seed: int):
+    # 修复 #6：完整播种
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 # ============================================================
@@ -64,11 +69,12 @@ def set_seed(seed: int):
 class Transition:
     obs: np.ndarray
     global_state: np.ndarray
-    action_tanh: np.ndarray
+    action_z: np.ndarray          # 修复 #4：存 pre-tanh z
     log_prob: float
     reward: float
-    done: float
-    value: float
+    done: float                   # 回合边界（切断 GAE trace）
+    terminated: float             # 真正终止（切断 value bootstrap）；截断时为 0
+    value: float                  # 该对抗 agent 的 V(s, team_idx)（修复 #1）
     scenario_name: str
 
 
@@ -191,22 +197,27 @@ def make_adversarial_positions(scenario_config, cooperative_ids, adversarial_ids
     return new_agents
 
 
-def compute_gae(rewards, values, dones, gamma, gae_lambda, bootstrap_value=0.0):
-    """在单个 episode 内计算 GAE（不应跨 episode 调用）。"""
+def compute_gae(rewards, values, dones, terminateds, gamma, gae_lambda, bootstrap_value=0.0):
+    """在单个 episode 内计算 GAE（不应跨 episode 调用）。
+
+    修复 #2：用 terminated（而非 done）控制 value bootstrap。env 在 max_steps 时也置
+    done=True，若用 done 当 mask 会把截断 episode 的 bootstrap_value 抹掉。
+    """
     advantages = np.zeros_like(rewards)
     gae = 0.0
     next_value = bootstrap_value
     for t in reversed(range(len(rewards))):
-        mask = 1.0 - dones[t]
-        delta = rewards[t] + gamma * next_value * mask - values[t]
-        gae = delta + gamma * gae_lambda * mask * gae
+        mask_value = 1.0 - terminateds[t]
+        mask_trace = 1.0 - dones[t]
+        delta = rewards[t] + gamma * next_value * mask_value - values[t]
+        gae = delta + gamma * gae_lambda * mask_trace * gae
         advantages[t] = gae
         next_value = values[t]
     returns = advantages + values
     return advantages, returns
 
 
-def compute_gae_per_episode(rewards, values, dones, boundaries, gamma, gae_lambda,
+def compute_gae_per_episode(rewards, values, dones, terminateds, boundaries, gamma, gae_lambda,
                             bootstrap_values=None):
     """按 episode 边界独立计算 GAE + 逐 episode 优势标准化 + 截断 bootstrap。"""
     if bootstrap_values is None:
@@ -218,8 +229,10 @@ def compute_gae_per_episode(rewards, values, dones, boundaries, gamma, gae_lambd
         ep_rewards = rewards[start:end]
         ep_values = values[start:end]
         ep_dones = dones[start:end]
+        ep_terminateds = terminateds[start:end]
         bv = bootstrap_values[i] if i < len(bootstrap_values) else 0.0
-        adv, ret = compute_gae(ep_rewards, ep_values, ep_dones, gamma, gae_lambda, bootstrap_value=bv)
+        adv, ret = compute_gae(ep_rewards, ep_values, ep_dones, ep_terminateds,
+                               gamma, gae_lambda, bootstrap_value=bv)
         ep_std = adv.std()
         if ep_std > 1e-6:
             adv = (adv - adv.mean()) / (ep_std + 1e-8)
@@ -434,6 +447,7 @@ def train(args):
         adversarial_agent_ids=adversarial_ids,
         reward_version=args.reward_version,
         disable_tensorboard=True,
+        seed=args.seed,
     )
 
     # 场景课程
@@ -505,8 +519,12 @@ def train(args):
         adversarial_actors[aid] = actor
         adversarial_actor_optims[aid] = optim.Adam(actor.parameters(), lr=args.lr_actor)
 
-    # 共享集中式 Critic（输入全局状态）
-    critic = CentralizedCritic(state_dim=state_dim, hidden=args.hidden_dim).to(device)
+    # 修复 #1：agent-id 条件化集中式 Critic（按对抗团队内索引条件化）。
+    # 各对抗 agent 用各自 reward 算 GAE（per-agent advantage），若共享单一 V(s)
+    # 会因同一 global_state 对应不同 per-agent return 而回归目标冲突。
+    adv_index = {aid: i for i, aid in enumerate(adversarial_ids)}  # 全局 id → 团队内 0..M-1
+    critic = AgentConditionedCritic(state_dim=state_dim, num_agents=len(adversarial_ids),
+                                    hidden=args.hidden_dim).to(device)
     critic_optim = optim.Adam(critic.parameters(), lr=args.lr_critic)
 
     init_lr_actor, init_lr_critic = args.lr_actor, args.lr_critic
@@ -683,8 +701,12 @@ def train(args):
 
                     global_state_np = env.get_global_state().astype(np.float32)
                     global_state_t = torch.as_tensor(global_state_np, dtype=torch.float32, device=device).unsqueeze(0)
+                    # 修复 #1：逐对抗 agent 计算各自 V(s, team_idx)
                     with torch.no_grad():
-                        global_value = float(critic(global_state_t).item())
+                        agent_values = {
+                            aid: float(critic(global_state_t, adv_index[aid]).item())
+                            for aid in adversarial_ids
+                        }
 
                     with torch.no_grad():
                         # 合作团队：deterministic frozen
@@ -699,18 +721,21 @@ def train(args):
                             if aid not in obs_dict:
                                 continue
                             obs_t = torch.as_tensor(obs_dict[aid], dtype=torch.float32, device=device).unsqueeze(0)
-                            a_tanh_t, logp_t = adversarial_actors[aid].sample_action(obs_t)
+                            # 修复 #4：取 pre-tanh z
+                            a_tanh_t, logp_t, z_t = adversarial_actors[aid].sample_action_z(obs_t)
                             a_tanh = a_tanh_t.squeeze(0).cpu().numpy()
+                            a_z = z_t.squeeze(0).cpu().numpy()
                             action_dict[aid] = action_tanh_to_env(a_tanh)
                             step_cache[aid] = {
                                 "obs": obs_dict[aid].copy(),
                                 "global_state": global_state_np,
-                                "action_tanh": a_tanh,
+                                "action_z": a_z,
                                 "logp": float(logp_t.item()),
-                                "value": global_value,
+                                "value": agent_values[aid],
                             }
 
                     next_obs, rewards, dones, info = env.step(action_dict)
+                    terminated_info = info.get('terminated', {})
 
                     step_collisions = info.get('collisions', {}) or {}
                     for i in range(total_agents):
@@ -733,10 +758,11 @@ def train(args):
                         buffer.add(aid, Transition(
                             obs=step_cache[aid]["obs"],
                             global_state=step_cache[aid]["global_state"],
-                            action_tanh=step_cache[aid]["action_tanh"],
+                            action_z=step_cache[aid]["action_z"],
                             log_prob=step_cache[aid]["logp"],
                             reward=combined,
                             done=float(dones.get(aid, False)),
+                            terminated=float(terminated_info.get(aid, dones.get(aid, False))),
                             value=step_cache[aid]["value"],
                             scenario_name=scenario_name,
                         ))
@@ -792,17 +818,18 @@ def train(args):
                 print(f"  [跳过] transition 数 {n_transitions} < {args.min_transitions_per_update}")
             else:
                 per_agent_tensors = {}
-                critic_states, critic_returns = [], []
+                critic_states, critic_returns, critic_agent_ids = [], [], []
                 for aid in adversarial_ids:
                     data = buffer.get_agent_data(aid)
                     if len(data) == 0:
                         continue
                     obs_arr = np.array([t.obs for t in data], dtype=np.float32)
                     state_arr = np.array([t.global_state for t in data], dtype=np.float32)
-                    act_arr = np.array([t.action_tanh for t in data], dtype=np.float32)
+                    act_arr = np.array([t.action_z for t in data], dtype=np.float32)
                     old_logp_arr = np.array([t.log_prob for t in data], dtype=np.float32)
                     reward_arr = np.array([t.reward for t in data], dtype=np.float32)
                     done_arr = np.array([t.done for t in data], dtype=np.float32)
+                    terminated_arr = np.array([t.terminated for t in data], dtype=np.float32)
                     value_arr = np.array([t.value for t in data], dtype=np.float32)
 
                     boundaries = buffer.episode_boundaries.get(aid, [])
@@ -812,11 +839,13 @@ def train(args):
                         for bs in bootstrap_states:
                             if bs is not None:
                                 bs_t = torch.as_tensor(bs, dtype=torch.float32, device=device).unsqueeze(0)
-                                bootstrap_values.append(float(critic(bs_t).item()))
+                                # 修复 #1：bootstrap 值也要按对抗团队索引条件化
+                                bootstrap_values.append(float(critic(bs_t, adv_index[aid]).item()))
                             else:
                                 bootstrap_values.append(0.0)
                     adv_arr, ret_arr = compute_gae_per_episode(
                         rewards=reward_arr, values=value_arr, dones=done_arr,
+                        terminateds=terminated_arr,
                         boundaries=boundaries, gamma=args.gamma, gae_lambda=args.gae_lambda,
                         bootstrap_values=bootstrap_values,
                     )
@@ -828,10 +857,12 @@ def train(args):
                     }
                     critic_states.append(state_arr)
                     critic_returns.append(ret_arr)
+                    critic_agent_ids.append(np.full(len(ret_arr), adv_index[aid], dtype=np.int64))
 
                 if len(critic_states) > 0:
                     critic_state_t = torch.as_tensor(np.concatenate(critic_states, axis=0), dtype=torch.float32, device=device)
                     critic_ret_t = torch.as_tensor(np.concatenate(critic_returns, axis=0), dtype=torch.float32, device=device)
+                    critic_aid_t = torch.as_tensor(np.concatenate(critic_agent_ids, axis=0), dtype=torch.long, device=device)
 
                     agent_stopped: Dict[int, bool] = {aid: False for aid in adversarial_ids}
                     for epoch in range(args.ppo_epochs):
@@ -842,7 +873,7 @@ def train(args):
                         epoch_critic_losses = []
                         for start in range(0, c_n, args.minibatch_size):
                             mb = c_idx[start: start + args.minibatch_size]
-                            value_pred = critic(critic_state_t[mb])
+                            value_pred = critic(critic_state_t[mb], critic_aid_t[mb])
                             critic_loss = 0.5 * (critic_ret_t[mb] - value_pred).pow(2).mean()
                             critic_optim.zero_grad()
                             critic_loss.backward()
@@ -866,7 +897,8 @@ def train(args):
                             ep_losses, ep_ent, ep_kl, ep_cf = [], [], [], []
                             for start in range(0, a_n, args.minibatch_size):
                                 mb = a_idx[start: start + args.minibatch_size]
-                                new_logp, entropy = adversarial_actors[aid].evaluate_actions(a_obs[mb], a_act[mb])
+                                # 修复 #4：用存储的 pre-tanh z 重算 log_prob
+                                new_logp, entropy = adversarial_actors[aid].evaluate_actions_z(a_obs[mb], a_act[mb])
                                 logratio = new_logp - a_oldlogp[mb]
                                 ratio = torch.exp(logratio)
                                 surr1 = ratio * a_adv[mb]
@@ -892,7 +924,7 @@ def train(args):
                                 agent_stop_epoch[aid] = epoch + 1
 
                     with torch.no_grad():
-                        all_vp = critic(critic_state_t)
+                        all_vp = critic(critic_state_t, critic_aid_t)
                         var_res = torch.var(critic_ret_t - all_vp)
                         var_tot = torch.var(critic_ret_t)
                         ppo_metrics["explained_variance"] = float(1.0 - var_res / (var_tot + 1e-8))

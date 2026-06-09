@@ -7,6 +7,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 import argparse
 import os
+import random
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -17,24 +18,30 @@ import torch.optim as optim
 
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 from visualization.mappo_visualizer import MAPPOVisualizer
-from models.actor_critic import Actor, CentralizedCritic
+from models.actor_critic import Actor, AgentConditionedCritic
 
 
 def set_seed(seed: int):
+    # 修复 #6：完整播种，保证可复现
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 @dataclass
 class Transition:
     obs: np.ndarray
     global_state: np.ndarray
-    action_tanh: np.ndarray
+    action_z: np.ndarray          # 修复 #4：存 pre-tanh 隐变量 z（而非 action_tanh）
     log_prob: float
     reward: float
-    done: float
-    value: float
+    done: float                   # 回合边界（切断 GAE trace）
+    terminated: float             # 真正终止（切断 value bootstrap）；超时截断时为 0
+    value: float                  # 该 agent 的 V(s, aid)
+    next_value: float = 0.0       # done 步：reset 前对终止状态算出的 bootstrap 值
 
 
 class RolloutBuffer:
@@ -70,20 +77,29 @@ def action_tanh_to_env(action_tanh: np.ndarray) -> np.ndarray:
 def compute_gae(
     rewards: np.ndarray,
     values: np.ndarray,
+    next_values: np.ndarray,
     dones: np.ndarray,
+    terminateds: np.ndarray,
     gamma: float,
     gae_lambda: float,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """GAE with separated terminal/truncation masks and explicit bootstrap (修复 #2 + #3).
+
+    - next_values[t]: V(s_{t+1}) 的 bootstrap 值。非 done 步=下一步存的 value；
+      done 步=reset 前对终止状态算出的值；rollout 最后一步非 done=最终 bootstrap。
+    - terminateds[t]: 真正终止 → 切断价值 bootstrap（mask_value=0）。
+    - dones[t]: 回合边界（含截断）→ 切断 GAE trace（mask_trace=0），避免跨回合累积。
+    超时截断时 terminated=0 但 done=1：bootstrap 保留、trace 切断。
+    """
     advantages = np.zeros_like(rewards)
     gae = 0.0
-    next_value = 0.0
 
     for t in reversed(range(len(rewards))):
-        mask = 1.0 - dones[t]
-        delta = rewards[t] + gamma * next_value * mask - values[t]
-        gae = delta + gamma * gae_lambda * mask * gae
+        mask_value = 1.0 - terminateds[t]
+        mask_trace = 1.0 - dones[t]
+        delta = rewards[t] + gamma * next_values[t] * mask_value - values[t]
+        gae = delta + gamma * gae_lambda * mask_trace * gae
         advantages[t] = gae
-        next_value = values[t]
 
     returns = advantages + values
     return advantages, returns
@@ -117,6 +133,7 @@ def train(args):
         timestep=args.timestep,
         max_steps=args.max_steps,
         reward_version=args.reward_version,
+        seed=args.seed,
     )
 
     agent_ids = list(range(env.num_agents))
@@ -129,7 +146,9 @@ def train(args):
         aid: optim.Adam(actors[aid].parameters(), lr=args.lr_actor) for aid in agent_ids
     }
 
-    critic = CentralizedCritic(state_dim=state_dim, hidden=args.hidden_dim).to(device)
+    # 修复 #1：agent-id 条件化集中式 Critic，每个 agent 各自回归 V(s, aid)
+    critic = AgentConditionedCritic(state_dim=state_dim, num_agents=env.num_agents,
+                                    hidden=args.hidden_dim).to(device)
     critic_optim = optim.Adam(critic.parameters(), lr=args.lr_critic)
 
     visualizer = MAPPOVisualizer(width=1200, height=800, fps=30) if args.render else None
@@ -147,6 +166,8 @@ def train(args):
             episode_step = 0
             completed_episode_returns: List[float] = []
 
+            last_step_was_done = True   # 用于 rollout 尾部 bootstrap（#3）
+
             for _ in range(args.rollout_steps):
                 episode_step += 1
                 action_dict: Dict[int, np.ndarray] = {}
@@ -155,45 +176,56 @@ def train(args):
                 global_state_np = env.get_global_state().astype(np.float32)
                 global_state_t = torch.as_tensor(global_state_np, dtype=torch.float32, device=device).unsqueeze(0)
 
+                # 修复 #1：逐 agent 计算各自的 V(s, aid)
                 with torch.no_grad():
-                    global_value = float(critic(global_state_t).item())
+                    agent_values = {
+                        aid: float(critic(global_state_t, aid).item()) for aid in agent_ids
+                    }
 
                 for aid, obs in obs_dict.items():
                     obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
                     with torch.no_grad():
-                        action_tanh_t, logp_t = actors[aid].sample_action(obs_t)
+                        # 修复 #4：取 pre-tanh z 一并存储
+                        action_tanh_t, logp_t, z_t = actors[aid].sample_action_z(obs_t)
 
                     action_tanh = action_tanh_t.squeeze(0).cpu().numpy()
+                    action_z = z_t.squeeze(0).cpu().numpy()
                     action_env = action_tanh_to_env(action_tanh)
 
                     action_dict[aid] = action_env
                     step_cache[aid] = {
                         "obs": obs,
                         "global_state": global_state_np,
-                        "action_tanh": action_tanh,
+                        "action_z": action_z,
                         "logp": float(logp_t.item()),
-                        "value": global_value,
+                        "value": agent_values[aid],
                     }
 
-                next_obs, rewards, dones, _ = env.step(action_dict)
+                next_obs, rewards, dones, info = env.step(action_dict)
+                terminated_info = info.get('terminated', {})
 
+                # 记录的 transition 对象，便于 episode 结束时回填 bootstrap 值
+                step_transitions: Dict[int, Transition] = {}
                 for aid in step_cache.keys():
                     reward = float(rewards.get(aid, 0.0))
                     done = float(dones.get(aid, False))
+                    terminated = float(terminated_info.get(aid, dones.get(aid, False)))
                     episode_rewards[aid] += reward
 
-                    buffer.add(
-                        aid,
-                        Transition(
-                            obs=step_cache[aid]["obs"],
-                            global_state=step_cache[aid]["global_state"],
-                            action_tanh=step_cache[aid]["action_tanh"],
-                            log_prob=step_cache[aid]["logp"],
-                            reward=reward,
-                            done=done,
-                            value=step_cache[aid]["value"],
-                        ),
+                    tr = Transition(
+                        obs=step_cache[aid]["obs"],
+                        global_state=step_cache[aid]["global_state"],
+                        action_z=step_cache[aid]["action_z"],
+                        log_prob=step_cache[aid]["logp"],
+                        reward=reward,
+                        done=done,
+                        terminated=terminated,
+                        value=step_cache[aid]["value"],
                     )
+                    buffer.add(aid, tr)
+                    step_transitions[aid] = tr
+
+                last_step_was_done = all(dones.get(aid, False) for aid in agent_ids)
 
                 if visualizer is not None:
                     visualizer.handle_events()
@@ -217,19 +249,42 @@ def train(args):
                 obs_dict = next_obs
 
                 # One environment episode should terminate immediately once env marks done.
-                # episode_done = all(dones.get(aid, False) for aid in agent_ids)
                 episode_done = all(dones.get(aid, False) for aid in agent_ids)
                 if episode_done:
+                    # 修复 #2/#3：回合结束时（reset 前）对终止状态算出 bootstrap 值，
+                    # 回填到本步 transition。GAE 用 terminated 标志决定是否启用：
+                    #   真正终止 → mask_value=0，该 bootstrap 被忽略；
+                    #   超时/连带截断 → 保留，避免低估 value。
+                    terminal_state_np = env.get_global_state().astype(np.float32)
+                    terminal_state_t = torch.as_tensor(
+                        terminal_state_np, dtype=torch.float32, device=device
+                    ).unsqueeze(0)
+                    with torch.no_grad():
+                        for aid, tr in step_transitions.items():
+                            tr.next_value = float(critic(terminal_state_t, aid).item())
+
                     completed_episode_returns.append(float(np.mean([episode_rewards[aid] for aid in agent_ids])))
                     obs_dict, _ = env.reset()
                     episode_rewards = {aid: 0.0 for aid in agent_ids}
                     episode_step = 0
                     episode_idx += 1
 
+            # 修复 #3：rollout 在回合中途结束时，对最终 next state 算 bootstrap 值（每 agent）
+            final_values = {aid: 0.0 for aid in agent_ids}
+            if not last_step_was_done:
+                final_state_np = env.get_global_state().astype(np.float32)
+                final_state_t = torch.as_tensor(
+                    final_state_np, dtype=torch.float32, device=device
+                ).unsqueeze(0)
+                with torch.no_grad():
+                    for aid in agent_ids:
+                        final_values[aid] = float(critic(final_state_t, aid).item())
+
             # Build per-agent training tensors + combined critic tensors.
             per_agent_tensors = {}
             critic_states = []
             critic_returns = []
+            critic_agent_ids = []   # 修复 #1：每条样本对应的 agent id，供条件化 critic
 
             for aid in agent_ids:
                 data = buffer.get_agent_data(aid)
@@ -238,16 +293,33 @@ def train(args):
 
                 obs_arr = np.array([t.obs for t in data], dtype=np.float32)
                 state_arr = np.array([t.global_state for t in data], dtype=np.float32)
-                act_arr = np.array([t.action_tanh for t in data], dtype=np.float32)
+                act_arr = np.array([t.action_z for t in data], dtype=np.float32)
                 old_logp_arr = np.array([t.log_prob for t in data], dtype=np.float32)
                 reward_arr = np.array([t.reward for t in data], dtype=np.float32)
                 done_arr = np.array([t.done for t in data], dtype=np.float32)
+                terminated_arr = np.array([t.terminated for t in data], dtype=np.float32)
                 value_arr = np.array([t.value for t in data], dtype=np.float32)
+
+                # 构造每步的 next_value（修复 #2/#3）：
+                #   done 步 → reset 前回填的 next_value；
+                #   末步且非 done → rollout 尾部 bootstrap；
+                #   其余 → 下一步存储的 value。
+                n = len(data)
+                next_value_arr = np.zeros(n, dtype=np.float32)
+                for t in range(n):
+                    if done_arr[t] > 0.5:
+                        next_value_arr[t] = data[t].next_value
+                    elif t == n - 1:
+                        next_value_arr[t] = final_values[aid]
+                    else:
+                        next_value_arr[t] = value_arr[t + 1]
 
                 adv_arr, ret_arr = compute_gae(
                     rewards=reward_arr,
                     values=value_arr,
+                    next_values=next_value_arr,
                     dones=done_arr,
+                    terminateds=terminated_arr,
                     gamma=args.gamma,
                     gae_lambda=args.gae_lambda,
                 )
@@ -264,12 +336,14 @@ def train(args):
 
                 critic_states.append(state_arr)
                 critic_returns.append(ret_arr)
+                critic_agent_ids.append(np.full(len(ret_arr), aid, dtype=np.int64))
 
             if len(critic_states) == 0:
                 continue
 
             critic_state_t = torch.as_tensor(np.concatenate(critic_states, axis=0), dtype=torch.float32, device=device)
             critic_ret_t = torch.as_tensor(np.concatenate(critic_returns, axis=0), dtype=torch.float32, device=device)
+            critic_aid_t = torch.as_tensor(np.concatenate(critic_agent_ids, axis=0), dtype=torch.long, device=device)
 
             # PPO epochs: update critic once on merged data, then each actor on its own data.
             for _ in range(args.ppo_epochs):
@@ -279,7 +353,7 @@ def train(args):
                 np.random.shuffle(c_idx)
                 for start in range(0, c_n, args.minibatch_size):
                     mb = c_idx[start : start + args.minibatch_size]
-                    value_pred = critic(critic_state_t[mb])
+                    value_pred = critic(critic_state_t[mb], critic_aid_t[mb])
                     critic_loss = 0.5 * (critic_ret_t[mb] - value_pred).pow(2).mean()
 
                     critic_optim.zero_grad()
@@ -293,7 +367,7 @@ def train(args):
                         continue
 
                     agent_obs_t = per_agent_tensors[aid]["obs"]
-                    agent_act_t = per_agent_tensors[aid]["act"]
+                    agent_z_t = per_agent_tensors[aid]["act"]   # 存的是 pre-tanh z（#4）
                     agent_old_logp_t = per_agent_tensors[aid]["old_logp"]
                     agent_adv_t = per_agent_tensors[aid]["adv"]
 
@@ -303,7 +377,8 @@ def train(args):
 
                     for start in range(0, a_n, args.minibatch_size):
                         mb = a_idx[start : start + args.minibatch_size]
-                        new_logp, entropy = actors[aid].evaluate_actions(agent_obs_t[mb], agent_act_t[mb])
+                        # 修复 #4：用存储的 z 直接重算 log_prob，保证首个 epoch ratio≈1
+                        new_logp, entropy = actors[aid].evaluate_actions_z(agent_obs_t[mb], agent_z_t[mb])
 
                         ratio = torch.exp(new_logp - agent_old_logp_t[mb])
                         surr1 = ratio * agent_adv_t[mb]
