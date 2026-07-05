@@ -1,4 +1,17 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(cd /d/study/yan2/CARLA_0.9.16/PythonAPI/examples/mappo_training && echo \"=== psro_runs dirs by mtime \\(newest first\\) ===\" && ls -dt logs/psro_runs/*/ 2>/dev/null | head -6; echo; echo \"=== newest payoff/jpc json since 修改1 \\(2026-06-23 22:00+\\) ===\" && find logs/psro_runs -name \"*.json\" -newermt \"2026-06-23 22:00\" -printf \"%TY-%Tm-%Td_%TH:%TM %p\\\\n\" 2>/dev/null | sort -r | head)",
+      "Read(//d/d/study/yan2/CARLA_0.9.16/PythonAPI/examples/mappo_training/logs/**)",
+      "Bash(cd /d/study/yan2/CARLA_0.9.16/PythonAPI/examples/mappo_training && echo \"=== compute_blue_threat_scores call sites ===\" && grep -rn \"compute_blue_threat_scores\\(\" training/psro/ | grep -v \"def \\\\|import\" ; echo \"=== self_collision_coef clip in train_blue_oracle ===\" && grep -n \"np.clip\\(self_collision_coef\\\\|self_collision_coef \\\\*=\" training/psro/train_blue_oracle.py; echo \"=== threat-coef / target-blue-collision-rate / self-collision-coef-init defaults in runner ===\" && grep -n \"threat-coef\\\\|target-blue-collision-rate\\\\|self-collision-coef-init\\\\|threat-tau\\\\|threat-radius\" training/psro/psro_runner.py)",
+      "Read(//d/d/study/yan2/CARLA_0.9.16/PythonAPI/examples/mappo_training/training/**)",
+      "Read(//d/d/study/yan2/CARLA_0.9.16/PythonAPI/examples/mappo_training/**)",
+      "Read(//d/d/study/yan2/CARLA_0.9.16/PythonAPI/examples/mappo_training/data/**)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in d if k in \\('coop_success','adv_effectiveness','blue_collision_rate','red_relative_slowdown','sigma_red_history','sigma_blue_history','avg_threat_score','blue_threat_window_pct'\\)}, indent=1, ensure_ascii=False\\)\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('logs/psro_runs/20260624_150245_seed42/payoff_table.json'\\)\\); print\\('keys:',list\\(d.keys\\(\\)\\)\\); print\\(json.dumps\\(d,indent=1,ensure_ascii=False\\)[:2500]\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('logs/psro_runs/20260624_071208_seed42/payoff_table.json'\\)\\); print\\('keys:',list\\(d.keys\\(\\)\\)\\); print\\(json.dumps\\(d,indent=1,ensure_ascii=False\\)[:1500]\\)\")"
+    ]
+  },
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
   }

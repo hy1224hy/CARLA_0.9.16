@@ -446,7 +446,7 @@ def evaluate(args):
         print(f"checkpoint不存在: {args.checkpoint}")
         return
 
-    checkpoint = torch.load(args.checkpoint, map_location=device)
+    checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=False)
 
     cooperative_ids: List[int] = []
     adversarial_ids: List[int] = []
@@ -491,7 +491,7 @@ def evaluate(args):
         actors[2] = actor
 
         if args.pretrained_ckpt and os.path.exists(args.pretrained_ckpt):
-            pretrained_ckpt = torch.load(args.pretrained_ckpt, map_location=device)
+            pretrained_ckpt = torch.load(args.pretrained_ckpt, map_location=device, weights_only=False)
             for aid in cooperative_ids:
                 if aid in pretrained_ckpt.get("actors", {}):
                     coop_actor = Actor(obs_dim=19, act_dim=3, hidden=args.hidden_dim).to(device)

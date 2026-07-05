@@ -59,7 +59,7 @@ def evaluate(args):
 
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
 
-    ckpt = torch.load(args.checkpoint, map_location=device)
+    ckpt = torch.load(args.checkpoint, map_location=device, weights_only=False)
     ckpt_args = ckpt.get("args", {})
 
     seed = args.seed if args.seed is not None else int(ckpt_args.get("seed", 42))

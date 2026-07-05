@@ -33,6 +33,7 @@ class CarlaMultiAgentEnv:
         disable_tensorboard: bool = False,
         seed: Optional[int] = None,
         reward_gamma: float = 0.99,
+        adversary_collision_ends_episode: bool = True,
     ):
         """
         初始化CARLA多智能体环境
@@ -58,6 +59,11 @@ class CarlaMultiAgentEnv:
         self.max_steps = max_steps
         self.adversarial_agent_ids = adversarial_agent_ids if adversarial_agent_ids is not None else []
         self.reward_version = reward_version
+        # 修改1：对抗车(蓝)自撞是否结束整个回合。
+        #   True（默认，旧行为）= 任一 agent 碰撞即全局终止；
+        #   False（PSRO/eval 用）= 仅合作车(红)碰撞/全员到达/超时才结束，蓝车自撞只 despawn 该车、
+        #     红车继续 —— 消除"蓝车自杀=零成本终止回合剥夺红车成功"的退化漏洞。
+        self.adversary_collision_ends_episode = adversary_collision_ends_episode
         self.seed = seed
         # R-1 修复：approach 势能塑形用的折扣因子，应与训练 gamma 一致（默认 0.99）
         self.reward_gamma = reward_gamma
@@ -1092,6 +1098,16 @@ class CarlaMultiAgentEnv:
             'truncated': dict(getattr(self, 'last_truncated', {})),
         }
 
+        # 修改1：对抗车(蓝)自撞且回合不全局终止时，移除该蓝车（避免撞毁残骸停在单车道里
+        # 变成"自杀路障"，那等于换个形式恢复漏洞）。此处在 info 已记录本步 collisions/terminated
+        # 之后执行，故蓝车的撞毁仍被训练侧正确捕获（reward 含碰撞罚、terminated=True）。
+        if not self.adversary_collision_ends_episode:
+            for i in self.adversarial_agent_ids:
+                if (self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False)) \
+                        and not self.reached_target.get(i, False):
+                    if i < len(self.vehicles) and self.vehicles[i] is not None and self.vehicles[i].is_alive:
+                        self._despawn_reached_vehicle(i)  # 通用 despawn（不标记 reached_target）
+
         for i in self.collision_events: # 重置碰撞状态，避免重复惩罚
             self.collision_events[i] = False
 
@@ -1126,18 +1142,19 @@ class CarlaMultiAgentEnv:
         reward_details = {}
 
         for i, vehicle in enumerate(self.vehicles):
-            if not vehicle.is_alive:
-                rewards[i] = -100.0
-                reward_details[i] = {
-                    "progress": 0.0, "speed": 0.0, "centering": 0.0, "yaw": 0.0,
-                    "collision": -100.0, "lane_invasion": 0.0, "step": 0.0, "success": 0.0,
-                }
-                continue
+            # 已到达终点（含 disappear-at-target 被移除的车）：给 0，必须在 not-alive 之前判定
             if self.reached_target.get(i, False):
                 rewards[i] = 0.0
                 reward_details[i] = {
                     "progress": 0.0, "speed": 0.0, "centering": 0.0, "yaw": 0.0,
                     "collision": 0.0, "lane_invasion": 0.0, "step": 0.0, "success": 0.0,
+                }
+                continue
+            if not vehicle.is_alive:
+                rewards[i] = -100.0
+                reward_details[i] = {
+                    "progress": 0.0, "speed": 0.0, "centering": 0.0, "yaw": 0.0,
+                    "collision": -100.0, "lane_invasion": 0.0, "step": 0.0, "success": 0.0,
                 }
                 continue
 
@@ -1281,11 +1298,16 @@ class CarlaMultiAgentEnv:
         SPEED_FLOOR = -1.0           # 速度奖励下限，防极端高速把该项拉爆
         MOTION_GATE_SPEED = 2.0      # 运动门控/起步判定阈值 (m/s)
         SIGMA_CENTER = 0.3
-        # ─── R-4 车道保持：连续横向偏离惩罚（抑制 S 形画龙/无谓变道） ───
-        # 参考 Toromanoff 2020 / Stanley 代价：对偏离车道中心的横向距离连续扣分，
-        # 在"压到车道线"之前就给出回正梯度（替代只靠离散压线事件的旧设计）。
+        # 居中奖励死区（平台）：|横向偏移|<CENTER_DEADZONE 内满额、无梯度。
+        # 消除尖峰居中奖励"死磕精确中心"的高增益微修正激励——这正是行驶中轻微左右
+        # 摆动（欠阻尼极限环）的来源。带内大致居中即可，不诱发过冲。
+        CENTER_DEADZONE = 0.4
+        # ─── R-4 车道保持：连续横向偏离惩罚（抑制大幅 S 形画龙/无谓变道） ───
+        # 参考 Toromanoff 2020 / Stanley 代价：对偏离车道中心的横向距离连续扣分。
         LANE_DEV_WEIGHT = 0.5      # 横向偏离惩罚斜率（每米）
-        LANE_DEV_DEADZONE = 0.3    # 死区（米），居中微抖不罚
+        # 死区对齐到 ≥ CENTER_DEADZONE，保证内带（|d|<0.4）真正平坦、无回正梯度，
+        # 不再制造微修正激励；只在明显偏离（>0.5m）时才施加回正惩罚。
+        LANE_DEV_DEADZONE = 0.5    # was 0.3
         JERK_WEIGHT = 0.05
         STEER_RATE_WEIGHT = 0.05   # was 0.02：加大转向变化率惩罚，直接压制来回打方向的 S 形
         # Phase B2 修正：safety_lidar 是 11 条 ray 求和，max=-11/step 会淹没所有学习信号
@@ -1302,17 +1324,8 @@ class CarlaMultiAgentEnv:
         APPROACH_WEIGHT = 0.5
 
         for i, vehicle in enumerate(self.vehicles):
-            if not vehicle.is_alive:
-                rewards[i] = COLLISION_PENALTY
-                reward_details[i] = {
-                    "progress": 0.0, "approach": 0.0, "speed": 0.0, "alive": 0.0, "centering": 0.0, "yaw": 0.0,
-                    "jerk": 0.0, "steer_rate": 0.0, "safety_lidar": 0.0, "ttc": 0.0,
-                    "collision": COLLISION_PENALTY, "lane_invasion": 0.0,
-                    "step": 0.0, "success": 0.0, "time_bonus": 0.0,
-                }
-                continue
-
-            # 已到达终点，不再计算奖励
+            # 已到达终点（含 disappear-at-target 被移除的车）：不再计算奖励，给 0。
+            # 必须在 not-alive 判定之前，否则到达后被移除的车会落入 not-alive 分支被误罚 -150。
             if self.reached_target.get(i, False):
                 rewards[i] = 0.0
                 reward_details[i] = {
@@ -1323,10 +1336,34 @@ class CarlaMultiAgentEnv:
                 }
                 continue
 
+            if not vehicle.is_alive:
+                rewards[i] = COLLISION_PENALTY
+                reward_details[i] = {
+                    "progress": 0.0, "approach": 0.0, "speed": 0.0, "alive": 0.0, "centering": 0.0, "yaw": 0.0,
+                    "jerk": 0.0, "steer_rate": 0.0, "safety_lidar": 0.0, "ttc": 0.0,
+                    "collision": COLLISION_PENALTY, "lane_invasion": 0.0,
+                    "step": 0.0, "success": 0.0, "time_bonus": 0.0,
+                }
+                continue
+
             transform = vehicle.get_transform()
             velocity = vehicle.get_velocity()
             target_loc = self._get_target_location(i)
             speed = math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2)
+            # 朝终点的"闭合速度"（速度在 指向终点 单位向量上的投影，clamp≥0）。
+            # 摆动根因修复：progress 已停用后 speed_reward 是主前进信号，若用总速度模长，
+            # 左右摆动产生的横向速度也会被当成"速度"刷满 speed_reward + motion_gate，
+            # 不接近终点也能拿满分 → 这正是画龙/摆动的激励来源。
+            # 用"朝终点闭合速度"取代总速度模长：
+            #   - 横向靠近终点 / 拐弯朝终点开 → 闭合速度为正 → 照常奖励（不误伤、不抑制转向）；
+            #   - 左右摆动 / 垂直于终点方向乱动 → 闭合速度≈0 → 不刷分（堵住 farm）。
+            _gdx = target_loc.x - transform.location.x
+            _gdy = target_loc.y - transform.location.y
+            _gnorm = math.hypot(_gdx, _gdy)
+            if _gnorm > 1e-6:
+                closing_speed = max(0.0, (velocity.x * _gdx + velocity.y * _gdy) / _gnorm)
+            else:
+                closing_speed = speed
 
             # ─── 1. 效率加权的进度奖励 ───
             # progress=delta，站着不动整项=0 → 无 farm 风险
@@ -1366,12 +1403,13 @@ class CarlaMultiAgentEnv:
             #   [SPEED_LOW, HIGH]  → 峰值 plateau  （5~15 km/h 舒适带，等价对待）
             #   > SPEED_HIGH       → 线性下降转负  （超速惩罚），下限 SPEED_FLOOR
             # 零点（净惩罚起点）≈ SPEED_HIGH + SPEED_PEAK/OVERSPEED_SLOPE ≈ 6.67 m/s ≈ 24 km/h。
-            if speed < SPEED_LOW:
-                speed_reward = SPEED_PEAK * (speed / SPEED_LOW)
-            elif speed <= SPEED_HIGH:
+            # 用"朝终点闭合速度"评估：摆动的横向速度不再刷分，横向接近终点仍计入
+            if closing_speed < SPEED_LOW:
+                speed_reward = SPEED_PEAK * (closing_speed / SPEED_LOW)
+            elif closing_speed <= SPEED_HIGH:
                 speed_reward = SPEED_PEAK
             else:
-                speed_reward = SPEED_PEAK - OVERSPEED_SLOPE * (speed - SPEED_HIGH)
+                speed_reward = SPEED_PEAK - OVERSPEED_SLOPE * (closing_speed - SPEED_HIGH)
             speed_reward = max(SPEED_FLOOR, speed_reward)
 
             # alive_bonus 已并入速度奖励的起步线性段；保留 0 占位兼容 details["alive"] 日志。
@@ -1381,12 +1419,17 @@ class CarlaMultiAgentEnv:
             # centering(+0.5) 和 yaw(+0.15) 原本每步无条件发放：一辆停在车道中央、
             # 车头对准目标的车，每步 farm 正奖励 → 策略收敛到"原地不动"。
             # 把这两项乘上运动门控：停车 → gate=0 → 姿态奖励=0；正常行驶 → gate=1。
-            motion_gate = min(1.0, speed / MOTION_GATE_SPEED)
+            # 门控也用闭合速度：摆动(闭合≈0)→gate≈0→不发放居中/航向；接近终点→gate=1 正常
+            motion_gate = min(1.0, closing_speed / MOTION_GATE_SPEED)
 
-            # ─── 3. 连续车道居中奖励（指数衰减） ───
+            # ─── 3. 车道居中奖励（带死区的平台，抑制行驶中轻微左右摆动） ───
+            # 仍按最近车道中心算横向偏移（不锁定具体车道，不限制变道自由）。
+            # 关键改动：用"死区平台"取代尖峰指数——|偏移|<CENTER_DEADZONE 内满额且无梯度，
+            #   带外才指数衰减。尖峰只奖励"精确压中心"，最优策略=高增益横向修正，在离散时间+
+            #   延迟下欠阻尼过冲 → 轻微极限环摆动；平台让"大致居中"即满额，消除微修正激励。
             current_waypoint = self.map.get_waypoint(transform.location)
             centering_reward = 0.0
-            lateral_dist = 0.0   # 到车道中心的横向距离，供居中奖励 + R-4 偏离惩罚共用
+            lateral_dist = 0.0   # 到最近车道中心的横向距离，供居中奖励 + R-4 偏离惩罚共用
             if current_waypoint:
                 veh_loc = transform.location
                 wp_loc = current_waypoint.transform.location
@@ -1397,8 +1440,9 @@ class CarlaMultiAgentEnv:
                 lateral_dist = abs(
                     vec_wp_to_veh.x * right_vector.x + vec_wp_to_veh.y * right_vector.y
                 )
+                d_center = max(0.0, lateral_dist - CENTER_DEADZONE)  # 死区内 = 0 → 满额平台
                 centering_reward = 0.5 * math.exp(
-                    -(lateral_dist ** 2) / (2 * SIGMA_CENTER ** 2)
+                    -(d_center ** 2) / (2 * SIGMA_CENTER ** 2)
                 )
             # 运动门控：停车时不发放居中奖励，杜绝原地 farm
             centering_reward *= motion_gate
@@ -1630,8 +1674,10 @@ class CarlaMultiAgentEnv:
             already_reached = self.reached_target.get(i, False)
             if in_goal_region or already_reached:
                 if not already_reached:
-                    self.traffic_manager.ignore_vehicles_percentage(vehicle, 100.0)
-                    # print(f"Agent {i} 到达终点区域，已设置为无碰撞模式")
+                    # disappear-at-target（MAPF）：到达即从场景移除该车，避免它停在终点
+                    # 物理阻挡后到的车，导致"会车被判碰撞"。原 ignore_vehicles_percentage
+                    # 是 TrafficManager 设置，对 RL 手动控制的车无效，故改为直接移除。
+                    self._despawn_reached_vehicle(i)
                 self.reached_target[i] = True
                 dones[i] = True
                 terminated[i] = True   # 到达终点：真正终止
@@ -1667,16 +1713,24 @@ class CarlaMultiAgentEnv:
             for i in range(self.num_agents):
                 dones[i] = True
 
-        # 如果任何一个智能体发生严重碰撞（碰撞或压人行横道），将所有智能体的 dones 设置为 True，结束回合
-        any_severe_collision = any(
-            # self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False) 
-            # for i in range(self.num_agents)
-            (self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False))
-            and not self.reached_target.get(i, False)
-            for i in range(self.num_agents)
-        )
+        # 严重碰撞（碰撞或压人行横道）→ 全局终止本回合。
+        # 修改1：adversary_collision_ends_episode=False 时，仅【合作车(红)】碰撞触发全局终止；
+        #   对抗车(蓝)自撞不结束回合（其自身 done/terminated 已在上方逐 agent 置位，且会在
+        #   step() 里被 despawn），红车继续往终点开，从而 coop_success 真实反映"红车能否到点"。
+        def _is_severe(i: int) -> bool:
+            return ((self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False))
+                    and not self.reached_target.get(i, False))
+
+        if self.adversary_collision_ends_episode:
+            trigger_ids = range(self.num_agents)
+            _msg = "检测到严重碰撞（碰撞或压人行横道），结束本回合"
+        else:
+            trigger_ids = [i for i in range(self.num_agents) if i not in self.adversarial_agent_ids]
+            _msg = "检测到红车严重碰撞，结束本回合（蓝车自撞不结束回合）"
+
+        any_severe_collision = any(_is_severe(i) for i in trigger_ids)
         if any_severe_collision:
-            print("检测到严重碰撞（碰撞或压人行横道），结束本回合")
+            print(_msg)
             for i in range(self.num_agents):
                 dones[i] = True
 
@@ -1730,6 +1784,40 @@ class CarlaMultiAgentEnv:
             }
 
         return relative_positions
+
+    def _despawn_reached_vehicle(self, agent_id: int):
+        """disappear-at-target：车辆到达终点后从场景移除，使其不再物理阻挡后到的车。
+
+        先停掉并销毁其传感器（避免销毁瞬间触发回调写脏 collision/lane 标志），再销毁车辆本体。
+        其余逻辑（obs 归零、terminated=True、reward=0）由各处的 is_alive / reached_target 守卫处理。
+        全部用 try/except + is_alive 守卫，幂等且不会因重复调用报错。
+        """
+        # 传感器：停止监听 + 销毁
+        for sensor_map in (self.collision_sensors, self.lane_sensors, self.camera_sensors):
+            sensor = sensor_map.get(agent_id)
+            if sensor is not None:
+                try:
+                    if sensor.is_listening:
+                        sensor.stop()
+                except Exception:
+                    pass
+                try:
+                    if sensor.is_alive:
+                        sensor.destroy()
+                except Exception:
+                    pass
+        # 清零该车的事件标志，避免移除瞬间的残留触发碰撞/偏离判定
+        self.collision_events[agent_id] = False
+        self.lane_invasion_events[agent_id] = False
+        self.crosswalk_invasion_events[agent_id] = False
+
+        # 车辆本体
+        try:
+            vehicle = self.vehicles[agent_id]
+            if vehicle is not None and vehicle.is_alive:
+                vehicle.destroy()
+        except Exception:
+            pass
 
     def _compute_adversarial_reward(self, agent_id: int, base_reward_details: Dict) -> Tuple[float, Dict]:
         """

@@ -113,7 +113,7 @@ class AdversarialEvaluator:
     def _load_normal_agents(self, ckpt_path: str) -> Dict[int, Actor]:
         """加载正常驾驶智能体"""
         print(f"正在加载正常智能体: {ckpt_path}")
-        ckpt = torch.load(ckpt_path, map_location=self.device)
+        ckpt = torch.load(ckpt_path, map_location=self.device, weights_only=False)
         actors_state = ckpt.get("actors", {})
 
         actors = {}
@@ -131,7 +131,7 @@ class AdversarialEvaluator:
     def _load_adversarial_agent(self, ckpt_path: str) -> Actor:
         """加载对抗智能体"""
         print(f"正在加载对抗智能体: {ckpt_path}")
-        ckpt = torch.load(ckpt_path, map_location=self.device)
+        ckpt = torch.load(ckpt_path, map_location=self.device, weights_only=False)
         actor_state = ckpt.get("adversarial_actor")
 
         if actor_state is None:

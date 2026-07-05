@@ -146,7 +146,8 @@ def _load_config_file(path_or_name: str, scenario_dir: str) -> Optional[Dict]:
         return None
 
 
-def make_adversarial_positions(scenario_config, cooperative_ids, adversarial_ids, margin_ratio=0.0):
+def make_adversarial_positions(scenario_config, cooperative_ids, adversarial_ids,
+                               margin_ratio=0.0, min_gap=0.0):
     """把蓝色对抗车安置在红色合作车之间，排成 红-蓝…蓝-红（确定性，可复现）。
 
     - 合作车(红)保留场景配置中的原始位置不动，作为车队首尾；
@@ -155,6 +156,12 @@ def make_adversarial_positions(scenario_config, cooperative_ids, adversarial_ids
       之前，蓝车永远不会比红车更靠近终点；
     - margin_ratio：蓝车分布区间相对红车两端再内缩的比例（0=纯均匀等分，
       >0 让蓝车更聚向中间、离红车更远）。
+    - min_gap：相邻车辆的**最小纵向间距(米)**。0=保持原行为（默认，不影响既有调用）。
+      >0 时启用「等间距铺开」模式：以**最前红车为锚点固定不动**，整列沿车道向后等间距
+      展开，保证相邻间距 ≥ min_gap（不足则把队尾红车往后挪），从而拉开过近的生成间距、
+      消除一上来就追尾的问题。仍满足「蓝车不超过最前红车」不变式。
+      仅在恰好 2 辆红车时启用（PSRO 2v2 场景）；其它情况回退原逻辑。
+      注意：min_gap 过大可能把队尾红车挪出直道。Town02 默认终点 y=264 的场景建议 ≤ 16m。
 
     返回完整的 agents dict（原红车 + 新蓝车），写回 scenario_config["agents"] 即可。
     场景配置只定义红车时，蓝车位置由本函数补全，因此无需改动任何场景文件。
@@ -172,19 +179,43 @@ def make_adversarial_positions(scenario_config, cooperative_ids, adversarial_ids
     coop.sort(key=lambda t: prog(t[1]))
 
     back = coop[0][1]                       # 最后一辆红车（车队尾）
+    s0 = prog(back)                         # 队尾红车原始进度（坐标重建参考点）
     s_back, s_front = prog(coop[0][1]), prog(coop[-1][1])
     span = s_front - s_back
     if span < 1e-3:                         # 红车重合/仅一辆 → 在其前方一段距离内排布
         span = 14.0
         s_front = s_back + span
+    z = float(back.get("z", 0.5))
+    n = len(adversarial_ids)
+
+    def _pos(progress: float) -> Dict:
+        """由沿车道进度反推坐标（参考点=队尾红车原位置）。"""
+        off = progress - s0
+        return {
+            "x": round(float(back["x"]) + fx * off, 3),
+            "y": round(float(back["y"]) + fy * off, 3),
+            "z": z,
+            "yaw": yaw,
+        }
+
+    # ── min_gap 模式：等间距铺开（最前红车锚定，向后展开，红车守两端、蓝车居中）──
+    if min_gap > 0 and len(coop) == 2:
+        g = max(float(min_gap), span / (n + 1))   # 间距取 max(min_gap, 等分间距)
+        new_s_back = s_front - g * (n + 1)        # 锚定最前红车，向后挪队尾红车
+        rear_cid, front_cid = coop[0][0], coop[-1][0]
+        new_agents = {f"agent{rear_cid}": _pos(new_s_back),
+                      f"agent{front_cid}": _pos(s_front)}
+        for i, aid in enumerate(adversarial_ids):   # 蓝车占据中间 1..n 槽位
+            new_agents[f"agent{aid}"] = _pos(new_s_back + (i + 1) * g)
+        return new_agents
+
+    # ── 原逻辑：红车原位不动，蓝车在区间内按 margin 分布 ──
     lo = s_back + span * margin_ratio
     hi = s_front - span * margin_ratio
     if hi <= lo:
         lo, hi = s_back, s_front
 
     new_agents = {f"agent{cid}": p for cid, p in coop}
-    z = float(back.get("z", 0.5))
-    n = len(adversarial_ids)
     for i, aid in enumerate(adversarial_ids):
         frac = (i + 1) / (n + 1)            # 区间 n+1 等分点，红车守两端
         off = (lo - s_back) + (hi - lo) * frac   # 相对车队尾红车的前向偏移
@@ -488,7 +519,7 @@ def train(args):
     if not os.path.exists(pretrained_path):
         raise FileNotFoundError(f"预训练 checkpoint 不存在: {pretrained_path}")
     print(f"加载预训练 checkpoint: {pretrained_path}")
-    ckpt = torch.load(pretrained_path, map_location=device)
+    ckpt = torch.load(pretrained_path, map_location=device, weights_only=False)
     pretrained_actors_state = ckpt.get("actors", {})
 
     # 合作团队：冻结
@@ -583,7 +614,7 @@ def train(args):
                 resume_path = os.path.join(save_dir, cands[-1][1])
         if resume_path and os.path.exists(resume_path):
             print(f"恢复训练 from: {resume_path}")
-            rck = torch.load(resume_path, map_location=device)
+            rck = torch.load(resume_path, map_location=device, weights_only=False)
             for aid in adversarial_ids:
                 if aid in rck.get('adversarial_actors', {}):
                     adversarial_actors[aid].load_state_dict(rck['adversarial_actors'][aid])

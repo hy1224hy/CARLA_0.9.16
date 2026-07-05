@@ -235,7 +235,7 @@ def train(args):
     # 加载预训练模型
     if args.pretrained_checkpoint and os.path.exists(args.pretrained_checkpoint):
         print(f"加载预训练模型: {args.pretrained_checkpoint}")
-        checkpoint = torch.load(args.pretrained_checkpoint, map_location=device)
+        checkpoint = torch.load(args.pretrained_checkpoint, map_location=device, weights_only=False)
         for aid in agent_ids:
             if aid in checkpoint.get('actors', {}):
                 actors[aid].load_state_dict(checkpoint['actors'][aid])
@@ -258,7 +258,10 @@ def train(args):
 
     # 训练统计（累计，用于控制台打印）
     total_episodes = 0
-    total_successes = 0
+    total_successes = 0       # 严格成功（all reached_target）
+    total_collisions = 0      # 任一 agent 碰撞终止
+    total_timeouts = 0        # max_steps 截断且未成功未碰撞
+    best_success_rate = -1.0  # best.pt 跟踪（窗口严格成功率最大）
 
     try:
         for update in range(1, args.updates + 1):
@@ -267,7 +270,9 @@ def train(args):
             # 当前 update 窗口的 episode 级统计
             window_episode_returns: List[float] = []
             window_episode_lengths: List[int] = []
-            window_successes: List[float] = []
+            window_successes: List[float] = []          # 严格成功（all reached_target）
+            window_collisions: List[float] = []         # 任一 agent 碰撞
+            window_timeouts: List[float] = []           # max_steps 截断且未成功未碰撞
             window_per_agent_returns: Dict[int, List[float]] = {aid: [] for aid in agent_ids}
             window_reward_components: Dict[str, List[float]] = {}  # 按分量名累积
 
@@ -292,6 +297,10 @@ def train(args):
                 ep_length = 0
                 ep_done_cleanly = False
                 ep_success = False
+                # 碰撞 sticky 累积：env.collision_events 每步末尾会被清零
+                # （见 carla_multi_agent_env.py），episode 结束后直接读是 0；
+                # 故用 info['collisions'] 每步 OR 累积，回合内 sticky。
+                ep_collision_sticky: Dict[int, bool] = {aid: False for aid in agent_ids}
 
                 for step in range(args.max_steps):
                     ep_length += 1
@@ -328,6 +337,12 @@ def train(args):
 
                     next_obs, rewards, dones, info = env.step(action_dict)
                     terminated_info = info.get('terminated', {})
+
+                    # 每步累积"本回合是否撞过"（info['collisions'] 已含人行横道）
+                    step_collisions = info.get('collisions', {}) or {}
+                    for aid in agent_ids:
+                        if step_collisions.get(aid, False):
+                            ep_collision_sticky[aid] = True
 
                     step_transitions: Dict[int, Transition] = {}
                     for aid in step_cache.keys():
@@ -378,19 +393,42 @@ def train(args):
                                 tr.next_value = float(critic(terminal_state_t, aid).item())
 
                         ep_done_cleanly = True
-                        ep_success = not any(info.get('collisions', {}).values())
-                        total_successes += 1 if ep_success else 0
                         break
+
+                # 严格三类终止分类（修复：旧 ep_success=not any(collision) 把超时误判为成功）
+                #   ep_success_to_goal: 所有 agent 都进入 goal_zone（True success）
+                #   ep_collision:       任一 agent 本回合撞过（含人行横道，sticky 累积）
+                #   ep_timeout:         max_steps 截断且既未成功也未碰撞
+                # reached_target 是 sticky，可直接读 env；碰撞用循环里累积的 sticky 字典
+                ep_success_to_goal = all(
+                    env.reached_target.get(aid, False) for aid in agent_ids
+                )
+                ep_collision = any(ep_collision_sticky.values())
+                ep_timeout = (
+                    ep_length >= args.max_steps
+                    and not ep_success_to_goal
+                    and not ep_collision
+                )
+                ep_success = ep_success_to_goal
+
+                if ep_success:
+                    total_successes += 1
+                elif ep_collision:
+                    total_collisions += 1
+                elif ep_timeout:
+                    total_timeouts += 1
 
                 # 记录 episode（不丢弃！无论是否 clean done 都记录）
                 avg_ret = float(np.mean([episode_rewards[aid] for aid in agent_ids]))
                 window_episode_returns.append(avg_ret)
                 window_episode_lengths.append(ep_length)
                 window_successes.append(1.0 if ep_success else 0.0)
+                window_collisions.append(1.0 if ep_collision else 0.0)
+                window_timeouts.append(1.0 if ep_timeout else 0.0)
                 for aid in agent_ids:
                     window_per_agent_returns[aid].append(episode_rewards[aid])
 
-                # 记录场景结果到课程学习器
+                # 记录场景结果到课程学习器（用严格成功，避免污染课程权重）
                 curriculum.record_scenario_result(scenario_name, ep_success)
 
             # ===== PPO 更新（收集训练诊断指标） =====
@@ -559,6 +597,13 @@ def train(args):
                     float(np.mean(window_successes)), update)
                 tb_writer.add_scalar('episode/success_rate_cumulative',
                     total_successes / max(total_episodes, 1), update)
+                # 严格三类终止占比（修复后新增；三者互斥，可能存在"已 break 但未达终点也未撞"的余项）
+                tb_writer.add_scalar('episode/rate_success_to_goal',
+                    float(np.mean(window_successes)), update)
+                tb_writer.add_scalar('episode/rate_collision',
+                    float(np.mean(window_collisions)), update)
+                tb_writer.add_scalar('episode/rate_timeout',
+                    float(np.mean(window_timeouts)), update)
 
                 for aid in agent_ids:
                     if window_per_agent_returns[aid]:
@@ -568,8 +613,10 @@ def train(args):
                 # 控制台摘要
                 avg_r = float(np.mean(window_episode_returns))
                 win_succ = float(np.mean(window_successes))
+                win_coll = float(np.mean(window_collisions))
+                win_to = float(np.mean(window_timeouts))
                 print(f"更新 {update}: avg_return={avg_r:.2f}, "
-                      f"success_rate(窗口)={win_succ:.2%}, "
+                      f"success={win_succ:.2%} collision={win_coll:.2%} timeout={win_to:.2%}, "
                       f"cum_success={total_successes/max(total_episodes,1):.2%}, "
                       f"avg_ep_len={float(np.mean(window_episode_lengths)):.0f}")
 
@@ -625,6 +672,23 @@ def train(args):
                     "args": vars(args),
                 }, ckpt_path)
                 print(f"模型保存: {ckpt_path}")
+
+            # best.pt 跟踪：窗口严格成功率（all reached_target）创新高即保存
+            if len(window_successes) > 0:
+                cur_win_success = float(np.mean(window_successes))
+                if cur_win_success > best_success_rate:
+                    best_success_rate = cur_win_success
+                    best_ckpt_path = os.path.join(save_dir, "best.pt")
+                    torch.save({
+                        "update": update,
+                        "actors": {aid: actors[aid].state_dict() for aid in agent_ids},
+                        "critic": critic.state_dict(),
+                        "actor_optims": {aid: actor_optims[aid].state_dict() for aid in agent_ids},
+                        "critic_optim": critic_optim.state_dict(),
+                        "best_success_rate": best_success_rate,
+                        "args": vars(args),
+                    }, best_ckpt_path)
+                    print(f"  [best] 窗口成功率 {best_success_rate:.2%}，保存 {best_ckpt_path}")
 
     except KeyboardInterrupt:
         print("训练中断")

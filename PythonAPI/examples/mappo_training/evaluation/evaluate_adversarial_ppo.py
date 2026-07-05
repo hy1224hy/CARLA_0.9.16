@@ -52,11 +52,11 @@ def evaluate(args):
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
 
     # 加载预训练checkpoint
-    pretrained_ckpt = torch.load(args.pretrained_ckpt, map_location=device)
+    pretrained_ckpt = torch.load(args.pretrained_ckpt, map_location=device, weights_only=False)
     pretrained_actors_state = pretrained_ckpt.get("actors", {})
 
     # 加载对抗checkpoint（兼容新旧格式）
-    adv_ckpt = torch.load(args.adversarial_ckpt, map_location=device)
+    adv_ckpt = torch.load(args.adversarial_ckpt, map_location=device, weights_only=False)
     adv_ckpt_args = adv_ckpt.get("args", {})
 
     # 检测格式: 新格式有 "adversarial_actors" dict，旧格式有 "adversarial_actor" 单个

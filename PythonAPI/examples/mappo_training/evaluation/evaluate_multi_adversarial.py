@@ -85,7 +85,7 @@ class MultiAdversarialEvaluator:
         adv_path = self._normalize_path(args.adversarial_ckpt)
         if not os.path.exists(adv_path):
             raise FileNotFoundError(f"对抗 checkpoint 不存在: {adv_path}")
-        adv_ckpt = torch.load(adv_path, map_location=self.device)
+        adv_ckpt = torch.load(adv_path, map_location=self.device, weights_only=False)
         self.cooperative_ids: List[int] = adv_ckpt.get("cooperative_ids")
         self.adversarial_ids: List[int] = adv_ckpt.get("adversarial_ids")
         if self.cooperative_ids is None or self.adversarial_ids is None:
@@ -110,7 +110,7 @@ class MultiAdversarialEvaluator:
         coop_path = self._normalize_path(args.pretrained_ckpt)
         if not os.path.exists(coop_path):
             raise FileNotFoundError(f"合作 checkpoint 不存在: {coop_path}")
-        coop_ckpt = torch.load(coop_path, map_location=self.device)
+        coop_ckpt = torch.load(coop_path, map_location=self.device, weights_only=False)
         coop_state = coop_ckpt.get("actors", {})
         self.cooperative_actors: Dict[int, Actor] = {}
         for cid in self.cooperative_ids:

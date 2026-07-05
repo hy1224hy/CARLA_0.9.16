@@ -175,7 +175,7 @@ def train(args):
     if not os.path.exists(pretrained_path):
         raise FileNotFoundError(f"预训练checkpoint不存在: {pretrained_path}")
 
-    ckpt = torch.load(pretrained_path, map_location=device)
+    ckpt = torch.load(pretrained_path, map_location=device, weights_only=False)
     pretrained_actors_state = ckpt.get("actors", {})
 
     # 创建冻结的合作团队 Actor

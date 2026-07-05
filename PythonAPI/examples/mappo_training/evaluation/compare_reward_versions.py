@@ -70,7 +70,7 @@ def action_tanh_to_env(action_tanh: np.ndarray) -> np.ndarray:
 
 
 def load_actors(checkpoint_path: str, device: torch.device) -> Tuple[Dict[int, Actor], dict]:
-    ckpt = torch.load(checkpoint_path, map_location=device)
+    ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
     ckpt_args = ckpt.get("args", {})
     num_agents = int(ckpt_args.get("num_agents", 2))
     hidden_dim = int(ckpt_args.get("hidden_dim", 128))

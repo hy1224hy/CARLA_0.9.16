@@ -353,7 +353,11 @@ class CurriculumLearning:
         if not basic_scenarios and pool:
             basic_scenarios = [pool[0]]
         stages.append(basic_scenarios)
-        stage2 = basic_scenarios + [f for f in pool if 'left' in f or 'right' in f]
+        # stage2（中等难度）：基础 + 横向偏移(left/right) + 并排交互(parallel)
+        stage2 = basic_scenarios + [
+            f for f in pool
+            if 'left' in f or 'right' in f or 'parallel' in f
+        ]
         stages.append(list(set(stage2)))
         stages.append(pool)
         return stages
@@ -527,7 +531,7 @@ def train(args):
     # 加载预训练模型
     if args.pretrained_checkpoint and os.path.exists(args.pretrained_checkpoint):
         print(f"加载预训练模型: {args.pretrained_checkpoint}")
-        checkpoint = torch.load(args.pretrained_checkpoint, map_location=device)
+        checkpoint = torch.load(args.pretrained_checkpoint, map_location=device, weights_only=False)
         for aid in agent_ids:
             if aid in checkpoint.get('actors', {}):
                 actors[aid].load_state_dict(checkpoint['actors'][aid])
@@ -582,7 +586,7 @@ def train(args):
 
         if resume_path and os.path.exists(resume_path):
             print(f"恢复训练 from: {resume_path}")
-            ckpt = torch.load(resume_path, map_location=device)
+            ckpt = torch.load(resume_path, map_location=device, weights_only=False)
             for aid in agent_ids:
                 if aid in ckpt.get('actors', {}):
                     actors[aid].load_state_dict(ckpt['actors'][aid])

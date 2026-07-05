@@ -113,3 +113,8 @@ python -m training.train_no_rllib_mappo_robust_v2 --curriculum-mode distance
 - `COLLISION_PENALTY`（-150）：若出现"轰油门硬撞"可回调到 -200。
 - 跨线 `severity_map`：若车辆过度保守贴右行驶可适度回调。
 - `min_log_std`（-1.0）：探索不足可放宽到 -0.7。
+
+
+
+对抗策略 
+单智能体 多智能体 baseline

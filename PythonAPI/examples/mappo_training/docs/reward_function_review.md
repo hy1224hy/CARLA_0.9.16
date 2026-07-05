@@ -123,6 +123,31 @@ farm 被消除，"吸向终点"梯度仍存（方向正确，主驱动仍是 pro
 
 ---
 
+## 九、终点会车被判碰撞 → disappear-at-target（2026-06-08）
+
+**现象**：一辆车到达终点后，另一辆车再到达同一终点时被判为碰撞、吃 −150 并使回合按碰撞结束。
+
+**根因**：
+1. **共享单一终点**：所有 agent 目标都是同一中心点、同一 6m×3.5m 区（`_get_target_location` 第449行、`target_waypoints` 第404行）。先到车被强停在终点，后到车去同一点必然物理相撞。
+2. `ignore_vehicles_percentage(vehicle,100)`（旧第1633行）是 **TrafficManager autopilot** 设置，对 RL 手动控制车无效，挡不住碰撞传感器。
+3. step() 中 `_compute_rewards()` 在 `_check_dones()` **之前**：后到车在到达那一步还没被标记 reached → 即使下一句把它判成 reached，奖励里仍吃了 −150。
+
+**方案（用户选定 B：MAPF disappear-at-target，Stern et al. 2019）**：车到终点即从场景移除，不再物理阻挡后车；后车驶入空出的终点区正常到达。
+
+**改动**（`carla_multi_agent_env.py`）：
+- 新增 `_despawn_reached_vehicle(i)`：到达即停监听并销毁该车传感器（collision/lane/camera）+ 销毁车辆本体 + 清零其事件标志；全程 try/except + is_alive 守卫，幂等安全。
+- `_check_dones` 首次到达分支：用 `_despawn_reached_vehicle(i)` 取代失效的 `ignore_vehicles_percentage`。
+- **v1/v2 奖励循环把 `reached_target` 判定提到 `not is_alive` 之前**：否则被移除（is_alive=False）的到达车会落入 not-alive 分支被误罚 −150；现到达车统一给 0。
+
+**安全性**（已核验）：
+- `reset()→_cleanup()` 用 is_alive 守卫重建全部车辆，中途销毁不影响重置；
+- `_get_relative_position_to_agents`/TTC 只遍历存活他车（第1702/1714行守卫），lidar 是世界射线，销毁车自然不被命中；
+- 到达车 obs 归零（`_get_observations` not-alive 分支），global_state 对应段归零；done/terminated 由 reached_target 与 not-alive 守卫保持 True。
+
+**残留（罕见）**：两车**同一 tick 同点**到达并接触时，先算的奖励里后车可能仍记一次碰撞（reward 在 done 之前）。顺序到达（用户场景）已被根治。如观察到同帧会车仍误判，可再加"在终点区内不计碰撞惩罚"的屏蔽。
+
+---
+
 ## 八、速度奖励改为 Toromanoff desired-speed（2026-06-08，最新）
 
 **动机**：理论分析发现，无界 progress（`0.5×speed`/步，边际 +0.5/(m/s)）会压过超速惩罚（−0.2/(m/s)），"加大惩罚"需 `β>0.5 且去 floor 且更大以压时间偏好` → 高方差不稳定（曾出现 −4711 return）。根因是 progress 对速度无上界线性 → 最优是 bang-bang（顶满速度）。
@@ -229,6 +254,42 @@ lane_invasion_penalty += lane_dev_penalty     # 与离散压线惩罚叠加
 **注意**：
 - 横向距离用的是**最近车道**中心（`lateral_dist`），对"车道内画龙"和"压线/straddle 时刻"都有效；若需严格"锁定原车道、禁止任何变道"，可改用目标车道轴（target waypoint 朝向）做参考，告知我即可换。
 - 改动改变训练动力学，需重训。可调旋钮：`LANE_DEV_WEIGHT / LANE_DEV_DEADZONE / STEER_RATE_WEIGHT`。
+
+---
+
+## 九、居中奖励平台化：消除行驶中轻微左右摆动（2026-06-08）
+
+**现象**：车辆行驶时在车道中心线附近**轻微左右摆动**（小幅极限环），不是大幅变道。
+
+**根因（控制论分析）**：居中奖励 `0.5·exp(−d²/2σ²)`（σ=0.3）是**尖峰**，只奖励"精确压在中心"、且**只与横向位置有关、与横向速度无关**。最大化它的最优策略 = 把偏移始终拉到精确 0 → 学成**高增益**横向修正控制器；而系统是离散时间（dt=0.1s）+ 延迟 → 高增益比例控制必然**欠阻尼过冲 → 极限环摆动**。即：尖峰居中奖励本身诱发了摆动。
+
+**修法（不锁定车道、不限制变道，只改奖励形状）**：居中奖励改为**带死区的平台**——
+```python
+CENTER_DEADZONE = 0.4
+d_center = max(0.0, lateral_dist - CENTER_DEADZONE)   # 仍用最近车道中心
+centering_reward = 0.5 * math.exp(-(d_center**2)/(2*SIGMA_CENTER**2))
+```
+并把 R-4 `LANE_DEV_DEADZONE` 0.3 → **0.5**，使 |d|<0.4 内**完全平坦**（居中=0.5 恒定、偏离惩罚=0、无任何回正梯度）→ 没有"死磕精确中心"激励 → 低增益"大致居中"即可 → 过冲消失。
+
+| 横向偏移 m | 0 | 0.2 | 0.4 | 0.5 | 0.6 | 0.8 | 1.0 |
+|---|---|---|---|---|---|---|---|
+| 居中(平台) | 0.50 | 0.50 | 0.50 | 0.47 | 0.40 | 0.21 | 0.07 |
+| +偏离惩罚后净 | 0.50 | 0.50 | 0.50 | 0.47 | 0.35 | 0.06 | −0.18 |
+
+**注**：平台是"移除诱发摆动的激励"，非"主动阻尼"。若残留摆动，互补手段是速率阻尼（`STEER_RATE_WEIGHT` 已 0.05，可再加；或 yaw-rate）——横向速度惩罚按用户意见暂不加。已编译验证。
+
+---
+
+## 十、TensorBoard 诊断：actor_loss 负值 / critic_loss 量级大不降（2026-06-08）
+
+**actor_loss ≈ −0.25 持续下降 → 正常，非 bug。**
+PPO `actor_loss = −E[min(ratio·A, clip·A)] − ent_coef·H`，不是监督 loss：优势每 batch 标准化(mean 0)，策略提高高优势动作概率 → 代理目标变正 → 取负后 loss 变负；熵项再压一截。**下降=策略在改进**。应盯 `approx_kl(~0.01–0.05)/clip_frac/entropy/success_rate`，不是 actor_loss。
+
+**critic_loss ≈ 600 不降 → 多为尺度问题，先看 explained_variance。**
+`critic_loss=0.5·MSE` → RMSE≈35；而回报量级本就几百（每步~1.5×~240≈360 + 终点 success+100/time+50/碰撞−150）。回报 std~150–200 时，RMSE 35 ⇒ **EV≈0.96**，即 critic 其实拟合得不错，600 只是目标尺度大的外观。
+- **判据**：`ppo/explained_variance` >0.8 且升 → 没问题（训练能收敛正因优势被标准化后才进 actor，绝对尺度无关）；<0.5 或负 → critic 真失败。
+- **不降的原因**：成功率上升→回报上移（追移动目标）/ 中途改奖励（非平稳）/ 多智能体终局高方差（MSE 不可约下限）。
+- **真要压低/提拟合**：① 价值/回报归一化（PopArt / running-return-std，Andrychowicz 2021、Engstrom 2020）→ critic_loss 降到 O(1)；② 缩小终点奖励量级（success+100→+20、collision−150→−30）→ 降方差源、提 EV；③ Huber 替 MSE；④ value clipping。①/② 会动所有训练脚本与 checkpoint，待确认后实施。
 
 ---
 
