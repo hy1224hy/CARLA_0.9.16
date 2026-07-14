@@ -156,6 +156,7 @@ def train(args):
         timestep=args.timestep, max_steps=args.max_steps, spawn_vehicles=True,
         adversarial_agent_ids=adversarial_ids, reward_version="v2",
         disable_tensorboard=True, seed=args.seed,
+        adversary_collision_ends_episode=False,
     )
 
     scenario_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
@@ -292,6 +293,8 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
     total_agents = len(cooperative_ids) + len(adversarial_ids)
     for _ in range(args.rollout_episodes):
         obs_dict, info = env.reset()
+        active_mask = dict(info['active_mask'])
+        episode_end_reason = info['episode_end_reason']
         reward_computer.reset_episode()
         adv_ep_rewards = {aid: 0.0 for aid in adversarial_ids}
         ep_len = 0
@@ -311,9 +314,9 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
                                              device=device).unsqueeze(0)
             with torch.no_grad():
                 agent_values = {aid: float(critic(global_state_t, adv_index[aid]).item())
-                                for aid in adversarial_ids}
+                                for aid in adversarial_ids if active_mask.get(aid, False)}
                 for cid in cooperative_ids:
-                    if cid not in obs_dict:
+                    if not active_mask.get(cid, False) or cid not in obs_dict:
                         continue
                     obs_t = torch.as_tensor(obs_dict[cid], dtype=torch.float32,
                                             device=device).unsqueeze(0)
@@ -321,7 +324,7 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
                         .squeeze(0).cpu().numpy()
                     action_dict[cid] = action_tanh_to_env(a)
                 for aid in adversarial_ids:
-                    if aid not in obs_dict:
+                    if not active_mask.get(aid, False) or aid not in obs_dict:
                         continue
                     obs_t = torch.as_tensor(obs_dict[aid], dtype=torch.float32,
                                             device=device).unsqueeze(0)
@@ -337,6 +340,9 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
             terminated_info = info.get('terminated', {})
             reward_details = info.get('reward_details', {}) or {}
             step_collisions = info.get('collisions', {}) or {}
+            next_active_mask = info['active_mask']
+            episode_end_reason = info['episode_end_reason']
+            pre_collision_kinematics = info.get('pre_collision_kinematics', {}) or {}
             for i in range(total_agents):
                 if step_collisions.get(i, False):
                     collision_sticky[i] = True
@@ -352,7 +358,8 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
 
             # ── §2.3 奖励（单一真相源）──
             combined_rewards, details = reward_computer.step(
-                env, reward_details, action_dict, step, step_collisions)
+                env, reward_details, action_dict, step, step_collisions,
+                kinematic_snapshots=pre_collision_kinematics)
 
             for aid in step_cache.keys():
                 combined = combined_rewards.get(aid, 0.0)
@@ -381,14 +388,15 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
                 if not visualizer.running:
                     raise KeyboardInterrupt
             obs_dict = next_obs
-            if all(dones.values()):
+            active_mask = dict(next_active_mask)
+            if episode_end_reason != "running":
                 break
 
         # 回合结束
         coop_success = all(env.reached_target.get(cid, False) for cid in cooperative_ids)
         coop_collision = any(collision_sticky[cid] for cid in cooperative_ids)
         blue_collision = any(collision_sticky[bid] for bid in adversarial_ids)
-        timed_out = (not coop_success) and (not coop_collision)
+        timed_out = episode_end_reason == "max_steps"
 
         # 归因超时 bonus 回填到该回合蓝车最后一步
         bonus, _binfo = reward_computer.finalize_episode(timed_out)
@@ -695,7 +703,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 

@@ -160,7 +160,9 @@ class AdversarialRewardComputer:
         return value
 
     def step(self, env, reward_details: Dict, control_dict: Dict,
-             step_idx: int, collisions: Dict[int, bool]) -> "tuple[Dict[int,float], Dict[int,Dict]]":
+             step_idx: int, collisions: Dict[int, bool],
+             kinematic_snapshots: Optional[Dict[int, Dict]] = None,
+             ) -> "tuple[Dict[int,float], Dict[int,Dict]]":
         """计算这一步每辆蓝车的对抗奖励 + 分项明细。
 
         参数:
@@ -169,6 +171,8 @@ class AdversarialRewardComputer:
           control_dict   : 本步下发的 {id: carla.VehicleControl}（取红车 steer 用）
           step_idx       : 回合内步序（从 0 起），用于出生保护期
           collisions     : 本步 {id: bool} 碰撞标志（info['collisions']）
+          kinematic_snapshots: info['pre_collision_kinematics']；碰撞帧优先于 actor，
+                               保证已 despawn 蓝车仍能结算终局奖励
 
         返回: (rewards, details)
           rewards[bid]   = w_I·impact + w_T·threat_gated + w_B·base_safe − λ·c_self
@@ -176,7 +180,9 @@ class AdversarialRewardComputer:
         """
         cfg = self.cfg
         self._ep_steps += 1
-        kins = extract_kinematics(env, self.coop_ids + self.adv_ids, control_dict)
+        kins = extract_kinematics(
+            env, self.coop_ids + self.adv_ids, control_dict, kinematic_snapshots
+        )
         self._slowdown.update({r: kins[r] for r in self.coop_ids if r in kins})
         self._steer.update({r: kins[r] for r in self.coop_ids if r in kins})
 
@@ -184,6 +190,7 @@ class AdversarialRewardComputer:
             env, self.coop_ids, self.adv_ids,
             threat_radius=cfg.threat_radius, threat_lateral=cfg.threat_lateral,
             threat_tau=cfg.threat_tau, threat_near=cfg.threat_near,
+            kinematics=kins,
         )
         birth_lock = birth_protection_active(step_idx, cfg.timestep, cfg.birth_protect_secs)
 
@@ -348,4 +355,3 @@ class AdversarialRewardComputer:
     def episode_threat_pct(self, bid: int) -> float:
         """本回合该蓝车威胁窗口占比（供 TB / 归因超时诊断）。"""
         return self._threat_steps[bid] / max(self._ep_steps, 1)
-

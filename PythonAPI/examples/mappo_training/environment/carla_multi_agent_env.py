@@ -61,7 +61,7 @@ class CarlaMultiAgentEnv:
         self.reward_version = reward_version
         # 修改1：对抗车(蓝)自撞是否结束整个回合。
         #   True（默认，旧行为）= 任一 agent 碰撞即全局终止；
-        #   False（PSRO/eval 用）= 仅合作车(红)碰撞/全员到达/超时才结束，蓝车自撞只 despawn 该车、
+        #   False（PSRO/eval 用）= 仅合作车(红)碰撞/红车全到达/超时才结束，蓝车自撞只 despawn 该车、
         #     红车继续 —— 消除"蓝车自杀=零成本终止回合剥夺红车成功"的退化漏洞。
         self.adversary_collision_ends_episode = adversary_collision_ends_episode
         self.seed = seed
@@ -114,6 +114,12 @@ class CarlaMultiAgentEnv:
         self.start_waypoints: List[carla.Waypoint] = []
         self.target_waypoints: List[carla.Waypoint] = []
         self.reached_target: Dict[int, bool] = {}
+        # 统一 episode 生命周期协议。active_mask 表示下一步仍可接收动作/采样的 agent；
+        # terminated/truncated 保留 Gymnasium 语义；episode_end_reason 只描述全局回合。
+        self.active_mask: Dict[int, bool] = {i: False for i in range(self.num_agents)}
+        self.last_terminated: Dict[int, bool] = {i: False for i in range(self.num_agents)}
+        self.last_truncated: Dict[int, bool] = {i: False for i in range(self.num_agents)}
+        self.episode_end_reason: str = "running"
 
         # 上一步控制量（用于平滑性惩罚）
         self.prev_controls: Dict[int, Dict[str, float]] = {}
@@ -923,10 +929,27 @@ class CarlaMultiAgentEnv:
                 self.prev_distances[i] = 0.0
                 self.initial_distances[i] = 1.0
                 self.reached_target[i] = False
+
+        # reset 也返回完整协议，训练侧从第一步起只依赖 active_mask，不再从零观察猜测存活状态。
+        self.active_mask = {
+            i: bool(i < len(self.vehicles) and self.vehicles[i] is not None
+                    and self.vehicles[i].is_alive)
+            for i in range(self.num_agents)
+        }
+        self.last_terminated = {i: False for i in range(self.num_agents)}
+        self.last_truncated = {i: False for i in range(self.num_agents)}
+        self.episode_end_reason = "running"
         
         # 获取初始观察
         observations = self._get_observations()
-        info = {'step': self.current_step}
+        info = {
+            'step': self.current_step,
+            'active_mask': dict(self.active_mask),
+            'terminated': dict(self.last_terminated),
+            'truncated': dict(self.last_truncated),
+            'episode_end_reason': self.episode_end_reason,
+            'pre_collision_kinematics': {},
+        }
         
         return observations, info
     
@@ -1006,6 +1029,56 @@ class CarlaMultiAgentEnv:
             observations[i] = obs
 
         return observations
+
+    def _snapshot_kinematics(self) -> Dict[int, Dict]:
+        """读取当前存活车辆的纯数据运动学快照，不向 info 泄露 CARLA actor。"""
+        snapshots: Dict[int, Dict] = {}
+        for agent_id, vehicle in enumerate(self.vehicles):
+            if vehicle is None or not vehicle.is_alive:
+                continue
+            try:
+                transform = vehicle.get_transform()
+                velocity = vehicle.get_velocity()
+                angular_velocity = vehicle.get_angular_velocity()
+                control = vehicle.get_control()
+            except (RuntimeError, AttributeError):
+                # actor 可能在异步回调与本线程之间刚好失效；该 agent 不写入不完整快照。
+                continue
+
+            speed = math.sqrt(
+                velocity.x ** 2 + velocity.y ** 2 + velocity.z ** 2
+            )
+            snapshots[agent_id] = {
+                'location': {
+                    'x': float(transform.location.x),
+                    'y': float(transform.location.y),
+                    'z': float(transform.location.z),
+                },
+                'rotation': {
+                    'pitch': float(transform.rotation.pitch),
+                    'yaw': float(transform.rotation.yaw),
+                    'roll': float(transform.rotation.roll),
+                },
+                'velocity': {
+                    'x': float(velocity.x),
+                    'y': float(velocity.y),
+                    'z': float(velocity.z),
+                },
+                'angular_velocity': {
+                    'x': float(angular_velocity.x),
+                    'y': float(angular_velocity.y),
+                    'z': float(angular_velocity.z),
+                },
+                'control': {
+                    'throttle': float(control.throttle),
+                    'steer': float(control.steer),
+                    'brake': float(control.brake),
+                },
+                'speed': float(speed),
+                'alive': True,
+                'reached': bool(self.reached_target.get(agent_id, False)),
+            }
+        return snapshots
     
     def step(self, actions: Dict[int, np.ndarray]) -> Tuple[Dict[int, np.ndarray], Dict[int, float], Dict[int, bool], Dict]:
         """
@@ -1054,6 +1127,10 @@ class CarlaMultiAgentEnv:
                 except Exception:
                     pass
         
+        # 保存推进物理世界之前的同帧状态。若本 tick 发生碰撞，这份快照用于终局归因；
+        # 尤其是蓝车会在 step 返回前 despawn，训练侧不能再读取其 CARLA actor。
+        pre_tick_kinematics = self._snapshot_kinematics()
+
         # 更新世界
         self.world.tick()
         self.current_step += 1
@@ -1066,6 +1143,12 @@ class CarlaMultiAgentEnv:
             if _v.is_alive and not self.reached_target.get(i, False):
                 if self._vehicle_on_crosswalk(_v):
                     self.crosswalk_invasion_events[i] = True
+
+        # 必须在 _check_dones() 可能 despawn 到点车辆之前固化碰撞标志。
+        step_collisions = self._check_collisions()
+        pre_collision_kinematics = (
+            pre_tick_kinematics if any(step_collisions.values()) else {}
+        )
 
         # 获取新观察
         observations = self._get_observations()
@@ -1092,10 +1175,14 @@ class CarlaMultiAgentEnv:
         info = {
             'step': self.current_step,
             'reward_details': reward_details,
-            'collisions': self._check_collisions(),
+            'collisions': step_collisions,
             # 修复 #2：区分真正终止与时间截断，供训练侧 GAE 决定是否 bootstrap
             'terminated': dict(getattr(self, 'last_terminated', {})),
             'truncated': dict(getattr(self, 'last_truncated', {})),
+            'active_mask': dict(getattr(self, 'active_mask', {})),
+            'episode_end_reason': getattr(self, 'episode_end_reason', 'running'),
+            # 碰撞 tick 返回推进前的全体存活车辆快照，保证几何归因使用同一时刻的数据。
+            'pre_collision_kinematics': pre_collision_kinematics,
         }
 
         # 修改1：对抗车(蓝)自撞且回合不全局终止时，移除该蓝车（避免撞毁残骸停在单车道里
@@ -1635,6 +1722,10 @@ class CarlaMultiAgentEnv:
         同时维护 self.last_terminated / self.last_truncated（修复 #2）：
           - terminated[i]: 真正终止（到达终点 / 自身严重碰撞 / 车辆销毁）→ value 不 bootstrap
           - truncated[i]:  done 但非 terminated（超时，或被全局 override 连带结束）→ value 仍需 bootstrap
+          - active_mask[i]: 下一步是否仍允许动作与 transition 采样
+          - episode_end_reason: running / cooperative_success / all_agents_reached /
+                                cooperative_collision / adversary_collision / max_steps /
+                                all_agents_terminated
         训练侧据此在 GAE 中只对 terminated 切断价值 bootstrap，对 truncated 保留。
         """
         dones = {}
@@ -1706,40 +1797,69 @@ class CarlaMultiAgentEnv:
             # else:
             #     dones[i] = False
         
-        # 如果所有智能体都到达了终点，将所有智能体的 dones 设置为 True，结束回合
-        all_reached_target = all(self.reached_target.get(i, False) for i in range(self.num_agents))
-        if all_reached_target:
-            print("所有智能体都已到达终点，结束本回合")
-            for i in range(self.num_agents):
-                dones[i] = True
-
-        # 严重碰撞（碰撞或压人行横道）→ 全局终止本回合。
-        # 修改1：adversary_collision_ends_episode=False 时，仅【合作车(红)】碰撞触发全局终止；
-        #   对抗车(蓝)自撞不结束回合（其自身 done/terminated 已在上方逐 agent 置位，且会在
-        #   step() 里被 despawn），红车继续往终点开，从而 coop_success 真实反映"红车能否到点"。
+        # 严重碰撞（碰撞或压人行横道）的全局终止规则。
+        # adversary_collision_ends_episode=False 时，蓝车只结束自身生命周期；红车结局仍由
+        # 红车成功、红车碰撞或 max_steps 决定。
         def _is_severe(i: int) -> bool:
             return ((self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False))
                     and not self.reached_target.get(i, False))
 
-        if self.adversary_collision_ends_episode:
-            trigger_ids = range(self.num_agents)
-            _msg = "检测到严重碰撞（碰撞或压人行横道），结束本回合"
-        else:
-            trigger_ids = [i for i in range(self.num_agents) if i not in self.adversarial_agent_ids]
-            _msg = "检测到红车严重碰撞，结束本回合（蓝车自撞不结束回合）"
+        cooperative_ids = [
+            i for i in range(self.num_agents) if i not in self.adversarial_agent_ids
+        ]
+        # 纯合作环境以全体 agent 为结局主体；对抗环境只以红车结局为全局结局。
+        outcome_ids = cooperative_ids or list(range(self.num_agents))
 
-        any_severe_collision = any(_is_severe(i) for i in trigger_ids)
-        if any_severe_collision:
-            print(_msg)
+        if self.adversary_collision_ends_episode:
+            trigger_ids = list(range(self.num_agents))
+        else:
+            trigger_ids = cooperative_ids
+
+        severe_ids = [i for i in trigger_ids if _is_severe(i)]
+        all_outcome_reached = bool(outcome_ids) and all(
+            self.reached_target.get(i, False) for i in outcome_ids
+        )
+
+        episode_end_reason = "running"
+        if severe_ids:
+            if any(i in cooperative_ids for i in severe_ids):
+                episode_end_reason = "cooperative_collision"
+                print("检测到红车严重碰撞，结束本回合")
+            else:
+                episode_end_reason = "adversary_collision"
+                print("检测到蓝车严重碰撞，结束本回合")
+        elif all_outcome_reached:
+            episode_end_reason = (
+                "all_agents_reached"
+                if all(self.reached_target.get(i, False) for i in range(self.num_agents))
+                else "cooperative_success"
+            )
+            print("红车已全部到达终点，结束本回合")
+        elif self.current_step >= self.max_steps:
+            episode_end_reason = "max_steps"
+        elif dones and all(dones.values()):
+            # 兜底纯对抗/自定义 agent 编组，避免没有 active agent 时空转到 max_steps。
+            episode_end_reason = "all_agents_terminated"
+
+        # 全局结局只负责关闭仍存活的个体；它们没有自然终止，因此在下方记为 truncated。
+        if episode_end_reason != "running":
             for i in range(self.num_agents):
                 dones[i] = True
 
-        # 全局 override（他人到达/他人碰撞导致本 agent 连带结束）对该 agent 而言不是
-        # 自身终止，应视为截断 → 仍保留 value bootstrap。terminated 只在上面的逐 agent
-        # 判定里为 True，这里不追加，因此 truncated = done and not terminated 自然成立。
+        self.episode_end_reason = episode_end_reason
         self.last_terminated = {i: bool(terminated.get(i, False)) for i in range(self.num_agents)}
         self.last_truncated = {
             i: bool(dones.get(i, False) and not terminated.get(i, False))
+            for i in range(self.num_agents)
+        }
+        self.active_mask = {
+            i: bool(
+                not dones.get(i, False)
+                and i < len(self.vehicles)
+                and self.vehicles[i] is not None
+                and self.vehicles[i].is_alive
+                and not self.reached_target.get(i, False)
+            )
             for i in range(self.num_agents)
         }
 

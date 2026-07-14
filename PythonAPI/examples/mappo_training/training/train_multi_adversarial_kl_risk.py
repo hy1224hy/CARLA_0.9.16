@@ -69,7 +69,9 @@ def compute_blue_threat_scores(env: CarlaMultiAgentEnv,
                                threat_lateral: float = 2.5,
                                threat_tau: float = 1.5,
                                threat_near: float = 3.0,
-                               red_desired_speed: float = 4.0) -> Dict[int, float]:
+                               red_desired_speed: float = 4.0,
+                               kinematics: Optional[Dict[int, object]] = None,
+                               ) -> Dict[int, float]:
     """对每个 BLUE，计算它当前步对所有 RED 施加的总威胁分。
 
     ── 优化 A（安全挡道，2026-06-24）──
@@ -92,26 +94,41 @@ def compute_blue_threat_scores(env: CarlaMultiAgentEnv,
     """
     scores: Dict[int, float] = {aid: 0.0 for aid in adversarial_ids}
 
-    # 缓存所有车的位姿/速度，避免重复 API 调用
+    # 缓存所有车的位姿/速度，避免重复 API 调用。碰撞帧可由调用方传入
+    # info['pre_collision_kinematics'] 还原出的 AgentKinematics，避免 actor 已 despawn。
     cache: Dict[int, Dict] = {}
-    for aid in cooperative_ids + adversarial_ids:
-        if aid >= len(env.vehicles):
-            continue
-        v = env.vehicles[aid]
-        if v is None or not v.is_alive:
-            continue
-        tr = v.get_transform()
-        vel = v.get_velocity()
-        yaw_rad = math.radians(tr.rotation.yaw)
-        fwd = (math.cos(yaw_rad), math.sin(yaw_rad))
-        right = (math.sin(yaw_rad), -math.cos(yaw_rad))
-        fwd_speed = vel.x * fwd[0] + vel.y * fwd[1]
-        cache[aid] = {
-            "loc": (tr.location.x, tr.location.y),
-            "fwd": fwd,
-            "right": right,
-            "fwd_speed": fwd_speed,
-        }
+    if kinematics is not None:
+        for aid in cooperative_ids + adversarial_ids:
+            kin = kinematics.get(aid)
+            if kin is None or not getattr(kin, "alive", True):
+                continue
+            cache[aid] = {
+                "loc": kin.loc,
+                "fwd": kin.fwd,
+                "right": kin.right,
+                "fwd_speed": kin.fwd_speed,
+                "reached": bool(getattr(kin, "reached", False)),
+            }
+    else:
+        for aid in cooperative_ids + adversarial_ids:
+            if aid >= len(env.vehicles):
+                continue
+            v = env.vehicles[aid]
+            if v is None or not v.is_alive:
+                continue
+            tr = v.get_transform()
+            vel = v.get_velocity()
+            yaw_rad = math.radians(tr.rotation.yaw)
+            fwd = (math.cos(yaw_rad), math.sin(yaw_rad))
+            right = (math.sin(yaw_rad), -math.cos(yaw_rad))
+            fwd_speed = vel.x * fwd[0] + vel.y * fwd[1]
+            cache[aid] = {
+                "loc": (tr.location.x, tr.location.y),
+                "fwd": fwd,
+                "right": right,
+                "fwd_speed": fwd_speed,
+                "reached": bool(env.reached_target.get(aid, False)),
+            }
 
     span = max(threat_radius - threat_near, 1e-3)
     d_peak = threat_near + 0.3 * span        # 安全挡道甜点（偏近但不进撞距离）
@@ -121,9 +138,9 @@ def compute_blue_threat_scores(env: CarlaMultiAgentEnv,
     for red_id in cooperative_ids:
         if red_id not in cache:
             continue
-        if env.reached_target.get(red_id, False):
-            continue   # RED 已到点，BLUE 再威胁也没用
         rc = cache[red_id]
+        if rc["reached"]:
+            continue   # RED 已到点，BLUE 再威胁也没用
         # 阻滞因子：红车被压得越慢越高（自由巡航≈0）
         impede = (desired - rc["fwd_speed"]) / desired
         impede = min(1.0, max(0.0, impede))

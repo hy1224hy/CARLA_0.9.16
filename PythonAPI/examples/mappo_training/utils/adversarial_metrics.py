@@ -42,8 +42,37 @@ class AgentKinematics:
     reached: bool = False             # 是否已到达目标
 
 
+def _kinematics_from_snapshot(snapshot: Dict) -> Optional[AgentKinematics]:
+    """把 CarlaMultiAgentEnv info 中的纯数据快照还原成归因层运动学对象。"""
+    try:
+        loc = snapshot["location"]
+        rotation = snapshot["rotation"]
+        velocity = snapshot["velocity"]
+        yaw_rad = math.radians(float(rotation["yaw"]))
+        fwd = (math.cos(yaw_rad), math.sin(yaw_rad))
+        # 与实时 actor 适配路径保持完全相同的坐标约定。
+        right = (math.sin(yaw_rad), -math.cos(yaw_rad))
+        vx = float(velocity["x"])
+        vy = float(velocity["y"])
+        fwd_speed = vx * fwd[0] + vy * fwd[1]
+        control = snapshot.get("control", {}) or {}
+        return AgentKinematics(
+            loc=(float(loc["x"]), float(loc["y"])),
+            fwd=fwd,
+            right=right,
+            fwd_speed=fwd_speed,
+            speed=float(snapshot.get("speed", math.sqrt(vx ** 2 + vy ** 2))),
+            steer=float(control.get("steer", 0.0)),
+            alive=bool(snapshot.get("alive", True)),
+            reached=bool(snapshot.get("reached", False)),
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def extract_kinematics(env, ids: List[int],
-                       control_dict: Optional[Dict[int, "object"]] = None
+                       control_dict: Optional[Dict[int, "object"]] = None,
+                       kinematic_snapshots: Optional[Dict[int, Dict]] = None,
                        ) -> Dict[int, AgentKinematics]:
     """【唯一触碰 CARLA 的适配器】把 env.vehicles[id] 转成 AgentKinematics。
 
@@ -51,11 +80,22 @@ def extract_kinematics(env, ids: List[int],
       env          : CarlaMultiAgentEnv（用到 .vehicles / .reached_target）
       ids          : 需要提取的 agent id 列表
       control_dict : 可选 {id: carla.VehicleControl}，用于填 steer；缺省 steer=0
+      kinematic_snapshots: 可选的 info['pre_collision_kinematics']。存在时优先使用，
+                           使同一碰撞帧的所有车辆采用一致的 pre-tick 状态。
 
-    只对存活且下标合法的车返回条目；不存在/已 despawn 的车直接跳过。
+    非碰撞帧从存活 actor 读取；碰撞帧即使 actor 已 despawn，也可由快照恢复终局运动学。
     """
     out: Dict[int, AgentKinematics] = {}
     for aid in ids:
+        snapshot = None
+        if kinematic_snapshots:
+            snapshot = kinematic_snapshots.get(aid)
+        if snapshot is not None:
+            restored = _kinematics_from_snapshot(snapshot)
+            if restored is not None:
+                out[aid] = restored
+                continue
+
         if aid < 0 or aid >= len(env.vehicles):
             continue
         v = env.vehicles[aid]
@@ -221,6 +261,5 @@ def classify_collision(blue: AgentKinematics, red: AgentKinematics,
         if blue.fwd_speed > closing_eps:
             return COLLISION_KAMIKAZE    # 蓝车从后方主动冲撞
         return COLLISION_COLLATERAL
-
 
 

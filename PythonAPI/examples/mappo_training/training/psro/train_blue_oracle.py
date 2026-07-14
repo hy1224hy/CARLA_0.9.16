@@ -55,6 +55,7 @@ from training.train_adversarial_fixed_scenario import (
     avg_red_speed,
     prepare_fixed_scenario_config,
 )
+from utils.adversarial_metrics import extract_kinematics
 
 from training.psro.population import RedTeamPool
 
@@ -227,13 +228,11 @@ def train_blue_oracle(
             current_cooperative_actors = red_pool.get_actors(red_idx)
 
             obs_dict, info = env.reset()
+            active_mask = dict(info['active_mask'])
+            episode_end_reason = info['episode_end_reason']
             adv_ep_rewards = {bid: 0.0 for bid in adversarial_ids}
             ep_length = 0
             collision_sticky: Dict[int, bool] = {i: False for i in range(total_agents)}
-            # 修改1：逐 agent 终止追踪（death-masking）。蓝车自撞/到点后即停止为它采样，
-            # 红车自撞/到点同理；避免给已 despawn 的车记零观测假 transition。
-            blue_done: Dict[int, bool] = {bid: False for bid in adversarial_ids}
-            red_done: Dict[int, bool] = {cid: False for cid in cooperative_ids}
             ep_threat_active_steps = 0
             ep_total_threat_scores: List[float] = []
 
@@ -248,12 +247,12 @@ def train_blue_oracle(
                 with torch.no_grad():
                     agent_values = {
                         bid: float(critic(global_state_t, adv_index[bid]).item())
-                        for bid in adversarial_ids if not blue_done[bid]
+                        for bid in adversarial_ids if active_mask.get(bid, False)
                     }
 
                 with torch.no_grad():
                     for cid in cooperative_ids:
-                        if red_done[cid] or cid not in obs_dict:
+                        if not active_mask.get(cid, False) or cid not in obs_dict:
                             continue
                         obs_t = torch.as_tensor(obs_dict[cid], dtype=torch.float32,
                                                 device=device).unsqueeze(0)
@@ -261,7 +260,7 @@ def train_blue_oracle(
                             .squeeze(0).cpu().numpy()
                         action_dict[cid] = action_tanh_to_env(a)
                     for bid in adversarial_ids:
-                        if blue_done[bid] or bid not in obs_dict:   # 修改1：death-mask 已终止蓝车
+                        if not active_mask.get(bid, False) or bid not in obs_dict:
                             continue
                         obs_t = torch.as_tensor(obs_dict[bid], dtype=torch.float32,
                                                 device=device).unsqueeze(0)
@@ -280,6 +279,9 @@ def train_blue_oracle(
                 next_obs, rewards, dones, info = env.step(action_dict)
                 terminated_info = info.get('terminated', {})
                 reward_details = info.get('reward_details', {}) or {}
+                next_active_mask = info['active_mask']
+                episode_end_reason = info['episode_end_reason']
+                pre_collision_kinematics = info.get('pre_collision_kinematics', {}) or {}
 
                 step_collisions = info.get('collisions', {}) or {}
                 for i in range(total_agents):
@@ -302,12 +304,17 @@ def train_blue_oracle(
                     else:
                         win_red_speed_free.append(red_spd)
 
+                step_kinematics = extract_kinematics(
+                    env, cooperative_ids + adversarial_ids, action_dict,
+                    pre_collision_kinematics,
+                )
                 threat_scores = compute_blue_threat_scores(
                     env, cooperative_ids, adversarial_ids,
                     threat_radius=args.threat_radius,
                     threat_lateral=args.threat_lateral,
                     threat_tau=args.threat_tau,
                     threat_near=getattr(args, 'threat_near', 3.0),
+                    kinematics=step_kinematics,
                 )
                 ep_total_threat_scores.append(sum(threat_scores.values()))
 
@@ -336,19 +343,10 @@ def train_blue_oracle(
                         scenario_name=f"psro{psro_iter}_red{red_idx}",
                     ))
 
-                # 修改1：更新逐 agent 终止状态
-                for bid in adversarial_ids:
-                    if dones.get(bid, False):
-                        blue_done[bid] = True
-                for cid in cooperative_ids:
-                    if dones.get(cid, False):
-                        red_done[cid] = True
-
                 obs_dict = next_obs
-                # 修改1：env 不再在蓝车自撞时全局终止 → 按"红车全终止 或 蓝车全终止"收尾。
-                #   红车全 done（到点/碰撞/超时）= 对抗胜负已分；蓝车全 done = 再无蓝车样本可采。
-                #   旧 env 行为下（任一碰撞即全局 done）二者会同时触发，等价于原 all(dones)。
-                if all(red_done.values()) or all(blue_done.values()):
+                active_mask = dict(next_active_mask)
+                # 蓝车全部死亡时 reason 仍为 running，红车继续到成功/碰撞/真超时。
+                if episode_end_reason != "running":
                     break
 
             # episode 终止统计
@@ -356,7 +354,7 @@ def train_blue_oracle(
             blue_collision = any(collision_sticky[bid] for bid in adversarial_ids)
             # 红车结局拆分：碰撞（任一红车撞了）/ 超时（没成功也没撞，跑满步数）
             red_collision = any(collision_sticky[cid] for cid in cooperative_ids)
-            red_timeout = (not coop_success) and (not red_collision)
+            red_timeout = episode_end_reason == "max_steps"
 
             last_gs = env.get_global_state().astype(np.float32)
             for bid in adversarial_ids:
