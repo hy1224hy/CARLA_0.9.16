@@ -200,8 +200,25 @@ def train_blue_oracle(
         win_adv_returns: Dict[int, List[float]] = {bid: [] for bid in adversarial_ids}
         win_blue_threat_pct: List[float] = []
         win_avg_threat_score: List[float] = []
+        # 红车结局拆分（补齐 TB 缺口：原来只有 coop_success + blue_collision）
+        win_red_collision: List[float] = []
+        win_red_timeout: List[float] = []
+        # 减速代理：按"是否在威胁窗口内"分桶收集红车速度
+        win_red_speed_threat: List[float] = []
+        win_red_speed_free: List[float] = []
 
         comp_base_safe, comp_threat, comp_self_coll = [], [], []
+        # PPO 健康值（补齐 TB 缺口：原来算了但被丢弃）
+        ppo_metrics: Dict[str, List[float]] = {
+            "critic_loss": [],
+            "explained_variance": 0.0,
+        }
+        for bid in adversarial_ids:
+            ppo_metrics[f"actor_loss_{bid}"] = []
+            ppo_metrics[f"entropy_{bid}"] = []
+            ppo_metrics[f"kl_anchor_{bid}"] = []
+            ppo_metrics[f"approx_kl_{bid}"] = []
+            ppo_metrics[f"clip_frac_{bid}"] = []
 
         # ── 收集 rollout，每个 episode 采样一个 RED 团队 ──
         for rollout_ep in range(args.rollout_episodes):
@@ -277,6 +294,14 @@ def train_blue_oracle(
                 if threat_active:
                     ep_threat_active_steps += 1
 
+                # 减速代理：按威胁桶收集红车平均速度（与 fixed_scenario 同口径）
+                red_spd = avg_red_speed(env, cooperative_ids)
+                if red_spd is not None:
+                    if threat_active:
+                        win_red_speed_threat.append(red_spd)
+                    else:
+                        win_red_speed_free.append(red_spd)
+
                 threat_scores = compute_blue_threat_scores(
                     env, cooperative_ids, adversarial_ids,
                     threat_radius=args.threat_radius,
@@ -329,6 +354,9 @@ def train_blue_oracle(
             # episode 终止统计
             coop_success = all(env.reached_target.get(cid, False) for cid in cooperative_ids)
             blue_collision = any(collision_sticky[bid] for bid in adversarial_ids)
+            # 红车结局拆分：碰撞（任一红车撞了）/ 超时（没成功也没撞，跑满步数）
+            red_collision = any(collision_sticky[cid] for cid in cooperative_ids)
+            red_timeout = (not coop_success) and (not red_collision)
 
             last_gs = env.get_global_state().astype(np.float32)
             for bid in adversarial_ids:
@@ -340,6 +368,8 @@ def train_blue_oracle(
 
             win_coop_success.append(1.0 if coop_success else 0.0)
             win_blue_collision.append(1.0 if blue_collision else 0.0)
+            win_red_collision.append(1.0 if red_collision else 0.0)
+            win_red_timeout.append(1.0 if red_timeout else 0.0)
             win_ep_lengths.append(ep_length)
             for bid in adversarial_ids:
                 win_adv_returns[bid].append(adv_ep_rewards[bid])
@@ -425,6 +455,7 @@ def train_blue_oracle(
                 critic_loss.backward()
                 nn.utils.clip_grad_norm_(critic.parameters(), args.max_grad_norm)
                 critic_optim.step()
+                ppo_metrics["critic_loss"].append(float(critic_loss.item()))
 
             for bid in adversarial_ids:
                 if bid not in per_agent_tensors or agent_stopped[bid]:
@@ -435,7 +466,7 @@ def train_blue_oracle(
                 a_adv = per_agent_tensors[bid]["adv"]
                 a_n = a_obs.shape[0]
                 a_idx = np.arange(a_n); np.random.shuffle(a_idx)
-                ep_kl_proxy = []
+                ep_kl_proxy, ep_losses, ep_ent, ep_cf, ep_kl_anc = [], [], [], [], []
                 for start in range(0, a_n, args.minibatch_size):
                     mb = a_idx[start: start + args.minibatch_size]
                     new_logp, entropy = adversarial_actors[bid].evaluate_actions_z(
@@ -465,11 +496,31 @@ def train_blue_oracle(
                     nn.utils.clip_grad_norm_(adversarial_actors[bid].parameters(),
                                              args.max_grad_norm)
                     adversarial_actor_optims[bid].step()
+                    ep_losses.append(float(actor_loss.item()))
+                    ep_ent.append(float(entropy.mean().item()))
+                    ep_kl_anc.append(float(kl_anchor.item()))
                     with torch.no_grad():
                         ep_kl_proxy.append(float(((ratio - 1.0) - logratio).mean().item()))
+                        ep_cf.append(
+                            float(((ratio - 1.0).abs() > args.clip_eps).float().mean().item())
+                        )
                 mean_kl = float(np.mean(ep_kl_proxy)) if ep_kl_proxy else 0.0
+                # 补齐 TB 缺口：把已算的 PPO 健康值收集起来（原来算了就丢）
+                if ep_losses:
+                    ppo_metrics[f"actor_loss_{bid}"].append(float(np.mean(ep_losses)))
+                    ppo_metrics[f"entropy_{bid}"].append(float(np.mean(ep_ent)))
+                    ppo_metrics[f"kl_anchor_{bid}"].append(float(np.mean(ep_kl_anc)))
+                    ppo_metrics[f"approx_kl_{bid}"].append(mean_kl)
+                    ppo_metrics[f"clip_frac_{bid}"].append(float(np.mean(ep_cf)))
                 if args.target_kl > 0 and mean_kl > 1.5 * args.target_kl:
                     agent_stopped[bid] = True
+
+        # explained_variance：critic 拟合优度（补齐 TB 缺口）
+        with torch.no_grad():
+            all_vp = critic(critic_state_t, critic_aid_t)
+            var_res = torch.var(critic_ret_t - all_vp)
+            var_tot = torch.var(critic_ret_t)
+            ppo_metrics["explained_variance"] = float(1.0 - var_res / (var_tot + 1e-8))
 
         # ── TB 日志 ──
         if tb_writer is not None:
@@ -488,7 +539,50 @@ def train_blue_oracle(
                                  float(np.mean(comp_base_safe)) if comp_base_safe else 0.0, tb_step)
             tb_writer.add_scalar(f'psro{psro_iter}/reward_threat',
                                  float(np.mean(comp_threat)) if comp_threat else 0.0, tb_step)
+            tb_writer.add_scalar(f'psro{psro_iter}/reward_self_collision',
+                                 float(np.mean(comp_self_coll)) if comp_self_coll else 0.0, tb_step)
             tb_writer.add_scalar(f'psro{psro_iter}/lr_actor', cur_lr_a, tb_step)
+
+            # ── 红车结局拆分（对抗有效性归因）──
+            pre = f'psro{psro_iter}'
+            tb_writer.add_scalar(f'{pre}/red_collision_rate',
+                                 float(np.mean(win_red_collision)) if win_red_collision else 0.0, tb_step)
+            tb_writer.add_scalar(f'{pre}/red_timeout_rate',
+                                 float(np.mean(win_red_timeout)) if win_red_timeout else 0.0, tb_step)
+            # adv_effectiveness = 1 − coop_success（红车没全到点即算对抗生效，绝对量，非反事实）
+            tb_writer.add_scalar(f'{pre}/adv_effectiveness', 1.0 - win_succ, tb_step)
+
+            # ── 减速代理 ──
+            red_spd_t = float(np.mean(win_red_speed_threat)) if win_red_speed_threat else 0.0
+            red_spd_f = float(np.mean(win_red_speed_free)) if win_red_speed_free else 0.0
+            slowdown = ((red_spd_f - red_spd_t) / red_spd_f) if red_spd_f > 0.1 else 0.0
+            tb_writer.add_scalar(f'{pre}/red_avg_speed_under_threat', red_spd_t, tb_step)
+            tb_writer.add_scalar(f'{pre}/red_avg_speed_free', red_spd_f, tb_step)
+            tb_writer.add_scalar(f'{pre}/red_relative_slowdown', slowdown, tb_step)
+            tb_writer.add_scalar(f'{pre}/avg_ep_length',
+                                 float(np.mean(win_ep_lengths)) if win_ep_lengths else 0.0, tb_step)
+
+            # ── PPO 健康值（原来算了就丢，现补记）──
+            if ppo_metrics["critic_loss"]:
+                tb_writer.add_scalar(f'{pre}/ppo_critic_loss',
+                                     float(np.mean(ppo_metrics["critic_loss"])), tb_step)
+                tb_writer.add_scalar(f'{pre}/ppo_explained_variance',
+                                     ppo_metrics["explained_variance"], tb_step)
+            for bid in adversarial_ids:
+                if ppo_metrics[f"actor_loss_{bid}"]:
+                    tb_writer.add_scalar(f'{pre}/ppo_actor_loss_b{bid}',
+                                         float(np.mean(ppo_metrics[f"actor_loss_{bid}"])), tb_step)
+                    tb_writer.add_scalar(f'{pre}/ppo_entropy_b{bid}',
+                                         float(np.mean(ppo_metrics[f"entropy_{bid}"])), tb_step)
+                    tb_writer.add_scalar(f'{pre}/ppo_kl_anchor_b{bid}',
+                                         float(np.mean(ppo_metrics[f"kl_anchor_{bid}"])), tb_step)
+                    tb_writer.add_scalar(f'{pre}/ppo_approx_kl_b{bid}',
+                                         float(np.mean(ppo_metrics[f"approx_kl_{bid}"])), tb_step)
+                    tb_writer.add_scalar(f'{pre}/ppo_clip_frac_b{bid}',
+                                         float(np.mean(ppo_metrics[f"clip_frac_{bid}"])), tb_step)
+                # 蓝车探索水平
+                tb_writer.add_scalar(f'{pre}/log_std_b{bid}',
+                                     float(adversarial_actors[bid].log_std.mean().item()), tb_step)
 
         win_succ_f = float(np.mean(win_coop_success))
         print(f"  [PSRO {psro_iter} update {update:3d}/{args.inner_updates}] "

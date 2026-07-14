@@ -13,8 +13,11 @@
 | 2026-07-05 | v1.1 | 新增附录 A：各阶段运行指令（参数与各脚本 argparser 逐一核对） | 便于按计划直接执行 |
 | 2026-07-05 | v1.2 | 决策：红车基础奖励 v2 **原样沿用**（不改）；蓝车对抗奖励按 §2.3 执行 | 红车须是固定的"正常驾驶"基准以保证可比性；对抗奖励与红车奖励正交 |
 | 2026-07-05 | v1.3 | 新增 §2.5：对抗奖励抽成**单一共享模块**；决策保留 fixed_scenario 作为 §2.3 的快验代理 | 发现奖励公式在 fixed_scenario 与 train_blue_oracle 复制粘贴，改一处会分叉；PSRO 真正落点是 train_blue_oracle |
+| 2026-07-05 | v1.4 | **落地**：① 补齐 `train_blue_oracle.py` PSRO TB 缺口（PPO 健康值 + 红车结局拆分 + 减速代理）；② 新建 `utils/adversarial_metrics.py`（归因工具，CARLA 解耦，附单测冒烟）；③ 新建 `training/adversarial_reward.py`（§2.3 单一真相源 `AdversarialRewardComputer`）；④ 新建 `training/train_2red_1blue_ppo.py`（2+1 PPO，`--num-adversarial 2` 即升 2+2） | 执行 §2.5 实现次序 metrics→reward→脚本；先让新脚本吃上正确奖励并端到端验证通过，旧两处（fixed_scenario / train_blue_oracle）迁移到共享模块留待下一轮 |
 
 > 后续所有设计变更在此表追加一行，并在正文对应小节标注 `[vX.X 变更]`。
+
+> **v1.4 实现状态（§2.5）**：`adversarial_reward.py` 已成为单一真相源，但目前仅 `train_2red_1blue_ppo.py` 接入。`train_adversarial_fixed_scenario.py:479` 与 `train_blue_oracle.py:296` 仍是内联复制的旧公式（`base_safe + threat_coef*threat + self_coll`，无 r_impact/门控/封顶）——**待迁移**，迁移前二者与新脚本的奖励口径不一致。
 
 ---
 
