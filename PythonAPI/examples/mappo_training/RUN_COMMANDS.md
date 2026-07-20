@@ -1,7 +1,14 @@
 
 # 运行指令参考
 
-本文档总结项目中所有脚本的运行方式和主要参数。
+本文档保留项目脚本的历史运行方式，但新实验必须遵守下面的入口冻结规则。阶段顺序和是否允许运行以 [毕业课题研究推进 TODO](docs/毕业课题_研究推进TODO.md) 为准。
+
+> **入口冻结（2026-07-20）**
+>
+> - 基础策略唯一入口：`training.train_no_rllib_mappo_robust_v2`。
+> - Phase 1 单蓝车唯一入口：`training.train_2red_1blue_ppo`。
+> - RLlib、shared-policy、minimal/robust v1、旧 adversarial PPO 和旧 multi 入口全部是 **DEPRECATED**，不得用于新训练、resume、正式 checkpoint 或论文结果。
+> - P0-00G 前禁止运行训练 smoke；P0-06 前禁止基础策略或对抗策略长训练。
 
 ---
 
@@ -42,7 +49,36 @@ CarlaUE4.exe
 
 ## 训练脚本
 
-### 1. train_no_rllib_mappo.py - 独立 MAPPO 训练
+### 当前有效入口
+
+所有命令都在 `PythonAPI/examples/mappo_training/` 目录执行。
+
+```powershell
+# P0-00G：基础 MAPPO 三更新 smoke
+# 只允许在 P0-00B 至 P0-00F 全部通过后执行
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --updates 3 `
+  --rollout-episodes 4 `
+  --min-transitions-per-update 64 `
+  --max-steps 300 `
+  --seed 42 `
+  --save-dir logs/P0_00G_robust_v2_smoke_s42_<timestamp>
+
+# Phase 1：单蓝车三更新 smoke
+# 只允许在 P0-06 通过后执行
+..\..\..\venv\Scripts\python.exe -m training.train_2red_1blue_ppo `
+  --pretrained-ckpt <best_base_valid.pt> `
+  --scenario scenario_01_basic.json `
+  --updates 3 `
+  --rollout-episodes 4 `
+  --no-viz `
+  --seed 42 `
+  --save-dir logs/P1_single_blue_basic_s42_<timestamp>
+```
+
+正式训练参数必须固化到版本控制配置中并登记 RunID；不要直接把 smoke 命令扩成上百 updates。
+
+### 1. [DEPRECATED] train_no_rllib_mappo.py - 早期独立 MAPPO
 
 **功能：** 不依赖 RLlib 的 MAPPO 训练，使用集中式批评家（CTDE）
 
@@ -105,7 +141,7 @@ python -m training.train_no_rllib_mappo \
 
 ---
 
-### 2. train_adversarial_ppo.py - 对抗智能体训练
+### 2. [DEPRECATED] train_adversarial_ppo.py - 早期对抗智能体训练
 
 **功能：** 训练 Agent 2 作为对抗者，对抗冻结的预训练 Agent 0 & 1
 
@@ -177,9 +213,9 @@ python -m training.train_adversarial_ppo \
 
 ---
 
-### 3. train_rllib.py - RLlib MAPPO 训练
+### 3. [DEPRECATED] train_rllib.py - 历史 RLlib PPO 训练
 
-**功能：** 使用 Ray RLlib 框架进行 MAPPO 训练
+**历史功能：** 使用 Ray RLlib 的共享 PPO 配置；没有当前 MAPPO centralized critic，不得称为当前 MAPPO 基线。
 
 **运行方式：**
 ```bash
@@ -301,6 +337,8 @@ python -m utils.record_manual_control \
 
 ## 常用参数速查表
 
+下表主要对应历史入口，可能与当前 `robust_v2`/`train_2red_1blue_ppo` 默认值不同。执行前必须以目标模块的 `--help` 和版本化配置为准。
+
 ### 环境参数
 
 | 参数 | 默认值 | 说明 |
@@ -354,53 +392,42 @@ python -m utils.record_manual_control \
 
 ## 典型工作流程示例
 
-### 完整流程 1：正常智能体训练
+### 当前流程 1：基础策略
 
 ```bash
 # 1. 启动 CARLA
 # (在另一个终端)
 CarlaUE4.exe
 
-# 2. (可选) 采集手动数据
-python -m utils.record_manual_control --agent-id 0 --output-dir ./data/manual_driving_data
-python -m utils.record_manual_control --agent-id 1 --output-dir ./data/manual_driving_data
+# 2. 先完成 TODO P0-00A 至 P0-00F 和全部单元测试
 
-# 3. (可选) 预训练
-python -m training.pretrain_with_manual_data \
-    --manual-data-dir ./data/manual_driving_data \
-    --output-dir ./pretrained_models
+# 3. 运行 P0-00G smoke（命令见“当前有效入口”）
 
-# 4. 训练
-python -m training.train_no_rllib_mappo --render
+# 4. 完成 P0-01 至 P0-06；在此之前禁止长训练
 
-# 5. 评估
-python -m evaluation.evaluate_no_rllib_mappo --checkpoint ./logs/minimal_mappo_ckpts/ckpt_50.pt
+# 5. 门槛通过后，用版本化配置启动 robust_v2 正式训练
+python -m training.train_no_rllib_mappo_robust_v2 <frozen-config-args>
+
+# 6. 通过独立 C0/C1 验证，从 periodic checkpoint 生成 best_base_valid.pt
 ```
 
-### 完整流程 2：对抗智能体训练
+### 当前流程 2：单蓝车对抗
 
 ```bash
 # 1. 启动 CARLA
 CarlaUE4.exe
 
-# 2. (前置) 已有正常智能体的 checkpoint
+# 2. 前置：P0-06 已通过，且已有 best_base_valid.pt
 
-# 3. 对抗训练（带课程学习）
-python -m training.train_adversarial_ppo \
-    --pretrained-ckpt ./logs/minimal_mappo_ckpts/ckpt_100.pt \
-    --curriculum-learning \
-    --warmup-updates 100 \
-    --ramp-up-updates 200
+# 3. 先运行 Phase 1 三更新 smoke（命令见“当前有效入口”）
 
-# 4. 或用启动器同时开启可视化
-python -m training.run_adversarial_training_with_viz \
-    --pretrained-ckpt ./logs/minimal_mappo_ckpts/ckpt_100.pt
+# 4. smoke 验收后，使用唯一 RunID 和冻结配置运行 train_2red_1blue_ppo
+python -m training.train_2red_1blue_ppo \
+    --pretrained-ckpt <best_base_valid.pt> \
+    --scenario scenario_01_basic.json \
+    <frozen-config-args>
 
-# 5. 评估
-python -m evaluation.evaluate_adversarial_ppo --checkpoint ./logs/adversarial_ppo_ckpts/adversarial_ppo_update_100.pt
-
-# 6. 加速场景测试
-python -m evaluation.evaluate_with_speedup --checkpoint ./logs/adversarial_ppo_ckpts/adversarial_ppo_update_100.pt
+# 5. 用 C0/C1/C2 独立评估器选择 best_valid.pt，不使用训练 rollout 选 best
 ```
 
 ---
@@ -426,14 +453,14 @@ tensorboard --logdir logs/adversarial_training
 **Q: 提示找不到模块？**
 ```
 A: 确保从根目录以模块方式运行：
-python -m training.train_no_rllib_mappo
-而非：python training/train_no_rllib_mappo.py
+python -m training.train_no_rllib_mappo_robust_v2
+而非：python training/train_no_rllib_mappo_robust_v2.py
 ```
 
 **Q: 如何从 checkpoint 继续训练？**
 ```
-A: 当前脚本需要手动修改代码来加载。
-建议使用小的 --save-interval 以便频繁保存。
+A: 只允许从当前协议生成且兼容性校验通过的 checkpoint resume。
+旧 RLlib/minimal/robust v1/旧对抗 checkpoint 默认只能作历史评估，不能作为新实验起点。
 ```
 
 **Q: 显存不足？**

@@ -3,6 +3,8 @@
 
 本文档列出项目中所有文件的功能说明，帮助快速定位需要的文件。
 
+> **当前入口冻结（2026-07-20）**：基础策略只使用 `train_no_rllib_mappo_robust_v2.py`，Phase 1 单蓝车只使用 `train_2red_1blue_ppo.py`。RLlib、shared-policy、minimal/robust v1、旧 adversarial PPO 和旧 multi 入口仅保留作历史参考，不得用于新实验。执行顺序见 [毕业课题研究推进 TODO](docs/毕业课题_研究推进TODO.md)。
+
 ---
 
 ## 目录
@@ -29,7 +31,7 @@
 | | - 正常智能体奖励函数 | `_compute_rewards()` |
 | | - 对抗智能体专用奖励 | `_compute_adversarial_reward()` |
 | | - 自定义起始位置 | `set_custom_start_positions()` |
-| **carla_rllib_wrapper.py** | RLlib兼容的环境包装器 | `RLlibCarlaEnv` |
+| **carla_rllib_wrapper.py** | **[DEPRECATED]** 历史 RLlib 环境包装器 | `RLlibCarlaEnv` |
 | **speedup_env_wrapper.py** | 提速环境包装器（用于评估） | `SpeedupEnvWrapper`, `SpeedupActionWrapper`, `AdaptiveSpeedupWrapper` |
 | | - 固定油门放大模式 | `SpeedupActionWrapper` |
 | | - 自适应速度调整模式 | `AdaptiveSpeedupWrapper` |
@@ -40,14 +42,15 @@
 
 | 文件名 | 功能说明 | 使用场景 |
 |--------|----------|----------|
-| **train_rllib.py** | 基于Ray RLlib的MAPPO训练 | 大规模分布式训练 |
-| **train_no_rllib_mappo.py** | 独立实现的MAPPO训练 | 轻量级训练，不依赖Ray |
-| **train_no_rlib_sharedpolicy.py** | 共享策略的多智能体训练 | 参数共享的协同训练 |
-| **train_adversarial_ppo.py** | 对抗智能体训练（核心） | 训练Agent 2作为干扰者 |
-| | - 加载预训练Agent 0/1并冻结 | `--pretrained-ckpt` |
-| | - Agent 2用PPO训练 | 对抗奖励 = 基础奖励 + 对抗系数 * -avg(others) |
-| | - 支持课程学习 | `--curriculum-learning`, `--warmup-updates`, `--ramp-up-updates` |
-| **run_adversarial_training_with_viz.py** | 对抗训练启动器（带可视化） | 同时启动训练和可视化窗口 |
+| **train_no_rllib_mappo_robust_v2.py** | **[CURRENT]** 基础红车 MAPPO 唯一入口 | P0-00 修复/smoke，门槛通过后正式基础策略训练 |
+| **train_2red_1blue_ppo.py** | **[CURRENT]** 单蓝车 PPO 唯一入口 | P0-06 通过后的 Phase 1 |
+| **train_rllib.py** | **[DEPRECATED]** 历史 RLlib 共享 PPO | 禁止新训练/论文结果 |
+| **train_no_rllib_mappo.py** | **[DEPRECATED]** 早期独立 MAPPO | 历史参考 |
+| **train_no_rllib_mappo_robust.py** | **[DEPRECATED]** robust v1 | 历史参考 |
+| **train_no_rlib_sharedpolicy.py** | **[DEPRECATED]** 早期共享策略 PPO | 算法数据流未迁移，禁止使用 |
+| **train_adversarial_ppo.py** | **[DEPRECATED]** 早期单对抗 PPO | 历史参考 |
+| **run_adversarial_training_with_viz.py** | **[DEPRECATED]** 早期对抗训练启动器 | 历史参考 |
+| **train_multi_adversarial_*.py** | **[LATER]** 多蓝车训练入口 | Phase 3 前统一生命周期/奖励后重新验收 |
 | **pretrain_with_manual_data.py** | 手动驾驶数据预训练 | 用行为克隆初始化策略 |
 
 ---
@@ -56,10 +59,10 @@
 
 | 文件名 | 功能说明 |
 |--------|----------|
-| **evaluate_rllib.py** | 评估RLlib训练的智能体 |
-| **evaluate_rllib_checkpoint.py** | 从checkpoint加载并评估RLlib智能体 |
-| **evaluate_no_rllib_mappo.py** | 评估独立MAPPO训练的智能体 |
-| **evaluate_adversarial_ppo.py** | 评估对抗智能体 |
+| **evaluate_rllib.py** | **[DEPRECATED]** 评估历史 RLlib 智能体 |
+| **evaluate_rllib_checkpoint.py** | **[DEPRECATED]** 加载历史 RLlib checkpoint |
+| **evaluate_no_rllib_mappo.py** | 诊断历史独立 MAPPO checkpoint；非当前统一 C0/C1/C2 结论入口 |
+| **evaluate_adversarial_ppo.py** | 诊断历史对抗 checkpoint；非当前统一 C0/C1/C2 结论入口 |
 | **evaluate_adversarial.py** | 对抗场景综合评估 |
 | **evaluate_with_speedup.py** | 在提速场景下评估（测试对抗智能体鲁棒性） |
 
@@ -119,20 +122,23 @@
 ### 正常智能体训练流程
 1. `record_manual_control.py` → 采集手动数据（可选）
 2. `pretrain_with_manual_data.py` → 预训练（可选）
-3. `train_no_rllib_mappo.py` 或 `train_rllib.py` → 正式训练
-4. `evaluate_no_rllib_mappo.py` → 评估
+3. 完成 TODO P0-00 和 Phase 0 门槛
+4. `train_no_rllib_mappo_robust_v2.py` → 唯一正式基础策略入口
+5. 独立 C0/C1 验证 → 生成 `best_base_valid.pt`
 
 ### 对抗智能体训练流程
-1. （前置）完成正常智能体训练，得到checkpoint
-2. `train_adversarial_ppo.py --pretrained-ckpt <path>` → 对抗训练
-3. `evaluate_adversarial_ppo.py` → 标准场景评估
-4. `evaluate_with_speedup.py` → 提速场景评估（鲁棒性测试）
+1. （前置）P0-06 通过并取得 `best_base_valid.pt`
+2. `train_2red_1blue_ppo.py --pretrained-ckpt <path>` → Phase 1 单蓝车训练
+3. C0/C1/C2 统一评估器 → 配对独立评估与 `best_valid.pt`
+4. Phase 1 通过后才开放多蓝车、PSRO 和通信实验
 
 ### 文件依赖关系
 ```
-train_adversarial_ppo.py
+train_2red_1blue_ppo.py
 ├── carla_multi_agent_env.py
-└── visualize_adversarial_training.py (可选)
+├── actor_critic.py
+├── adversarial_reward.py
+└── mappo_visualizer.py (可选)
 
 evaluate_with_speedup.py
 ├── carla_multi_agent_env.py
@@ -142,4 +148,3 @@ pretrain_with_manual_data.py
 ├── manual_data_loader.py
 └── carla_rllib_wrapper.py (可选)
 ```
-
