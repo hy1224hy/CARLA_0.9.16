@@ -44,6 +44,7 @@
 |--------|----------|----------|
 | **train_no_rllib_mappo_robust_v2.py** | **[CURRENT]** 基础红车 MAPPO 唯一入口 | P0-00 修复/smoke，门槛通过后正式基础策略训练 |
 | **train_2red_1blue_ppo.py** | **[CURRENT]** 单蓝车 PPO 唯一入口 | P0-06 通过后的 Phase 1 |
+| **lifecycle_semantics.py** | **[CURRENT]** 统一校验 `done/terminated/truncated` 并选择合法 bootstrap state | 两个当前入口共享的 P0-00B 协议 |
 | **train_rllib.py** | **[DEPRECATED]** 历史 RLlib 共享 PPO | 禁止新训练/论文结果 |
 | **train_no_rllib_mappo.py** | **[DEPRECATED]** 早期独立 MAPPO | 历史参考 |
 | **train_no_rllib_mappo_robust.py** | **[DEPRECATED]** robust v1 | 历史参考 |

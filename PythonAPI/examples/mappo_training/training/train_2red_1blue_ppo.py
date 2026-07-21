@@ -48,6 +48,10 @@ from training.train_adversarial_fixed_scenario import (
     is_any_red_under_threat, avg_red_speed, prepare_fixed_scenario_config,
 )
 from training.adversarial_reward import AdversarialRewardComputer, RewardConfig, IMPACT_KEYS
+from training.lifecycle_semantics import (
+    bootstrap_state_for_boundary,
+    validate_lifecycle_flags,
+)
 
 try:
     from visualization.mappo_visualizer import MAPPOVisualizer
@@ -295,6 +299,10 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
         obs_dict, info = env.reset()
         active_mask = dict(info['active_mask'])
         episode_end_reason = info['episode_end_reason']
+        final_dones: Dict[int, bool] = {i: False for i in range(total_agents)}
+        final_terminated = dict(info['terminated'])
+        final_truncated = dict(info['truncated'])
+        final_global_state = env.get_global_state().astype(np.float32)
         reward_computer.reset_episode()
         adv_ep_rewards = {aid: 0.0 for aid in adversarial_ids}
         ep_len = 0
@@ -337,11 +345,20 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
                     }
 
             next_obs, rewards, dones, info = env.step(action_dict)
-            terminated_info = info.get('terminated', {})
+            terminated_info = info['terminated']
+            truncated_info = info['truncated']
             reward_details = info.get('reward_details', {}) or {}
             step_collisions = info.get('collisions', {}) or {}
             next_active_mask = info['active_mask']
             episode_end_reason = info['episode_end_reason']
+            final_dones = {i: bool(dones.get(i, False)) for i in range(total_agents)}
+            final_terminated = dict(terminated_info)
+            final_truncated = dict(truncated_info)
+            # 直接从 env.step() 返回的 observation 固化该 transition 的 s_(t+1)，
+            # 避免后续 despawn 改变重新读取的全局状态。只有合法 X 边界会使用。
+            final_global_state = np.concatenate([
+                np.asarray(next_obs[i], dtype=np.float32) for i in range(total_agents)
+            ])
             pre_collision_kinematics = info.get('pre_collision_kinematics', {}) or {}
             for i in range(total_agents):
                 if step_collisions.get(i, False):
@@ -364,6 +381,12 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
             for aid in step_cache.keys():
                 combined = combined_rewards.get(aid, 0.0)
                 d = details.get(aid, {})
+                done, terminated, _truncated = validate_lifecycle_flags(
+                    dones.get(aid, False),
+                    terminated_info.get(aid, False),
+                    truncated_info.get(aid, False),
+                    context=f"train_2red_1blue agent={aid} step={step}",
+                )
                 adv_ep_rewards[aid] += combined
                 acc["base_safe"].append(d.get("base_safe", 0.0))
                 acc["threat_raw"].append(d.get("threat_raw", 0.0))
@@ -377,8 +400,8 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
                 buffer.add(aid, Transition(
                     obs=step_cache[aid]["obs"], global_state=step_cache[aid]["global_state"],
                     action_z=step_cache[aid]["action_z"], log_prob=step_cache[aid]["logp"],
-                    reward=combined, done=float(dones.get(aid, False)),
-                    terminated=float(terminated_info.get(aid, dones.get(aid, False))),
+                    reward=combined, done=float(done),
+                    terminated=float(terminated),
                     value=step_cache[aid]["value"], scenario_name=args.scenario,
                 ))
                 last_idx[aid] = len(buffer.data[aid]) - 1
@@ -407,11 +430,18 @@ def _rollout(args, env, device, cooperative_ids, adversarial_ids, adv_index,
                 adv_ep_rewards[aid] += b
             acc[f"impact_timeout"].append(b)
 
-        last_gs = env.get_global_state().astype(np.float32)
         for aid in adversarial_ids:
+            boundary_count = len(buffer.episode_boundaries[aid])
             buffer.mark_episode_end(aid)
-            naturally_terminal = env.reached_target.get(aid, False) or collision_sticky[aid]
-            buffer.add_episode_bootstrap(aid, None if naturally_terminal else last_gs)
+            if len(buffer.episode_boundaries[aid]) > boundary_count:
+                bootstrap_state = bootstrap_state_for_boundary(
+                    final_dones.get(aid, False),
+                    final_terminated.get(aid, False),
+                    final_truncated.get(aid, False),
+                    final_global_state,
+                    context=f"train_2red_1blue agent={aid}",
+                )
+                buffer.add_episode_bootstrap(aid, bootstrap_state)
             acc["adv_return"][aid].append(adv_ep_rewards[aid])
 
         acc["coop_success"].append(1.0 if coop_success else 0.0)
@@ -455,6 +485,17 @@ def _ppo_update(args, device, adversarial_ids, adv_index, adversarial_actors,
         value_arr = np.array([t.value for t in data], dtype=np.float32)
         boundaries = buffer.episode_boundaries.get(aid, [])
         bootstrap_states = buffer.episode_bootstrap_states.get(aid, [])
+        if len(bootstrap_states) != len(boundaries):
+            raise RuntimeError(
+                f"Agent {aid} bootstrap/boundary count mismatch: "
+                f"{len(bootstrap_states)} != {len(boundaries)}"
+            )
+        if not boundaries or boundaries[-1][1] != len(data):
+            raise RuntimeError(
+                f"Agent {aid} rollout has unclosed transitions: "
+                f"last_boundary={boundaries[-1][1] if boundaries else 0}, "
+                f"data={len(data)}"
+            )
         bootstrap_values = []
         with torch.no_grad():
             for bs in bootstrap_states:
@@ -703,8 +744,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 
 
 

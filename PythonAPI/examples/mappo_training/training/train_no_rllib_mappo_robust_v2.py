@@ -28,6 +28,10 @@ from torch.utils.tensorboard import SummaryWriter
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 from visualization.mappo_visualizer import MAPPOVisualizer
 from models.actor_critic import Actor, AgentConditionedCritic
+from training.lifecycle_semantics import (
+    bootstrap_state_for_boundary,
+    validate_lifecycle_flags,
+)
 
 
 def set_seed(seed: int):
@@ -687,6 +691,10 @@ def train(args):
                 # （见 carla_multi_agent_env.py:978-984），episode 结束后读是 0
                 # 这里用 info['collisions'] 每步 OR 累积，episode 内 sticky
                 ep_collision_sticky: Dict[int, bool] = {aid: False for aid in agent_ids}
+                final_dones: Dict[int, bool] = {aid: False for aid in agent_ids}
+                final_terminated = dict(info['terminated'])
+                final_truncated = dict(info['truncated'])
+                final_global_state = env.get_global_state().astype(np.float32)
 
                 for step in range(args.max_steps):
                     ep_length += 1
@@ -722,7 +730,16 @@ def train(args):
                         }
 
                     next_obs, rewards, dones, info = env.step(action_dict)
-                    terminated_info = info.get('terminated', {})
+                    terminated_info = info['terminated']
+                    truncated_info = info['truncated']
+                    final_dones = {aid: bool(dones.get(aid, False)) for aid in agent_ids}
+                    final_terminated = dict(terminated_info)
+                    final_truncated = dict(truncated_info)
+                    # 直接从 env.step() 返回的 observation 固化该 transition 的 s_(t+1)，
+                    # 避免后续 despawn 改变重新读取的全局状态。只有合法 X 边界会使用。
+                    final_global_state = np.concatenate(
+                        [np.asarray(next_obs[aid], dtype=np.float32) for aid in agent_ids]
+                    )
 
                     # Phase A1: 每步累积"本回合是否撞过"（info['collisions'] 已含人行横道）
                     step_collisions = info.get('collisions', {}) or {}
@@ -732,8 +749,12 @@ def train(args):
 
                     for aid in step_cache.keys():
                         reward = float(rewards.get(aid, 0.0))
-                        done = float(dones.get(aid, False))
-                        terminated = float(terminated_info.get(aid, dones.get(aid, False)))
+                        done, terminated, _truncated = validate_lifecycle_flags(
+                            dones.get(aid, False),
+                            terminated_info.get(aid, False),
+                            truncated_info.get(aid, False),
+                            context=f"robust_v2 agent={aid} step={step}",
+                        )
                         episode_rewards[aid] += reward
 
                         transition = Transition(
@@ -742,8 +763,8 @@ def train(args):
                             action_z=step_cache[aid]["action_z"],
                             log_prob=step_cache[aid]["logp"],
                             reward=reward,
-                            done=done,
-                            terminated=terminated,
+                            done=float(done),
+                            terminated=float(terminated),
                             value=step_cache[aid]["value"],
                             scenario_name=scenario_name,
                         )
@@ -791,19 +812,22 @@ def train(args):
                 elif ep_timeout:
                     total_timeouts += 1
 
-                # Phase A2: per-agent 自然终止 vs 截断
-                # 自然终止：本 agent 自己撞 或 本 agent 到 goal → bootstrap = None (V=0)
-                # 其它（max_steps 截断、被对方撞牵连）→ bootstrap = V(last_global_state)
-                last_gs = env.get_global_state().astype(np.float32)
+                # P0-00B：bootstrap 类型只服从环境发布的最终 T/X 协议，不再根据
+                # reached_target 或碰撞 sticky 标志二次猜测。X 可来自 max_steps，
+                # 也可来自同伴红车碰撞造成的 agent-centric 外部中断。
                 for aid in agent_ids:
+                    boundary_count = len(buffer.episode_boundaries[aid])
                     buffer.mark_episode_end(aid)
-                    own_reached = env.reached_target.get(aid, False)
-                    own_crashed = ep_collision_per_agent[aid]
-                    naturally_terminal = own_reached or own_crashed
-                    if naturally_terminal:
-                        buffer.add_episode_bootstrap(aid, None)
-                    else:
-                        buffer.add_episode_bootstrap(aid, last_gs)
+                    if len(buffer.episode_boundaries[aid]) == boundary_count:
+                        continue
+                    bootstrap_state = bootstrap_state_for_boundary(
+                        final_dones.get(aid, False),
+                        final_terminated.get(aid, False),
+                        final_truncated.get(aid, False),
+                        final_global_state,
+                        context=f"robust_v2 agent={aid} episode={rollout_episode}",
+                    )
+                    buffer.add_episode_bootstrap(aid, bootstrap_state)
 
                 # 记录 episode
                 avg_ret = float(np.mean([episode_rewards[aid] for aid in agent_ids]))
@@ -847,6 +871,17 @@ def train(args):
                     boundaries = buffer.episode_boundaries.get(aid, [])
                     # 修复 #1：bootstrap 值也要按 agent 条件化
                     bootstrap_states = buffer.episode_bootstrap_states.get(aid, [])
+                    if len(bootstrap_states) != len(boundaries):
+                        raise RuntimeError(
+                            f"Agent {aid} bootstrap/boundary count mismatch: "
+                            f"{len(bootstrap_states)} != {len(boundaries)}"
+                        )
+                    if not boundaries or boundaries[-1][1] != len(data):
+                        raise RuntimeError(
+                            f"Agent {aid} rollout has unclosed transitions: "
+                            f"last_boundary={boundaries[-1][1] if boundaries else 0}, "
+                            f"data={len(data)}"
+                        )
                     bootstrap_values = []
                     with torch.no_grad():
                         for bs in bootstrap_states:

@@ -1720,8 +1720,8 @@ class CarlaMultiAgentEnv:
         """检查是否完成。
 
         同时维护 self.last_terminated / self.last_truncated（修复 #2）：
-          - terminated[i]: 真正终止（到达终点 / 自身严重碰撞 / 车辆销毁）→ value 不 bootstrap
-          - truncated[i]:  done 但非 terminated（超时，或被全局 override 连带结束）→ value 仍需 bootstrap
+          - terminated[i]: agent-specific 任务终止 → value 不 bootstrap
+          - truncated[i]:  agent-specific 任务仍可继续，但被外部边界打断 → value 仍需 bootstrap
           - active_mask[i]: 下一步是否仍允许动作与 transition 采样
           - episode_end_reason: running / cooperative_success / all_agents_reached /
                                 cooperative_collision / adversary_collision / max_steps /
@@ -1841,7 +1841,20 @@ class CarlaMultiAgentEnv:
             # 兜底纯对抗/自定义 agent 编组，避免没有 active agent 时空转到 max_steps。
             episode_end_reason = "all_agents_terminated"
 
-        # 全局结局只负责关闭仍存活的个体；它们没有自然终止，因此在下方记为 truncated。
+        # agent-centric 结局语义：
+        # - 红车任务按车辆分别计回报。一辆红车碰撞时，其他红车只是被场景重置打断，
+        #   因而保持 terminated=False，随后记为 truncated=True。
+        # - 蓝车的对抗任务以红车成功/碰撞为结局。无论红车最终成功还是碰撞，
+        #   本轮对抗都已经产生结果，因此 cooperative_success/cooperative_collision
+        #   对所有蓝车均为 terminated=True，不允许 bootstrap。
+        # - adversary_collision_ends_episode=True 是当前入口未启用的兼容分支，本轮保持
+        #   旧语义：直接碰撞蓝车 terminated，其他被连带关闭的车辆 truncated。
+        if episode_end_reason in {"cooperative_success", "cooperative_collision"}:
+            for i in self.adversarial_agent_ids:
+                terminated[i] = True
+
+        # 全局 episode 边界关闭所有仍存活的个体；其 terminated/truncated 原因由上面的
+        # agent-specific 任务语义决定。
         if episode_end_reason != "running":
             for i in range(self.num_agents):
                 dones[i] = True
@@ -1852,6 +1865,17 @@ class CarlaMultiAgentEnv:
             i: bool(dones.get(i, False) and not terminated.get(i, False))
             for i in range(self.num_agents)
         }
+        for i in range(self.num_agents):
+            if self.last_terminated[i] and self.last_truncated[i]:
+                raise RuntimeError(f"Agent {i} cannot be both terminated and truncated")
+            if bool(dones.get(i, False)) != (
+                self.last_terminated[i] or self.last_truncated[i]
+            ):
+                raise RuntimeError(
+                    f"Agent {i} lifecycle mismatch: done={dones.get(i, False)}, "
+                    f"terminated={self.last_terminated[i]}, "
+                    f"truncated={self.last_truncated[i]}"
+                )
         self.active_mask = {
             i: bool(
                 not dones.get(i, False)
