@@ -75,7 +75,7 @@
 以下任务严格按顺序执行。在 `P0-00G` 完成前不运行任何训练 smoke；在 `P0-06` 完成前，不启动新的基础策略或对抗策略长训练。
 
 - [x] **P0-00A 冻结训练入口**：基础策略只维护 `train_no_rllib_mappo_robust_v2.py`，Phase 1 单蓝车只维护 `train_2red_1blue_ppo.py`；README、运行命令和文件索引已标记 RLlib 和其他旧入口停止使用。
-- [ ] NEXT **P0-00B 修正 terminated/truncated 语义**：全局任务成功/碰撞对全部参与者切断 bootstrap；仅 `max_steps` 保留 truncation bootstrap，并更新生命周期测试。
+- [ ] NEXT **P0-00B 冻结并适配 terminated/truncated 语义**：采用 agent-centric 回报边界；同伴红车碰撞时未碰撞红车按 truncation bootstrap，红车全部到点时蓝车按任务失败 termination；其余场景按下方状态矩阵确认后再修改代码与测试。
 - [ ] NEXT **P0-00C 修复 robust_v2 失活样本采集**：从 reset/step 的 `info['active_mask']` 驱动 value、动作和 buffer，失活 agent 不再产生 transition。
 - [ ] NEXT **P0-00D 修正 GAE 与优势标准化口径**：每个 episode 独立算原始 GAE，拼接后按 agent、按 rollout 统一标准化；禁止逐 episode 标准化改变样本相对权重。
 - [ ] NEXT **P0-00E 补 MAPPO/PPO 算法回归测试**：覆盖 ratio=1、终止/截断 bootstrap、episode 边界、失活过滤、per-agent critic 和有限梯度更新。
@@ -112,14 +112,32 @@
 
 #### P0-00B 终止与截断语义
 
-- [ ] 保留“蓝车自身碰撞只终止该蓝车、红车继续运行”的局部生命周期语义。
-- [ ] `cooperative_success`、`cooperative_collision`、`adversary_collision`、`all_agents_reached` 和其他任务定义内全局结局，对本回合所有尚存 agent 设置 `terminated=True`、`truncated=False`。
-- [ ] 仅 `max_steps` 或明确的外部采样时间限制设置 `truncated=True`，并允许 `V(s_{t+1})` bootstrap。
-- [ ] 全局任务终局的 value target 不得读取 reset 后状态、despawn 后全零状态或不存在的“假想后继状态”。
-- [ ] 将测试名/断言改为 `test_cooperative_success_terminates_live_blue`、`test_cooperative_collision_terminates_other_agents`；保留 `test_max_steps_is_truncation`。
-- [ ] 为局部蓝车死亡后红车继续、单红车先到点后另一红车继续、全局终局、max_steps 四类轨迹分别验证 `terminated/truncated/active_mask/episode_end_reason`。
+> **设计状态：DRAFT，等待状态矩阵确认。** 本节只记录语义，不代表代码已适配。状态简写：`A` = `done=False, terminated=False, truncated=False, active_mask=True`；`T` = `done=True, terminated=True, truncated=False, active_mask=False`；`X` = `done=True, terminated=False, truncated=True, active_mask=False`。
 
-**验收门槛**：任务终局 return 不 bootstrap；时间截断 return 正确 bootstrap；任意 agent 的 `terminated` 与 `truncated` 不同时为真。
+| 场景 | 当前：直接到点/碰撞车辆 | 当前：其他红车 | 当前：蓝车 | 拟适配语义 | 合法 bootstrap |
+|---|---|---|---|---|---|
+| 正常运行，无终局事件 | `A` | `A` | `A` | 保持全部 `A` | 不涉及 |
+| 单辆红车先到点，仍有红车未到点 | 到点红车 `T` | `A` | `A` | 保持：到点红车自然终止，其他车辆继续 | 到点红车否；其他车辆尚未形成边界 |
+| 蓝车自行到点，红车任务仍在运行 | 到点蓝车 `T` | `A` | 其他蓝车 `A` | 暂保持局部 `T`；蓝车“到点”是否应作为有效对抗终局留到奖励审计确认 | 到点蓝车否 |
+| 蓝车自身碰撞，且 `adversary_collision_ends_episode=False`（当前 Phase 1 配置） | 碰撞蓝车 `T` | `A` | 其他蓝车 `A` | 保持：只终止碰撞蓝车，红车继续 | 碰撞蓝车否 |
+| 基础策略中一辆红车碰撞，触发 `cooperative_collision` | 碰撞红车 `T` | `X` | 不适用 | **已确认**：未碰撞红车的个人驾驶任务只是被同伴事件打断，保持 `X` | 未碰撞红车是；必须使用同帧有效最终状态 |
+| 对抗训练中一辆红车碰撞，触发 `cooperative_collision` | 碰撞红车 `T` | `X` | 当前为 `X` | 红车语义同上；蓝车建议按“本轮对抗已有成功/失败结果”设为 `T`，**待确认** | 未碰撞红车是；蓝车待确认 |
+| 基础策略中全部红车到点，触发 `all_agents_reached` | 全部到点红车 `T` | `T` | 不适用 | 保持全部红车 `T` | 否 |
+| 对抗训练中全部红车到点，触发 `cooperative_success` | 全部到点红车 `T` | `T` | 当前存活蓝车为 `X` | **已确认**：蓝车未完成对抗目标，改为 `T` | 红车、蓝车均否 |
+| 蓝车碰撞且 `adversary_collision_ends_episode=True`（当前有效入口未启用） | 碰撞蓝车 `T` | 当前为 `X` | 其他蓝车当前为 `X` | 未启用兼容分支，启用前单独确认红/蓝双方任务边界 | 待确认 |
+| 达到 `max_steps`，无其他自然终止 | 所有存活车辆 `X` | `X` | `X` | 保持：外部时间限制截断 | 是，使用同帧有效最终状态 |
+| 某 agent 已先自然终止，之后其他 agent 达到 `max_steps` | 已终止 agent 保持 `T` | 当时仍存活者 `X` | 当时仍存活者 `X` | 保持个体边界：既有 `T` 不得被覆盖成 `X` | 仅最终仍存活且被截断者是 |
+| 所有 agent 均已分别自然终止，触发 `all_agents_terminated` | `T` | `T` | `T` | 保持全部 `T` | 否 |
+
+- [x] 保留“蓝车自身碰撞只终止该蓝车、红车继续运行”的局部生命周期语义。
+- [x] 基础策略 `cooperative_collision` 中，碰撞红车为 `T`，未碰撞红车为 `X`，后者保留个人驾驶回报 bootstrap。
+- [x] 对抗训练 `cooperative_success` 中，全部到点红车和仍存活蓝车均为 `T`；蓝车不 bootstrap。
+- [ ] 确认对抗训练 `cooperative_collision` 时蓝车状态，以及未启用的 `adversary_collision_ends_episode=True` 分支是否在本轮适配。
+- [ ] 训练端直接消费环境给出的 `terminated/truncated`，不得再通过 `reached_target` 或碰撞 sticky 标志二次猜测 bootstrap 类型。
+- [ ] 所有 `X` 必须对应可继续的 agent-specific MDP，并保存同一 transition 的有效最终状态；不得读取 reset 后状态或 despawn 后全零状态。
+- [ ] 按矩阵更新生命周期测试，至少覆盖局部蓝车终止、单红车先到点、同伴红车碰撞导致 truncation、红车全部到点导致蓝车 termination、max_steps 五类轨迹。
+
+**验收门槛**：每个场景与确认后的矩阵完全一致；`T` 的 return 不 bootstrap，`X` 的 return 从同帧有效最终状态正确 bootstrap；任意 agent 的 `terminated` 与 `truncated` 不同时为真；已自然终止 agent 不得被后续全局事件改写。
 
 #### P0-00C robust_v2 active-mask 数据流
 
@@ -519,6 +537,7 @@ git rev-parse HEAD
 |---|---|---|---|---|---|---|
 | 2026-07-14 | `9cc4cb6` | env、metrics、reward、3 个训练脚本、lifecycle tests | 蓝车碰撞不再直接终止红车 episode；增加终止原因与碰撞前快照 | 7 个 lifecycle 单元测试通过 | 需用新实验验证，不默认兼容旧训练语义 | P0-A |
 | 2026-07-20 | `P0-00A` | `README.md`、`RUN_COMMANDS.md`、`FILE_INDEX.md`、研究 TODO | 冻结 `robust_v2`/`train_2red_1blue_ppo` 为当前唯一入口；旧 RLlib/shared/minimal/robust v1/旧对抗入口显式停用 | 文档入口与命令一致性检查 | 不修改 checkpoint；旧入口产物仍不得用于新协议 resume | P0-00A |
+| 2026-07-21 | `P0-00B-design-draft` | 研究 TODO | 增加逐场景 agent 状态矩阵；记录同伴红车碰撞的 agent-centric truncation 与红车全部到点时蓝车 termination；尚未修改运行时 | 人工核对状态矩阵，待用户最终确认 | 尚无运行时或 checkpoint 变化 | P0-00B |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志
@@ -528,7 +547,8 @@ git rev-parse HEAD
 | 日期 | 决策 | 依据 | 被否决方案 | 影响范围 |
 |---|---|---|---|---|
 | 2026-07-20 | 基础策略唯一训练入口冻结为 `train_no_rllib_mappo_robust_v2.py` | 当前计划使用 robust v2 训练基础策略；缩小修复面可避免旧脚本分叉继续污染实验 | 同时修复 RLlib、shared-policy PPO、minimal、robust v1 和 multi 旧入口 | P0-00、基础策略训练 |
-| 2026-07-20 | 任务内全局成功/碰撞按 terminated 处理，只有 max_steps 按 truncated 处理 | 全局结局后环境立即 reset，不存在可合法 bootstrap 的连续 MDP 后继；从 despawn/全零状态 bootstrap 会偏置 value | 把未直接碰撞/到点的 agent 一律视为 truncation | 环境、robust_v2、单蓝车、生命周期测试 |
+| 2026-07-20 | **SUPERSEDED（未实施）**：任务内全局成功/碰撞统一按 terminated 处理 | 原判断将联合 episode 边界直接等同于所有 agent 的任务边界 | agent-centric 的逐车辆回报边界 | 已由 2026-07-21 P0-00B 草案替代 |
+| 2026-07-21 | **DRAFT**：终止/截断按 agent-specific 任务边界判定，而不是按全局 reset 一刀切 | 同伴红车碰撞后，未碰撞红车理论驾驶回报仍存在，按 `X` bootstrap；红车全部到点后蓝车对抗任务失败，按 `T` 切断 bootstrap | 全局事件一律 `T`；非直接事件一律 `X` | 环境、robust_v2、单蓝车、生命周期测试；待矩阵最终确认后实施 |
 | 2026-07-20 | GAE 逐 episode 计算原始值，优势在 per-agent rollout 拼接后统一标准化 | 保留 episode 边界同时避免逐 episode 标准化抹掉不同结局的相对强弱 | 保持逐 episode 单独标准化 | robust_v2、后续 PPO/MAPPO 入口 |
 | 2026-07-20 | 先完成 C0/C1/C2 和精确归因，再启动长训练 | 当前指标仍可能误判 steer 与碰撞对象，旧训练无法形成可信结论 | 直接延长 7 月 5 日旧 run | P0-P1 |
 | 2026-07-20 | 通信放在无通信双蓝基线之后 | 否则无法把多车数量收益与消息通信收益分离 | 直接在现有双蓝脚本加入 attention | P3-P5 |
