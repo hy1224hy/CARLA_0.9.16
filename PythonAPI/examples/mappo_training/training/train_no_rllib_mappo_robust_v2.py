@@ -34,6 +34,17 @@ from training.lifecycle_semantics import (
 )
 
 
+VALID_EPISODE_END_REASONS = frozenset({
+    "running",
+    "cooperative_success",
+    "all_agents_reached",
+    "cooperative_collision",
+    "adversary_collision",
+    "max_steps",
+    "all_agents_terminated",
+})
+
+
 def set_seed(seed: int):
     # 修复 #6：完整播种
     random.seed(seed)
@@ -130,6 +141,312 @@ def action_tanh_to_env(action_tanh: np.ndarray) -> np.ndarray:
         brake = brake_raw
 
     return np.array([throttle, steer, brake], dtype=np.float32)
+
+
+def validate_active_mask(
+    raw_active_mask: Dict[int, bool],
+    agent_ids: List[int],
+    *,
+    context: str,
+) -> Dict[int, bool]:
+    """Validate and copy the authoritative per-agent decision mask."""
+    if not isinstance(raw_active_mask, dict):
+        raise TypeError(f"{context}: active_mask must be a dict")
+
+    expected = set(agent_ids)
+    actual = set(raw_active_mask.keys())
+    if actual != expected:
+        raise ValueError(
+            f"{context}: active_mask keys mismatch: "
+            f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}"
+        )
+
+    active_mask: Dict[int, bool] = {}
+    for aid in agent_ids:
+        value = raw_active_mask[aid]
+        if not isinstance(value, (bool, np.bool_)):
+            raise TypeError(
+                f"{context}: active_mask[{aid}] must be bool, got {type(value).__name__}"
+            )
+        active_mask[aid] = bool(value)
+    return active_mask
+
+
+def build_active_step_cache(
+    obs_dict: Dict[int, np.ndarray],
+    active_mask: Dict[int, bool],
+    global_state_np: np.ndarray,
+    actors: Dict[int, Actor],
+    critic: AgentConditionedCritic,
+    agent_ids: List[int],
+    device: torch.device,
+    *,
+    context: str,
+) -> Tuple[Dict[int, np.ndarray], Dict[int, Dict]]:
+    """Sample exactly one decision for each currently active agent.
+
+    ``active_mask`` is aligned with the state before ``env.step``. The cache is
+    therefore also the authoritative set of transitions to write after the
+    step, including an action that makes an agent terminate on that step.
+    """
+    current_active = validate_active_mask(active_mask, agent_ids, context=context)
+    active_ids = [aid for aid in agent_ids if current_active[aid]]
+
+    missing_obs = [aid for aid in active_ids if aid not in obs_dict]
+    missing_actors = [aid for aid in active_ids if aid not in actors]
+    if missing_obs or missing_actors:
+        raise RuntimeError(
+            f"{context}: active agents missing rollout inputs: "
+            f"obs={missing_obs}, actors={missing_actors}"
+        )
+
+    global_state_np = np.asarray(global_state_np, dtype=np.float32)
+    global_state_t = torch.as_tensor(
+        global_state_np, dtype=torch.float32, device=device
+    ).unsqueeze(0)
+    action_dict: Dict[int, np.ndarray] = {}
+    step_cache: Dict[int, Dict] = {}
+
+    with torch.no_grad():
+        for aid in active_ids:
+            obs = np.asarray(obs_dict[aid], dtype=np.float32)
+            obs_t = torch.as_tensor(
+                obs, dtype=torch.float32, device=device
+            ).unsqueeze(0)
+            value = float(critic(global_state_t, aid).item())
+            action_tanh_t, logp_t, z_t = actors[aid].sample_action_z(obs_t)
+
+            action_tanh = action_tanh_t.squeeze(0).cpu().numpy()
+            action_z = z_t.squeeze(0).cpu().numpy()
+            action_dict[aid] = action_tanh_to_env(action_tanh)
+            step_cache[aid] = {
+                "obs": obs.copy(),
+                "global_state": global_state_np.copy(),
+                "action_z": action_z.copy(),
+                "logp": float(logp_t.item()),
+                "value": value,
+            }
+
+    expected_active = set(active_ids)
+    if set(action_dict) != expected_active or set(step_cache) != expected_active:
+        raise RuntimeError(
+            f"{context}: action/cache keys do not match active agents: "
+            f"active={sorted(expected_active)}, actions={sorted(action_dict)}, "
+            f"cache={sorted(step_cache)}"
+        )
+    return action_dict, step_cache
+
+
+def validate_rollout_step_protocol(
+    dones: Dict[int, bool],
+    terminated: Dict[int, bool],
+    truncated: Dict[int, bool],
+    next_active_mask: Dict[int, bool],
+    episode_end_reason: str,
+    agent_ids: List[int],
+    *,
+    context: str,
+) -> Tuple[Dict[int, bool], Dict[int, bool], Dict[int, bool], Dict[int, bool]]:
+    """Fail fast when lifecycle flags, next mask, and global reason disagree."""
+    expected = set(agent_ids)
+    for name, mapping in (
+        ("dones", dones),
+        ("terminated", terminated),
+        ("truncated", truncated),
+    ):
+        if not isinstance(mapping, dict) or set(mapping.keys()) != expected:
+            actual = set(mapping.keys()) if isinstance(mapping, dict) else set()
+            raise ValueError(
+                f"{context}: {name} keys mismatch: "
+                f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}"
+            )
+
+    normalized_active = validate_active_mask(
+        next_active_mask, agent_ids, context=f"{context} next"
+    )
+    normalized_dones: Dict[int, bool] = {}
+    normalized_terminated: Dict[int, bool] = {}
+    normalized_truncated: Dict[int, bool] = {}
+    for aid in agent_ids:
+        done, term, trunc = validate_lifecycle_flags(
+            dones[aid], terminated[aid], truncated[aid],
+            context=f"{context} agent={aid}",
+        )
+        normalized_dones[aid] = done
+        normalized_terminated[aid] = term
+        normalized_truncated[aid] = trunc
+        if normalized_active[aid] != (not done):
+            raise RuntimeError(
+                f"{context} agent={aid}: next active={normalized_active[aid]} "
+                f"must equal not done={not done}"
+            )
+
+    if episode_end_reason not in VALID_EPISODE_END_REASONS:
+        raise ValueError(
+            f"{context}: unknown episode_end_reason={episode_end_reason!r}; "
+            f"expected one of {sorted(VALID_EPISODE_END_REASONS)}"
+        )
+    if episode_end_reason == "running":
+        if not any(normalized_active.values()):
+            raise RuntimeError(
+                f"{context}: episode is running but no active agent remains"
+            )
+        local_truncations = [
+            aid for aid in agent_ids if normalized_truncated[aid]
+        ]
+        if local_truncations:
+            raise RuntimeError(
+                f"{context}: local truncation while episode is running is unsupported; "
+                f"agents={local_truncations}"
+            )
+    elif any(normalized_active.values()):
+        raise RuntimeError(
+            f"{context}: episode ended with reason={episode_end_reason!r} "
+            f"but active agents remain="
+            f"{[aid for aid in agent_ids if normalized_active[aid]]}"
+        )
+
+    return (
+        normalized_active,
+        normalized_dones,
+        normalized_terminated,
+        normalized_truncated,
+    )
+
+
+def refresh_observations_after_active_change(
+    env,
+    next_obs: Dict[int, np.ndarray],
+    current_active_mask: Dict[int, bool],
+    next_active_mask: Dict[int, bool],
+    episode_end_reason: str,
+    agent_ids: List[int],
+    *,
+    context: str,
+) -> Dict[int, np.ndarray]:
+    """Refresh next-decision observations after a local lifecycle change.
+
+    The environment intentionally captures ``next_obs`` before lifecycle
+    cleanup so that a global truncation can bootstrap from the same physical
+    frame. If one agent terminates locally while the episode keeps running,
+    however, reached/dead actors may be despawned after that snapshot. In that
+    case only, rebuild the fixed-width observation slots from the post-cleanup
+    global state before the next action. The caller must preserve the original
+    ``next_obs`` separately for any boundary bootstrap.
+    """
+    current_active = validate_active_mask(
+        current_active_mask, agent_ids, context=f"{context} current"
+    )
+    next_active = validate_active_mask(
+        next_active_mask, agent_ids, context=f"{context} next"
+    )
+    if episode_end_reason != "running" or current_active == next_active:
+        return next_obs
+
+    expected = set(agent_ids)
+    if not isinstance(next_obs, dict) or set(next_obs.keys()) != expected:
+        actual = set(next_obs.keys()) if isinstance(next_obs, dict) else set()
+        raise ValueError(
+            f"{context}: next_obs keys mismatch: "
+            f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}"
+        )
+
+    observation_sizes: Dict[int, int] = {}
+    for aid in agent_ids:
+        obs = np.asarray(next_obs[aid], dtype=np.float32)
+        if obs.ndim != 1:
+            raise ValueError(
+                f"{context}: next_obs[{aid}] must be 1-D, got shape={obs.shape}"
+            )
+        observation_sizes[aid] = int(obs.shape[0])
+
+    refreshed_global_state = np.asarray(
+        env.get_global_state(), dtype=np.float32
+    ).reshape(-1)
+    expected_size = sum(observation_sizes.values())
+    if refreshed_global_state.size != expected_size:
+        raise RuntimeError(
+            f"{context}: refreshed global state size={refreshed_global_state.size} "
+            f"does not match fixed observation slots={expected_size}"
+        )
+
+    refreshed_obs: Dict[int, np.ndarray] = {}
+    offset = 0
+    for aid in agent_ids:
+        size = observation_sizes[aid]
+        refreshed_obs[aid] = refreshed_global_state[offset:offset + size].copy()
+        offset += size
+    return refreshed_obs
+
+
+def write_active_transitions(
+    buffer: RolloutBuffer,
+    step_cache: Dict[int, Dict],
+    rewards: Dict[int, float],
+    dones: Dict[int, bool],
+    terminated: Dict[int, bool],
+    truncated: Dict[int, bool],
+    scenario_name: str,
+    *,
+    context: str,
+) -> Dict[int, float]:
+    """Write only decisions present in the pre-step active cache."""
+    written_rewards: Dict[int, float] = {}
+    for aid, cached in step_cache.items():
+        for name, mapping in (
+            ("rewards", rewards),
+            ("dones", dones),
+            ("terminated", terminated),
+            ("truncated", truncated),
+        ):
+            if aid not in mapping:
+                raise KeyError(f"{context} agent={aid}: missing {name} entry")
+
+        done, term, _trunc = validate_lifecycle_flags(
+            dones[aid], terminated[aid], truncated[aid],
+            context=f"{context} agent={aid}",
+        )
+        reward = float(rewards[aid])
+        buffer.add(
+            aid,
+            Transition(
+                obs=cached["obs"],
+                global_state=cached["global_state"],
+                action_z=cached["action_z"],
+                log_prob=cached["logp"],
+                reward=reward,
+                done=float(done),
+                terminated=float(term),
+                value=cached["value"],
+                scenario_name=scenario_name,
+            ),
+        )
+        written_rewards[aid] = reward
+    return written_rewards
+
+
+def validate_episode_transition_counts(
+    buffer: RolloutBuffer,
+    buffer_starts: Dict[int, int],
+    active_decision_steps: Dict[int, int],
+    agent_ids: List[int],
+    *,
+    context: str,
+) -> Dict[int, int]:
+    """Require one and only one buffer row for every active decision."""
+    transition_counts: Dict[int, int] = {}
+    for aid in agent_ids:
+        if aid not in buffer_starts or aid not in active_decision_steps:
+            raise KeyError(f"{context} agent={aid}: missing transition counter")
+        transition_count = len(buffer.get_agent_data(aid)) - buffer_starts[aid]
+        if transition_count != active_decision_steps[aid]:
+            raise RuntimeError(
+                f"{context} agent={aid}: "
+                f"active_decision_steps={active_decision_steps[aid]} != "
+                f"buffer_transition_count={transition_count}"
+            )
+        transition_counts[aid] = transition_count
+    return transition_counts
 
 
 def compute_gae(
@@ -683,7 +1000,26 @@ def train(args):
                 obs_dict, info = env.reset()
                 total_episodes += 1
 
+                active_mask = validate_active_mask(
+                    info['active_mask'], agent_ids,
+                    context=f"robust_v2 reset episode={rollout_episode}",
+                )
+                episode_end_reason = info['episode_end_reason']
+                if episode_end_reason != "running":
+                    raise RuntimeError(
+                        f"robust_v2 reset episode={rollout_episode}: "
+                        f"unexpected episode_end_reason={episode_end_reason!r}"
+                    )
+                if not any(active_mask.values()):
+                    raise RuntimeError(
+                        f"robust_v2 reset episode={rollout_episode}: no active agent"
+                    )
+
                 episode_rewards = {aid: 0.0 for aid in agent_ids}
+                active_decision_steps = {aid: 0 for aid in agent_ids}
+                episode_buffer_starts = {
+                    aid: len(buffer.get_agent_data(aid)) for aid in agent_ids
+                }
                 ep_length = 0
                 ep_success = False
                 # Phase A2/A1: 必须在 rollout 循环里累积碰撞标志
@@ -698,43 +1034,36 @@ def train(args):
 
                 for step in range(args.max_steps):
                     ep_length += 1
-                    action_dict: Dict[int, np.ndarray] = {}
-                    step_cache: Dict[int, Dict] = {}
-
                     global_state_np = env.get_global_state().astype(np.float32)
-                    global_state_t = torch.as_tensor(global_state_np, dtype=torch.float32, device=device).unsqueeze(0)
-
-                    # 修复 #1：逐 agent 计算各自 V(s, aid)
-                    with torch.no_grad():
-                        agent_values = {
-                            aid: float(critic(global_state_t, aid).item()) for aid in agent_ids
-                        }
-
-                    for aid, obs in obs_dict.items():
-                        obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
-                        with torch.no_grad():
-                            # 修复 #4：取 pre-tanh z
-                            action_tanh_t, logp_t, z_t = actors[aid].sample_action_z(obs_t)
-
-                        action_tanh = action_tanh_t.squeeze(0).cpu().numpy()
-                        action_z = z_t.squeeze(0).cpu().numpy()
-                        action_env = action_tanh_to_env(action_tanh)
-
-                        action_dict[aid] = action_env
-                        step_cache[aid] = {
-                            "obs": obs,
-                            "global_state": global_state_np,
-                            "action_z": action_z,
-                            "logp": float(logp_t.item()),
-                            "value": agent_values[aid],
-                        }
+                    action_dict, step_cache = build_active_step_cache(
+                        obs_dict=obs_dict,
+                        active_mask=active_mask,
+                        global_state_np=global_state_np,
+                        actors=actors,
+                        critic=critic,
+                        agent_ids=agent_ids,
+                        device=device,
+                        context=f"robust_v2 episode={rollout_episode} step={step}",
+                    )
+                    for aid in step_cache:
+                        active_decision_steps[aid] += 1
 
                     next_obs, rewards, dones, info = env.step(action_dict)
-                    terminated_info = info['terminated']
-                    truncated_info = info['truncated']
-                    final_dones = {aid: bool(dones.get(aid, False)) for aid in agent_ids}
-                    final_terminated = dict(terminated_info)
-                    final_truncated = dict(truncated_info)
+                    episode_end_reason = info['episode_end_reason']
+                    (
+                        next_active_mask,
+                        final_dones,
+                        final_terminated,
+                        final_truncated,
+                    ) = validate_rollout_step_protocol(
+                        dones=dones,
+                        terminated=info['terminated'],
+                        truncated=info['truncated'],
+                        next_active_mask=info['active_mask'],
+                        episode_end_reason=episode_end_reason,
+                        agent_ids=agent_ids,
+                        context=f"robust_v2 episode={rollout_episode} step={step}",
+                    )
                     # 直接从 env.step() 返回的 observation 固化该 transition 的 s_(t+1)，
                     # 避免后续 despawn 改变重新读取的全局状态。只有合法 X 边界会使用。
                     final_global_state = np.concatenate(
@@ -747,28 +1076,18 @@ def train(args):
                         if step_collisions.get(aid, False):
                             ep_collision_sticky[aid] = True
 
-                    for aid in step_cache.keys():
-                        reward = float(rewards.get(aid, 0.0))
-                        done, terminated, _truncated = validate_lifecycle_flags(
-                            dones.get(aid, False),
-                            terminated_info.get(aid, False),
-                            truncated_info.get(aid, False),
-                            context=f"robust_v2 agent={aid} step={step}",
-                        )
+                    written_rewards = write_active_transitions(
+                        buffer=buffer,
+                        step_cache=step_cache,
+                        rewards=rewards,
+                        dones=final_dones,
+                        terminated=final_terminated,
+                        truncated=final_truncated,
+                        scenario_name=scenario_name,
+                        context=f"robust_v2 episode={rollout_episode} step={step}",
+                    )
+                    for aid, reward in written_rewards.items():
                         episode_rewards[aid] += reward
-
-                        transition = Transition(
-                            obs=step_cache[aid]["obs"],
-                            global_state=step_cache[aid]["global_state"],
-                            action_z=step_cache[aid]["action_z"],
-                            log_prob=step_cache[aid]["logp"],
-                            reward=reward,
-                            done=float(done),
-                            terminated=float(terminated),
-                            value=step_cache[aid]["value"],
-                            scenario_name=scenario_name,
-                        )
-                        buffer.add(aid, transition)
 
                     if visualizer is not None:
                         visualizer.handle_events()
@@ -776,17 +1095,53 @@ def train(args):
                             raise KeyboardInterrupt
 
                     if 'reward_details' in info:
-                        for aid, details in info['reward_details'].items():
+                        for aid in step_cache:
+                            details = info['reward_details'].get(aid, {})
                             for key, val in details.items():
                                 comp_name = f"reward/{key}"
                                 if comp_name not in window_reward_components:
                                     window_reward_components[comp_name] = []
                                 window_reward_components[comp_name].append(float(val))
 
+                    next_obs = refresh_observations_after_active_change(
+                        env=env,
+                        next_obs=next_obs,
+                        current_active_mask=active_mask,
+                        next_active_mask=next_active_mask,
+                        episode_end_reason=episode_end_reason,
+                        agent_ids=agent_ids,
+                        context=f"robust_v2 episode={rollout_episode} step={step}",
+                    )
                     obs_dict = next_obs
+                    active_mask = next_active_mask
 
-                    if all(dones.values()):
+                    if episode_end_reason != "running":
                         break
+
+                if episode_end_reason == "running":
+                    raise RuntimeError(
+                        f"robust_v2 episode={rollout_episode}: rollout exhausted "
+                        f"{args.max_steps} steps without a global episode boundary"
+                    )
+
+                # P0-00C：逐 episode/agent 对账。网络输入特征维度固定，
+                # 仅允许不同 agent 的有效 transition 数动态不同。
+                episode_transition_counts = validate_episode_transition_counts(
+                    buffer=buffer,
+                    buffer_starts=episode_buffer_starts,
+                    active_decision_steps=active_decision_steps,
+                    agent_ids=agent_ids,
+                    context=f"robust_v2 episode={rollout_episode}",
+                )
+                for aid in agent_ids:
+                    tb_writer.add_scalar(
+                        f'rollout/active_decision_steps_agent_{aid}',
+                        active_decision_steps[aid], total_episodes,
+                    )
+                    tb_writer.add_scalar(
+                        f'rollout/buffer_transition_count_agent_{aid}',
+                        episode_transition_counts[aid], total_episodes,
+                    )
 
                 # Phase A1: 严格三类终止分类
                 #   ep_success_to_goal: 所有 agent 都进入 goal_zone（True success）
@@ -843,6 +1198,9 @@ def train(args):
 
             # ===== PPO 更新 =====
             n_transitions = buffer.total_size()
+            n_transitions_per_agent = {
+                aid: len(buffer.get_agent_data(aid)) for aid in agent_ids
+            }
             skip_update = n_transitions < args.min_transitions_per_update
 
             if skip_update:
@@ -1059,6 +1417,11 @@ def train(args):
                     total_timeouts / max(total_episodes, 1), update)
                 tb_writer.add_scalar('episode/n_transitions',
                     n_transitions, update)
+                for aid in agent_ids:
+                    tb_writer.add_scalar(
+                        f'episode/n_transitions_agent_{aid}',
+                        n_transitions_per_agent[aid], update,
+                    )
 
                 # Phase A3: lr / log_std 监控
                 tb_writer.add_scalar('train/lr_actor', cur_lr_a, update)
@@ -1094,7 +1457,8 @@ def train(args):
                       f"success={win_succ:.2%}, collision={win_coll:.2%}, timeout={win_to:.2%}, "
                       f"cum_success={total_successes/max(total_episodes,1):.2%}, "
                       f"avg_ep_len={float(np.mean(window_episode_lengths)):.0f}, "
-                      f"n_trans={n_transitions}, lr_a={cur_lr_a:.2e}")
+                      f"n_trans={n_transitions_per_agent} (total={n_transitions}), "
+                      f"lr_a={cur_lr_a:.2e}")
                 print(f"   reward分量(均值/步): progress={comp_progress:.3f}, "
                       f"approach={comp_approach:.3f}, speed={comp_speed:.3f}, alive={comp_alive:.3f}, "
                       f"safety+ttc={comp_ttc:.3f}, lane={comp_lane:.3f}, collision={comp_collision:.3f}, "

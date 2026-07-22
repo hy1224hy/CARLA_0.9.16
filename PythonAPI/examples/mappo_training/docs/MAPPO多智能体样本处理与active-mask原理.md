@@ -2,7 +2,7 @@
 
 > 用途：解释 MAPPO 如何分别处理多个智能体，并将其迁移到本项目的 CARLA 多车训练；同时作为毕业论文“方法基础”和“工程实现”部分的写作素材。
 >
-> 当前状态：这是 `P0-00C` 的原理与设计说明，不代表代码已经修改或验收完成。当前基础策略唯一入口仍为 `training/train_no_rllib_mappo_robust_v2.py`。
+> 当前状态：`P0-00C` 已于 2026-07-22 完成代码修改和 mock/unit 验收；当前基础策略唯一入口仍为 `training/train_no_rllib_mappo_robust_v2.py`。真实 CARLA smoke 统一留在 `P0-00G`，因此本文中的测试结果不等价于真实仿真性能结论。
 
 ## 1. 先给出核心结论
 
@@ -242,17 +242,18 @@ $$
 
 当前 `compute_gae()` 中“termination 不 bootstrap、truncation bootstrap”的基本公式本身没有造成上述问题；问题发生在它接收到的数据之前。先修 active-mask 数据流，再在 `P0-00D` 修正优势标准化口径，顺序是合理的。
 
-## 8. `P0-00C` 的计划修改边界
+## 8. `P0-00C` 的实施边界
 
-本阶段应只改变“哪些 agent-time transition 有资格进入训练”，不改变网络结构、奖励定义和已经冻结的 T/X 语义。计划为：
+本阶段只改变“哪些 agent-time transition 有资格进入训练”，不改变网络结构、奖励定义和已经冻结的 T/X 语义。实际实施为：
 
 1. reset 后读取并校验当前 `active_mask`；
 2. 只为当前 active agent 计算 Critic value、Actor action 和 `step_cache`；
 3. step 后只遍历本步 `step_cache` 写 transition，保留刚形成的终端/截断 transition；
 4. 写完本步后，再将 `info['active_mask']` 更新为下一步 mask；
-5. 以 `episode_end_reason != 'running'` 作为全局退出主条件，并校验不存在活跃 agent 被静默遗漏；
-6. 按 episode、按 agent 记录 `active_decision_steps` 和 `buffer_transition_count`，要求严格相等；
-7. 用“一车提前终止、另一车继续 (N) 步”的 mock rollout 验证提前终止车辆零追加。
+5. 若回合仍在运行但 active 集合发生变化，重新读取车辆清理后的下一决策观测，防止 surviving Actor 使用退场前观测而 Critic 使用退场后全局状态；环境原始返回的同帧最终状态仍单独保留给合法 truncation bootstrap；
+6. 以 `episode_end_reason != 'running'` 作为全局退出主条件，并校验不存在活跃 agent 被静默遗漏；
+7. 按 episode、按 agent 记录 `active_decision_steps` 和 `buffer_transition_count`，要求严格相等；
+8. 用“一车提前终止、另一车继续 (N) 步”的 mock rollout 验证提前终止车辆零追加。
 
 这一阶段不应：
 
@@ -271,6 +272,18 @@ $$
 4. **失活隔离性**：agent 提前结束后，无论其他 agent 继续多少步，其 action、value、buffer 长度、GAE 和 PPO batch 均不再增长。
 5. **协议一致性**：全局退出由 `episode_end_reason` 驱动，逐 agent 的 T/X 和合法 bootstrap 仍严格符合 `P0-00B`，没有 active agent 被静默丢弃。
 
+### 9.1 实施验收结果（2026-07-22）
+
+| 评估依据 | 结果 | 自动化证据 |
+|---|---|---|
+| 决策一致性 | PASS | 提前结束 mock 中 Actor 调用次数为 `{0: 1, 1: 4}`，Critic 目标 agent 序列为 `[0, 1, 1, 1, 1]` |
+| 样本守恒 | PASS | `validate_episode_transition_counts()` 强制逐 episode/agent 对账，决策数与 buffer 增量均为 `{0: 1, 1: 4}` |
+| 终端步完整性 | PASS | agent 0 只保留一条非零终端样本，`done=1, terminated=1, reward=10` |
+| 失活隔离性 | PASS | agent 0 退场后动作、价值和 buffer 均不再增长；所有样本保持 Actor/critic/action 特征维度 `19/38/3`，仅 batch 行数动态变化 |
+| 协议一致性 | PASS | 陈旧返回观测中的标记值 `99` 在下一决策前刷新为清理后值 `3`；矛盾 reason/mask、`active != not done` 均 fail-fast；3 项 active-mask 与 15 项 lifecycle/GAE 测试共 18 项通过 |
+
+以上结果证明训练入口已经按预定协议消费 `active_mask`，但只覆盖 mock/unit 和静态入口检查。真实 CARLA 中的传感器时序、车辆销毁与 world tick 联动仍须在 `P0-00G` smoke 中确认。
+
 ## 10. 可直接用于论文的方法表述草稿
 
 > 本文采用集中训练、分散执行的多智能体近端策略优化框架。执行阶段，每个车辆智能体依据局部观测独立生成连续控制动作；训练阶段，集中式价值网络接收由所有车辆观测拼接得到的联合状态，并通过智能体标识输出对应的个体状态价值 (V_\phi(s_t,i))。该设计在共享全局交通信息的同时，保留不同车辆奖励与回报目标之间的差异。
@@ -279,7 +292,7 @@ $$
 >
 > 回报估计进一步区分任务终止与外部截断。真实终止切断价值 bootstrap；时间上限或同伴事件造成的外部截断保留同帧最终状态的价值 bootstrap；两者均切断 GAE 在 episode 间的递推。由此，活跃掩码控制“样本是否存在”，终止/截断信号控制“样本如何计算回报”，二者共同保证异步多车轨迹的语义一致性。
 
-论文正式使用时，应在代码验收后补充具体实验设置、符号表、消融结果和最终 Git 版本，不应把本设计草稿直接当作已验证实验结论。
+论文正式使用时，还应补充真实 CARLA 实验设置、符号表、消融结果和最终 Git 版本；当前可引用算法定义与 mock/unit 验收方法，但不能把它直接表述为真实仿真性能结论。
 
 ## 11. 参考资料
 
