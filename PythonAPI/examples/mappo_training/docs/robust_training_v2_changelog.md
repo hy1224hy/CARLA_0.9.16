@@ -1,5 +1,7 @@
 # train_no_rllib_mappo_robust_v2.py 改动记录
 
+> **P0-00D 更新（2026-07-23）**：本文保留 robust_v2 早期修改历史，其中“逐 episode 优势标准化”已被 P0-00D 替代。当前基础策略按 episode 计算原始 GAE，再对同一 agent 的完整 rollout 统一标准化一次。当前口径与验收证据以 [MAPPO GAE、优势标准化与 PPO 更新原理](./MAPPO_GAE优势标准化与PPO更新原理.md) 和 [研究推进 TODO](./毕业课题_研究推进TODO.md) 为准。
+
 基于 `train_no_rllib_mappo_robust.py`（简称 v1）的改进版，针对 [rollout存在的问题.md](rollout存在的问题.md) 中记录的三大问题进行修复。
 
 ---
@@ -367,4 +369,3 @@ A4：每 update 维护 best.pt（按窗口严格 success_rate 取 max），评�
 rate_success_to_goal + rate_collision + rate_timeout ≈ 1.0（三类终止覆盖所有 episode）
 ppo/approx_kl_agentX < 0.03，clip_frac < 0.3，stop_epoch < ppo_epochs 偶尔触发（说明早停在工作）
 rate_success_to_goal 大致单调上升而不再剧烈震荡
-

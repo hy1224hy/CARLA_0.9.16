@@ -5,7 +5,7 @@
 2. 修复 GAE 跨 episode 泄漏（按 episode 独立计算 + 截断 bootstrap）
 3. 场景分层 + 加权采样（保证覆盖 + 困难场景上采样）
 4. 课程软过渡（阶段切换时概率混合旧场景）
-5. 逐 episode 优势标准化（避免跨 episode 全局标准化压缩信号）
+5. 每个 agent 在完整 rollout 上统一优势标准化（保留 episode 间相对信号）
 6. RolloutBuffer 增强（episode 边界追踪 + 截断状态存储）
 """
 import sys
@@ -457,8 +457,10 @@ def compute_gae(
     gamma: float,
     gae_lambda: float,
     bootstrap_value: float = 0.0,
+    *,
+    context: str = "compute_gae",
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """在单个 episode 内计算 GAE（不应跨 episode 调用）。
+    """在单个完整 episode 内计算未标准化 GAE。
 
     修复 #2：用 terminated（而非 done）控制 value bootstrap。
     env 在 max_steps 时也会置 done=True，若用 done 当 mask 会把截断 episode
@@ -468,9 +470,55 @@ def compute_gae(
     Args:
         bootstrap_value: 截断 episode 的 V(s_T)，自然终止时使用 0.0
     """
+    vectors = {}
+    for name, values_in in (
+        ("rewards", rewards),
+        ("values", values),
+        ("dones", dones),
+        ("terminateds", terminateds),
+    ):
+        values_np = np.asarray(values_in, dtype=np.float32)
+        if values_np.ndim != 1:
+            raise ValueError(
+                f"{context}: {name} must be 1-D, got shape={values_np.shape}"
+            )
+        if not np.all(np.isfinite(values_np)):
+            raise FloatingPointError(f"{context}: {name} contains NaN/Inf")
+        vectors[name] = values_np
+
+    rewards = vectors["rewards"]
+    values = vectors["values"]
+    dones = vectors["dones"]
+    terminateds = vectors["terminateds"]
+    n_steps = len(rewards)
+    lengths = {
+        "rewards": n_steps,
+        "values": len(values),
+        "dones": len(dones),
+        "terminateds": len(terminateds),
+    }
+    if len(set(lengths.values())) != 1:
+        raise ValueError(f"{context}: GAE length mismatch: {lengths}")
+    if n_steps == 0:
+        empty = np.array([], dtype=np.float32)
+        return empty, empty.copy()
+
+    for name, flags in (("dones", dones), ("terminateds", terminateds)):
+        if not np.all((flags == 0.0) | (flags == 1.0)):
+            raise ValueError(f"{context}: {name} must contain only 0/1")
+    if np.any(terminateds > dones):
+        raise ValueError(f"{context}: terminated requires done=1")
+    if np.any(dones[:-1] != 0.0) or dones[-1] != 1.0:
+        raise ValueError(
+            f"{context}: input must contain exactly one complete episode "
+            "with done=1 only at the final transition"
+        )
+    if not np.isfinite(bootstrap_value):
+        raise FloatingPointError(f"{context}: bootstrap_value is NaN/Inf")
+
     advantages = np.zeros_like(rewards)
     gae = 0.0
-    next_value = bootstrap_value
+    next_value = float(bootstrap_value)
 
     for t in reversed(range(len(rewards))):
         mask_value = 1.0 - terminateds[t]
@@ -481,7 +529,163 @@ def compute_gae(
         next_value = values[t]
 
     returns = advantages + values
+    if not np.all(np.isfinite(advantages)) or not np.all(np.isfinite(returns)):
+        raise FloatingPointError(f"{context}: GAE produced NaN/Inf")
     return advantages, returns
+
+
+def compute_raw_gae_per_episode(
+    rewards: np.ndarray,
+    values: np.ndarray,
+    dones: np.ndarray,
+    terminateds: np.ndarray,
+    boundaries: List[Tuple[int, int]],
+    gamma: float,
+    gae_lambda: float,
+    bootstrap_values: Optional[List[float]] = None,
+    *,
+    context: str = "compute_raw_gae_per_episode",
+) -> Tuple[np.ndarray, np.ndarray]:
+    """按严格 episode 边界计算原始 GAE，不做任何优势标准化。
+
+    返回数组与输入 transition 保持同一时间顺序。边界必须连续、无重叠地
+    覆盖全部样本；bootstrap_values 必须和 boundaries 一一对应。
+    """
+    rewards = np.asarray(rewards, dtype=np.float32)
+    values = np.asarray(values, dtype=np.float32)
+    dones = np.asarray(dones, dtype=np.float32)
+    terminateds = np.asarray(terminateds, dtype=np.float32)
+    arrays = {
+        "rewards": rewards,
+        "values": values,
+        "dones": dones,
+        "terminateds": terminateds,
+    }
+    for name, array in arrays.items():
+        if array.ndim != 1:
+            raise ValueError(
+                f"{context}: {name} must be 1-D, got shape={array.shape}"
+            )
+        if not np.all(np.isfinite(array)):
+            raise FloatingPointError(f"{context}: {name} contains NaN/Inf")
+    lengths = {name: len(array) for name, array in arrays.items()}
+    if len(set(lengths.values())) != 1:
+        raise ValueError(f"{context}: rollout length mismatch: {lengths}")
+
+    if bootstrap_values is None:
+        bootstrap_values = [0.0] * len(boundaries)
+    if len(bootstrap_values) != len(boundaries):
+        raise ValueError(
+            f"{context}: bootstrap/boundary count mismatch: "
+            f"{len(bootstrap_values)} != {len(boundaries)}"
+        )
+
+    n_steps = len(rewards)
+    if n_steps == 0:
+        if boundaries:
+            raise ValueError(f"{context}: empty rollout cannot have boundaries")
+        empty = np.array([], dtype=np.float32)
+        return empty, empty.copy()
+    if not boundaries:
+        raise ValueError(f"{context}: non-empty rollout has no episode boundaries")
+
+    all_advantages = np.empty(n_steps, dtype=np.float32)
+    all_returns = np.empty(n_steps, dtype=np.float32)
+    expected_start = 0
+    for i, (start, end) in enumerate(boundaries):
+        if not isinstance(start, (int, np.integer)) or not isinstance(
+            end, (int, np.integer)
+        ):
+            raise TypeError(f"{context}: boundary {i} must contain integer indices")
+        start, end = int(start), int(end)
+        if start != expected_start:
+            raise ValueError(
+                f"{context}: boundary {i} starts at {start}, "
+                f"expected contiguous start {expected_start}"
+            )
+        if end <= start:
+            raise ValueError(f"{context}: boundary {i} is empty/reversed: {(start, end)}")
+        if end > n_steps:
+            raise ValueError(
+                f"{context}: boundary {i} ends at {end}, rollout length={n_steps}"
+            )
+        ep_rewards = rewards[start:end]
+        ep_values = values[start:end]
+        ep_dones = dones[start:end]
+        ep_terminateds = terminateds[start:end]
+        bv = float(bootstrap_values[i])
+        if ep_terminateds[-1] == 1.0 and abs(bv) > 1e-6:
+            raise ValueError(
+                f"{context}: terminated episode {i} must use zero bootstrap, "
+                f"got {bv}"
+            )
+        adv, ret = compute_gae(
+            ep_rewards,
+            ep_values,
+            ep_dones,
+            ep_terminateds,
+            gamma,
+            gae_lambda,
+            bootstrap_value=bv,
+            context=f"{context} episode={i} range=({start},{end})",
+        )
+        all_advantages[start:end] = adv
+        all_returns[start:end] = ret
+        expected_start = end
+
+    if expected_start != n_steps:
+        raise ValueError(
+            f"{context}: boundaries cover [0,{expected_start}), "
+            f"rollout length={n_steps}"
+        )
+    return all_advantages, all_returns
+
+
+def normalize_advantages_over_rollout(
+    raw_advantages: np.ndarray,
+    *,
+    min_std: float = 1e-6,
+    context: str = "normalize_advantages_over_rollout",
+) -> Tuple[np.ndarray, Dict[str, float]]:
+    """Normalize one agent's complete rollout once.
+
+    Degenerate batches (fewer than two rows or near-zero variance) are kept
+    unchanged so a valid policy signal is not replaced by NaN or amplified
+    floating-point noise.
+    """
+    raw_advantages = np.asarray(raw_advantages, dtype=np.float32)
+    if raw_advantages.ndim != 1:
+        raise ValueError(
+            f"{context}: advantages must be 1-D, got shape={raw_advantages.shape}"
+        )
+    if raw_advantages.size == 0:
+        raise ValueError(f"{context}: cannot normalize an empty rollout")
+    if not np.all(np.isfinite(raw_advantages)):
+        raise FloatingPointError(f"{context}: raw advantages contain NaN/Inf")
+    if not np.isfinite(min_std) or min_std <= 0:
+        raise ValueError(f"{context}: min_std must be finite and positive")
+
+    raw_mean = float(np.mean(raw_advantages, dtype=np.float64))
+    raw_std = float(np.std(raw_advantages, dtype=np.float64))
+    applied = raw_advantages.size >= 2 and raw_std > min_std
+    if applied:
+        normalized = (
+            (raw_advantages.astype(np.float64) - raw_mean) / raw_std
+        ).astype(np.float32)
+    else:
+        normalized = raw_advantages.copy()
+
+    if not np.all(np.isfinite(normalized)):
+        raise FloatingPointError(f"{context}: normalization produced NaN/Inf")
+    stats = {
+        "count": float(raw_advantages.size),
+        "raw_mean": raw_mean,
+        "raw_std": raw_std,
+        "normalized_mean": float(np.mean(normalized, dtype=np.float64)),
+        "normalized_std": float(np.std(normalized, dtype=np.float64)),
+        "applied": 1.0 if applied else 0.0,
+    }
+    return normalized, stats
 
 
 def compute_gae_per_episode(
@@ -494,38 +698,142 @@ def compute_gae_per_episode(
     gae_lambda: float,
     bootstrap_values: Optional[List[float]] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """按 episode 边界独立计算 GAE + 逐 episode 优势标准化。
+    """Compatibility path for not-yet-migrated adversarial/PSRO entrypoints.
 
-    当 episode 因 max_steps 截断时（terminated=False，但 env 已置 done=True），
-    用 Critic 对终止状态的价值估计 bootstrap 而非用 0（见 compute_gae 的 #2 修复）。
+    P0-00D intentionally moves ``robust_v2`` to
+    :func:`compute_raw_gae_per_episode` plus one per-agent rollout
+    normalization. This wrapper preserves the previous per-episode
+    normalization for imports outside the current base-policy scope.
     """
-    if bootstrap_values is None:
-        bootstrap_values = [0.0] * len(boundaries)
-
-    all_advantages = []
-    all_returns = []
-
-    for i, (start, end) in enumerate(boundaries):
-        if end <= start:
-            continue
-        ep_rewards = rewards[start:end]
-        ep_values = values[start:end]
-        ep_dones = dones[start:end]
-        ep_terminateds = terminateds[start:end]
-        bv = bootstrap_values[i] if i < len(bootstrap_values) else 0.0
-        adv, ret = compute_gae(ep_rewards, ep_values, ep_dones, ep_terminateds,
-                               gamma, gae_lambda, bootstrap_value=bv)
-        # 逐 episode 标准化，避免跨 episode 全局标准化压缩相对差异
-        # 短 episode（如碰撞 3-5 步）std 接近 0，跳过标准化避免放大噪声
-        ep_std = adv.std()
+    raw_advantages, returns = compute_raw_gae_per_episode(
+        rewards=rewards,
+        values=values,
+        dones=dones,
+        terminateds=terminateds,
+        boundaries=boundaries,
+        gamma=gamma,
+        gae_lambda=gae_lambda,
+        bootstrap_values=bootstrap_values,
+        context="legacy compute_gae_per_episode",
+    )
+    legacy_advantages = raw_advantages.copy()
+    for start, end in boundaries:
+        ep_advantages = legacy_advantages[start:end]
+        ep_std = float(np.std(ep_advantages))
         if ep_std > 1e-6:
-            adv = (adv - adv.mean()) / (ep_std + 1e-8)
-        all_advantages.append(adv)
-        all_returns.append(ret)
+            legacy_advantages[start:end] = (
+                ep_advantages - float(np.mean(ep_advantages))
+            ) / (ep_std + 1e-8)
+    return legacy_advantages, returns
 
-    if len(all_advantages) == 0:
-        return np.array([], dtype=np.float32), np.array([], dtype=np.float32)
-    return np.concatenate(all_advantages), np.concatenate(all_returns)
+
+def ensure_finite_tensor(
+    tensor: torch.Tensor,
+    *,
+    name: str,
+    context: str,
+) -> None:
+    if not torch.isfinite(tensor).all().item():
+        raise FloatingPointError(f"{context}: {name} contains NaN/Inf")
+
+
+def ensure_finite_module_gradients(module: nn.Module, *, context: str) -> None:
+    found_gradient = False
+    for name, parameter in module.named_parameters():
+        if parameter.grad is None:
+            continue
+        found_gradient = True
+        ensure_finite_tensor(
+            parameter.grad, name=f"gradient[{name}]", context=context
+        )
+    if not found_gradient:
+        raise RuntimeError(f"{context}: module has no gradients after backward")
+
+
+def ensure_finite_module_parameters(module: nn.Module, *, context: str) -> None:
+    for name, parameter in module.named_parameters():
+        ensure_finite_tensor(parameter, name=f"parameter[{name}]", context=context)
+
+
+@torch.no_grad()
+def validate_initial_policy_ratio(
+    actor: Actor,
+    observations: torch.Tensor,
+    action_z: torch.Tensor,
+    old_log_probs: torch.Tensor,
+    *,
+    tolerance: float = 1e-6,
+    context: str,
+) -> float:
+    """Verify on-policy sample/log-prob alignment before any actor update."""
+    batch_sizes = {
+        "observations": int(observations.shape[0]),
+        "action_z": int(action_z.shape[0]),
+        "old_log_probs": int(old_log_probs.shape[0]),
+    }
+    if len(set(batch_sizes.values())) != 1 or batch_sizes["observations"] == 0:
+        raise ValueError(f"{context}: PPO batch size mismatch: {batch_sizes}")
+    if old_log_probs.ndim != 1:
+        raise ValueError(
+            f"{context}: old_log_probs must be 1-D, got {old_log_probs.shape}"
+        )
+    if not np.isfinite(tolerance) or tolerance <= 0:
+        raise ValueError(f"{context}: tolerance must be finite and positive")
+
+    ensure_finite_tensor(observations, name="observations", context=context)
+    ensure_finite_tensor(action_z, name="action_z", context=context)
+    ensure_finite_tensor(old_log_probs, name="old_log_probs", context=context)
+    new_log_probs, entropy = actor.evaluate_actions_z(observations, action_z)
+    ensure_finite_tensor(new_log_probs, name="new_log_probs", context=context)
+    ensure_finite_tensor(entropy, name="entropy", context=context)
+    if new_log_probs.shape != old_log_probs.shape:
+        raise ValueError(
+            f"{context}: log-prob shape mismatch: "
+            f"new={new_log_probs.shape}, old={old_log_probs.shape}"
+        )
+
+    ratios = torch.exp(new_log_probs - old_log_probs)
+    ensure_finite_tensor(ratios, name="ratios", context=context)
+    max_abs_error = float(torch.max(torch.abs(ratios - 1.0)).item())
+    if max_abs_error >= tolerance:
+        raise RuntimeError(
+            f"{context}: pre-update PPO ratio mismatch: "
+            f"max_abs(ratio-1)={max_abs_error:.9g} >= {tolerance:.9g}"
+        )
+    return max_abs_error
+
+
+def compute_ppo_diagnostics(
+    logratio: torch.Tensor,
+    ratio: torch.Tensor,
+    clip_eps: float,
+    *,
+    context: str,
+) -> Tuple[float, float]:
+    """Return finite Joschu approximate KL and clip fraction."""
+    ensure_finite_tensor(logratio, name="logratio", context=context)
+    ensure_finite_tensor(ratio, name="ratio", context=context)
+    if logratio.shape != ratio.shape:
+        raise ValueError(
+            f"{context}: ratio shape mismatch: "
+            f"logratio={logratio.shape}, ratio={ratio.shape}"
+        )
+    if not np.isfinite(clip_eps) or clip_eps <= 0:
+        raise ValueError(f"{context}: clip_eps must be finite and positive")
+
+    approx_kl = float(((ratio - 1.0) - logratio).mean().item())
+    clip_fraction = float(
+        ((ratio - 1.0).abs() > clip_eps).float().mean().item()
+    )
+    if not np.isfinite(approx_kl) or approx_kl < -1e-6:
+        raise FloatingPointError(
+            f"{context}: invalid approximate KL={approx_kl}"
+        )
+    if not np.isfinite(clip_fraction) or not 0.0 <= clip_fraction <= 1.0:
+        raise FloatingPointError(
+            f"{context}: invalid clip fraction={clip_fraction}"
+        )
+    return approx_kl, clip_fraction
 
 
 # ============================================================
@@ -1207,6 +1515,8 @@ def train(args):
                 print(f"  [跳过] 总 transition 数 {n_transitions} < {args.min_transitions_per_update}，跳过 PPO 更新")
             else:
                 per_agent_tensors = {}
+                advantage_stats: Dict[int, Dict[str, float]] = {}
+                preupdate_ratio_errors: Dict[int, float] = {}
                 critic_states = []
                 critic_returns = []
                 critic_agent_ids = []   # 修复 #1：每条样本对应的 agent id
@@ -1225,7 +1535,8 @@ def train(args):
                     terminated_arr = np.array([t.terminated for t in data], dtype=np.float32)
                     value_arr = np.array([t.value for t in data], dtype=np.float32)
 
-                    # v2: 按 episode 边界独立计算 GAE + 截断 bootstrap + 逐 episode 标准化
+                    # P0-00D：按 episode 独立计算原始 GAE；同一 agent 的全部
+                    # episode 拼接后，只在整个 rollout 上统一标准化一次。
                     boundaries = buffer.episode_boundaries.get(aid, [])
                     # 修复 #1：bootstrap 值也要按 agent 条件化
                     bootstrap_states = buffer.episode_bootstrap_states.get(aid, [])
@@ -1248,7 +1559,7 @@ def train(args):
                                 bootstrap_values.append(float(critic(bs_t, aid).item()))
                             else:
                                 bootstrap_values.append(0.0)
-                    adv_arr, ret_arr = compute_gae_per_episode(
+                    raw_adv_arr, ret_arr = compute_raw_gae_per_episode(
                         rewards=reward_arr,
                         values=value_arr,
                         dones=done_arr,
@@ -1257,13 +1568,48 @@ def train(args):
                         gamma=args.gamma,
                         gae_lambda=args.gae_lambda,
                         bootstrap_values=bootstrap_values,
+                        context=f"robust_v2 update={update} agent={aid}",
                     )
+                    adv_arr, agent_advantage_stats = normalize_advantages_over_rollout(
+                        raw_adv_arr,
+                        context=(
+                            f"robust_v2 advantage normalization "
+                            f"update={update} agent={aid}"
+                        ),
+                    )
+                    advantage_stats[aid] = agent_advantage_stats
+
+                    array_lengths = {
+                        "obs": len(obs_arr),
+                        "state": len(state_arr),
+                        "action_z": len(act_arr),
+                        "old_logp": len(old_logp_arr),
+                        "raw_advantage": len(raw_adv_arr),
+                        "normalized_advantage": len(adv_arr),
+                        "return": len(ret_arr),
+                    }
+                    if len(set(array_lengths.values())) != 1:
+                        raise RuntimeError(
+                            f"robust_v2 update={update} agent={aid}: "
+                            f"PPO array length mismatch: {array_lengths}"
+                        )
+                    expected_returns = raw_adv_arr + value_arr
+                    if not np.allclose(
+                        ret_arr, expected_returns, rtol=1e-6, atol=1e-6
+                    ):
+                        raise RuntimeError(
+                            f"robust_v2 update={update} agent={aid}: "
+                            "critic return is not raw_advantage + old_value"
+                        )
 
                     per_agent_tensors[aid] = {
                         "obs": torch.as_tensor(obs_arr, dtype=torch.float32, device=device),
                         "act": torch.as_tensor(act_arr, dtype=torch.float32, device=device),
                         "old_logp": torch.as_tensor(old_logp_arr, dtype=torch.float32, device=device),
                         "adv": torch.as_tensor(adv_arr, dtype=torch.float32, device=device),
+                        "raw_adv": torch.as_tensor(
+                            raw_adv_arr, dtype=torch.float32, device=device
+                        ),
                         "state": torch.as_tensor(state_arr, dtype=torch.float32, device=device),
                         "ret": torch.as_tensor(ret_arr, dtype=torch.float32, device=device),
                     }
@@ -1286,6 +1632,18 @@ def train(args):
                         f"grad_norm_actor_{aid}": [],
                     })
                 ppo_metrics["grad_norm_critic"] = []
+
+                # P0-00D：必须在任何 Actor optimizer.step() 之前验证采样策略
+                # 与当前策略完全对齐。Critic 更新不影响 Actor，但仍在 epoch 前统一检查。
+                for aid, tensors in per_agent_tensors.items():
+                    preupdate_ratio_errors[aid] = validate_initial_policy_ratio(
+                        actor=actors[aid],
+                        observations=tensors["obs"],
+                        action_z=tensors["act"],
+                        old_log_probs=tensors["old_logp"],
+                        tolerance=1e-6,
+                        context=f"robust_v2 pre-update ratio update={update} agent={aid}",
+                    )
 
                 if len(critic_states) > 0:
                     critic_state_t = torch.as_tensor(
@@ -1312,11 +1670,41 @@ def train(args):
                             mb = c_idx[start: start + args.minibatch_size]
                             value_pred = critic(critic_state_t[mb], critic_aid_t[mb])
                             critic_loss = 0.5 * (critic_ret_t[mb] - value_pred).pow(2).mean()
+                            critic_context = (
+                                f"robust_v2 critic update={update} "
+                                f"epoch={epoch} minibatch_start={start}"
+                            )
+                            ensure_finite_tensor(
+                                value_pred, name="value_pred", context=critic_context
+                            )
+                            ensure_finite_tensor(
+                                critic_ret_t[mb],
+                                name="critic_return",
+                                context=critic_context,
+                            )
+                            ensure_finite_tensor(
+                                critic_loss, name="critic_loss", context=critic_context
+                            )
 
                             critic_optim.zero_grad()
                             critic_loss.backward()
-                            critic_grad_norm = nn.utils.clip_grad_norm_(critic.parameters(), args.max_grad_norm)
+                            ensure_finite_module_gradients(
+                                critic, context=critic_context
+                            )
+                            critic_grad_norm = nn.utils.clip_grad_norm_(
+                                critic.parameters(),
+                                args.max_grad_norm,
+                                error_if_nonfinite=True,
+                            )
+                            ensure_finite_tensor(
+                                critic_grad_norm,
+                                name="critic_grad_norm",
+                                context=critic_context,
+                            )
                             critic_optim.step()
+                            ensure_finite_module_parameters(
+                                critic, context=critic_context
+                            )
 
                             epoch_critic_losses.append(float(critic_loss.item()))
                             ppo_metrics["grad_norm_critic"].append(float(critic_grad_norm))
@@ -1343,33 +1731,68 @@ def train(args):
                             epoch_entropies = []
                             epoch_approx_kls = []
                             epoch_clip_fracs = []
+                            epoch_actor_grad_norms = []
 
                             for start in range(0, a_n, args.minibatch_size):
                                 mb = a_idx[start: start + args.minibatch_size]
+                                actor_context = (
+                                    f"robust_v2 actor update={update} agent={aid} "
+                                    f"epoch={epoch} minibatch_start={start}"
+                                )
                                 # 修复 #4：用存储的 pre-tanh z 重算 log_prob
                                 new_logp, entropy = actors[aid].evaluate_actions_z(agent_obs_t[mb], agent_act_t[mb])
 
                                 logratio = new_logp - agent_old_logp_t[mb]
                                 ratio = torch.exp(logratio)
+                                ensure_finite_tensor(
+                                    new_logp, name="new_logp", context=actor_context
+                                )
+                                ensure_finite_tensor(
+                                    entropy, name="entropy", context=actor_context
+                                )
+                                ensure_finite_tensor(
+                                    agent_adv_t[mb],
+                                    name="normalized_advantage",
+                                    context=actor_context,
+                                )
+                                approx_kl, clip_fraction = compute_ppo_diagnostics(
+                                    logratio,
+                                    ratio,
+                                    args.clip_eps,
+                                    context=actor_context,
+                                )
                                 surr1 = ratio * agent_adv_t[mb]
                                 surr2 = torch.clamp(ratio, 1.0 - args.clip_eps, 1.0 + args.clip_eps) * agent_adv_t[mb]
                                 actor_loss = -torch.min(surr1, surr2).mean() - args.ent_coef * entropy.mean()
+                                ensure_finite_tensor(
+                                    actor_loss, name="actor_loss", context=actor_context
+                                )
 
                                 actor_optims[aid].zero_grad()
                                 actor_loss.backward()
-                                actor_grad_norm = nn.utils.clip_grad_norm_(actors[aid].parameters(), args.max_grad_norm)
+                                ensure_finite_module_gradients(
+                                    actors[aid], context=actor_context
+                                )
+                                actor_grad_norm = nn.utils.clip_grad_norm_(
+                                    actors[aid].parameters(),
+                                    args.max_grad_norm,
+                                    error_if_nonfinite=True,
+                                )
+                                ensure_finite_tensor(
+                                    actor_grad_norm,
+                                    name="actor_grad_norm",
+                                    context=actor_context,
+                                )
                                 actor_optims[aid].step()
+                                ensure_finite_module_parameters(
+                                    actors[aid], context=actor_context
+                                )
 
                                 epoch_actor_losses.append(float(actor_loss.item()))
                                 epoch_entropies.append(float(entropy.mean().item()))
-                                with torch.no_grad():
-                                    # Joschu approx_kl: E[(r-1) - log r]，无偏低方差近似
-                                    epoch_approx_kls.append(float(
-                                        ((ratio - 1.0) - logratio).mean().item()
-                                    ))
-                                    epoch_clip_fracs.append(float(
-                                        ((ratio - 1.0).abs() > args.clip_eps).float().mean().item()
-                                    ))
+                                epoch_approx_kls.append(approx_kl)
+                                epoch_clip_fracs.append(clip_fraction)
+                                epoch_actor_grad_norms.append(float(actor_grad_norm))
 
                             ppo_metrics[f"actor_loss_{aid}"].append(float(np.mean(epoch_actor_losses)))
                             ppo_metrics[f"entropy_{aid}"].append(float(np.mean(epoch_entropies)))
@@ -1381,14 +1804,29 @@ def train(args):
                                 agent_stopped[aid] = True
                                 agent_stop_epoch[aid] = epoch + 1
                             ppo_metrics[f"clip_frac_{aid}"].append(float(np.mean(epoch_clip_fracs)))
-                            ppo_metrics[f"grad_norm_actor_{aid}"].append(float(actor_grad_norm))
+                            ppo_metrics[f"grad_norm_actor_{aid}"].append(
+                                float(np.mean(epoch_actor_grad_norms))
+                            )
 
                     # explained variance
                     with torch.no_grad():
                         all_value_preds = critic(critic_state_t, critic_aid_t)
-                        var_residual = torch.var(critic_ret_t - all_value_preds)
-                        var_total = torch.var(critic_ret_t)
-                        explained_var = float(1.0 - var_residual / (var_total + 1e-8))
+                        ensure_finite_tensor(
+                            all_value_preds,
+                            name="explained_variance_value_predictions",
+                            context=f"robust_v2 update={update}",
+                        )
+                        var_residual = torch.var(
+                            critic_ret_t - all_value_preds, unbiased=False
+                        )
+                        var_total = torch.var(critic_ret_t, unbiased=False)
+                        explained_var_t = 1.0 - var_residual / (var_total + 1e-8)
+                        ensure_finite_tensor(
+                            explained_var_t,
+                            name="explained_variance",
+                            context=f"robust_v2 update={update}",
+                        )
+                        explained_var = float(explained_var_t.item())
                         ppo_metrics["explained_variance"] = explained_var
 
             # ===== TensorBoard 记录 =====
@@ -1479,6 +1917,33 @@ def train(args):
                         ppo_metrics["explained_variance"], update)
 
                     for aid in agent_ids:
+                        if aid in advantage_stats:
+                            stats = advantage_stats[aid]
+                            tb_writer.add_scalar(
+                                f'ppo/adv_raw_mean_agent{aid}',
+                                stats["raw_mean"], update,
+                            )
+                            tb_writer.add_scalar(
+                                f'ppo/adv_raw_std_agent{aid}',
+                                stats["raw_std"], update,
+                            )
+                            tb_writer.add_scalar(
+                                f'ppo/adv_normalized_mean_agent{aid}',
+                                stats["normalized_mean"], update,
+                            )
+                            tb_writer.add_scalar(
+                                f'ppo/adv_normalized_std_agent{aid}',
+                                stats["normalized_std"], update,
+                            )
+                            tb_writer.add_scalar(
+                                f'ppo/adv_normalization_applied_agent{aid}',
+                                stats["applied"], update,
+                            )
+                        if aid in preupdate_ratio_errors:
+                            tb_writer.add_scalar(
+                                f'ppo/preupdate_max_abs_ratio_error_agent{aid}',
+                                preupdate_ratio_errors[aid], update,
+                            )
                         if ppo_metrics[f"actor_loss_{aid}"]:
                             tb_writer.add_scalar(f'ppo/actor_loss_agent{aid}',
                                 float(np.mean(ppo_metrics[f"actor_loss_{aid}"])), update)

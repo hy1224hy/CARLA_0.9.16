@@ -3,6 +3,8 @@
 > 日期：2026-06-08
 > 范围：修复 #1–#4（见 `mappo_algorithm_fix_plan.md`）后的整体复核
 > 覆盖：`train_no_rllib_mappo.py` 及 4 个变体、`models/actor_critic.py`、`environment/carla_multi_agent_env.py`
+>
+> **历史快照说明（2026-07-23）**：本文关于 `robust_v2` “逐 episode 优势标准化”的判断已由 P0-00D 替代。当前基础策略使用逐 episode 原始 GAE + per-agent rollout 统一标准化；其他入口仍需在对应阶段迁移，不能继续引用本文“全部变体已统一/正确”的旧结论。
 
 ---
 
