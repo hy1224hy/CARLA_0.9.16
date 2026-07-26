@@ -836,6 +836,725 @@ def compute_ppo_diagnostics(
     return approx_kl, clip_fraction
 
 
+@dataclass
+class PreparedMAPPOUpdateBatch:
+    """Validated tensors consumed by the production MAPPO update."""
+
+    per_agent_tensors: Dict[int, Dict[str, torch.Tensor]]
+    advantage_stats: Dict[int, Dict[str, float]]
+    critic_states: torch.Tensor
+    critic_returns: torch.Tensor
+    critic_agent_ids: torch.Tensor
+    transition_counts: Dict[int, int]
+
+
+@dataclass
+class MAPPOUpdateResult:
+    metrics: Dict[str, object]
+    agent_stop_epoch: Dict[int, int]
+    preupdate_ratio_errors: Dict[int, float]
+
+
+def _stack_transition_vectors(
+    data: List[Transition],
+    field_name: str,
+    expected_dim: int,
+    *,
+    context: str,
+) -> np.ndarray:
+    vectors = []
+    for index, transition in enumerate(data):
+        vector = np.asarray(getattr(transition, field_name), dtype=np.float32)
+        if vector.shape != (expected_dim,):
+            raise ValueError(
+                f"{context}: {field_name}[{index}] shape={vector.shape}, "
+                f"expected ({expected_dim},)"
+            )
+        if not np.all(np.isfinite(vector)):
+            raise FloatingPointError(
+                f"{context}: {field_name}[{index}] contains NaN/Inf"
+            )
+        vectors.append(vector)
+    return np.stack(vectors, axis=0)
+
+
+def validate_prepared_mappo_batch(
+    prepared: PreparedMAPPOUpdateBatch,
+    agent_ids: List[int],
+    *,
+    obs_dim: int,
+    state_dim: int,
+    action_dim: int,
+    context: str,
+) -> None:
+    """Validate ownership, dimensions, ordering, and finiteness before update."""
+    if len(set(agent_ids)) != len(agent_ids):
+        raise ValueError(f"{context}: duplicate agent ids: {agent_ids}")
+    expected_agents = set(agent_ids)
+    batch_agents = set(prepared.per_agent_tensors)
+    if not batch_agents.issubset(expected_agents):
+        raise ValueError(
+            f"{context}: unexpected agents in prepared batch: "
+            f"{sorted(batch_agents - expected_agents)}"
+        )
+    if set(prepared.advantage_stats) != batch_agents:
+        raise ValueError(f"{context}: advantage stats do not match actor batches")
+    if set(prepared.transition_counts) != expected_agents:
+        raise ValueError(f"{context}: transition counts do not cover all agents")
+
+    required_fields = {
+        "obs",
+        "act",
+        "old_logp",
+        "adv",
+        "raw_adv",
+        "old_value",
+        "state",
+        "ret",
+    }
+    expected_critic_states = []
+    expected_critic_returns = []
+    expected_critic_agent_ids = []
+    for aid in agent_ids:
+        if aid not in batch_agents:
+            if prepared.transition_counts[aid] != 0:
+                raise ValueError(
+                    f"{context}: agent {aid} has no batch but transition_count="
+                    f"{prepared.transition_counts[aid]}"
+                )
+            continue
+        tensors = prepared.per_agent_tensors[aid]
+        if set(tensors) != required_fields:
+            raise ValueError(
+                f"{context}: agent {aid} tensor fields mismatch: "
+                f"missing={sorted(required_fields - set(tensors))}, "
+                f"extra={sorted(set(tensors) - required_fields)}"
+            )
+        n_rows = int(tensors["obs"].shape[0])
+        if n_rows <= 0 or prepared.transition_counts[aid] != n_rows:
+            raise ValueError(
+                f"{context}: agent {aid} invalid row count: "
+                f"batch={n_rows}, transitions={prepared.transition_counts[aid]}"
+            )
+        expected_shapes = {
+            "obs": (n_rows, obs_dim),
+            "act": (n_rows, action_dim),
+            "old_logp": (n_rows,),
+            "adv": (n_rows,),
+            "raw_adv": (n_rows,),
+            "old_value": (n_rows,),
+            "state": (n_rows, state_dim),
+            "ret": (n_rows,),
+        }
+        for name, expected_shape in expected_shapes.items():
+            tensor = tensors[name]
+            if tuple(tensor.shape) != expected_shape:
+                raise ValueError(
+                    f"{context}: agent {aid} {name} shape={tuple(tensor.shape)}, "
+                    f"expected={expected_shape}"
+                )
+            ensure_finite_tensor(
+                tensor, name=f"agent_{aid}.{name}", context=context
+            )
+        if not torch.allclose(
+            tensors["ret"],
+            tensors["raw_adv"] + tensors["old_value"],
+            rtol=1e-6,
+            atol=1e-6,
+        ):
+            raise RuntimeError(
+                f"{context}: agent {aid} critic return is not "
+                "raw_advantage + old_value"
+            )
+        expected_critic_states.append(tensors["state"])
+        expected_critic_returns.append(tensors["ret"])
+        expected_critic_agent_ids.append(
+            torch.full(
+                (n_rows,), aid, dtype=torch.long, device=tensors["state"].device
+            )
+        )
+
+    total_rows = sum(prepared.transition_counts.values())
+    critic_shapes = {
+        "states": tuple(prepared.critic_states.shape),
+        "returns": tuple(prepared.critic_returns.shape),
+        "agent_ids": tuple(prepared.critic_agent_ids.shape),
+    }
+    expected_critic_shapes = {
+        "states": (total_rows, state_dim),
+        "returns": (total_rows,),
+        "agent_ids": (total_rows,),
+    }
+    if critic_shapes != expected_critic_shapes:
+        raise ValueError(
+            f"{context}: centralized critic shapes mismatch: "
+            f"actual={critic_shapes}, expected={expected_critic_shapes}"
+        )
+    ensure_finite_tensor(
+        prepared.critic_states, name="critic_states", context=context
+    )
+    ensure_finite_tensor(
+        prepared.critic_returns, name="critic_returns", context=context
+    )
+    if prepared.critic_agent_ids.dtype != torch.long:
+        raise TypeError(f"{context}: critic_agent_ids must use torch.long")
+
+    if total_rows > 0:
+        expected_states = torch.cat(expected_critic_states, dim=0)
+        expected_returns = torch.cat(expected_critic_returns, dim=0)
+        expected_agent_ids = torch.cat(expected_critic_agent_ids, dim=0)
+        if not torch.equal(prepared.critic_states, expected_states):
+            raise RuntimeError(f"{context}: critic states lost agent/time ordering")
+        if not torch.equal(prepared.critic_returns, expected_returns):
+            raise RuntimeError(f"{context}: critic returns lost agent/time ordering")
+        if not torch.equal(prepared.critic_agent_ids, expected_agent_ids):
+            raise RuntimeError(f"{context}: critic agent ids are misaligned")
+
+
+def prepare_mappo_update_batch(
+    buffer: RolloutBuffer,
+    critic: AgentConditionedCritic,
+    agent_ids: List[int],
+    device: torch.device,
+    *,
+    gamma: float,
+    gae_lambda: float,
+    obs_dim: int,
+    state_dim: int,
+    action_dim: int,
+    context: str,
+) -> PreparedMAPPOUpdateBatch:
+    """Build the exact actor/critic batches used by the production update."""
+    for name, dim in (
+        ("obs_dim", obs_dim),
+        ("state_dim", state_dim),
+        ("action_dim", action_dim),
+    ):
+        if not isinstance(dim, int) or dim <= 0:
+            raise ValueError(f"{context}: {name} must be a positive integer")
+    if not np.isfinite(gamma) or not 0.0 <= gamma <= 1.0:
+        raise ValueError(f"{context}: gamma must be in [0,1]")
+    if not np.isfinite(gae_lambda) or not 0.0 <= gae_lambda <= 1.0:
+        raise ValueError(f"{context}: gae_lambda must be in [0,1]")
+
+    per_agent_tensors: Dict[int, Dict[str, torch.Tensor]] = {}
+    advantage_stats: Dict[int, Dict[str, float]] = {}
+    transition_counts: Dict[int, int] = {}
+    critic_states = []
+    critic_returns = []
+    critic_agent_ids = []
+
+    for aid in agent_ids:
+        data = buffer.get_agent_data(aid)
+        transition_counts[aid] = len(data)
+        if not data:
+            if buffer.episode_boundaries.get(aid, []):
+                raise ValueError(
+                    f"{context}: empty agent {aid} data has episode boundaries"
+                )
+            if buffer.episode_bootstrap_states.get(aid, []):
+                raise ValueError(
+                    f"{context}: empty agent {aid} data has bootstrap states"
+                )
+            continue
+
+        agent_context = f"{context} agent={aid}"
+        obs_arr = _stack_transition_vectors(
+            data, "obs", obs_dim, context=agent_context
+        )
+        state_arr = _stack_transition_vectors(
+            data, "global_state", state_dim, context=agent_context
+        )
+        act_arr = _stack_transition_vectors(
+            data, "action_z", action_dim, context=agent_context
+        )
+        scalar_fields = {}
+        for field_name in (
+            "log_prob",
+            "reward",
+            "done",
+            "terminated",
+            "value",
+        ):
+            array = np.asarray(
+                [getattr(transition, field_name) for transition in data],
+                dtype=np.float32,
+            )
+            if array.shape != (len(data),):
+                raise ValueError(
+                    f"{agent_context}: {field_name} shape={array.shape}, "
+                    f"expected ({len(data)},)"
+                )
+            if not np.all(np.isfinite(array)):
+                raise FloatingPointError(
+                    f"{agent_context}: {field_name} contains NaN/Inf"
+                )
+            scalar_fields[field_name] = array
+
+        boundaries = buffer.episode_boundaries.get(aid, [])
+        bootstrap_states = buffer.episode_bootstrap_states.get(aid, [])
+        if len(bootstrap_states) != len(boundaries):
+            raise ValueError(
+                f"{agent_context}: bootstrap/boundary count mismatch: "
+                f"{len(bootstrap_states)} != {len(boundaries)}"
+            )
+        bootstrap_values = []
+        with torch.no_grad():
+            for episode_index, bootstrap_state in enumerate(bootstrap_states):
+                if bootstrap_state is None:
+                    bootstrap_values.append(0.0)
+                    continue
+                bootstrap_np = np.asarray(bootstrap_state, dtype=np.float32)
+                if bootstrap_np.shape != (state_dim,):
+                    raise ValueError(
+                        f"{agent_context}: bootstrap state {episode_index} "
+                        f"shape={bootstrap_np.shape}, expected ({state_dim},)"
+                    )
+                if not np.all(np.isfinite(bootstrap_np)):
+                    raise FloatingPointError(
+                        f"{agent_context}: bootstrap state {episode_index} "
+                        "contains NaN/Inf"
+                    )
+                bootstrap_tensor = torch.as_tensor(
+                    bootstrap_np, dtype=torch.float32, device=device
+                ).unsqueeze(0)
+                bootstrap_prediction = critic(bootstrap_tensor, aid)
+                ensure_finite_tensor(
+                    bootstrap_prediction,
+                    name=f"bootstrap_value[{episode_index}]",
+                    context=agent_context,
+                )
+                bootstrap_values.append(float(bootstrap_prediction.item()))
+
+        raw_adv_arr, ret_arr = compute_raw_gae_per_episode(
+            rewards=scalar_fields["reward"],
+            values=scalar_fields["value"],
+            dones=scalar_fields["done"],
+            terminateds=scalar_fields["terminated"],
+            boundaries=boundaries,
+            gamma=gamma,
+            gae_lambda=gae_lambda,
+            bootstrap_values=bootstrap_values,
+            context=agent_context,
+        )
+        adv_arr, agent_advantage_stats = normalize_advantages_over_rollout(
+            raw_adv_arr, context=f"{agent_context} advantage normalization"
+        )
+        advantage_stats[aid] = agent_advantage_stats
+
+        expected_returns = raw_adv_arr + scalar_fields["value"]
+        if not np.allclose(ret_arr, expected_returns, rtol=1e-6, atol=1e-6):
+            raise RuntimeError(
+                f"{agent_context}: critic return is not "
+                "raw_advantage + old_value"
+            )
+        per_agent_tensors[aid] = {
+            "obs": torch.as_tensor(obs_arr, dtype=torch.float32, device=device),
+            "act": torch.as_tensor(act_arr, dtype=torch.float32, device=device),
+            "old_logp": torch.as_tensor(
+                scalar_fields["log_prob"], dtype=torch.float32, device=device
+            ),
+            "adv": torch.as_tensor(adv_arr, dtype=torch.float32, device=device),
+            "raw_adv": torch.as_tensor(
+                raw_adv_arr, dtype=torch.float32, device=device
+            ),
+            "old_value": torch.as_tensor(
+                scalar_fields["value"], dtype=torch.float32, device=device
+            ),
+            "state": torch.as_tensor(
+                state_arr, dtype=torch.float32, device=device
+            ),
+            "ret": torch.as_tensor(ret_arr, dtype=torch.float32, device=device),
+        }
+        critic_states.append(state_arr)
+        critic_returns.append(ret_arr)
+        critic_agent_ids.append(np.full(len(data), aid, dtype=np.int64))
+
+    if critic_states:
+        critic_state_tensor = torch.as_tensor(
+            np.concatenate(critic_states, axis=0),
+            dtype=torch.float32,
+            device=device,
+        )
+        critic_return_tensor = torch.as_tensor(
+            np.concatenate(critic_returns, axis=0),
+            dtype=torch.float32,
+            device=device,
+        )
+        critic_agent_id_tensor = torch.as_tensor(
+            np.concatenate(critic_agent_ids, axis=0),
+            dtype=torch.long,
+            device=device,
+        )
+    else:
+        critic_state_tensor = torch.empty(
+            (0, state_dim), dtype=torch.float32, device=device
+        )
+        critic_return_tensor = torch.empty((0,), dtype=torch.float32, device=device)
+        critic_agent_id_tensor = torch.empty((0,), dtype=torch.long, device=device)
+
+    prepared = PreparedMAPPOUpdateBatch(
+        per_agent_tensors=per_agent_tensors,
+        advantage_stats=advantage_stats,
+        critic_states=critic_state_tensor,
+        critic_returns=critic_return_tensor,
+        critic_agent_ids=critic_agent_id_tensor,
+        transition_counts=transition_counts,
+    )
+    validate_prepared_mappo_batch(
+        prepared,
+        agent_ids,
+        obs_dim=obs_dim,
+        state_dim=state_dim,
+        action_dim=action_dim,
+        context=context,
+    )
+    return prepared
+
+
+def compute_clipped_actor_loss(
+    new_log_probs: torch.Tensor,
+    old_log_probs: torch.Tensor,
+    advantages: torch.Tensor,
+    entropy: torch.Tensor,
+    *,
+    clip_eps: float,
+    ent_coef: float,
+    context: str,
+) -> Tuple[torch.Tensor, Dict[str, float]]:
+    """Compute the production PPO clipped objective and diagnostics."""
+    shapes = {
+        "new_log_probs": tuple(new_log_probs.shape),
+        "old_log_probs": tuple(old_log_probs.shape),
+        "advantages": tuple(advantages.shape),
+        "entropy": tuple(entropy.shape),
+    }
+    if len(set(shapes.values())) != 1 or new_log_probs.ndim != 1:
+        raise ValueError(f"{context}: actor loss shape mismatch: {shapes}")
+    for name, tensor in (
+        ("new_log_probs", new_log_probs),
+        ("old_log_probs", old_log_probs),
+        ("advantages", advantages),
+        ("entropy", entropy),
+    ):
+        ensure_finite_tensor(tensor, name=name, context=context)
+    if not np.isfinite(ent_coef) or ent_coef < 0:
+        raise ValueError(f"{context}: ent_coef must be finite and non-negative")
+
+    logratio = new_log_probs - old_log_probs
+    ratio = torch.exp(logratio)
+    approx_kl, clip_fraction = compute_ppo_diagnostics(
+        logratio, ratio, clip_eps, context=context
+    )
+    surrogate_unclipped = ratio * advantages
+    surrogate_clipped = (
+        torch.clamp(ratio, 1.0 - clip_eps, 1.0 + clip_eps) * advantages
+    )
+    actor_loss = -torch.min(surrogate_unclipped, surrogate_clipped).mean()
+    actor_loss = actor_loss - ent_coef * entropy.mean()
+    ensure_finite_tensor(actor_loss, name="actor_loss", context=context)
+    return actor_loss, {
+        "entropy": float(entropy.mean().item()),
+        "approx_kl": approx_kl,
+        "clip_fraction": clip_fraction,
+    }
+
+
+def compute_critic_value_loss(
+    value_predictions: torch.Tensor,
+    returns: torch.Tensor,
+    *,
+    context: str,
+) -> torch.Tensor:
+    if value_predictions.ndim != 1 or value_predictions.shape != returns.shape:
+        raise ValueError(
+            f"{context}: critic loss shape mismatch: "
+            f"predictions={tuple(value_predictions.shape)}, "
+            f"returns={tuple(returns.shape)}"
+        )
+    ensure_finite_tensor(
+        value_predictions, name="value_predictions", context=context
+    )
+    ensure_finite_tensor(returns, name="returns", context=context)
+    loss = 0.5 * (returns - value_predictions).pow(2).mean()
+    ensure_finite_tensor(loss, name="critic_loss", context=context)
+    return loss
+
+
+def should_stop_for_kl(approx_kl: float, target_kl: float) -> bool:
+    if not np.isfinite(approx_kl) or approx_kl < -1e-6:
+        raise ValueError(f"invalid approx_kl={approx_kl}")
+    if not np.isfinite(target_kl) or target_kl < 0:
+        raise ValueError(f"invalid target_kl={target_kl}")
+    return target_kl > 0 and approx_kl > 1.5 * target_kl
+
+
+def _validate_optimizer_owns_module(
+    optimizer: optim.Optimizer,
+    module: nn.Module,
+    *,
+    context: str,
+) -> None:
+    """Reject crossed Actor/Critic optimizer wiring before any parameter update."""
+    if not isinstance(optimizer, optim.Optimizer):
+        raise TypeError(f"{context}: optimizer must be torch.optim.Optimizer")
+    module_parameter_ids = {id(parameter) for parameter in module.parameters()}
+    optimizer_parameter_ids = {
+        id(parameter)
+        for group in optimizer.param_groups
+        for parameter in group["params"]
+    }
+    if optimizer_parameter_ids != module_parameter_ids:
+        raise ValueError(
+            f"{context}: optimizer parameters do not exactly match module parameters"
+        )
+
+
+def run_mappo_ppo_update(
+    prepared: PreparedMAPPOUpdateBatch,
+    actors: Dict[int, Actor],
+    actor_optims: Dict[int, optim.Optimizer],
+    critic: AgentConditionedCritic,
+    critic_optim: optim.Optimizer,
+    agent_ids: List[int],
+    *,
+    obs_dim: int,
+    state_dim: int,
+    action_dim: int,
+    ppo_epochs: int,
+    minibatch_size: int,
+    clip_eps: float,
+    ent_coef: float,
+    max_grad_norm: float,
+    target_kl: float,
+    shuffle: bool = True,
+    context: str,
+) -> MAPPOUpdateResult:
+    """Execute the exact production MAPPO optimizer path on a prepared batch."""
+    validate_prepared_mappo_batch(
+        prepared,
+        agent_ids,
+        obs_dim=obs_dim,
+        state_dim=state_dim,
+        action_dim=action_dim,
+        context=f"{context} preflight",
+    )
+    if prepared.critic_states.shape[0] == 0:
+        raise ValueError(f"{context}: cannot update from an empty batch")
+    if not isinstance(ppo_epochs, int) or ppo_epochs <= 0:
+        raise ValueError(f"{context}: ppo_epochs must be a positive integer")
+    if not isinstance(minibatch_size, int) or minibatch_size <= 0:
+        raise ValueError(f"{context}: minibatch_size must be a positive integer")
+    if not np.isfinite(clip_eps) or clip_eps <= 0:
+        raise ValueError(f"{context}: clip_eps must be finite and positive")
+    if not np.isfinite(max_grad_norm) or max_grad_norm <= 0:
+        raise ValueError(f"{context}: max_grad_norm must be finite and positive")
+    if not np.isfinite(ent_coef) or ent_coef < 0:
+        raise ValueError(f"{context}: ent_coef must be finite and non-negative")
+    if not np.isfinite(target_kl) or target_kl < 0:
+        raise ValueError(f"{context}: target_kl must be finite and non-negative")
+    batch_agents = set(prepared.per_agent_tensors)
+    for name, mapping in (("actors", actors), ("actor_optims", actor_optims)):
+        missing = batch_agents - set(mapping)
+        if missing:
+            raise KeyError(f"{context}: {name} missing agents={sorted(missing)}")
+    if critic.state_dim != state_dim:
+        raise ValueError(
+            f"{context}: critic state_dim={critic.state_dim}, expected={state_dim}"
+        )
+    invalid_critic_agent_ids = [
+        aid
+        for aid in agent_ids
+        if not isinstance(aid, int) or not 0 <= aid < critic.num_agents
+    ]
+    if invalid_critic_agent_ids:
+        raise ValueError(
+            f"{context}: agent ids incompatible with critic: "
+            f"{invalid_critic_agent_ids}"
+        )
+
+    _validate_optimizer_owns_module(
+        critic_optim, critic, context=f"{context} critic optimizer preflight"
+    )
+    ensure_finite_module_parameters(critic, context=f"{context} critic preflight")
+    with torch.no_grad():
+        critic_preflight_values = critic(
+            prepared.critic_states, prepared.critic_agent_ids
+        )
+    ensure_finite_tensor(
+        critic_preflight_values,
+        name="critic_preflight_values",
+        context=f"{context} critic preflight",
+    )
+    preupdate_ratio_errors: Dict[int, float] = {}
+    for aid, tensors in prepared.per_agent_tensors.items():
+        _validate_optimizer_owns_module(
+            actor_optims[aid],
+            actors[aid],
+            context=f"{context} actor={aid} optimizer preflight",
+        )
+        ensure_finite_module_parameters(
+            actors[aid], context=f"{context} actor={aid} preflight"
+        )
+        preupdate_ratio_errors[aid] = validate_initial_policy_ratio(
+            actor=actors[aid],
+            observations=tensors["obs"],
+            action_z=tensors["act"],
+            old_log_probs=tensors["old_logp"],
+            tolerance=1e-6,
+            context=f"{context} actor={aid} pre-update ratio",
+        )
+
+    metrics: Dict[str, object] = {
+        "critic_loss": [],
+        "grad_norm_critic": [],
+        "critic_samples_seen": 0,
+        "explained_variance": 0.0,
+    }
+    for aid in agent_ids:
+        metrics.update({
+            f"actor_loss_{aid}": [],
+            f"entropy_{aid}": [],
+            f"approx_kl_{aid}": [],
+            f"clip_frac_{aid}": [],
+            f"grad_norm_actor_{aid}": [],
+            f"actor_samples_seen_{aid}": 0,
+        })
+
+    agent_stopped = {aid: False for aid in agent_ids}
+    agent_stop_epoch = {aid: ppo_epochs for aid in agent_ids}
+    critic_state_t = prepared.critic_states
+    critic_ret_t = prepared.critic_returns
+    critic_aid_t = prepared.critic_agent_ids
+
+    for epoch in range(ppo_epochs):
+        critic_indices = np.arange(critic_state_t.shape[0])
+        if shuffle:
+            np.random.shuffle(critic_indices)
+        epoch_critic_losses = []
+        for start in range(0, len(critic_indices), minibatch_size):
+            mb = critic_indices[start:start + minibatch_size]
+            critic_context = (
+                f"{context} critic epoch={epoch} minibatch_start={start}"
+            )
+            value_predictions = critic(critic_state_t[mb], critic_aid_t[mb])
+            critic_loss = compute_critic_value_loss(
+                value_predictions, critic_ret_t[mb], context=critic_context
+            )
+            critic_optim.zero_grad()
+            critic_loss.backward()
+            ensure_finite_module_gradients(critic, context=critic_context)
+            critic_grad_norm = nn.utils.clip_grad_norm_(
+                critic.parameters(), max_grad_norm, error_if_nonfinite=True
+            )
+            ensure_finite_tensor(
+                critic_grad_norm, name="critic_grad_norm", context=critic_context
+            )
+            critic_optim.step()
+            ensure_finite_module_parameters(critic, context=critic_context)
+            epoch_critic_losses.append(float(critic_loss.item()))
+            metrics["grad_norm_critic"].append(float(critic_grad_norm))
+            metrics["critic_samples_seen"] += int(len(mb))
+        metrics["critic_loss"].append(float(np.mean(epoch_critic_losses)))
+
+        for aid in agent_ids:
+            if aid not in prepared.per_agent_tensors or agent_stopped[aid]:
+                continue
+            tensors = prepared.per_agent_tensors[aid]
+            actor_indices = np.arange(tensors["obs"].shape[0])
+            if shuffle:
+                np.random.shuffle(actor_indices)
+            epoch_actor_losses = []
+            epoch_entropies = []
+            epoch_approx_kls = []
+            epoch_clip_fracs = []
+            epoch_actor_grad_norms = []
+            for start in range(0, len(actor_indices), minibatch_size):
+                mb = actor_indices[start:start + minibatch_size]
+                actor_context = (
+                    f"{context} actor={aid} epoch={epoch} "
+                    f"minibatch_start={start}"
+                )
+                new_log_probs, entropy = actors[aid].evaluate_actions_z(
+                    tensors["obs"][mb], tensors["act"][mb]
+                )
+                actor_loss, diagnostics = compute_clipped_actor_loss(
+                    new_log_probs,
+                    tensors["old_logp"][mb],
+                    tensors["adv"][mb],
+                    entropy,
+                    clip_eps=clip_eps,
+                    ent_coef=ent_coef,
+                    context=actor_context,
+                )
+                actor_optims[aid].zero_grad()
+                actor_loss.backward()
+                ensure_finite_module_gradients(
+                    actors[aid], context=actor_context
+                )
+                actor_grad_norm = nn.utils.clip_grad_norm_(
+                    actors[aid].parameters(),
+                    max_grad_norm,
+                    error_if_nonfinite=True,
+                )
+                ensure_finite_tensor(
+                    actor_grad_norm,
+                    name="actor_grad_norm",
+                    context=actor_context,
+                )
+                actor_optims[aid].step()
+                ensure_finite_module_parameters(
+                    actors[aid], context=actor_context
+                )
+                epoch_actor_losses.append(float(actor_loss.item()))
+                epoch_entropies.append(diagnostics["entropy"])
+                epoch_approx_kls.append(diagnostics["approx_kl"])
+                epoch_clip_fracs.append(diagnostics["clip_fraction"])
+                epoch_actor_grad_norms.append(float(actor_grad_norm))
+                metrics[f"actor_samples_seen_{aid}"] += int(len(mb))
+
+            metrics[f"actor_loss_{aid}"].append(
+                float(np.mean(epoch_actor_losses))
+            )
+            metrics[f"entropy_{aid}"].append(
+                float(np.mean(epoch_entropies))
+            )
+            mean_epoch_kl = float(np.mean(epoch_approx_kls))
+            metrics[f"approx_kl_{aid}"].append(mean_epoch_kl)
+            metrics[f"clip_frac_{aid}"].append(
+                float(np.mean(epoch_clip_fracs))
+            )
+            metrics[f"grad_norm_actor_{aid}"].append(
+                float(np.mean(epoch_actor_grad_norms))
+            )
+            if should_stop_for_kl(mean_epoch_kl, target_kl):
+                agent_stopped[aid] = True
+                agent_stop_epoch[aid] = epoch + 1
+
+    with torch.no_grad():
+        value_predictions = critic(critic_state_t, critic_aid_t)
+        ensure_finite_tensor(
+            value_predictions,
+            name="explained_variance_value_predictions",
+            context=context,
+        )
+        residual_variance = torch.var(
+            critic_ret_t - value_predictions, unbiased=False
+        )
+        return_variance = torch.var(critic_ret_t, unbiased=False)
+        explained_variance = 1.0 - residual_variance / (return_variance + 1e-8)
+        ensure_finite_tensor(
+            explained_variance, name="explained_variance", context=context
+        )
+        metrics["explained_variance"] = float(explained_variance.item())
+
+    return MAPPOUpdateResult(
+        metrics=metrics,
+        agent_stop_epoch=agent_stop_epoch,
+        preupdate_ratio_errors=preupdate_ratio_errors,
+    )
+
+
 # ============================================================
 # 场景采样策略
 # ============================================================
@@ -1514,320 +2233,44 @@ def train(args):
             if skip_update:
                 print(f"  [跳过] 总 transition 数 {n_transitions} < {args.min_transitions_per_update}，跳过 PPO 更新")
             else:
-                per_agent_tensors = {}
-                advantage_stats: Dict[int, Dict[str, float]] = {}
-                preupdate_ratio_errors: Dict[int, float] = {}
-                critic_states = []
-                critic_returns = []
-                critic_agent_ids = []   # 修复 #1：每条样本对应的 agent id
+                prepared_batch = prepare_mappo_update_batch(
+                    buffer=buffer,
+                    critic=critic,
+                    agent_ids=agent_ids,
+                    device=device,
+                    gamma=args.gamma,
+                    gae_lambda=args.gae_lambda,
+                    obs_dim=19,
+                    state_dim=state_dim,
+                    action_dim=3,
+                    context=f"robust_v2 update={update}",
+                )
+                per_agent_tensors = prepared_batch.per_agent_tensors
+                advantage_stats = prepared_batch.advantage_stats
+                critic_states = prepared_batch.critic_states
 
-                for aid in agent_ids:
-                    data = buffer.get_agent_data(aid)
-                    if len(data) == 0:
-                        continue
-
-                    obs_arr = np.array([t.obs for t in data], dtype=np.float32)
-                    state_arr = np.array([t.global_state for t in data], dtype=np.float32)
-                    act_arr = np.array([t.action_z for t in data], dtype=np.float32)
-                    old_logp_arr = np.array([t.log_prob for t in data], dtype=np.float32)
-                    reward_arr = np.array([t.reward for t in data], dtype=np.float32)
-                    done_arr = np.array([t.done for t in data], dtype=np.float32)
-                    terminated_arr = np.array([t.terminated for t in data], dtype=np.float32)
-                    value_arr = np.array([t.value for t in data], dtype=np.float32)
-
-                    # P0-00D：按 episode 独立计算原始 GAE；同一 agent 的全部
-                    # episode 拼接后，只在整个 rollout 上统一标准化一次。
-                    boundaries = buffer.episode_boundaries.get(aid, [])
-                    # 修复 #1：bootstrap 值也要按 agent 条件化
-                    bootstrap_states = buffer.episode_bootstrap_states.get(aid, [])
-                    if len(bootstrap_states) != len(boundaries):
-                        raise RuntimeError(
-                            f"Agent {aid} bootstrap/boundary count mismatch: "
-                            f"{len(bootstrap_states)} != {len(boundaries)}"
-                        )
-                    if not boundaries or boundaries[-1][1] != len(data):
-                        raise RuntimeError(
-                            f"Agent {aid} rollout has unclosed transitions: "
-                            f"last_boundary={boundaries[-1][1] if boundaries else 0}, "
-                            f"data={len(data)}"
-                        )
-                    bootstrap_values = []
-                    with torch.no_grad():
-                        for bs in bootstrap_states:
-                            if bs is not None:
-                                bs_t = torch.as_tensor(bs, dtype=torch.float32, device=device).unsqueeze(0)
-                                bootstrap_values.append(float(critic(bs_t, aid).item()))
-                            else:
-                                bootstrap_values.append(0.0)
-                    raw_adv_arr, ret_arr = compute_raw_gae_per_episode(
-                        rewards=reward_arr,
-                        values=value_arr,
-                        dones=done_arr,
-                        terminateds=terminated_arr,
-                        boundaries=boundaries,
-                        gamma=args.gamma,
-                        gae_lambda=args.gae_lambda,
-                        bootstrap_values=bootstrap_values,
-                        context=f"robust_v2 update={update} agent={aid}",
-                    )
-                    adv_arr, agent_advantage_stats = normalize_advantages_over_rollout(
-                        raw_adv_arr,
-                        context=(
-                            f"robust_v2 advantage normalization "
-                            f"update={update} agent={aid}"
-                        ),
-                    )
-                    advantage_stats[aid] = agent_advantage_stats
-
-                    array_lengths = {
-                        "obs": len(obs_arr),
-                        "state": len(state_arr),
-                        "action_z": len(act_arr),
-                        "old_logp": len(old_logp_arr),
-                        "raw_advantage": len(raw_adv_arr),
-                        "normalized_advantage": len(adv_arr),
-                        "return": len(ret_arr),
-                    }
-                    if len(set(array_lengths.values())) != 1:
-                        raise RuntimeError(
-                            f"robust_v2 update={update} agent={aid}: "
-                            f"PPO array length mismatch: {array_lengths}"
-                        )
-                    expected_returns = raw_adv_arr + value_arr
-                    if not np.allclose(
-                        ret_arr, expected_returns, rtol=1e-6, atol=1e-6
-                    ):
-                        raise RuntimeError(
-                            f"robust_v2 update={update} agent={aid}: "
-                            "critic return is not raw_advantage + old_value"
-                        )
-
-                    per_agent_tensors[aid] = {
-                        "obs": torch.as_tensor(obs_arr, dtype=torch.float32, device=device),
-                        "act": torch.as_tensor(act_arr, dtype=torch.float32, device=device),
-                        "old_logp": torch.as_tensor(old_logp_arr, dtype=torch.float32, device=device),
-                        "adv": torch.as_tensor(adv_arr, dtype=torch.float32, device=device),
-                        "raw_adv": torch.as_tensor(
-                            raw_adv_arr, dtype=torch.float32, device=device
-                        ),
-                        "state": torch.as_tensor(state_arr, dtype=torch.float32, device=device),
-                        "ret": torch.as_tensor(ret_arr, dtype=torch.float32, device=device),
-                    }
-
-                    critic_states.append(state_arr)
-                    critic_returns.append(ret_arr)
-                    critic_agent_ids.append(np.full(len(ret_arr), aid, dtype=np.int64))
-
-                # 初始化 PPO 指标
-                ppo_metrics = {
-                    "critic_loss": [],
-                    "explained_variance": 0.0,
-                }
-                for aid in agent_ids:
-                    ppo_metrics.update({
-                        f"actor_loss_{aid}": [],
-                        f"entropy_{aid}": [],
-                        f"approx_kl_{aid}": [],
-                        f"clip_frac_{aid}": [],
-                        f"grad_norm_actor_{aid}": [],
-                    })
-                ppo_metrics["grad_norm_critic"] = []
-
-                # P0-00D：必须在任何 Actor optimizer.step() 之前验证采样策略
-                # 与当前策略完全对齐。Critic 更新不影响 Actor，但仍在 epoch 前统一检查。
-                for aid, tensors in per_agent_tensors.items():
-                    preupdate_ratio_errors[aid] = validate_initial_policy_ratio(
-                        actor=actors[aid],
-                        observations=tensors["obs"],
-                        action_z=tensors["act"],
-                        old_log_probs=tensors["old_logp"],
-                        tolerance=1e-6,
-                        context=f"robust_v2 pre-update ratio update={update} agent={aid}",
-                    )
-
-                if len(critic_states) > 0:
-                    critic_state_t = torch.as_tensor(
-                        np.concatenate(critic_states, axis=0), dtype=torch.float32, device=device
-                    )
-                    critic_ret_t = torch.as_tensor(
-                        np.concatenate(critic_returns, axis=0), dtype=torch.float32, device=device
-                    )
-                    critic_aid_t = torch.as_tensor(
-                        np.concatenate(critic_agent_ids, axis=0), dtype=torch.long, device=device
-                    )
-
-                    # Phase A3: 每个 agent 在 epoch 间记录是否已 KL 早停
-                    agent_stopped: Dict[int, bool] = {aid: False for aid in agent_ids}
-                    agent_stop_epoch: Dict[int, int] = {aid: args.ppo_epochs for aid in agent_ids}
-
-                    for epoch in range(args.ppo_epochs):
-                        # --- Critic 更新 ---
-                        c_n = critic_state_t.shape[0]
-                        c_idx = np.arange(c_n)
-                        np.random.shuffle(c_idx)
-                        epoch_critic_losses = []
-                        for start in range(0, c_n, args.minibatch_size):
-                            mb = c_idx[start: start + args.minibatch_size]
-                            value_pred = critic(critic_state_t[mb], critic_aid_t[mb])
-                            critic_loss = 0.5 * (critic_ret_t[mb] - value_pred).pow(2).mean()
-                            critic_context = (
-                                f"robust_v2 critic update={update} "
-                                f"epoch={epoch} minibatch_start={start}"
-                            )
-                            ensure_finite_tensor(
-                                value_pred, name="value_pred", context=critic_context
-                            )
-                            ensure_finite_tensor(
-                                critic_ret_t[mb],
-                                name="critic_return",
-                                context=critic_context,
-                            )
-                            ensure_finite_tensor(
-                                critic_loss, name="critic_loss", context=critic_context
-                            )
-
-                            critic_optim.zero_grad()
-                            critic_loss.backward()
-                            ensure_finite_module_gradients(
-                                critic, context=critic_context
-                            )
-                            critic_grad_norm = nn.utils.clip_grad_norm_(
-                                critic.parameters(),
-                                args.max_grad_norm,
-                                error_if_nonfinite=True,
-                            )
-                            ensure_finite_tensor(
-                                critic_grad_norm,
-                                name="critic_grad_norm",
-                                context=critic_context,
-                            )
-                            critic_optim.step()
-                            ensure_finite_module_parameters(
-                                critic, context=critic_context
-                            )
-
-                            epoch_critic_losses.append(float(critic_loss.item()))
-                            ppo_metrics["grad_norm_critic"].append(float(critic_grad_norm))
-
-                        ppo_metrics["critic_loss"].append(float(np.mean(epoch_critic_losses)))
-
-                        # --- Actor 更新 ---
-                        for aid in agent_ids:
-                            if aid not in per_agent_tensors:
-                                continue
-                            if agent_stopped[aid]:
-                                continue  # Phase A3: 该 agent 已 KL 早停，跳过后续 epoch
-
-                            agent_obs_t = per_agent_tensors[aid]["obs"]
-                            agent_act_t = per_agent_tensors[aid]["act"]
-                            agent_old_logp_t = per_agent_tensors[aid]["old_logp"]
-                            agent_adv_t = per_agent_tensors[aid]["adv"]
-
-                            a_n = agent_obs_t.shape[0]
-                            a_idx = np.arange(a_n)
-                            np.random.shuffle(a_idx)
-
-                            epoch_actor_losses = []
-                            epoch_entropies = []
-                            epoch_approx_kls = []
-                            epoch_clip_fracs = []
-                            epoch_actor_grad_norms = []
-
-                            for start in range(0, a_n, args.minibatch_size):
-                                mb = a_idx[start: start + args.minibatch_size]
-                                actor_context = (
-                                    f"robust_v2 actor update={update} agent={aid} "
-                                    f"epoch={epoch} minibatch_start={start}"
-                                )
-                                # 修复 #4：用存储的 pre-tanh z 重算 log_prob
-                                new_logp, entropy = actors[aid].evaluate_actions_z(agent_obs_t[mb], agent_act_t[mb])
-
-                                logratio = new_logp - agent_old_logp_t[mb]
-                                ratio = torch.exp(logratio)
-                                ensure_finite_tensor(
-                                    new_logp, name="new_logp", context=actor_context
-                                )
-                                ensure_finite_tensor(
-                                    entropy, name="entropy", context=actor_context
-                                )
-                                ensure_finite_tensor(
-                                    agent_adv_t[mb],
-                                    name="normalized_advantage",
-                                    context=actor_context,
-                                )
-                                approx_kl, clip_fraction = compute_ppo_diagnostics(
-                                    logratio,
-                                    ratio,
-                                    args.clip_eps,
-                                    context=actor_context,
-                                )
-                                surr1 = ratio * agent_adv_t[mb]
-                                surr2 = torch.clamp(ratio, 1.0 - args.clip_eps, 1.0 + args.clip_eps) * agent_adv_t[mb]
-                                actor_loss = -torch.min(surr1, surr2).mean() - args.ent_coef * entropy.mean()
-                                ensure_finite_tensor(
-                                    actor_loss, name="actor_loss", context=actor_context
-                                )
-
-                                actor_optims[aid].zero_grad()
-                                actor_loss.backward()
-                                ensure_finite_module_gradients(
-                                    actors[aid], context=actor_context
-                                )
-                                actor_grad_norm = nn.utils.clip_grad_norm_(
-                                    actors[aid].parameters(),
-                                    args.max_grad_norm,
-                                    error_if_nonfinite=True,
-                                )
-                                ensure_finite_tensor(
-                                    actor_grad_norm,
-                                    name="actor_grad_norm",
-                                    context=actor_context,
-                                )
-                                actor_optims[aid].step()
-                                ensure_finite_module_parameters(
-                                    actors[aid], context=actor_context
-                                )
-
-                                epoch_actor_losses.append(float(actor_loss.item()))
-                                epoch_entropies.append(float(entropy.mean().item()))
-                                epoch_approx_kls.append(approx_kl)
-                                epoch_clip_fracs.append(clip_fraction)
-                                epoch_actor_grad_norms.append(float(actor_grad_norm))
-
-                            ppo_metrics[f"actor_loss_{aid}"].append(float(np.mean(epoch_actor_losses)))
-                            ppo_metrics[f"entropy_{aid}"].append(float(np.mean(epoch_entropies)))
-                            mean_epoch_kl = float(np.mean(epoch_approx_kls))
-                            ppo_metrics[f"approx_kl_{aid}"].append(mean_epoch_kl)
-
-                            # Phase A3: KL 早停 — 单 agent 单 epoch KL 超阈值就跳过后续 epoch
-                            if args.target_kl > 0 and mean_epoch_kl > 1.5 * args.target_kl:
-                                agent_stopped[aid] = True
-                                agent_stop_epoch[aid] = epoch + 1
-                            ppo_metrics[f"clip_frac_{aid}"].append(float(np.mean(epoch_clip_fracs)))
-                            ppo_metrics[f"grad_norm_actor_{aid}"].append(
-                                float(np.mean(epoch_actor_grad_norms))
-                            )
-
-                    # explained variance
-                    with torch.no_grad():
-                        all_value_preds = critic(critic_state_t, critic_aid_t)
-                        ensure_finite_tensor(
-                            all_value_preds,
-                            name="explained_variance_value_predictions",
-                            context=f"robust_v2 update={update}",
-                        )
-                        var_residual = torch.var(
-                            critic_ret_t - all_value_preds, unbiased=False
-                        )
-                        var_total = torch.var(critic_ret_t, unbiased=False)
-                        explained_var_t = 1.0 - var_residual / (var_total + 1e-8)
-                        ensure_finite_tensor(
-                            explained_var_t,
-                            name="explained_variance",
-                            context=f"robust_v2 update={update}",
-                        )
-                        explained_var = float(explained_var_t.item())
-                        ppo_metrics["explained_variance"] = explained_var
+                update_result = run_mappo_ppo_update(
+                    prepared=prepared_batch,
+                    actors=actors,
+                    actor_optims=actor_optims,
+                    critic=critic,
+                    critic_optim=critic_optim,
+                    agent_ids=agent_ids,
+                    obs_dim=19,
+                    state_dim=state_dim,
+                    action_dim=3,
+                    ppo_epochs=args.ppo_epochs,
+                    minibatch_size=args.minibatch_size,
+                    clip_eps=args.clip_eps,
+                    ent_coef=args.ent_coef,
+                    max_grad_norm=args.max_grad_norm,
+                    target_kl=args.target_kl,
+                    shuffle=True,
+                    context=f"robust_v2 update={update}",
+                )
+                ppo_metrics = update_result.metrics
+                agent_stop_epoch = update_result.agent_stop_epoch
+                preupdate_ratio_errors = update_result.preupdate_ratio_errors
 
             # ===== TensorBoard 记录 =====
             if update % args.log_interval == 0 and len(window_episode_returns) > 0:

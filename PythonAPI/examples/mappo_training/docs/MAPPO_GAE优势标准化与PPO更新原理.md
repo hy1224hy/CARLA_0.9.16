@@ -160,7 +160,7 @@ P0-00D 当前只修改冻结的基础策略入口 `train_no_rllib_mappo_robust_v
 - 旧导入方暂由带明确说明的 compatibility wrapper 保持原行为；
 - 对抗/PSRO 入口必须在各自阶段显式迁移并重新验收，不能把本次基础策略验收自动外推。
 
-## 9. 五项验收结果（2026-07-23）
+## 9. P0-00D 五项验收结果（2026-07-23）
 
 | 维度 | 结果 |
 |---|---|
@@ -170,13 +170,31 @@ P0-00D 当前只修改冻结的基础策略入口 `train_no_rllib_mappo_robust_v
 | PPO 概率与数值健康 | 未更新策略 ratio 误差小于 `1e-6`；synthetic optimizer step 全部有限 |
 | 集成与兼容性 | 新增 7 项与原 18 项共 25 项通过；兼容 wrapper 输出受测试保护；网络输入和 checkpoint 张量形状不变 |
 
-## 10. 可用于论文的方法表述草稿
+## 10. P0-00E：为什么回归测试必须复用生产更新路径
+
+如果测试重新手写一套 PPO loss 和 optimizer step，即使测试通过，也只能证明“测试中的 PPO”正确，不能证明训练主循环调用的是同一逻辑。P0-00E 因此把 `robust_v2` 的训练更新拆成三层，并让主循环与测试共同调用：
+
+1. `prepare_mappo_update_batch()`：按 agent 提取固定维度数据，在各自 episode 边界计算 GAE，最后按 agent 顺序生成 Actor batch 和 agent-conditioned Critic batch。
+2. `compute_clipped_actor_loss()` / `compute_critic_value_loss()`：实现唯一的生产 loss 公式与数值诊断。
+3. `run_mappo_ppo_update()`：在任何参数更新前统一检查 batch、ratio、超参数、模型有限性以及 optimizer 与网络的归属关系，再执行完整多 epoch/minibatch 更新。
+
+回归矩阵使用不等长轨迹 `{agent0: 3, agent1: 5}` 验证“样本行数可不同，但每行特征维度不变”，并以显式哨兵检查时间顺序与 Critic agent-id 对齐。测试还覆盖：
+
+- int、uniform batch 和 mixed batch 三种 Critic agent-id 调用等价；
+- 无样本 agent 不进入 Actor 更新，也不向 Critic batch 填充伪状态；
+- PPO clipped objective 与四样本手算值一致；
+- 两轮完整生产更新只改变应更新的 Actor/Critic，不原地改写 rollout tensors；
+- NaN batch、非法裁剪阈值、错误维度或 agent-id 在首个 `optimizer.step()` 前失败，避免部分模型已经更新的“半污染”状态。
+
+截至 2026-07-26，新增 10 项 production algorithm tests，与原 25 项共同组成 35 项无 CARLA 回归。该结果证明代码级数据流和优化不变量受到保护，但不能替代真实 CARLA 下的更新分布、吞吐和行为验证；后者仍属于 P0-00G。
+
+## 11. 可用于论文的方法表述草稿
 
 > 为避免多场景轨迹之间的回报估计相互污染，本文首先依据逐智能体 episode 边界独立计算未标准化的广义优势估计。真实终止切断价值 bootstrap，时间截断或同伴事件造成的外部截断则使用同帧最终状态价值，但二者均切断 GAE trace。随后，将同一智能体在当前 rollout 中的全部有效 advantage 按时间顺序拼接，并仅执行一次标准化，从而在稳定策略梯度尺度的同时保留不同 episode 之间的相对学习信号。
 >
 > 策略网络使用标准化 advantage 构造 PPO clipped objective，集中式价值网络则使用原始 advantage 与采样时价值之和作为回归目标。更新前通过保存的 pre-tanh 高斯变量重算动作对数概率，并要求未更新策略的概率比严格接近 1；训练期间进一步监控 KL 散度、裁剪比例、损失、梯度及参数有限性，以防止错误样本对齐或数值异常进入优化过程。
 
-## 11. 参考资料
+## 12. 参考资料
 
 1. Schulman, J., et al. *High-Dimensional Continuous Control Using Generalized Advantage Estimation*. arXiv:1506.02438, 2015. <https://arxiv.org/abs/1506.02438>
 2. Schulman, J., et al. *Proximal Policy Optimization Algorithms*. arXiv:1707.06347, 2017. <https://arxiv.org/abs/1707.06347>

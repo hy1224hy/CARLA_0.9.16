@@ -10,19 +10,19 @@
 | 研究点 1 | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景 |
 | 研究点 2 | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制 |
 | 扩展研究点 | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益 |
-| 当前工程基线 | `P0-00D`：逐 episode 原始 GAE、per-agent rollout 优势标准化与 PPO 数值保护已完成 synthetic/unit 验收；下一项为 P0-00E 算法回归测试 |
+| 当前工程基线 | `P0-00E`：生产 MAPPO batch/update 已抽取为唯一受测路径，完整算法回归矩阵通过；下一项为 P0-00F checkpoint/resume 协议 |
 | 当前研究阶段 | P0-00 基础 MAPPO 算法数据流闭环 -> Phase 0 指标可信化 -> Phase 1 单对抗车有效性验证 |
 | 当前训练入口 | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py` |
-| 当前有效自动化测试 | lifecycle 15 项 + active-mask 3 项 + GAE/PPO 7 项，共 25 项通过（2026-07-23）；覆盖逐角色 T/X、active-only 决策、手算 GAE、边界隔离、per-agent rollout 标准化、ratio=1、有限 optimizer step 与旧入口兼容 wrapper |
+| 当前有效自动化测试 | lifecycle 15 项 + active-mask 3 项 + GAE/PPO 7 项 + production algorithm 10 项，共 35 项通过（2026-07-26）；覆盖逐角色 T/X、失活隔离、GAE/return、ragged 多 agent 顺序、Critic agent-id、PPO clipping、完整生产更新和异常输入零污染 |
 | 最近训练产物 | 2026-07-05 的 `train_2red_1blue_ppo` 中断实验；产生于生命周期修复前，只能作历史参考 |
 | 本文档创建日期 | 2026-07-20 |
-| 最后更新日期 | 2026-07-23 |
+| 最后更新日期 | 2026-07-26 |
 
 ### 阶段状态
 
 | 阶段 | 状态 | 结论 |
 |---|---|---|
-| 基础 CARLA 多车环境与 MAPPO | REOPENED | P0-00B/C/D 已闭合生命周期、有效样本与 GAE/PPO 目标口径；下一项为 P0-00E 完整算法回归，真实 CARLA 验证归入 P0-00G |
+| 基础 CARLA 多车环境与 MAPPO | REOPENED | P0-00B/C/D/E 已闭合生命周期、有效样本、GAE/PPO 目标和生产更新回归；下一项为 P0-00F checkpoint/resume，真实 CARLA 验证归入 P0-00G |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -79,8 +79,8 @@
 - [x] **P0-00B 冻结并适配 terminated/truncated 语义**：采用 agent-centric 回报边界；同伴红车碰撞时未碰撞红车按 truncation bootstrap，红车成功/碰撞时蓝车按对抗任务结局 termination；环境、两个当前入口和 15 项测试已同步。
 - [x] **P0-00C 修复 robust_v2 失活样本采集**：reset/step 的 `info['active_mask']` 已驱动 value、动作和 buffer；一车提前终止、另一车继续 3 步的 mock 中 transition 数为 `{0: 1, 1: 4}`，失活车零追加。
 - [x] **P0-00D 修正 GAE 与优势标准化口径**：每个 episode 独立计算原始 GAE，同一 agent 拼接全部 episode 后在 rollout 上统一标准化；Critic 保持原始 return，PPO 更新前强制 `ratio≈1` 并检查数值有限。
-- [ ] NEXT **P0-00E 补 MAPPO/PPO 算法回归测试**：在 P0-00D 已有 7 项 focused tests 上补齐多 agent 时间顺序、Critic int/batch agent-id、完整 production update helper 与异常输入矩阵。
-- [ ] **P0-00F 修正基础策略 checkpoint/resume 协议**：停止按训练窗口成功率生成 `best.pt`，只保存 latest/periodic/interrupted；补齐协议版本和 RNG 状态，独立验证后再选 `best_base_valid.pt`。
+- [x] **P0-00E 补 MAPPO/PPO 算法回归测试**：生产 batch 准备、clipped actor loss 与完整 optimizer update 已抽取并由 10 项新测试直接调用；多 agent 时间顺序、Critic int/batch agent-id、空 agent、异常输入零污染和全量回归均通过。
+- [ ] NEXT **P0-00F 修正基础策略 checkpoint/resume 协议**：停止按训练窗口成功率生成 `best.pt`，只保存 latest/periodic/interrupted；补齐协议版本和 RNG 状态，独立验证后再选 `best_base_valid.pt`。
 - [ ] **P0-00G 运行 robust_v2 三更新 smoke**：真实 CARLA 下核对 transition 数、终局、PPO 健康值、checkpoint/resume 和 actor 清理；通过前不得长训练。
 - [ ] BLOCKED **P0-01 精确记录碰撞对象**：等待 P0-00G；随后从 CARLA collision event 保存对方 actor id/type，并区分 `red-blue`、`blue-blue`、`static/world`。
 - [ ] BLOCKED **P0-02 修复转向量提取**：等待 P0-01；`extract_kinematics()` 正确处理 NumPy action `[throttle, steer, brake]`，不能把正常步骤的 steer 恒记为 0。
@@ -188,15 +188,27 @@
 
 #### P0-00E 算法回归测试
 
+> **实施状态：COMPLETED（2026-07-26）。** 本阶段只完成无 CARLA 的算法级回归；真实环境数据分布、训练吞吐与三更新端到端行为仍归入 P0-00G。
+
 目标文件：`tests/test_mappo_algorithm.py`，必要时为 rollout 提取可注入 mock 的纯函数/小型 collector。
 
-- [ ] 测试真正终止不 bootstrap、max_steps 截断 bootstrap、episode 边界不串联。
-- [ ] 测试多 agent 数据不交错计算 GAE，每个 agent 的数组长度和时间顺序正确。
-- [ ] 测试失活 agent 不再采样动作、不写 buffer、不参与后续 transition 计数。
-- [ ] 测试 `sample_action_z()` 与 `evaluate_actions_z()` 在参数不变时 ratio 为 1。
-- [ ] 测试 `AgentConditionedCritic` 的 batch/int agent id 调用、输出 shape 和有限值。
-- [ ] 用纯 synthetic batch 执行一次 actor/critic optimizer step，断言 loss、KL、clip fraction、梯度和参数均为有限值。
-- [ ] 运行 `python -m unittest discover -s tests -v`，旧生命周期测试和新增算法测试全部通过。
+- [x] 测试真正终止不 bootstrap、max_steps 截断 bootstrap、episode 边界不串联。
+- [x] 测试多 agent 数据不交错计算 GAE，每个 agent 的数组长度和时间顺序正确。
+- [x] 测试失活 agent 不再采样动作、不写 buffer、不参与后续 transition 计数；无样本 agent 也不进入 Actor/Critic 更新。
+- [x] 测试 `sample_action_z()` 与 `evaluate_actions_z()` 在参数不变时 ratio 为 1。
+- [x] 测试 `AgentConditionedCritic` 的 batch/int agent id 调用、输出 shape、有限值和非法输入拒绝。
+- [x] 用纯 synthetic ragged batch 执行完整生产 actor/critic optimizer path，断言输入不变、参数按归属更新且全部指标有限。
+- [x] 运行 `python -m unittest discover -s tests -v`，旧生命周期测试和新增算法测试共 35 项全部通过。
+
+| 五项评估维度 | 合格标准 | 验收结果/证据 |
+|---|---|---|
+| 1. 数据归属、维度与顺序 | 每个 agent 的 Actor batch 独立且时间顺序不变；Critic 拼接顺序与 agent-id 一一对应；特征维度固定 | PASS：ragged 样本数 `{0:3, 1:5}`，Actor 为 `[N_i,19]/[N_i,3]`，Critic 为 `[8,38]`；哨兵序列和 id `[0,0,0,1,1,1,1,1]` 精确匹配 |
+| 2. GAE、标准化与目标口径 | T/X bootstrap、episode 隔离、per-agent 标准化及 raw critic return 不回退 | PASS：复用 lifecycle/GAE 既有 22 项相关断言；生产 batch 再校验 `ret == raw_adv + old_value`，非退化 Actor advantage 均值 0、标准差 1 |
+| 3. Actor 概率与 PPO clipping | 未更新 ratio≈1；裁剪目标与手算一致；KL/clip/entropy/loss 有限 | PASS：生产更新前逐 agent ratio 误差 `<1e-6`；手算四样本 clipped loss=`0.15`、clip fraction=`1.0`；阈值边界受测 |
+| 4. 共享 Critic 的 agent 条件语义 | int 与 batch id 结果一致；mixed id 逐行等价；空 agent 不制造 Critic 样本 | PASS：输出 shape `[B]` 且有限；越界、长度、dtype、state 维度错误 fail-fast；空 agent 的 Critic id 仅含有效 agent |
+| 5. 更新健康、故障隔离与集成 | 完整生产路径更新正确模型、不改写 rollout；异常在任何 step 前失败；旧测试不退化 | PASS：两轮 ragged update 的 Actor/Critic 参数均有限并按样本数更新，输入 tensor 不变；NaN batch/非法 clip 均零参数污染；全量 35 项通过 |
+
+**验收结论**：P0-00E 的五项门槛全部通过。测试不再复制一套“看起来相同”的 PPO 公式，而是直接调用 `robust_v2` 训练主循环使用的 batch preparation、loss 与 optimizer helper；因此后续生产逻辑改动会直接触发算法回归。该结论不替代 P0-00G 的真实 CARLA smoke。
 
 #### P0-00F 基础策略 checkpoint 与恢复训练
 
@@ -564,6 +576,7 @@ git rev-parse HEAD
 | 2026-07-21 | `P0-00B` | 共享环境、`lifecycle_semantics.py`、`robust_v2`、单蓝车入口、lifecycle tests、`FILE_INDEX.md`、研究 TODO | 按确认矩阵发布逐角色 T/X；训练端强校验协议并只为 X 保存同帧 bootstrap state；边界与 bootstrap 数量 fail-fast | 15 项 lifecycle/GAE 测试通过；两个当前入口 `--help` 正常；`git diff --check` 通过 | 网络结构未变；旧权重可评估，但旧 run 不得按新终止协议直接 resume | P0-00B |
 | 2026-07-22 | `P0-00C` | `robust_v2`、`tests/test_mappo_active_mask.py`、MAPPO active-mask 原理文档、研究 TODO | collector 以动作前 active mask 过滤 value/action/cache；写完本步后更新 next mask；局部退场时刷新清理后的下一决策观测；保留最终 transition；逐 episode/agent 对账决策数与写入数 | 3 项 active-mask + 15 项 lifecycle/GAE，共 18 项通过；`robust_v2 --help`、重定向缓存的 `py_compile`、`git diff --check` 通过 | Actor/Critic 网络与特征维度未变，权重形状兼容；修复前 run 不作为新协议正式续训基线 | P0-00C |
 | 2026-07-23 | `P0-00D` | `robust_v2`、`tests/test_mappo_gae_ppo.py`、MAPPO GAE/PPO 原理文档、研究 TODO | 逐 episode 计算原始 GAE；同一 agent rollout 统一标准化；Critic 使用 raw return；更新前 ratio 对账；minibatch 数值 fail-fast | 7 项 GAE/PPO + 原 18 项，共 25 项通过；兼容 wrapper 测试、`py_compile`、`robust_v2 --help`、`git diff --check` 通过 | 网络/权重形状兼容，但优化目标口径改变；修复前 run 不作为新协议正式 resume 基线 | P0-00D |
+| 2026-07-26 | `P0-00E` | `robust_v2`、`models/actor_critic.py`、`tests/test_mappo_algorithm.py`、MAPPO GAE/PPO 原理文档、研究 TODO | 抽取并复用生产 batch preparation/clipped loss/完整 optimizer update；严格校验 ragged agent 顺序、Critic id、维度、有限值、optimizer 归属与超参数；空 agent 跳过更新 | 新增 10 项 production algorithm tests；全量 35 项通过，AST 语法检查、`robust_v2 --help`、`git diff --check` 通过 | Actor/Critic 网络参数形状不变，权重张量兼容；训练更新执行路径重构，旧 run 仍不作为新协议正式 resume 基线 | P0-00E |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志
@@ -573,6 +586,7 @@ git rev-parse HEAD
 | 日期 | 决策 | 依据 | 被否决方案 | 影响范围 |
 |---|---|---|---|---|
 | 2026-07-20 | 基础策略唯一训练入口冻结为 `train_no_rllib_mappo_robust_v2.py` | 当前计划使用 robust v2 训练基础策略；缩小修复面可避免旧脚本分叉继续污染实验 | 同时修复 RLlib、shared-policy PPO、minimal、robust v1 和 multi 旧入口 | P0-00、基础策略训练 |
+| 2026-07-26 | 算法测试必须直接调用基础训练入口的生产 batch/loss/update helper，且所有可预检错误必须在首个 optimizer step 前失败 | 复制 PPO 公式的测试可能与实际训练路径同时漂移；Critic 先更新后才发现非法 Actor 参数会造成部分参数污染 | 在测试内重新实现简化 PPO；仅断言 loss 有限；出错后依赖人工丢弃模型 | `robust_v2`、P0-00E 回归矩阵、后续算法改动 |
 | 2026-07-20 | **SUPERSEDED（未实施）**：任务内全局成功/碰撞统一按 terminated 处理 | 原判断将联合 episode 边界直接等同于所有 agent 的任务边界 | agent-centric 的逐车辆回报边界 | 已由 2026-07-21 P0-00B 草案替代 |
 | 2026-07-21 | **CONFIRMED/IMPLEMENTED**：终止/截断按 agent-specific 任务边界判定，而不是按全局 reset 一刀切 | 同伴红车碰撞后，未碰撞红车理论驾驶回报仍存在，按 `X` bootstrap；红车成功或碰撞均使蓝车对抗任务产生结局，按 `T` 切断 bootstrap | 全局事件一律 `T`；非直接事件一律 `X` | 环境、robust_v2、单蓝车、生命周期测试；未启用的 adversary 全局碰撞兼容分支保持旧语义 |
 | 2026-07-22 | **CONFIRMED/IMPLEMENTED**：MAPPO 保持固定 Actor/Critic 特征维度，允许每个 agent 的有效 transition 数动态不同；失活槽位只可作为仍活跃队友的 centralized-state 占位，不再以失活 agent 为目标生成样本 | 网络输入结构必须固定；当前 `Dict[agent_id, List[Transition]]` 天然支持变长轨迹，符合 agent-specific 回报边界 | 动态改变网络输入维度；用全零伪 transition 补齐；只在 loss 端临时 mask | `robust_v2` collector、buffer、critic batch、后续 GAE/PPO |
@@ -601,7 +615,7 @@ git rev-parse HEAD
 - [x] 第 1 天：完成 P0-00B，修正 terminated/truncated 语义并改写生命周期测试（15 项通过）。
 - [x] 第 2 天：完成 P0-00C，`robust_v2` 全链路接入 `active_mask`；一车提前终止 mock 与 18 项回归测试通过。
 - [x] 第 3 天上半：完成 P0-00D，修正 GAE/标准化/PPO 健康保护，25 项测试通过。
-- [ ] 第 3 天下半：完成 P0-00E，补齐完整 MAPPO/PPO 算法回归矩阵。
+- [x] 第 3 天下半：完成 P0-00E，生产更新 helper 与完整 MAPPO/PPO 算法回归矩阵共 35 项测试通过。
 - [ ] 第 4 天：完成 P0-00F/P0-00G，冻结 checkpoint 协议并运行 3-update CARLA smoke。
 - [ ] 第 5-6 天：实现精确碰撞对象、steer/control 解析及 P0-B/P0-C 测试。
 - [ ] 第 7 天：复查全部测试、smoke 原始记录和代码 diff；任一门槛失败则不进入评估器开发。
@@ -643,4 +657,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B/P0-00C/P0-00D 已闭合终止/bootstrap、active-mask 采集以及 GAE/PPO 目标口径；当前唯一下一项是 P0-00E 的完整 MAPPO/PPO 算法回归矩阵，随后冻结 checkpoint 协议并运行真实 CARLA smoke。P0-00 与 Phase 0 通过后，才允许基础策略正式长训练并进入 Phase 1；Phase 1 通过后，双蓝、PSRO 与通信才可能成为可辩护的研究贡献。
+本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B/P0-00C/P0-00D/P0-00E 已闭合终止/bootstrap、active-mask 采集、GAE/PPO 目标口径及生产更新回归；当前唯一下一项是 P0-00F 的 checkpoint/resume 协议，随后运行 P0-00G 真实 CARLA smoke。P0-00 与 Phase 0 通过后，才允许基础策略正式长训练并进入 Phase 1；Phase 1 通过后，双蓝、PSRO 与通信才可能成为可辩护的研究贡献。

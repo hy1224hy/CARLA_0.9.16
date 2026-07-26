@@ -123,6 +123,11 @@ class AgentConditionedCritic(nn.Module):
 
     def __init__(self, state_dim: int, num_agents: int, hidden: int = 128):
         super().__init__()
+        if not isinstance(state_dim, int) or state_dim <= 0:
+            raise ValueError("state_dim must be a positive integer")
+        if not isinstance(num_agents, int) or num_agents <= 0:
+            raise ValueError("num_agents must be a positive integer")
+        self.state_dim = state_dim
         self.num_agents = num_agents
         self.net = nn.Sequential(
             nn.Linear(state_dim + num_agents, hidden),
@@ -134,15 +139,53 @@ class AgentConditionedCritic(nn.Module):
 
     def forward(self, global_state: torch.Tensor, agent_id) -> torch.Tensor:
         """agent_id 可以是 int（整个 batch 同一 agent）或 LongTensor [B]。"""
+        if not isinstance(global_state, torch.Tensor):
+            raise TypeError("global_state must be a torch.Tensor")
         if global_state.dim() == 1:
             global_state = global_state.unsqueeze(0)
+        if global_state.dim() != 2 or global_state.shape[1] != self.state_dim:
+            raise ValueError(
+                f"global_state must have shape [B, {self.state_dim}], "
+                f"got {tuple(global_state.shape)}"
+            )
+        if not global_state.is_floating_point():
+            raise TypeError("global_state must use a floating-point dtype")
         batch = global_state.shape[0]
         device = global_state.device
-        onehot = torch.zeros(batch, self.num_agents, device=device)
+        onehot = torch.zeros(
+            batch, self.num_agents, device=device, dtype=global_state.dtype
+        )
         if isinstance(agent_id, int):
+            if not 0 <= agent_id < self.num_agents:
+                raise ValueError(
+                    f"agent_id={agent_id} outside [0, {self.num_agents})"
+                )
             onehot[:, agent_id] = 1.0
         else:
-            idx = agent_id.to(device=device, dtype=torch.long).view(-1, 1)
+            if not isinstance(agent_id, torch.Tensor):
+                raise TypeError("agent_id must be int or torch.Tensor")
+            if agent_id.dtype not in {
+                torch.uint8,
+                torch.int8,
+                torch.int16,
+                torch.int32,
+                torch.int64,
+            }:
+                raise TypeError("agent_id tensor must use an integer dtype")
+            flat_ids = agent_id.to(device=device, dtype=torch.long).view(-1)
+            if flat_ids.numel() != batch:
+                raise ValueError(
+                    f"agent_id batch size={flat_ids.numel()} does not match "
+                    f"global_state batch size={batch}"
+                )
+            if torch.any(flat_ids < 0).item() or torch.any(
+                flat_ids >= self.num_agents
+            ).item():
+                raise ValueError(
+                    f"agent_id tensor contains values outside "
+                    f"[0, {self.num_agents})"
+                )
+            idx = flat_ids.view(-1, 1)
             onehot.scatter_(1, idx, 1.0)
         x = torch.cat([global_state, onehot], dim=-1)
         return self.net(x).squeeze(-1)
