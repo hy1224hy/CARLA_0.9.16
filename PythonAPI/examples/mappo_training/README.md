@@ -155,13 +155,17 @@ CarlaUE4.exe
 ```powershell
 # 当前仅允许在 TODO 的 P0-00B 至 P0-00F 通过后执行 P0-00G smoke
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --run-id P0_00G_robust_v2_smoke_s42_<timestamp> `
   --updates 3 `
+  --lr-decay-horizon 3 `
   --rollout-episodes 4 `
   --min-transitions-per-update 64 `
   --max-steps 300 `
   --seed 42 `
   --save-dir logs/P0_00G_robust_v2_smoke_s42_<timestamp>
 ```
+
+基础策略 checkpoint 从 P0-00F 起使用版本化严格协议：每个完整 update 原子更新 `latest.pt`，按间隔生成不可覆盖的 `periodic/ckpt_update_*.pt`，中断时只复制最近完整边界到 `interrupted.pt`。同一实验使用 `--resume latest --save-dir <原 Run 目录>`；从权重开启新实验使用 `--pretrained-checkpoint` 和新 RunID。详见 [checkpoint 与恢复训练协议](docs/MAPPO_checkpoint与恢复训练协议.md)。
 
 ### 3. 训练对抗智能体（3车）
 

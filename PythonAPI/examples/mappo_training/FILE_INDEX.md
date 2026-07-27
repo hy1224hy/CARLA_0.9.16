@@ -45,6 +45,7 @@
 | **train_no_rllib_mappo_robust_v2.py** | **[CURRENT]** 基础红车 MAPPO 唯一入口 | P0-00 修复/smoke，门槛通过后正式基础策略训练 |
 | **train_2red_1blue_ppo.py** | **[CURRENT]** 单蓝车 PPO 唯一入口 | P0-06 通过后的 Phase 1 |
 | **lifecycle_semantics.py** | **[CURRENT]** 统一校验 `done/terminated/truncated` 并选择合法 bootstrap state | 两个当前入口共享的 P0-00B 协议 |
+| **checkpoint_protocol.py** | **[CURRENT]** 版本化 checkpoint、原子保存/SHA256、manifest、RNG 捕获恢复和严格兼容校验 | `robust_v2` 的 P0-00F 协议；无 CARLA 单测入口 |
 | **train_rllib.py** | **[DEPRECATED]** 历史 RLlib 共享 PPO | 禁止新训练/论文结果 |
 | **train_no_rllib_mappo.py** | **[DEPRECATED]** 早期独立 MAPPO | 历史参考 |
 | **train_no_rllib_mappo_robust.py** | **[DEPRECATED]** robust v1 | 历史参考 |
@@ -102,8 +103,9 @@
 | **data/custom_positions_example.json** | 自定义车辆起始位置示例 |
 | **data/manual_driving_data/** | 手动驾驶数据存储目录 |
 | **models/mappo_models/** | MAPPO模型定义目录 |
-| **logs/** | TensorBoard训练日志目录 |
-| **checkpoints/** | 模型检查点保存目录 |
+| **logs/<RunID>/latest.pt** | 每个完整 update 原子替换的严格 resume checkpoint |
+| **logs/<RunID>/periodic/** | 不可覆盖的周期 checkpoint 与 SHA256 sidecar |
+| **logs/<RunID>/checkpoint_manifest.json** | Run checkpoint 路径、update 与 SHA256 登记 |
 | **requirements.txt** | Python依赖包列表 |
 
 ---
@@ -115,6 +117,8 @@
 | **README.md** | 项目主文档（快速开始、安装、基本使用） |
 | **FILE_INDEX.md** | 本文档：文件功能索引 |
 | **MANUAL_DATA_USAGE.md** | 手动驾驶数据采集与使用详细指南 |
+| **docs/MAPPO_checkpoint与恢复训练协议.md** | P0-00F fresh/pretrained/resume 语义、目录结构、兼容规则和标准命令 |
+| **tests/test_checkpoint_resume.py** | 原子保存、哈希、RNG/optimizer 连续、协议拒绝和训练入口 checkpoint 回归测试 |
 
 ---
 

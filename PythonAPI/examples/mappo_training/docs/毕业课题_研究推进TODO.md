@@ -1,6 +1,6 @@
 # 基于对抗学习的多车协作驾驶算法研究：研究推进 TODO
 
-> 本文档是本课题的主任务清单、代码修改记录表和实验登记表。执行任务时以本文档的阶段门槛为准；理论设计细节参考 [对抗指标、奖励设计与阶段计划](./adversarial_metrics_reward_design_and_plan_20260705.md)、[MAPPO 多智能体样本处理与 active-mask 原理](./MAPPO多智能体样本处理与active-mask原理.md) 和 [MAPPO GAE、优势标准化与 PPO 更新原理](./MAPPO_GAE优势标准化与PPO更新原理.md)。
+> 本文档是本课题的主任务清单、代码修改记录表和实验登记表。执行任务时以本文档的阶段门槛为准；理论设计细节参考 [对抗指标、奖励设计与阶段计划](./adversarial_metrics_reward_design_and_plan_20260705.md)、[MAPPO 多智能体样本处理与 active-mask 原理](./MAPPO多智能体样本处理与active-mask原理.md)、[MAPPO GAE、优势标准化与 PPO 更新原理](./MAPPO_GAE优势标准化与PPO更新原理.md) 和 [MAPPO checkpoint 与恢复训练协议](./MAPPO_checkpoint与恢复训练协议.md)。
 
 ## 0. 项目总览
 
@@ -10,19 +10,19 @@
 | 研究点 1 | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景 |
 | 研究点 2 | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制 |
 | 扩展研究点 | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益 |
-| 当前工程基线 | `P0-00E`：生产 MAPPO batch/update 已抽取为唯一受测路径，完整算法回归矩阵通过；下一项为 P0-00F checkpoint/resume 协议 |
+| 当前工程基线 | `P0-00F`：版本化 checkpoint、原子保存、严格 resume、RNG/课程/LR 连续及实验来源记录已完成 unit 验收；下一项为 P0-00G 真实 CARLA smoke |
 | 当前研究阶段 | P0-00 基础 MAPPO 算法数据流闭环 -> Phase 0 指标可信化 -> Phase 1 单对抗车有效性验证 |
 | 当前训练入口 | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py` |
-| 当前有效自动化测试 | lifecycle 15 项 + active-mask 3 项 + GAE/PPO 7 项 + production algorithm 10 项，共 35 项通过（2026-07-26）；覆盖逐角色 T/X、失活隔离、GAE/return、ragged 多 agent 顺序、Critic agent-id、PPO clipping、完整生产更新和异常输入零污染 |
+| 当前有效自动化测试 | 原 35 项 + checkpoint/resume 16 项，共 51 项通过（2026-07-27）；新增覆盖原子保存、SHA256、immutable periodic、全部 MAPPO 模型/optimizer 与 RNG 连续、协议/配置拒绝、fresh/pretrained/resume 分离和训练期无 `best.pt` |
 | 最近训练产物 | 2026-07-05 的 `train_2red_1blue_ppo` 中断实验；产生于生命周期修复前，只能作历史参考 |
 | 本文档创建日期 | 2026-07-20 |
-| 最后更新日期 | 2026-07-26 |
+| 最后更新日期 | 2026-07-27 |
 
 ### 阶段状态
 
 | 阶段 | 状态 | 结论 |
 |---|---|---|
-| 基础 CARLA 多车环境与 MAPPO | REOPENED | P0-00B/C/D/E 已闭合生命周期、有效样本、GAE/PPO 目标和生产更新回归；下一项为 P0-00F checkpoint/resume，真实 CARLA 验证归入 P0-00G |
+| 基础 CARLA 多车环境与 MAPPO | UNIT VERIFIED | P0-00B/C/D/E/F 已闭合生命周期、有效样本、GAE/PPO、生产更新和恢复协议；下一项 P0-00G 在真实 CARLA 验证三更新与一次 resume |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -80,8 +80,8 @@
 - [x] **P0-00C 修复 robust_v2 失活样本采集**：reset/step 的 `info['active_mask']` 已驱动 value、动作和 buffer；一车提前终止、另一车继续 3 步的 mock 中 transition 数为 `{0: 1, 1: 4}`，失活车零追加。
 - [x] **P0-00D 修正 GAE 与优势标准化口径**：每个 episode 独立计算原始 GAE，同一 agent 拼接全部 episode 后在 rollout 上统一标准化；Critic 保持原始 return，PPO 更新前强制 `ratio≈1` 并检查数值有限。
 - [x] **P0-00E 补 MAPPO/PPO 算法回归测试**：生产 batch 准备、clipped actor loss 与完整 optimizer update 已抽取并由 10 项新测试直接调用；多 agent 时间顺序、Critic int/batch agent-id、空 agent、异常输入零污染和全量回归均通过。
-- [ ] NEXT **P0-00F 修正基础策略 checkpoint/resume 协议**：停止按训练窗口成功率生成 `best.pt`，只保存 latest/periodic/interrupted；补齐协议版本和 RNG 状态，独立验证后再选 `best_base_valid.pt`。
-- [ ] **P0-00G 运行 robust_v2 三更新 smoke**：真实 CARLA 下核对 transition 数、终局、PPO 健康值、checkpoint/resume 和 actor 清理；通过前不得长训练。
+- [x] **P0-00F 修正基础策略 checkpoint/resume 协议**：训练只保存原子 `latest`、不可覆盖 periodic 和安全 `interrupted`；补齐 schema/protocol、RNG、课程、LR horizon、RunID/Git/config/source/manifest，并以 16 项测试验证严格恢复。
+- [ ] NEXT **P0-00G 运行 robust_v2 三更新 smoke**：真实 CARLA 下核对 transition 数、终局、PPO 健康值、checkpoint/resume 和 actor 清理；通过前不得长训练。
 - [ ] BLOCKED **P0-01 精确记录碰撞对象**：等待 P0-00G；随后从 CARLA collision event 保存对方 actor id/type，并区分 `red-blue`、`blue-blue`、`static/world`。
 - [ ] BLOCKED **P0-02 修复转向量提取**：等待 P0-01；`extract_kinematics()` 正确处理 NumPy action `[throttle, steer, brake]`，不能把正常步骤的 steer 恒记为 0。
 - [ ] BLOCKED **P0-03 补指标和奖励单元测试**：等待 P0-02；创建 `tests/test_adversarial_metrics.py`、`tests/test_adversarial_reward.py`。
@@ -212,14 +212,29 @@
 
 #### P0-00F 基础策略 checkpoint 与恢复训练
 
-- [ ] 移除/弃用 `robust_v2` 按训练 rollout 窗口成功率自动覆盖 `best.pt` 的规则。
-- [ ] 训练期只保存 `latest.pt`、`interrupted.pt` 和不可覆盖的 `ckpt_update_*.pt`；smoke 也遵守相同命名协议。
-- [ ] checkpoint 保存 actor、agent-conditioned critic、全部 optimizer、update、args、seed、课程状态、协议版本和 Python/NumPy/Torch/CUDA RNG 状态。
-- [ ] resume 恢复上述训练状态并校验 observation/action/state 维度、agent 数量、reward version 和终止协议版本；不兼容时 fail fast。
-- [ ] `best_base_valid.pt` 只能由独立 C0/C1 验证流程从 periodic checkpoints 中生成，不能使用训练 rollout 直接选取。
-- [ ] checkpoint 写入基础来源 RunID、Git SHA 和配置路径；旧 checkpoint 默认仅评估，不作为修复后长训练的 resume 起点。
+> **实施状态：COMPLETED（2026-07-27）。** 当前完成无 CARLA 的协议与状态连续性验收；CARLA/Traffic Manager 跨进程不承诺轨迹逐位一致，真实恢复行为归入 P0-00G。
+
+- [x] 移除 `robust_v2` 按训练 rollout 窗口成功率自动覆盖 `best.pt` 的规则。
+- [x] 训练期只保存原子 `latest.pt`、安全边界 `interrupted.pt` 和不可覆盖的 `periodic/ckpt_update_*.pt`，并为每个文件写 SHA256。
+- [x] checkpoint 保存 Actor、agent-conditioned Critic、全部 optimizer、update、args、累计统计、课程状态、LR schedule、协议版本及 Python/NumPy/Torch/CUDA RNG。
+- [x] resume 在环境初始化前检查 schema、RunID、manifest、checksum、Git SHA 和显式配置漂移；环境创建后继续校验 observation/action/state 维度、agent 数量、reward/lifecycle、场景池和网络/optimizer 完整性。
+- [x] `best_base_valid.pt` 只保留为后续独立 C0/C1 验证产物；训练代码与测试明确禁止创建 `best.pt`。
+- [x] checkpoint 写入 RunID、Git SHA/dirty paths、关键源码指纹、完整命令、配置路径/哈希、来源 checkpoint、Python/Torch/NumPy/CUDA/CARLA 版本；代码漂移历史只追加不清除；旧 checkpoint 只能作 pretrained weights/历史评估，不能正式 resume。
+- [x] fresh、pretrained、resume 三种语义互斥；`--resume latest` 不存在或损坏时 fail-fast，不再静默从零开始。
+- [x] 将 LR decay horizon 与本次 `--updates` 停止位置解耦；resume 可延长停止 update，但不能隐式改变既有 LR 曲线。
+- [x] 同一 Run TensorBoard 固定写入 `tb/`，resume 使用 `purge_step=next_update` 保持步数连续。
 
 **验收门槛**：中断恢复后 update、optimizer、课程和 RNG 连续；同一 periodic checkpoint 的哈希固定；训练脚本不再创建含混的 `best.pt`。
+
+| 五项评估维度 | 合格标准 | 验收结果/证据 |
+|---|---|---|
+| 1. 状态完整性 | 模型、全部 optimizer、统计、课程、LR 和 RNG 无缺项，缺项不得部分恢复 | PASS：schema 强制 required fields 和 Actor/optimizer agent-id 全覆盖；缺 Critic optimizer/Actor 测试均 fail-fast |
+| 2. 恢复连续性 | Python/NumPy/Torch RNG 下一组相同；optimizer 恢复后的下一步与不中断路径一致；update/LR horizon 连续 | PASS：三类 RNG 数组逐值相等，Adam round-trip 下一步参数逐 tensor `torch.equal`；LR horizon 从 checkpoint 恢复且显式漂移被拒绝 |
+| 3. 兼容安全性 | schema、维度、agent、reward/lifecycle、训练配置、场景池或 Git 不兼容时不得进入训练 | PASS：协议、state dim、gamma、agent-id、checksum、RunID/manifest 均有严格校验；resume/pretrained 冲突在 CARLA 初始化前失败 |
+| 4. 文件可靠性 | latest 原子替换，periodic 不覆盖，interrupted 复制最近完整边界，损坏可检测 | PASS：Windows 临时文件+fsync+`os.replace` 受测；periodic 二次保存抛错且哈希不变；篡改文件在 `torch.load` 前被 SHA256 拒绝 |
+| 5. 实验可追溯与集成 | 无训练期 best；Run/source/version/命令可追溯；原算法测试不退化 | PASS：源码断言不存在 `best.pt/best_success_rate`；manifest/metadata 完整；新增 16 项 + 原 35 项共 51 项通过 |
+
+**验收结论**：P0-00F 的五项单元门槛全部通过。中断恢复只发生在完整 update 事务边界，未完成 rollout/PPO 数据明确丢弃；软件随机序列和 optimizer 可精确续接。P0-00G 必须进一步验证真实 CARLA 下 `latest/periodic/interrupted`、next update、LR、课程、TensorBoard 和车辆清理，不得据本阶段直接启动长训练。
 
 #### P0-00G 真实 CARLA smoke
 
@@ -227,8 +242,8 @@
 - [ ] 保存每个 episode 的 `episode_end_reason`、per-agent active steps、transition 数、terminated/truncated 和 bootstrap 是否启用。
 - [ ] 验证 `active_decision_steps == buffer_transition_count`，且失活 agent 后续增量为 0。
 - [ ] 验证首次 PPO epoch ratio≈1，KL/clip fraction/entropy/value loss/grad norm 均有限且数量级可解释。
-- [ ] 验证 periodic/latest checkpoint 均含 actor、agent-conditioned critic、optimizer、update、args、seed 和协议版本。
-- [ ] 从 smoke checkpoint 恢复 1 个 update，检查结构兼容、update 递增和日志目录不覆盖。
+- [ ] 验证 `latest.pt` 每 update 原子更新、`periodic/ckpt_update_*.pt` 不覆盖，checksum/manifest 一致，且 payload 含 Actor、agent-conditioned Critic、optimizer、update、课程、LR、RNG、RunID/Git 和协议版本。
+- [ ] 使用同一 `save_dir --resume latest --updates 4` 恢复 1 个 update，检查 next update、LR、课程、累计统计和 TensorBoard `tb/` 连续；中断测试确认 `interrupted.pt` 等于最近完整边界。
 - [ ] 人工查看至少 3 个 episode，确认提前到点、碰撞和 max_steps 至少覆盖两类；未覆盖的类型另用固定场景补测。
 
 **P0-00 完成定义**：P0-00B 至 P0-00G 全部通过，测试输出和 smoke Run 已登记；此时仅证明基础 MAPPO 训练数据流可信，不代表基础策略性能已经达标。
@@ -521,12 +536,20 @@
 
 # P0-00G 基础 MAPPO smoke；只允许在 P0-00B 至 P0-00F 全部通过后运行
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --run-id P0_00G_robust_v2_smoke_s42_<timestamp> `
   --updates 3 `
+  --lr-decay-horizon 3 `
   --rollout-episodes 4 `
   --min-transitions-per-update 64 `
   --max-steps 300 `
   --seed 42 `
   --save-dir logs/P0_00G_robust_v2_smoke_s42_<timestamp>
+
+# 同一 Run 严格恢复第 4 个 update；冻结的 LR horizon 仍为 3
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --resume latest `
+  --updates 4 `
+  --save-dir logs/P0_00G_robust_v2_smoke_s42_<same-timestamp>
 
 # 单蓝车 smoke 示例；替换 checkpoint 与唯一输出目录
 ..\..\..\venv\Scripts\python.exe -m training.train_2red_1blue_ppo `
@@ -577,6 +600,7 @@ git rev-parse HEAD
 | 2026-07-22 | `P0-00C` | `robust_v2`、`tests/test_mappo_active_mask.py`、MAPPO active-mask 原理文档、研究 TODO | collector 以动作前 active mask 过滤 value/action/cache；写完本步后更新 next mask；局部退场时刷新清理后的下一决策观测；保留最终 transition；逐 episode/agent 对账决策数与写入数 | 3 项 active-mask + 15 项 lifecycle/GAE，共 18 项通过；`robust_v2 --help`、重定向缓存的 `py_compile`、`git diff --check` 通过 | Actor/Critic 网络与特征维度未变，权重形状兼容；修复前 run 不作为新协议正式续训基线 | P0-00C |
 | 2026-07-23 | `P0-00D` | `robust_v2`、`tests/test_mappo_gae_ppo.py`、MAPPO GAE/PPO 原理文档、研究 TODO | 逐 episode 计算原始 GAE；同一 agent rollout 统一标准化；Critic 使用 raw return；更新前 ratio 对账；minibatch 数值 fail-fast | 7 项 GAE/PPO + 原 18 项，共 25 项通过；兼容 wrapper 测试、`py_compile`、`robust_v2 --help`、`git diff --check` 通过 | 网络/权重形状兼容，但优化目标口径改变；修复前 run 不作为新协议正式 resume 基线 | P0-00D |
 | 2026-07-26 | `P0-00E` | `robust_v2`、`models/actor_critic.py`、`tests/test_mappo_algorithm.py`、MAPPO GAE/PPO 原理文档、研究 TODO | 抽取并复用生产 batch preparation/clipped loss/完整 optimizer update；严格校验 ragged agent 顺序、Critic id、维度、有限值、optimizer 归属与超参数；空 agent 跳过更新 | 新增 10 项 production algorithm tests；全量 35 项通过，AST 语法检查、`robust_v2 --help`、`git diff --check` 通过 | Actor/Critic 网络参数形状不变，权重张量兼容；训练更新执行路径重构，旧 run 仍不作为新协议正式 resume 基线 | P0-00E |
+| 2026-07-27 | `P0-00F` | `checkpoint_protocol.py`、`robust_v2`、`tests/test_checkpoint_resume.py`、checkpoint 协议/RUN_COMMANDS/README/FILE_INDEX/研究 TODO | 版本化 checkpoint；latest 原子更新、periodic immutable、interrupted 安全边界；严格 resume 恢复模型/optimizer/课程/LR/RNG；记录 Run/Git/config/source/runtime；移除训练期 best | 新增 16 项 checkpoint tests；与原 35 项共 51 项通过；全部 MAPPO 模型/optimizer round-trip、RNG/Adam 下一步一致、SHA 损坏与配置漂移 fail-fast；AST、`--help`、`git diff --check` 通过 | 新格式保留顶层 actors/critic/args 供权重读取；P0-00F 前 checkpoint 不具备正式 resume 资格，只能 pretrained/历史评估 | P0-00F |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志
@@ -587,6 +611,7 @@ git rev-parse HEAD
 |---|---|---|---|---|
 | 2026-07-20 | 基础策略唯一训练入口冻结为 `train_no_rllib_mappo_robust_v2.py` | 当前计划使用 robust v2 训练基础策略；缩小修复面可避免旧脚本分叉继续污染实验 | 同时修复 RLlib、shared-policy PPO、minimal、robust v1 和 multi 旧入口 | P0-00、基础策略训练 |
 | 2026-07-26 | 算法测试必须直接调用基础训练入口的生产 batch/loss/update helper，且所有可预检错误必须在首个 optimizer step 前失败 | 复制 PPO 公式的测试可能与实际训练路径同时漂移；Critic 先更新后才发现非法 Actor 参数会造成部分参数污染 | 在测试内重新实现简化 PPO；仅断言 loss 有限；出错后依赖人工丢弃模型 | `robust_v2`、P0-00E 回归矩阵、后续算法改动 |
+| 2026-07-27 | Resume 只表示同一 Run 在完整 update 边界的严格续接；从旧/更早权重分叉必须使用 pretrained 和新 RunID | 半个 rollout 无法安全恢复；部分加载会混合新旧模型；训练窗口 best 会泄漏训练噪声；CARLA 服务器内部状态无法完整序列化 | 缺字段时跳过；latest 不存在便从零；保存半个 update；按训练成功率覆盖 best.pt | P0-00F、基础策略所有后续 Run、P0-00G smoke |
 | 2026-07-20 | **SUPERSEDED（未实施）**：任务内全局成功/碰撞统一按 terminated 处理 | 原判断将联合 episode 边界直接等同于所有 agent 的任务边界 | agent-centric 的逐车辆回报边界 | 已由 2026-07-21 P0-00B 草案替代 |
 | 2026-07-21 | **CONFIRMED/IMPLEMENTED**：终止/截断按 agent-specific 任务边界判定，而不是按全局 reset 一刀切 | 同伴红车碰撞后，未碰撞红车理论驾驶回报仍存在，按 `X` bootstrap；红车成功或碰撞均使蓝车对抗任务产生结局，按 `T` 切断 bootstrap | 全局事件一律 `T`；非直接事件一律 `X` | 环境、robust_v2、单蓝车、生命周期测试；未启用的 adversary 全局碰撞兼容分支保持旧语义 |
 | 2026-07-22 | **CONFIRMED/IMPLEMENTED**：MAPPO 保持固定 Actor/Critic 特征维度，允许每个 agent 的有效 transition 数动态不同；失活槽位只可作为仍活跃队友的 centralized-state 占位，不再以失活 agent 为目标生成样本 | 网络输入结构必须固定；当前 `Dict[agent_id, List[Transition]]` 天然支持变长轨迹，符合 agent-specific 回报边界 | 动态改变网络输入维度；用全零伪 transition 补齐；只在 loss 端临时 mask | `robust_v2` collector、buffer、critic batch、后续 GAE/PPO |
@@ -616,7 +641,8 @@ git rev-parse HEAD
 - [x] 第 2 天：完成 P0-00C，`robust_v2` 全链路接入 `active_mask`；一车提前终止 mock 与 18 项回归测试通过。
 - [x] 第 3 天上半：完成 P0-00D，修正 GAE/标准化/PPO 健康保护，25 项测试通过。
 - [x] 第 3 天下半：完成 P0-00E，生产更新 helper 与完整 MAPPO/PPO 算法回归矩阵共 35 项测试通过。
-- [ ] 第 4 天：完成 P0-00F/P0-00G，冻结 checkpoint 协议并运行 3-update CARLA smoke。
+- [x] 第 4 天上半：完成 P0-00F，冻结 checkpoint/resume 协议，51 项无 CARLA 回归测试通过。
+- [ ] 第 4 天下半：执行 P0-00G 三更新 CARLA smoke，并从 latest 恢复第 4 个 update。
 - [ ] 第 5-6 天：实现精确碰撞对象、steer/control 解析及 P0-B/P0-C 测试。
 - [ ] 第 7 天：复查全部测试、smoke 原始记录和代码 diff；任一门槛失败则不进入评估器开发。
 
@@ -657,4 +683,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B/P0-00C/P0-00D/P0-00E 已闭合终止/bootstrap、active-mask 采集、GAE/PPO 目标口径及生产更新回归；当前唯一下一项是 P0-00F 的 checkpoint/resume 协议，随后运行 P0-00G 真实 CARLA smoke。P0-00 与 Phase 0 通过后，才允许基础策略正式长训练并进入 Phase 1；Phase 1 通过后，双蓝、PSRO 与通信才可能成为可辩护的研究贡献。
+本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B/P0-00C/P0-00D/P0-00E/P0-00F 已闭合终止/bootstrap、active-mask、GAE/PPO、生产更新及 checkpoint/resume 协议；当前唯一下一项是 P0-00G 的真实 CARLA 三更新 smoke 与一次严格恢复。P0-00G 和后续 Phase 0 通过后，才允许基础策略正式长训练并进入 Phase 1；Phase 1 通过后，双蓝、PSRO 与通信才可能成为可辩护的研究贡献。

@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import argparse
+import copy
 import os
 import re
 import random
@@ -32,6 +33,37 @@ from training.lifecycle_semantics import (
     bootstrap_state_for_boundary,
     validate_lifecycle_flags,
 )
+from training.checkpoint_protocol import (
+    ACTION_PROTOCOL_VERSION,
+    CHECKPOINT_SCHEMA_VERSION,
+    INTERRUPTED_CHECKPOINT_NAME,
+    LATEST_CHECKPOINT_NAME,
+    LIFECYCLE_PROTOCOL_VERSION,
+    MANIFEST_NAME,
+    OBSERVATION_PROTOCOL_VERSION,
+    PERIODIC_DIR_NAME,
+    TRAINING_PROTOCOL_VERSION,
+    CheckpointProtocolError,
+    atomic_copy_checkpoint,
+    atomic_write_json,
+    capture_rng_state,
+    ensure_fresh_run_directory,
+    files_fingerprint,
+    get_git_metadata,
+    infer_run_root,
+    load_checkpoint_file,
+    load_manifest,
+    normalize_command_line,
+    resolve_resume_path,
+    restore_rng_state,
+    runtime_metadata,
+    save_checkpoint_file,
+    scenario_pool_fingerprint,
+    sha256_file,
+    utc_now_iso,
+    validate_checkpoint_header,
+    validate_checkpoint_payload,
+)
 
 
 VALID_EPISODE_END_REASONS = frozenset({
@@ -44,6 +76,37 @@ VALID_EPISODE_END_REASONS = frozenset({
     "all_agents_terminated",
 })
 
+OBS_DIM = 19
+ACTION_DIM = 3
+
+RESUME_IMMUTABLE_ARG_NAMES = (
+    "town",
+    "straight_road_length",
+    "timestep",
+    "max_steps",
+    "rollout_episodes",
+    "ppo_epochs",
+    "minibatch_size",
+    "min_transitions_per_update",
+    "lr_actor",
+    "lr_critic",
+    "gamma",
+    "gae_lambda",
+    "clip_eps",
+    "ent_coef",
+    "max_grad_norm",
+    "hidden_dim",
+    "target_kl",
+    "lr_decay",
+    "init_log_std",
+    "scenario_sampling_mode",
+    "warmup_updates",
+    "full_scenario_updates",
+    "curriculum_transition_window",
+    "curriculum_mode",
+    "reward_version",
+)
+
 
 def set_seed(seed: int):
     # 修复 #6：完整播种
@@ -53,6 +116,129 @@ def set_seed(seed: int):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+
+def checkpoint_protocol_versions(reward_version: str) -> Dict[str, str]:
+    return {
+        "observation": OBSERVATION_PROTOCOL_VERSION,
+        "action": ACTION_PROTOCOL_VERSION,
+        "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
+        "reward": str(reward_version),
+    }
+
+
+def checkpoint_training_config(args) -> Dict[str, object]:
+    return {
+        name: getattr(args, name) for name in RESUME_IMMUTABLE_ARG_NAMES
+    }
+
+
+def checkpoint_model_spec(
+    agent_ids: List[int], state_dim: int, hidden_dim: int
+) -> Dict[str, object]:
+    return {
+        "obs_dim": OBS_DIM,
+        "action_dim": ACTION_DIM,
+        "state_dim": int(state_dim),
+        "num_agents": len(agent_ids),
+        "agent_ids": list(agent_ids),
+        "hidden_dim": int(hidden_dim),
+        "critic_type": "AgentConditionedCritic",
+    }
+
+
+def _argument_was_explicit(args, name: str) -> bool:
+    explicit = set(getattr(args, "_explicit_cli_options", set()))
+    if name == "lr_decay":
+        return bool({"--lr-decay", "--no-lr-decay"} & explicit)
+    return f"--{name.replace('_', '-')}" in explicit
+
+
+def apply_resume_configuration(args, checkpoint: Dict[str, object]) -> None:
+    """Restore frozen run configuration while rejecting explicit drift."""
+    saved_config = checkpoint["training_config"]
+    for name in RESUME_IMMUTABLE_ARG_NAMES:
+        if name not in saved_config:
+            raise CheckpointProtocolError(
+                f"saved training_config missing field: {name}"
+            )
+        saved_value = saved_config[name]
+        current_value = getattr(args, name)
+        if _argument_was_explicit(args, name) and current_value != saved_value:
+            raise CheckpointProtocolError(
+                f"resume cannot change --{name.replace('_', '-')}: "
+                f"saved={saved_value!r}, requested={current_value!r}; "
+                "use --pretrained-checkpoint to start a new run"
+            )
+        setattr(args, name, saved_value)
+
+    saved_seed = int(checkpoint["run_metadata"]["seed"])
+    if _argument_was_explicit(args, "seed") and int(args.seed) != saved_seed:
+        raise CheckpointProtocolError(
+            f"resume seed mismatch: saved={saved_seed}, requested={args.seed}"
+        )
+    args.seed = saved_seed
+
+    saved_run_id = str(checkpoint["run_metadata"]["run_id"])
+    if args.run_id and args.run_id != saved_run_id:
+        raise CheckpointProtocolError(
+            f"resume run_id mismatch: saved={saved_run_id!r}, "
+            f"requested={args.run_id!r}"
+        )
+    args.run_id = saved_run_id
+
+    saved_horizon = int(checkpoint["lr_schedule"]["decay_horizon"])
+    if args.lr_decay_horizon not in (0, saved_horizon):
+        raise CheckpointProtocolError(
+            f"resume LR horizon mismatch: saved={saved_horizon}, "
+            f"requested={args.lr_decay_horizon}"
+        )
+    args.lr_decay_horizon = saved_horizon
+
+
+def _load_pretrained_weights(
+    checkpoint: Dict[str, object],
+    actors: Dict[int, Actor],
+    critic: AgentConditionedCritic,
+) -> Dict[str, object]:
+    """Load weights only; optimizer/progress/RNG deliberately remain fresh."""
+    actor_states = checkpoint.get("actors")
+    if not isinstance(actor_states, dict):
+        raise CheckpointProtocolError(
+            "pretrained checkpoint must contain an actors dictionary"
+        )
+    for aid, actor in actors.items():
+        state = actor_states.get(aid, actor_states.get(str(aid)))
+        if state is None:
+            raise CheckpointProtocolError(
+                f"pretrained checkpoint missing actor {aid}"
+            )
+        actor.load_state_dict(state, strict=True)
+
+    critic_loaded = False
+    critic_error = "missing critic"
+    if "critic" in checkpoint:
+        try:
+            critic.load_state_dict(checkpoint["critic"], strict=True)
+            critic_loaded = True
+            critic_error = ""
+        except (RuntimeError, ValueError) as error:
+            critic_error = str(error)
+    return {
+        "actors_loaded": sorted(actors),
+        "critic_loaded": critic_loaded,
+        "critic_note": critic_error,
+    }
+
+
+def runtime_metadata_with_carla(env) -> Dict[str, object]:
+    metadata = runtime_metadata()
+    try:
+        metadata["carla_client"] = env.client.get_client_version()
+        metadata["carla_server"] = env.client.get_server_version()
+    except Exception as error:
+        metadata["carla_version_error"] = str(error)
+    return metadata
 
 
 # ============================================================
@@ -1810,26 +1996,152 @@ class CurriculumLearning:
 # ============================================================
 
 def train(args):
-    device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
-    set_seed(args.seed)
+    if args.resume and args.pretrained_checkpoint:
+        raise ValueError(
+            "--resume and --pretrained-checkpoint are mutually exclusive"
+        )
+    if args.updates <= 0:
+        raise ValueError("--updates must be positive")
+    if args.save_interval <= 0:
+        raise ValueError("--save-interval must be positive")
+    if args.lr_decay_horizon < 0:
+        raise ValueError("--lr-decay-horizon must be non-negative")
 
-    # 初始化环境
-    env = CarlaMultiAgentEnv(
-        host=args.host,
-        port=args.port,
-        town=args.town,
-        num_agents=2,
-        straight_road_length=args.straight_road_length,
-        timestep=args.timestep,
-        max_steps=args.max_steps,
-        spawn_vehicles=True,
-        reward_version=args.reward_version,
-        disable_tensorboard=True,
-        seed=args.seed,
+    save_dir = os.path.abspath(args.save_dir)
+    repository_root = Path(__file__).resolve().parents[4]
+    current_git = get_git_metadata(repository_root)
+    code_fingerprint = files_fingerprint(
+        [
+            Path(__file__).resolve(),
+            Path(__file__).resolve().with_name("checkpoint_protocol.py"),
+            Path(__file__).resolve().with_name("lifecycle_semantics.py"),
+            Path(__file__).resolve().parents[1] / "models" / "actor_critic.py",
+            Path(__file__).resolve().parents[1]
+            / "environment"
+            / "carla_multi_agent_env.py",
+        ]
+    )
+    resume_checkpoint = None
+    resume_digest = ""
+    resume_path = None
+    pretrained_checkpoint = None
+    pretrained_digest = ""
+    pretrained_path = None
+    manifest = None
+
+    if args.resume:
+        resume_path = resolve_resume_path(args.resume, save_dir)
+        if os.path.normcase(str(infer_run_root(resume_path))) != os.path.normcase(
+            str(Path(save_dir).resolve())
+        ):
+            raise CheckpointProtocolError(
+                "resume checkpoint must belong to --save-dir; use "
+                "--pretrained-checkpoint to start a new run"
+            )
+        resume_checkpoint, resume_digest = load_checkpoint_file(
+            resume_path, map_location="cpu"
+        )
+        validate_checkpoint_header(resume_checkpoint)
+        apply_resume_configuration(args, resume_checkpoint)
+
+        manifest = load_manifest(Path(save_dir) / MANIFEST_NAME)
+        if manifest.get("run_id") != args.run_id:
+            raise CheckpointProtocolError(
+                f"manifest run_id={manifest.get('run_id')!r} does not match "
+                f"checkpoint run_id={args.run_id!r}"
+            )
+        latest_record = manifest.get("latest") or {}
+        if int(latest_record.get("update", -1)) != int(
+            resume_checkpoint["update"]
+        ):
+            raise CheckpointProtocolError(
+                "resume checkpoint is not the manifest's latest safe update; "
+                "rollback/fork resume is not implicit"
+            )
+        known_records = [
+            manifest.get("latest"),
+            manifest.get("interrupted"),
+            *list(manifest.get("periodic", [])),
+        ]
+        known_digests = {
+            record.get("sha256")
+            for record in known_records
+            if isinstance(record, dict)
+        }
+        if resume_digest not in known_digests:
+            raise CheckpointProtocolError(
+                "resume checkpoint SHA256 is not registered in the run manifest"
+            )
+
+        saved_git_sha = str(resume_checkpoint["run_metadata"]["last_git_sha"])
+        current_git_sha = str(current_git["commit"])
+        saved_code_fingerprint = str(
+            resume_checkpoint["run_metadata"]["code_fingerprint"]
+        )
+        resume_code_drift = (
+            saved_git_sha != current_git_sha
+            or saved_code_fingerprint != code_fingerprint
+        )
+        if resume_code_drift and not args.allow_resume_code_drift:
+            raise CheckpointProtocolError(
+                "resume code identity mismatch: "
+                f"git={saved_git_sha}/{current_git_sha}, "
+                "source_fingerprint="
+                f"{saved_code_fingerprint}/{code_fingerprint}; "
+                "commit/use matching code or pass --allow-resume-code-drift "
+                "for an explicitly marked non-bitwise continuation"
+            )
+    else:
+        ensure_fresh_run_directory(save_dir)
+        if not args.run_id:
+            args.run_id = Path(save_dir).resolve().name
+        if not args.run_id.strip():
+            raise ValueError("run_id cannot be empty")
+        if args.lr_decay_horizon == 0:
+            args.lr_decay_horizon = args.updates
+
+        if args.config_path:
+            config_path = Path(args.config_path).expanduser().resolve()
+            if not config_path.is_file():
+                raise FileNotFoundError(f"config path not found: {config_path}")
+            args.config_path = str(config_path)
+
+        if args.pretrained_checkpoint:
+            pretrained_path = Path(
+                args.pretrained_checkpoint
+            ).expanduser().resolve()
+            if not pretrained_path.is_file():
+                raise FileNotFoundError(
+                    f"pretrained checkpoint not found: {pretrained_path}"
+                )
+            pretrained_digest = sha256_file(pretrained_path)
+            if Path(str(pretrained_path) + ".sha256").is_file():
+                pretrained_checkpoint, verified_digest = load_checkpoint_file(
+                    pretrained_path, map_location="cpu"
+                )
+                if verified_digest != pretrained_digest:
+                    raise CheckpointProtocolError(
+                        "pretrained checkpoint digest changed during load"
+                    )
+            else:
+                pretrained_checkpoint = torch.load(
+                    pretrained_path, map_location="cpu", weights_only=False
+                )
+                if not isinstance(pretrained_checkpoint, dict):
+                    raise CheckpointProtocolError(
+                        "pretrained checkpoint root must be a dictionary"
+                    )
+
+    set_seed(args.seed)
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() and not args.cpu else "cpu"
     )
 
-    # 初始化课程学习
-    scenario_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'training_scenarios')
+    scenario_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "data",
+        "training_scenarios",
+    )
     curriculum = CurriculumLearning(
         scenario_dir=scenario_dir,
         warmup_updates=args.warmup_updates,
@@ -1838,137 +2150,395 @@ def train(args):
         mode=args.curriculum_mode,
     )
 
-    agent_ids = list(range(env.num_agents))
-    state_dim = env.get_global_state().shape[0]
-    print(f"全局状态维度: {state_dim}")
+    # 当前冻结基础入口始终是 2 个 19 维红车观察的集中状态。
+    # 先按协议构建/校验完整训练状态，确认可恢复后才连接 CARLA。
+    agent_ids = [0, 1]
+    state_dim = OBS_DIM * len(agent_ids)
 
-    # 初始化模型
     actors: Dict[int, Actor] = {
         aid: Actor(
-            obs_dim=19, act_dim=3, hidden=args.hidden_dim,
+            obs_dim=OBS_DIM,
+            act_dim=ACTION_DIM,
+            hidden=args.hidden_dim,
             init_log_std=args.init_log_std,
-        ).to(device) for aid in agent_ids
+        ).to(device)
+        for aid in agent_ids
     }
     actor_optims: Dict[int, optim.Optimizer] = {
-        aid: optim.Adam(actors[aid].parameters(), lr=args.lr_actor) for aid in agent_ids
+        aid: optim.Adam(actors[aid].parameters(), lr=args.lr_actor)
+        for aid in agent_ids
     }
-
-    # 修复 #1：agent-id 条件化集中式 Critic
-    critic = AgentConditionedCritic(state_dim=state_dim, num_agents=env.num_agents,
-                                    hidden=args.hidden_dim).to(device)
+    critic = AgentConditionedCritic(
+        state_dim=state_dim,
+        num_agents=len(agent_ids),
+        hidden=args.hidden_dim,
+    ).to(device)
     critic_optim = optim.Adam(critic.parameters(), lr=args.lr_critic)
 
-    # 初始 lr 缓存（lr 线性衰减用）
     init_lr_actor = args.lr_actor
     init_lr_critic = args.lr_critic
+    lr_decay_horizon = int(args.lr_decay_horizon)
 
     def _apply_lr_decay(cur_update: int):
         if not args.lr_decay:
             return init_lr_actor, init_lr_critic
-        # 1.0 → 0.05（保留 5% 下限，避免后期完全停学）
-        frac = max(0.05, 1.0 - (cur_update - 1) / max(args.updates - 1, 1))
+        frac = max(
+            0.05,
+            1.0 - (cur_update - 1) / max(lr_decay_horizon - 1, 1),
+        )
         new_lr_a = init_lr_actor * frac
         new_lr_c = init_lr_critic * frac
         for aid in agent_ids:
-            for g in actor_optims[aid].param_groups:
-                g['lr'] = new_lr_a
-        for g in critic_optim.param_groups:
-            g['lr'] = new_lr_c
+            for group in actor_optims[aid].param_groups:
+                group["lr"] = new_lr_a
+        for group in critic_optim.param_groups:
+            group["lr"] = new_lr_c
         return new_lr_a, new_lr_c
 
-    # 加载预训练模型
-    if args.pretrained_checkpoint and os.path.exists(args.pretrained_checkpoint):
-        print(f"加载预训练模型: {args.pretrained_checkpoint}")
-        checkpoint = torch.load(args.pretrained_checkpoint, map_location=device, weights_only=False)
-        for aid in agent_ids:
-            if aid in checkpoint.get('actors', {}):
-                actors[aid].load_state_dict(checkpoint['actors'][aid])
-        # 旧 checkpoint 的 critic 是非条件化结构，不兼容 → 跳过
-        if 'critic' in checkpoint:
-            try:
-                critic.load_state_dict(checkpoint['critic'])
-            except Exception as e:
-                print(f"[警告] critic 结构已变更（agent-id 条件化），跳过加载旧 critic: {e}")
+    pretrained_load_report = None
+    if pretrained_checkpoint is not None:
+        pretrained_load_report = _load_pretrained_weights(
+            pretrained_checkpoint, actors, critic
+        )
+        print(f"加载预训练权重: {pretrained_path}")
+        if not pretrained_load_report["critic_loaded"]:
+            print(
+                "  [预训练] Critic 未加载，将使用新初始化的 "
+                f"AgentConditionedCritic: {pretrained_load_report['critic_note']}"
+            )
 
-    visualizer = MAPPOVisualizer(width=1200, height=800, fps=30) if args.render else None
-
-    save_dir = os.path.abspath(args.save_dir)
-    os.makedirs(save_dir, exist_ok=True)
-
-    # TensorBoard：每次运行单独时间戳子目录，避免多次 run 的 event 文件混在一起
-    # （之前同一 save_dir 反复跑会让 TB 把多次 run 的曲线合并成"花线"）
-    import datetime as _dt
-    run_tag = _dt.datetime.now().strftime("%Y%m%d_%H%M%S") + f"_seed{args.seed}"
-    tb_log_dir = os.path.join(save_dir, 'tb_logs', run_tag)
-    os.makedirs(tb_log_dir, exist_ok=True)
-    tb_writer = SummaryWriter(tb_log_dir)
-    print(f"TensorBoard 日志: {tb_log_dir}")
-
-    # 训练统计
     total_episodes = 0
-    total_successes = 0          # 严格成功（all reached_target）
+    total_successes = 0
     total_collisions = 0
     total_timeouts = 0
-    best_success_rate = -1.0     # 用于 best.pt 跟踪
-    start_update = 1             # resume 时会更新
+    completed_update = 0
+    start_update = 1
 
-    # ─── 恢复训练（--resume）─── 必须放在 optim / curriculum 初始化之后
-    if args.resume:
-        resume_path = args.resume
-        if resume_path == "latest":
-            cands = []
-            if os.path.isdir(save_dir):
-                for f in os.listdir(save_dir):
-                    if f.startswith("mappo_robust_v2_update_") and f.endswith(".pt"):
-                        try:
-                            n = int(f.replace("mappo_robust_v2_update_", "").replace(".pt", ""))
-                            cands.append((n, f))
-                        except ValueError:
-                            continue
-            if not cands:
-                print(f"⚠️ --resume latest: {save_dir} 下没找到 mappo_robust_v2_update_*.pt，从零开始")
-                resume_path = ""
-            else:
-                cands.sort()
-                resume_path = os.path.join(save_dir, cands[-1][1])
+    protocol_versions = checkpoint_protocol_versions(args.reward_version)
+    model_spec = checkpoint_model_spec(
+        agent_ids, state_dim, args.hidden_dim
+    )
+    training_config = checkpoint_training_config(args)
+    pool_fingerprint = scenario_pool_fingerprint(scenario_dir)
 
-        if resume_path and os.path.exists(resume_path):
-            print(f"恢复训练 from: {resume_path}")
-            ckpt = torch.load(resume_path, map_location=device, weights_only=False)
+    def _create_validated_env():
+        created_env = CarlaMultiAgentEnv(
+            host=args.host,
+            port=args.port,
+            town=args.town,
+            num_agents=len(agent_ids),
+            straight_road_length=args.straight_road_length,
+            timestep=args.timestep,
+            max_steps=args.max_steps,
+            spawn_vehicles=True,
+            reward_version=args.reward_version,
+            disable_tensorboard=True,
+            seed=args.seed,
+        )
+        actual_state_dim = int(created_env.get_global_state().shape[0])
+        if (
+            created_env.num_agents != len(agent_ids)
+            or actual_state_dim != state_dim
+        ):
+            created_env.close()
+            raise CheckpointProtocolError(
+                "runtime environment shape differs from frozen protocol: "
+                f"agents={created_env.num_agents}/{len(agent_ids)}, "
+                f"state_dim={actual_state_dim}/{state_dim}"
+            )
+        print(f"全局状态维度: {actual_state_dim}")
+        return created_env
+
+    if resume_checkpoint is not None:
+        validate_checkpoint_payload(
+            resume_checkpoint,
+            expected_protocol_versions=protocol_versions,
+            expected_model_spec=model_spec,
+            expected_training_config=training_config,
+        )
+        saved_curriculum = resume_checkpoint["curriculum_state"]
+        if saved_curriculum.get("scenario_pool_fingerprint") != pool_fingerprint:
+            raise CheckpointProtocolError(
+                "scenario pool fingerprint differs from checkpoint"
+            )
+        if saved_curriculum.get("stages") != curriculum.curriculum_stages:
+            raise CheckpointProtocolError(
+                "curriculum stages differ from checkpoint"
+            )
+
+        try:
             for aid in agent_ids:
-                if aid in ckpt.get('actors', {}):
-                    actors[aid].load_state_dict(ckpt['actors'][aid])
-            # critic 结构升级为 agent-id 条件化；旧 checkpoint 不兼容时跳过 critic/critic_optim
-            critic_loaded = False
-            if 'critic' in ckpt:
-                try:
-                    critic.load_state_dict(ckpt['critic'])
-                    critic_loaded = True
-                except Exception as e:
-                    print(f"[警告] critic 结构已变更，跳过加载旧 critic: {e}")
-            if 'actor_optims' in ckpt:
-                for aid in agent_ids:
-                    if aid in ckpt['actor_optims']:
-                        actor_optims[aid].load_state_dict(ckpt['actor_optims'][aid])
-            if 'critic_optim' in ckpt and critic_loaded:
-                critic_optim.load_state_dict(ckpt['critic_optim'])
-            start_update = int(ckpt.get('update', 0)) + 1
-            total_episodes = int(ckpt.get('total_episodes', 0))
-            total_successes = int(ckpt.get('total_successes', 0))
-            total_collisions = int(ckpt.get('total_collisions', 0))
-            total_timeouts = int(ckpt.get('total_timeouts', 0))
-            best_success_rate = float(ckpt.get('best_success_rate', -1.0))
-            if 'curriculum_success_history' in ckpt:
-                for k, v in ckpt['curriculum_success_history'].items():
-                    curriculum.scenario_success_history[k] = list(v)
-            print(f"  → 续训 update={start_update}, total_ep={total_episodes}, "
-                  f"cum_success={total_successes/max(total_episodes,1):.2%}, "
-                  f"best_succ={best_success_rate:.2%}")
-            if start_update > args.updates:
-                print(f"⚠️ 已恢复到 update={start_update-1}，但 --updates={args.updates} 不够，"
-                      f"请加大 --updates 或者直接跳过本次训练")
+                actors[aid].load_state_dict(
+                    resume_checkpoint["actors"][aid], strict=True
+                )
+                actor_optims[aid].load_state_dict(
+                    resume_checkpoint["actor_optims"][aid]
+                )
+            critic.load_state_dict(
+                resume_checkpoint["critic"], strict=True
+            )
+            critic_optim.load_state_dict(
+                resume_checkpoint["critic_optim"]
+            )
+        except (KeyError, RuntimeError, ValueError) as error:
+            raise CheckpointProtocolError(
+                f"failed to restore complete model/optimizer state: {error}"
+            ) from error
+
+        completed_update = int(resume_checkpoint["update"])
+        start_update = completed_update + 1
+        total_episodes = int(resume_checkpoint["total_episodes"])
+        total_successes = int(resume_checkpoint["total_successes"])
+        total_collisions = int(resume_checkpoint["total_collisions"])
+        total_timeouts = int(resume_checkpoint["total_timeouts"])
+        curriculum.scenario_success_history = {
+            str(name): list(values)
+            for name, values in saved_curriculum["success_history"].items()
+        }
+        if start_update > args.updates:
+            raise CheckpointProtocolError(
+                f"checkpoint completed update={completed_update}, but "
+                f"--updates={args.updates}; choose a larger stop update"
+            )
+
+        env = _create_validated_env()
+        run_metadata = copy.deepcopy(
+            resume_checkpoint["run_metadata"]
+        )
+        code_drift_history = list(
+            run_metadata.get("code_drift_history", [])
+        )
+        if resume_code_drift:
+            code_drift_history.append(
+                {
+                    "resumed_at": utc_now_iso(),
+                    "from_git_sha": saved_git_sha,
+                    "to_git_sha": current_git_sha,
+                    "from_code_fingerprint": saved_code_fingerprint,
+                    "to_code_fingerprint": code_fingerprint,
+                }
+            )
+        run_metadata.update(
+            {
+                "last_git_sha": current_git["commit"],
+                "code_fingerprint": code_fingerprint,
+                "last_git_dirty": current_git["dirty"],
+                "last_git_dirty_paths": current_git["dirty_paths"],
+                "last_resume_at": utc_now_iso(),
+                "last_resume_checkpoint": str(resume_path),
+                "last_resume_sha256": resume_digest,
+                "resume_count": int(run_metadata.get("resume_count", 0)) + 1,
+                "last_command": normalize_command_line(),
+                "last_runtime": runtime_metadata_with_carla(env),
+                "code_drift_override": bool(
+                    run_metadata.get("code_drift_override", False)
+                    or resume_code_drift
+                ),
+                "code_drift_history": code_drift_history,
+            }
+        )
+    else:
+        env = _create_validated_env()
+        source_type = (
+            "pretrained_weights"
+            if pretrained_checkpoint is not None
+            else "fresh"
+        )
+        run_metadata = {
+            "run_id": args.run_id,
+            "seed": int(args.seed),
+            "created_at": utc_now_iso(),
+            "origin_git_sha": current_git["commit"],
+            "last_git_sha": current_git["commit"],
+            "origin_code_fingerprint": code_fingerprint,
+            "code_fingerprint": code_fingerprint,
+            "git_dirty": current_git["dirty"],
+            "git_dirty_paths": current_git["dirty_paths"],
+            "config_path": args.config_path,
+            "config_sha256": (
+                sha256_file(args.config_path) if args.config_path else ""
+            ),
+            "command": normalize_command_line(),
+            "runtime": runtime_metadata_with_carla(env),
+            "source_type": source_type,
+            "source_checkpoint": (
+                str(pretrained_path) if pretrained_path else ""
+            ),
+            "source_sha256": pretrained_digest,
+            "pretrained_load_report": pretrained_load_report,
+            "resume_count": 0,
+            "code_drift_override": False,
+            "code_drift_history": [],
+        }
+        manifest = {
+            "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
+            "training_protocol_version": TRAINING_PROTOCOL_VERSION,
+            "run_id": args.run_id,
+            "created_at": utc_now_iso(),
+            "latest": None,
+            "interrupted": None,
+            "periodic": [],
+        }
+
+    visualizer = (
+        MAPPOVisualizer(width=1200, height=800, fps=30)
+        if args.render
+        else None
+    )
+    tb_log_dir = os.path.join(save_dir, "tb")
+    os.makedirs(tb_log_dir, exist_ok=True)
+    tb_writer = SummaryWriter(
+        tb_log_dir,
+        purge_step=start_update if resume_checkpoint is not None else None,
+    )
+    print(f"RunID: {args.run_id}")
+    print(f"TensorBoard 日志: {tb_log_dir}")
+
+    if resume_checkpoint is not None:
+        rng_warnings = restore_rng_state(
+            resume_checkpoint["rng_state"]
+        )
+        for warning in rng_warnings:
+            print(f"  [恢复警告] {warning}")
+        print(
+            f"恢复训练: {resume_path} -> next_update={start_update}, "
+            f"total_ep={total_episodes}, "
+            f"cum_success={total_successes/max(total_episodes,1):.2%}, "
+            f"lr_horizon={lr_decay_horizon}"
+        )
+
+    periodic_dir = Path(save_dir) / PERIODIC_DIR_NAME
+    manifest_path = Path(save_dir) / MANIFEST_NAME
+    latest_path = Path(save_dir) / LATEST_CHECKPOINT_NAME
+    interrupted_path = Path(save_dir) / INTERRUPTED_CHECKPOINT_NAME
+
+    def _serializable_args() -> Dict[str, object]:
+        return {
+            key: value
+            for key, value in vars(args).items()
+            if not key.startswith("_")
+        }
+
+    def _build_checkpoint_dict(kind: str) -> Dict[str, object]:
+        current_actor_lrs = {
+            aid: float(actor_optims[aid].param_groups[0]["lr"])
+            for aid in agent_ids
+        }
+        current_critic_lr = float(
+            critic_optim.param_groups[0]["lr"]
+        )
+        checkpoint_run_metadata = copy.deepcopy(run_metadata)
+        checkpoint_run_metadata["last_saved_at"] = utc_now_iso()
+        return {
+            "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
+            "training_protocol_version": TRAINING_PROTOCOL_VERSION,
+            "protocol_versions": protocol_versions,
+            "checkpoint_kind": kind,
+            "update": int(completed_update),
+            "actors": {
+                aid: actors[aid].state_dict() for aid in agent_ids
+            },
+            "critic": critic.state_dict(),
+            "actor_optims": {
+                aid: actor_optims[aid].state_dict()
+                for aid in agent_ids
+            },
+            "critic_optim": critic_optim.state_dict(),
+            "args": _serializable_args(),
+            "model_spec": model_spec,
+            "training_config": training_config,
+            "lr_schedule": {
+                "enabled": bool(args.lr_decay),
+                "decay_horizon": lr_decay_horizon,
+                "initial_actor_lr": init_lr_actor,
+                "initial_critic_lr": init_lr_critic,
+                "current_actor_lrs": current_actor_lrs,
+                "current_critic_lr": current_critic_lr,
+            },
+            "run_metadata": checkpoint_run_metadata,
+            "curriculum_state": {
+                "config": {
+                    "warmup_updates": args.warmup_updates,
+                    "full_scenario_updates": args.full_scenario_updates,
+                    "transition_window": (
+                        args.curriculum_transition_window
+                    ),
+                    "mode": args.curriculum_mode,
+                },
+                "stages": curriculum.curriculum_stages,
+                "scenario_pool_fingerprint": pool_fingerprint,
+                "success_history": {
+                    name: list(values)
+                    for name, values in (
+                        curriculum.scenario_success_history.items()
+                    )
+                },
+            },
+            "rng_state": capture_rng_state(),
+            "total_episodes": int(total_episodes),
+            "total_successes": int(total_successes),
+            "total_collisions": int(total_collisions),
+            "total_timeouts": int(total_timeouts),
+            "curriculum_success_history": {
+                name: list(values)
+                for name, values in (
+                    curriculum.scenario_success_history.items()
+                )
+            },
+        }
+
+    def _manifest_record(
+        checkpoint_path: Path, digest: str
+    ) -> Dict[str, object]:
+        return {
+            "path": str(checkpoint_path.relative_to(save_dir)),
+            "update": int(completed_update),
+            "sha256": digest,
+            "recorded_at": utc_now_iso(),
+        }
+
+    def _save_safe_checkpoint(*, include_periodic: bool) -> None:
+        if include_periodic:
+            periodic_path = periodic_dir / (
+                f"ckpt_update_{completed_update:06d}.pt"
+            )
+            periodic_digest = save_checkpoint_file(
+                _build_checkpoint_dict("periodic"),
+                periodic_path,
+                immutable=True,
+            )
+            manifest["periodic"].append(
+                _manifest_record(periodic_path, periodic_digest)
+            )
+            print(f"周期 checkpoint: {periodic_path}")
+
+        latest_digest = save_checkpoint_file(
+            _build_checkpoint_dict("latest"), latest_path
+        )
+        manifest["latest"] = _manifest_record(
+            latest_path, latest_digest
+        )
+        atomic_write_json(manifest, manifest_path)
+        print(f"最新 checkpoint: {latest_path}")
+
+    def _save_interrupted_checkpoint() -> None:
+        if not latest_path.is_file():
+            return
+        interrupted_digest = atomic_copy_checkpoint(
+            latest_path, interrupted_path
+        )
+        manifest["interrupted"] = _manifest_record(
+            interrupted_path, interrupted_digest
+        )
+        atomic_write_json(manifest, manifest_path)
+        print(
+            "安全中断 checkpoint（最近完整 update）: "
+            f"{interrupted_path}"
+        )
 
     try:
+        if resume_checkpoint is None:
+            _save_safe_checkpoint(include_periodic=False)
         for update in range(start_update, args.updates + 1):
             # 学习率线性衰减
             cur_lr_a, cur_lr_c = _apply_lr_decay(update)
@@ -2413,43 +2983,26 @@ def train(args):
                         tb_writer.add_scalar(f'scenarios/{safe_name}/sample_count',
                             len(history), update)
 
-            # 公用：组装可 resume 的完整 state
-            def _build_ckpt_dict():
-                return {
-                    "update": update,
-                    "actors": {aid: actors[aid].state_dict() for aid in agent_ids},
-                    "critic": critic.state_dict(),
-                    "actor_optims": {aid: actor_optims[aid].state_dict() for aid in agent_ids},
-                    "critic_optim": critic_optim.state_dict(),
-                    "args": vars(args),
-                    # resume 需要的训练统计
-                    "total_episodes": total_episodes,
-                    "total_successes": total_successes,
-                    "total_collisions": total_collisions,
-                    "total_timeouts": total_timeouts,
-                    "best_success_rate": best_success_rate,
-                    "curriculum_success_history": {
-                        k: list(v) for k, v in curriculum.scenario_success_history.items()
-                    },
-                }
-
-            # 保存 checkpoint
-            if update % args.save_interval == 0:
-                ckpt_path = os.path.join(save_dir, f"mappo_robust_v2_update_{update}.pt")
-                torch.save(_build_ckpt_dict(), ckpt_path)
-                print(f"模型保存: {ckpt_path}")
-
-            # Phase A4: best.pt 跟踪（按窗口严格成功率取 max）
-            if len(window_successes) > 0:
-                cur_win_success = float(np.mean(window_successes))
-                if cur_win_success > best_success_rate:
-                    best_success_rate = cur_win_success
-                    best_ckpt_path = os.path.join(save_dir, "best.pt")
-                    torch.save(_build_ckpt_dict(), best_ckpt_path)
-                    print(f"  [best] 窗口成功率 {best_success_rate:.2%}，保存 {best_ckpt_path}")
+            # 一个 update 只有在 rollout、PPO、统计与日志全部结束后才提交。
+            # latest 每次覆盖；periodic 不可覆盖。训练过程不再选择 best。
+            tb_writer.flush()
+            completed_update = update
+            _save_safe_checkpoint(
+                include_periodic=(update % args.save_interval == 0)
+            )
 
     except KeyboardInterrupt:
-        print("训练中断")
+        print("训练中断：丢弃当前未完成 update，保留最近完整边界")
+        try:
+            _save_interrupted_checkpoint()
+        except Exception as save_error:
+            print(f"  [警告] interrupted checkpoint 保存失败: {save_error}")
+    except Exception:
+        try:
+            _save_interrupted_checkpoint()
+        except Exception as save_error:
+            print(f"  [警告] 异常退出时保存 interrupted 失败: {save_error}")
+        raise
     finally:
         if visualizer is not None:
             visualizer.close()
@@ -2496,6 +3049,15 @@ def build_parser():
                         help="启用 lr 线性衰减到 0（默认开启）")
     parser.add_argument("--no-lr-decay", dest="lr_decay", action="store_false",
                         help="关闭 lr 线性衰减")
+    parser.add_argument(
+        "--lr-decay-horizon",
+        type=int,
+        default=0,
+        help=(
+            "冻结的学习率衰减 update 长度；新训练为 0 时取 --updates，"
+            "resume 时从 checkpoint 恢复且禁止隐式改变"
+        ),
+    )
     parser.add_argument("--init-log-std", type=float, default=0.0,
                         help="Actor log_std 初始值（std=1.0），配合 target-kl 早停，给足初期探索空间")
 
@@ -2519,11 +3081,29 @@ def build_parser():
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--pretrained-checkpoint", type=str, default="",
-                        help="预训练模型路径（仅加载 actor/critic 权重，从 update 1 开始）")
+                        help="从权重启动新 Run；不恢复 optimizer/update/RNG")
     parser.add_argument("--resume", type=str, default="",
-                        help="恢复训练的 checkpoint 路径（加载权重 + optimizer + update 计数 + 训练统计 + 课程历史）。"
-                             "传 'latest' 自动选 save_dir 下 update 编号最大的 ckpt。"
-                             "与 --pretrained-checkpoint 同时给时优先用 --resume。")
+                        help=(
+                            "严格恢复同一 Run 的完整状态；传 latest 加载 "
+                            "save_dir/latest.pt。不存在或不兼容时直接失败"
+                        ))
+    parser.add_argument(
+        "--run-id",
+        type=str,
+        default="",
+        help="唯一实验 RunID；省略时使用 save_dir 的目录名",
+    )
+    parser.add_argument(
+        "--config-path",
+        type=str,
+        default="",
+        help="可选：记录到 checkpoint 的冻结配置文件路径及 SHA256",
+    )
+    parser.add_argument(
+        "--allow-resume-code-drift",
+        action="store_true",
+        help="显式允许 Git SHA/关键源码指纹不同的续训，并永久写入元数据",
+    )
 
     parser.add_argument("--save-dir", type=str, default="./logs/mappo_robust_v2")
     parser.add_argument("--save-interval", type=int, default=5)
@@ -2536,4 +3116,9 @@ def build_parser():
 
 if __name__ == "__main__":
     args = build_parser().parse_args()
+    args._explicit_cli_options = {
+        token.split("=", 1)[0]
+        for token in sys.argv[1:]
+        if token.startswith("--")
+    }
     train(args)

@@ -57,12 +57,20 @@ CarlaUE4.exe
 # P0-00G：基础 MAPPO 三更新 smoke
 # 只允许在 P0-00B 至 P0-00F 全部通过后执行
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --run-id P0_00G_robust_v2_smoke_s42_<timestamp> `
   --updates 3 `
+  --lr-decay-horizon 3 `
   --rollout-episodes 4 `
   --min-transitions-per-update 64 `
   --max-steps 300 `
   --seed 42 `
   --save-dir logs/P0_00G_robust_v2_smoke_s42_<timestamp>
+
+# 随后从 update 3 严格恢复第 4 个 update；LR horizon 仍保持 3
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --resume latest `
+  --updates 4 `
+  --save-dir logs/P0_00G_robust_v2_smoke_s42_<same-timestamp>
 
 # Phase 1：单蓝车三更新 smoke
 # 只允许在 P0-06 通过后执行
@@ -406,10 +414,34 @@ CarlaUE4.exe
 # 4. 完成 P0-01 至 P0-06；在此之前禁止长训练
 
 # 5. 门槛通过后，用版本化配置启动 robust_v2 正式训练
-python -m training.train_no_rllib_mappo_robust_v2 <frozen-config-args>
+python -m training.train_no_rllib_mappo_robust_v2 \
+    --run-id <unique-run-id> \
+    --save-dir logs/<unique-run-id> \
+    --lr-decay-horizon <frozen-total-updates> \
+    <frozen-config-args>
 
 # 6. 通过独立 C0/C1 验证，从 periodic checkpoint 生成 best_base_valid.pt
 ```
+
+#### 基础策略 checkpoint/resume（P0-00F）
+
+```powershell
+# 同一 Run 严格恢复；训练配置、seed、LR horizon 会从 checkpoint 恢复
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --resume latest `
+  --save-dir logs/<original-run-id> `
+  --updates <stop-update-greater-than-saved-update>
+
+# 从已有权重开启新 Run；不会继承 optimizer/update/课程/RNG
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --pretrained-checkpoint logs/<source-run>/periodic/ckpt_update_000050.pt `
+  --run-id <new-run-id> `
+  --save-dir logs/<new-run-id> `
+  --updates 100 `
+  --seed 43
+```
+
+`--resume latest` 不存在、哈希损坏、Git/协议/显式训练配置不一致时会直接失败，不会从零启动或部分加载。训练期不再产生 `best.pt`；后续仅由独立 C0/C1 验证从 immutable periodic checkpoint 生成 `best_base_valid.pt`。详细文件结构和兼容规则见 `docs/MAPPO_checkpoint与恢复训练协议.md`。
 
 ### 当前流程 2：单蓝车对抗
 
@@ -459,8 +491,12 @@ python -m training.train_no_rllib_mappo_robust_v2
 
 **Q: 如何从 checkpoint 继续训练？**
 ```
-A: 只允许从当前协议生成且兼容性校验通过的 checkpoint resume。
-旧 RLlib/minimal/robust v1/旧对抗 checkpoint 默认只能作历史评估，不能作为新实验起点。
+A: 同一 Run 使用：
+python -m training.train_no_rllib_mappo_robust_v2 --resume latest \
+  --save-dir logs/<original-run-id> --updates <new-stop-update>
+
+只允许从 P0-00F 当前协议生成且 checksum、manifest、Git、结构和配置校验通过的 checkpoint resume。
+旧 RLlib/minimal/robust v1/旧对抗 checkpoint 默认只能作历史评估或 pretrained weights，不能作为正式 resume 起点。
 ```
 
 **Q: 显存不足？**

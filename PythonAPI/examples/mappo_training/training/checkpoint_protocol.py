@@ -1,0 +1,500 @@
+"""Versioned, atomic checkpoint protocol for the current robust_v2 trainer.
+
+This module deliberately has no CARLA dependency so save/resume invariants can
+be exercised in fast unit tests before an end-to-end simulator smoke run.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import platform
+import random
+import shutil
+import subprocess
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, Iterable, Mapping, Optional, Tuple
+
+import numpy as np
+import torch
+
+
+CHECKPOINT_SCHEMA_VERSION = 1
+TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00f_v1"
+OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_v1"
+ACTION_PROTOCOL_VERSION = "tanh_gaussian_pre_tanh_z_v1"
+LIFECYCLE_PROTOCOL_VERSION = "agent_centric_terminated_truncated_v1"
+
+LATEST_CHECKPOINT_NAME = "latest.pt"
+INTERRUPTED_CHECKPOINT_NAME = "interrupted.pt"
+PERIODIC_DIR_NAME = "periodic"
+MANIFEST_NAME = "checkpoint_manifest.json"
+
+
+class CheckpointProtocolError(RuntimeError):
+    """Raised when a checkpoint cannot safely resume the current run."""
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def sha256_file(path: os.PathLike[str] | str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as file_obj:
+        for chunk in iter(lambda: file_obj.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _atomic_replace_bytes(data: bytes, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "wb") as file_obj:
+            file_obj.write(data)
+            file_obj.flush()
+            os.fsync(file_obj.fileno())
+        os.replace(temporary_path, destination)
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+
+def atomic_write_json(payload: Mapping[str, Any], path: os.PathLike[str] | str) -> None:
+    serialized = json.dumps(
+        payload, ensure_ascii=False, indent=2, sort_keys=True
+    ).encode("utf-8") + b"\n"
+    _atomic_replace_bytes(serialized, Path(path))
+
+
+def checksum_path(checkpoint_path: os.PathLike[str] | str) -> Path:
+    checkpoint_path = Path(checkpoint_path)
+    return checkpoint_path.with_name(checkpoint_path.name + ".sha256")
+
+
+def _write_checksum(checkpoint_path: Path, digest: str) -> None:
+    line = f"{digest}  {checkpoint_path.name}\n".encode("ascii")
+    _atomic_replace_bytes(line, checksum_path(checkpoint_path))
+
+
+def save_checkpoint_file(
+    payload: Mapping[str, Any],
+    path: os.PathLike[str] | str,
+    *,
+    immutable: bool = False,
+) -> str:
+    """Atomically serialize a checkpoint and its SHA256 sidecar."""
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if immutable and (destination.exists() or checksum_path(destination).exists()):
+        raise FileExistsError(f"immutable checkpoint already exists: {destination}")
+
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
+    )
+    os.close(fd)
+    temporary_path = Path(temporary_name)
+    try:
+        torch.save(dict(payload), temporary_path)
+        with open(temporary_path, "rb+") as file_obj:
+            os.fsync(file_obj.fileno())
+        digest = sha256_file(temporary_path)
+        os.replace(temporary_path, destination)
+        _write_checksum(destination, digest)
+        return digest
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+
+def verify_checkpoint_file(path: os.PathLike[str] | str) -> str:
+    checkpoint_path = Path(path)
+    if not checkpoint_path.is_file():
+        raise FileNotFoundError(f"checkpoint not found: {checkpoint_path}")
+    sidecar = checksum_path(checkpoint_path)
+    if not sidecar.is_file():
+        raise CheckpointProtocolError(
+            f"checkpoint checksum sidecar not found: {sidecar}"
+        )
+    tokens = sidecar.read_text(encoding="ascii").strip().split()
+    if not tokens or len(tokens[0]) != 64:
+        raise CheckpointProtocolError(f"invalid checksum sidecar: {sidecar}")
+    expected = tokens[0].lower()
+    actual = sha256_file(checkpoint_path)
+    if actual != expected:
+        raise CheckpointProtocolError(
+            f"checkpoint SHA256 mismatch: expected={expected}, actual={actual}"
+        )
+    return actual
+
+
+def load_checkpoint_file(
+    path: os.PathLike[str] | str,
+    *,
+    map_location: Any = "cpu",
+) -> Tuple[Dict[str, Any], str]:
+    digest = verify_checkpoint_file(path)
+    checkpoint = torch.load(path, map_location=map_location, weights_only=False)
+    if not isinstance(checkpoint, dict):
+        raise CheckpointProtocolError("checkpoint root must be a dictionary")
+    return checkpoint, digest
+
+
+def atomic_copy_checkpoint(
+    source: os.PathLike[str] | str,
+    destination: os.PathLike[str] | str,
+) -> str:
+    """Copy a verified safe checkpoint to another atomically replaced name."""
+    source_path = Path(source)
+    verify_checkpoint_file(source_path)
+    destination_path = Path(destination)
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination_path.name}.",
+        suffix=".tmp",
+        dir=destination_path.parent,
+    )
+    os.close(fd)
+    temporary_path = Path(temporary_name)
+    try:
+        shutil.copyfile(source_path, temporary_path)
+        with open(temporary_path, "rb+") as file_obj:
+            os.fsync(file_obj.fileno())
+        digest = sha256_file(temporary_path)
+        os.replace(temporary_path, destination_path)
+        _write_checksum(destination_path, digest)
+        return digest
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+
+def resolve_resume_path(resume: str, save_dir: os.PathLike[str] | str) -> Path:
+    if not resume:
+        raise ValueError("resume selector must not be empty")
+    if resume == "latest":
+        path = Path(save_dir).resolve() / LATEST_CHECKPOINT_NAME
+    else:
+        path = Path(resume).expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"resume checkpoint not found: {path}; refusing to start from zero"
+        )
+    return path
+
+
+def infer_run_root(checkpoint_path: os.PathLike[str] | str) -> Path:
+    checkpoint_path = Path(checkpoint_path).resolve()
+    if checkpoint_path.parent.name == PERIODIC_DIR_NAME:
+        return checkpoint_path.parent.parent
+    return checkpoint_path.parent
+
+
+def ensure_fresh_run_directory(save_dir: os.PathLike[str] | str) -> Path:
+    run_dir = Path(save_dir).resolve()
+    run_dir.mkdir(parents=True, exist_ok=True)
+    protected = [
+        run_dir / LATEST_CHECKPOINT_NAME,
+        run_dir / INTERRUPTED_CHECKPOINT_NAME,
+        run_dir / PERIODIC_DIR_NAME,
+        run_dir / MANIFEST_NAME,
+    ]
+    old_checkpoints = list(run_dir.glob("*.pt"))
+    old_checkpoints.extend(run_dir.glob("*.pt.sha256"))
+    conflicts = [str(path) for path in protected if path.exists()]
+    conflicts.extend(
+        str(path) for path in old_checkpoints if str(path) not in conflicts
+    )
+    if conflicts:
+        raise FileExistsError(
+            "fresh run directory already contains checkpoint artifacts: "
+            + ", ".join(conflicts)
+        )
+    return run_dir
+
+
+def capture_rng_state() -> Dict[str, Any]:
+    return {
+        "python": random.getstate(),
+        "numpy": np.random.get_state(),
+        "torch_cpu": torch.get_rng_state(),
+        "torch_cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
+    }
+
+
+def restore_rng_state(state: Mapping[str, Any]) -> Tuple[str, ...]:
+    required = {"python", "numpy", "torch_cpu", "torch_cuda"}
+    missing = required - set(state)
+    if missing:
+        raise CheckpointProtocolError(
+            f"RNG state missing fields: {sorted(missing)}"
+        )
+    random.setstate(state["python"])
+    np.random.set_state(state["numpy"])
+    torch.set_rng_state(state["torch_cpu"].cpu())
+
+    warnings = []
+    cuda_states = list(state["torch_cuda"])
+    if cuda_states:
+        if not torch.cuda.is_available():
+            warnings.append(
+                "checkpoint contains CUDA RNG state but CUDA is unavailable; "
+                "continuation is not bitwise reproducible"
+            )
+        elif len(cuda_states) != torch.cuda.device_count():
+            warnings.append(
+                "CUDA device count differs from checkpoint; continuation is not "
+                "bitwise reproducible"
+            )
+        else:
+            torch.cuda.set_rng_state_all(cuda_states)
+    return tuple(warnings)
+
+
+def scenario_pool_fingerprint(scenario_dir: os.PathLike[str] | str) -> str:
+    directory = Path(scenario_dir)
+    digest = hashlib.sha256()
+    for path in sorted(directory.glob("*.json"), key=lambda item: item.name):
+        digest.update(path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(sha256_file(path).encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def files_fingerprint(paths: Iterable[os.PathLike[str] | str]) -> str:
+    """Hash selected protocol-critical source files independent of git noise."""
+    normalized = sorted(Path(path).resolve() for path in paths)
+    digest = hashlib.sha256()
+    for path in normalized:
+        if not path.is_file():
+            raise FileNotFoundError(f"fingerprint source not found: {path}")
+        digest.update(path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(sha256_file(path).encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def get_git_metadata(workdir: os.PathLike[str] | str) -> Dict[str, Any]:
+    def _run(*args: str) -> str:
+        completed = subprocess.run(
+            ["git", *args],
+            cwd=workdir,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        return completed.stdout.strip()
+
+    try:
+        commit = _run("rev-parse", "HEAD")
+        status = _run("status", "--porcelain", "--untracked-files=no")
+        return {
+            "commit": commit,
+            "dirty": bool(status),
+            "dirty_paths": status.splitlines(),
+        }
+    except (OSError, subprocess.CalledProcessError) as error:
+        return {
+            "commit": "unknown",
+            "dirty": True,
+            "dirty_paths": [f"git metadata unavailable: {error}"],
+        }
+
+
+def runtime_metadata() -> Dict[str, Any]:
+    return {
+        "python": sys.version,
+        "platform": platform.platform(),
+        "torch": torch.__version__,
+        "numpy": np.__version__,
+        "cuda_available": torch.cuda.is_available(),
+        "cuda_version": torch.version.cuda,
+        "cuda_device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+    }
+
+
+def validate_checkpoint_payload(
+    checkpoint: Mapping[str, Any],
+    *,
+    expected_protocol_versions: Mapping[str, Any],
+    expected_model_spec: Mapping[str, Any],
+    expected_training_config: Mapping[str, Any],
+) -> None:
+    validate_checkpoint_header(checkpoint)
+    required = {
+        "protocol_versions",
+        "checkpoint_kind",
+        "update",
+        "actors",
+        "critic",
+        "actor_optims",
+        "critic_optim",
+        "args",
+        "model_spec",
+        "training_config",
+        "lr_schedule",
+        "run_metadata",
+        "curriculum_state",
+        "rng_state",
+        "total_episodes",
+        "total_successes",
+        "total_collisions",
+        "total_timeouts",
+    }
+    missing = required - set(checkpoint)
+    if missing:
+        raise CheckpointProtocolError(
+            f"checkpoint missing required fields: {sorted(missing)}"
+        )
+    comparisons = (
+        ("protocol_versions", checkpoint["protocol_versions"], expected_protocol_versions),
+        ("model_spec", checkpoint["model_spec"], expected_model_spec),
+        ("training_config", checkpoint["training_config"], expected_training_config),
+    )
+    mismatches = []
+    for group_name, saved, expected in comparisons:
+        for key, expected_value in expected.items():
+            saved_value = saved.get(key, "<missing>")
+            if saved_value != expected_value:
+                mismatches.append(
+                    f"{group_name}.{key}: saved={saved_value!r}, "
+                    f"current={expected_value!r}"
+                )
+    if mismatches:
+        raise CheckpointProtocolError(
+            "resume compatibility check failed:\n  - " + "\n  - ".join(mismatches)
+        )
+
+    expected_agent_ids = set(expected_model_spec["agent_ids"])
+    for key in ("actors", "actor_optims"):
+        if not isinstance(checkpoint[key], Mapping):
+            raise CheckpointProtocolError(f"{key} must be a mapping")
+        actual_ids = {int(agent_id) for agent_id in checkpoint[key]}
+        if actual_ids != expected_agent_ids:
+            raise CheckpointProtocolError(
+                f"{key} agent ids mismatch: saved={sorted(actual_ids)}, "
+                f"expected={sorted(expected_agent_ids)}"
+            )
+    if not isinstance(checkpoint["curriculum_state"], Mapping):
+        raise CheckpointProtocolError("curriculum_state must be a mapping")
+
+
+def validate_checkpoint_header(checkpoint: Mapping[str, Any]) -> None:
+    required = {
+        "checkpoint_schema_version",
+        "training_protocol_version",
+        "run_metadata",
+        "training_config",
+        "lr_schedule",
+        "rng_state",
+        "update",
+    }
+    missing = required - set(checkpoint)
+    if missing:
+        raise CheckpointProtocolError(
+            f"checkpoint header missing required fields: {sorted(missing)}"
+        )
+    if checkpoint["checkpoint_schema_version"] != CHECKPOINT_SCHEMA_VERSION:
+        raise CheckpointProtocolError(
+            "checkpoint schema mismatch: "
+            f"saved={checkpoint['checkpoint_schema_version']}, "
+            f"expected={CHECKPOINT_SCHEMA_VERSION}"
+        )
+    if checkpoint["training_protocol_version"] != TRAINING_PROTOCOL_VERSION:
+        raise CheckpointProtocolError(
+            "training protocol mismatch: "
+            f"saved={checkpoint['training_protocol_version']}, "
+            f"expected={TRAINING_PROTOCOL_VERSION}"
+        )
+    run_metadata = checkpoint["run_metadata"]
+    if not isinstance(run_metadata, Mapping):
+        raise CheckpointProtocolError("run_metadata must be a mapping")
+    for key in (
+        "run_id",
+        "seed",
+        "origin_git_sha",
+        "last_git_sha",
+        "code_fingerprint",
+    ):
+        if key not in run_metadata:
+            raise CheckpointProtocolError(
+                f"run_metadata missing required field: {key}"
+            )
+    if not str(run_metadata["run_id"]).strip():
+        raise CheckpointProtocolError("run_metadata.run_id cannot be empty")
+    try:
+        update = int(checkpoint["update"])
+    except (TypeError, ValueError) as error:
+        raise CheckpointProtocolError("checkpoint update must be an integer") from error
+    if update < 0:
+        raise CheckpointProtocolError("checkpoint update cannot be negative")
+
+    if not isinstance(checkpoint["training_config"], Mapping):
+        raise CheckpointProtocolError("training_config must be a mapping")
+    lr_schedule = checkpoint["lr_schedule"]
+    if not isinstance(lr_schedule, Mapping) or "decay_horizon" not in lr_schedule:
+        raise CheckpointProtocolError(
+            "lr_schedule must contain decay_horizon"
+        )
+    try:
+        decay_horizon = int(lr_schedule["decay_horizon"])
+    except (TypeError, ValueError) as error:
+        raise CheckpointProtocolError(
+            "lr_schedule.decay_horizon must be an integer"
+        ) from error
+    if decay_horizon <= 0:
+        raise CheckpointProtocolError(
+            "lr_schedule.decay_horizon must be positive"
+        )
+
+    rng_state = checkpoint["rng_state"]
+    if not isinstance(rng_state, Mapping):
+        raise CheckpointProtocolError("rng_state must be a mapping")
+    missing_rng = {"python", "numpy", "torch_cpu", "torch_cuda"} - set(
+        rng_state
+    )
+    if missing_rng:
+        raise CheckpointProtocolError(
+            f"RNG state missing fields: {sorted(missing_rng)}"
+        )
+
+
+def load_manifest(path: os.PathLike[str] | str) -> Dict[str, Any]:
+    manifest_path = Path(path)
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"checkpoint manifest not found: {manifest_path}")
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise CheckpointProtocolError("checkpoint manifest root must be a dictionary")
+    return payload
+
+
+def manifest_checkpoint_record(
+    checkpoint_path: os.PathLike[str] | str,
+    *,
+    update: int,
+    digest: str,
+) -> Dict[str, Any]:
+    return {
+        "path": str(Path(checkpoint_path).name),
+        "update": int(update),
+        "sha256": digest,
+        "recorded_at": utc_now_iso(),
+    }
+
+
+def normalize_command_line(argv: Optional[Iterable[str]] = None) -> str:
+    values = list(sys.argv if argv is None else argv)
+    return subprocess.list2cmdline(values)
