@@ -1,6 +1,6 @@
 # MAPPO 基础策略 checkpoint 与恢复训练协议
 
-> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。协议版本：`mappo_robust_v2_p0_00f_v1`。旧 RLlib、robust v1 和旧独立 MAPPO checkpoint 不适用本协议。
+> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。checkpoint schema：v2；训练协议：`mappo_robust_v2_p0_00f_tb_v1`；指标协议：`mappo_metrics_p0_00f_tb_v1`。旧 RLlib、robust v1、旧独立 MAPPO 以及 P0-00F schema v1 checkpoint 不适用正式 resume。
 
 ## 1. 三种操作必须区分
 
@@ -29,6 +29,8 @@
 │   ├── ckpt_update_000005.pt.sha256
 │   └── ...
 ├── checkpoint_manifest.json
+├── metrics_schema.json
+├── metrics.jsonl
 └── tb/
 ```
 
@@ -36,7 +38,9 @@
 - `periodic/ckpt_update_*.pt`：按 `save_interval` 生成且禁止覆盖。
 - `interrupted.pt`：Ctrl+C 或异常时复制最近完整 `latest.pt`，不会保存半个 rollout/PPO update。
 - `checkpoint_manifest.json`：登记 RunID、latest、interrupted、periodic 的 update、路径和 SHA256。
-- `tb/`：同一 Run 的 TensorBoard 连续目录；resume 使用 `purge_step` 清理重复步。
+- `metrics_schema.json`：指标协议、agent、奖励字段和聚合语义。
+- `metrics.jsonl`：每个完整 update 的可审计 scalar payload。
+- `tb/`：与 JSONL 同源的 TensorBoard 连续目录；resume 使用 `purge_step` 并在需要时从 checkpoint 重放最后一个 update。
 
 训练脚本不会创建 `best.pt`。未来的 `best_base_valid.pt` 只能由独立 C0/C1 验证流程从 immutable periodic checkpoints 中选择。
 
@@ -49,6 +53,7 @@
 - 冻结的 LR decay horizon、初始/当前学习率；
 - observation/action/state 维度、agent 数量、hidden dim、Critic 类型；
 - schema、训练、观测、动作、reward 和 terminated/truncated 协议版本；
+- 指标协议版本和最近完整 update 的 `last_metrics` payload；
 - RunID、Git SHA/dirty paths、关键源码指纹、完整命令、配置路径/哈希、来源 checkpoint；
 - Python、平台、Torch、NumPy、CUDA、CARLA client/server 版本。
 
@@ -64,6 +69,8 @@
 
 允许改变：本次停止 update、保存/日志间隔、CARLA host/port、render 和输出操作参数。LR decay horizon 在 fresh run 时冻结；resume 延长 `--updates` 不会改变既有 LR 曲线。
 
+P0-00F-TB 起，resume 还要求 checkpoint 的 `last_metrics.update`、RunID 和指标协议与 checkpoint 边界一致。若 checkpoint 已保存但 TensorBoard/JSONL 尚未写入，恢复时会重放该 payload；日志领先 checkpoint、出现 update gap 或 schema 改变时直接失败。详细口径见 [MAPPO TensorBoard 指标协议](./MAPPO_TensorBoard指标协议.md)。
+
 Git SHA 和关键源码指纹默认都必须一致。`--allow-resume-code-drift` 仅用于明确知道风险的诊断续训；每次漂移的前后 Git SHA 与源码指纹都会在元数据中永久累积，不能作为正式可复现实验的默认做法。
 
 ## 5. 标准命令
@@ -71,7 +78,7 @@ Git SHA 和关键源码指纹默认都必须一致。`--allow-resume-code-drift`
 ### 新训练
 
 ```powershell
-......envScriptspython.exe -m training.train_no_rllib_mappo_robust_v2 `
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
   --run-id P0_base_s42_20260727_1200 `
   --save-dir logs/P0_base_s42_20260727_1200 `
   --updates 100 `
@@ -82,7 +89,7 @@ Git SHA 和关键源码指纹默认都必须一致。`--allow-resume-code-drift`
 ### 同一 Run 恢复
 
 ```powershell
-......envScriptspython.exe -m training.train_no_rllib_mappo_robust_v2 `
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
   --resume latest `
   --save-dir logs/P0_base_s42_20260727_1200 `
   --updates 100
@@ -93,7 +100,7 @@ Git SHA 和关键源码指纹默认都必须一致。`--allow-resume-code-drift`
 ### 从权重开启新 Run
 
 ```powershell
-......envScriptspython.exe -m training.train_no_rllib_mappo_robust_v2 `
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
   --pretrained-checkpoint logs/source/periodic/ckpt_update_000050.pt `
   --run-id P0_finetune_s43_20260727_1400 `
   --save-dir logs/P0_finetune_s43_20260727_1400 `

@@ -17,6 +17,7 @@ import copy
 import os
 import re
 import random
+import time
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional
 
@@ -24,7 +25,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
 
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 from visualization.mappo_visualizer import MAPPOVisualizer
@@ -33,6 +33,8 @@ from training.lifecycle_semantics import (
     bootstrap_state_for_boundary,
     validate_lifecycle_flags,
 )
+from training.metrics_protocol import METRICS_PROTOCOL_VERSION
+from utils.training_metrics_recorder import TrainingMetricsRecorder
 from training.checkpoint_protocol import (
     ACTION_PROTOCOL_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
@@ -124,6 +126,7 @@ def checkpoint_protocol_versions(reward_version: str) -> Dict[str, str]:
         "action": ACTION_PROTOCOL_VERSION,
         "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
         "reward": str(reward_version),
+        "metrics": METRICS_PROTOCOL_VERSION,
     }
 
 
@@ -1436,13 +1439,22 @@ def compute_clipped_actor_loss(
     surrogate_clipped = (
         torch.clamp(ratio, 1.0 - clip_eps, 1.0 + clip_eps) * advantages
     )
-    actor_loss = -torch.min(surrogate_unclipped, surrogate_clipped).mean()
-    actor_loss = actor_loss - ent_coef * entropy.mean()
+    surrogate_loss = -torch.min(
+        surrogate_unclipped, surrogate_clipped
+    ).mean()
+    entropy_bonus = ent_coef * entropy.mean()
+    actor_loss = surrogate_loss - entropy_bonus
     ensure_finite_tensor(actor_loss, name="actor_loss", context=context)
     return actor_loss, {
+        "surrogate_loss": float(surrogate_loss.item()),
         "entropy": float(entropy.mean().item()),
+        "entropy_bonus": float(entropy_bonus.item()),
         "approx_kl": approx_kl,
         "clip_fraction": clip_fraction,
+        "ratio_mean": float(ratio.mean().item()),
+        "ratio_std": float(ratio.std(unbiased=False).item()),
+        "ratio_min": float(ratio.min().item()),
+        "ratio_max": float(ratio.max().item()),
     }
 
 
@@ -1600,9 +1612,15 @@ def run_mappo_ppo_update(
     for aid in agent_ids:
         metrics.update({
             f"actor_loss_{aid}": [],
+            f"surrogate_loss_{aid}": [],
             f"entropy_{aid}": [],
+            f"entropy_bonus_{aid}": [],
             f"approx_kl_{aid}": [],
             f"clip_frac_{aid}": [],
+            f"ratio_mean_{aid}": [],
+            f"ratio_std_{aid}": [],
+            f"ratio_min_{aid}": [],
+            f"ratio_max_{aid}": [],
             f"grad_norm_actor_{aid}": [],
             f"actor_samples_seen_{aid}": 0,
         })
@@ -1651,9 +1669,15 @@ def run_mappo_ppo_update(
             if shuffle:
                 np.random.shuffle(actor_indices)
             epoch_actor_losses = []
+            epoch_surrogate_losses = []
             epoch_entropies = []
+            epoch_entropy_bonuses = []
             epoch_approx_kls = []
             epoch_clip_fracs = []
+            epoch_ratio_means = []
+            epoch_ratio_stds = []
+            epoch_ratio_mins = []
+            epoch_ratio_maxs = []
             epoch_actor_grad_norms = []
             for start in range(0, len(actor_indices), minibatch_size):
                 mb = actor_indices[start:start + minibatch_size]
@@ -1693,23 +1717,39 @@ def run_mappo_ppo_update(
                     actors[aid], context=actor_context
                 )
                 epoch_actor_losses.append(float(actor_loss.item()))
+                epoch_surrogate_losses.append(diagnostics["surrogate_loss"])
                 epoch_entropies.append(diagnostics["entropy"])
+                epoch_entropy_bonuses.append(diagnostics["entropy_bonus"])
                 epoch_approx_kls.append(diagnostics["approx_kl"])
                 epoch_clip_fracs.append(diagnostics["clip_fraction"])
+                epoch_ratio_means.append(diagnostics["ratio_mean"])
+                epoch_ratio_stds.append(diagnostics["ratio_std"])
+                epoch_ratio_mins.append(diagnostics["ratio_min"])
+                epoch_ratio_maxs.append(diagnostics["ratio_max"])
                 epoch_actor_grad_norms.append(float(actor_grad_norm))
                 metrics[f"actor_samples_seen_{aid}"] += int(len(mb))
 
             metrics[f"actor_loss_{aid}"].append(
                 float(np.mean(epoch_actor_losses))
             )
+            metrics[f"surrogate_loss_{aid}"].append(
+                float(np.mean(epoch_surrogate_losses))
+            )
             metrics[f"entropy_{aid}"].append(
                 float(np.mean(epoch_entropies))
+            )
+            metrics[f"entropy_bonus_{aid}"].append(
+                float(np.mean(epoch_entropy_bonuses))
             )
             mean_epoch_kl = float(np.mean(epoch_approx_kls))
             metrics[f"approx_kl_{aid}"].append(mean_epoch_kl)
             metrics[f"clip_frac_{aid}"].append(
                 float(np.mean(epoch_clip_fracs))
             )
+            metrics[f"ratio_mean_{aid}"].append(float(np.mean(epoch_ratio_means)))
+            metrics[f"ratio_std_{aid}"].append(float(np.mean(epoch_ratio_stds)))
+            metrics[f"ratio_min_{aid}"].append(float(np.min(epoch_ratio_mins)))
+            metrics[f"ratio_max_{aid}"].append(float(np.max(epoch_ratio_maxs)))
             metrics[f"grad_norm_actor_{aid}"].append(
                 float(np.mean(epoch_actor_grad_norms))
             )
@@ -1733,6 +1773,16 @@ def run_mappo_ppo_update(
             explained_variance, name="explained_variance", context=context
         )
         metrics["explained_variance"] = float(explained_variance.item())
+        value_error = critic_ret_t - value_predictions
+        metrics["value_prediction_mean"] = float(value_predictions.mean().item())
+        metrics["value_prediction_std"] = float(
+            value_predictions.std(unbiased=False).item()
+        )
+        metrics["return_target_mean"] = float(critic_ret_t.mean().item())
+        metrics["return_target_std"] = float(
+            critic_ret_t.std(unbiased=False).item()
+        )
+        metrics["value_error_abs_mean"] = float(value_error.abs().mean().item())
 
     return MAPPOUpdateResult(
         metrics=metrics,
@@ -2004,6 +2054,10 @@ def train(args):
         raise ValueError("--updates must be positive")
     if args.save_interval <= 0:
         raise ValueError("--save-interval must be positive")
+    if args.log_interval <= 0:
+        raise ValueError("--log-interval must be positive")
+    if args.tb_histogram_interval < 0:
+        raise ValueError("--tb-histogram-interval must be non-negative")
     if args.lr_decay_horizon < 0:
         raise ValueError("--lr-decay-horizon must be non-negative")
 
@@ -2015,6 +2069,10 @@ def train(args):
             Path(__file__).resolve(),
             Path(__file__).resolve().with_name("checkpoint_protocol.py"),
             Path(__file__).resolve().with_name("lifecycle_semantics.py"),
+            Path(__file__).resolve().with_name("metrics_protocol.py"),
+            Path(__file__).resolve().parents[1]
+            / "utils"
+            / "training_metrics_recorder.py",
             Path(__file__).resolve().parents[1] / "models" / "actor_critic.py",
             Path(__file__).resolve().parents[1]
             / "environment"
@@ -2385,14 +2443,30 @@ def train(args):
         if args.render
         else None
     )
-    tb_log_dir = os.path.join(save_dir, "tb")
-    os.makedirs(tb_log_dir, exist_ok=True)
-    tb_writer = SummaryWriter(
-        tb_log_dir,
-        purge_step=start_update if resume_checkpoint is not None else None,
+    last_metrics_payload = (
+        copy.deepcopy(resume_checkpoint.get("last_metrics"))
+        if resume_checkpoint is not None
+        else None
     )
+    try:
+        metrics_recorder = TrainingMetricsRecorder(
+            run_dir=save_dir,
+            run_id=args.run_id,
+            agent_ids=agent_ids,
+            reward_version=args.reward_version,
+            start_update=start_update,
+            completed_update=completed_update,
+            resume_metrics_payload=last_metrics_payload,
+            histogram_interval=args.tb_histogram_interval,
+        )
+    except Exception:
+        if visualizer is not None:
+            visualizer.close()
+        env.close()
+        raise
     print(f"RunID: {args.run_id}")
-    print(f"TensorBoard 日志: {tb_log_dir}")
+    print(f"TensorBoard 日志: {metrics_recorder.tb_dir}")
+    print(f"结构化指标: {metrics_recorder.jsonl_path}")
 
     if resume_checkpoint is not None:
         rng_warnings = restore_rng_state(
@@ -2475,6 +2549,7 @@ def train(args):
                 },
             },
             "rng_state": capture_rng_state(),
+            "last_metrics": copy.deepcopy(last_metrics_payload),
             "total_episodes": int(total_episodes),
             "total_successes": int(total_successes),
             "total_collisions": int(total_collisions),
@@ -2540,6 +2615,7 @@ def train(args):
         if resume_checkpoint is None:
             _save_safe_checkpoint(include_periodic=False)
         for update in range(start_update, args.updates + 1):
+            update_started_at = time.perf_counter()
             # 学习率线性衰减
             cur_lr_a, cur_lr_c = _apply_lr_decay(update)
 
@@ -2551,8 +2627,6 @@ def train(args):
             window_successes: List[float] = []          # 严格成功（all reached_target）
             window_collisions: List[float] = []         # 任一 agent 发生碰撞
             window_timeouts: List[float] = []           # max_steps 截断且未成功未碰撞
-            window_per_agent_returns: Dict[int, List[float]] = {aid: [] for aid in agent_ids}
-            window_reward_components: Dict[str, List[float]] = {}
 
             # ── 场景采样（分层/加权） ──
             available_scenarios = curriculum.get_available_scenarios(update)
@@ -2585,6 +2659,7 @@ def train(args):
                   f"采样分布: {len(set(sampled_scenarios))} 种/{len(sampled_scenarios)} 个 episode")
 
             # ── 收集 rollout 数据 ──
+            rollout_started_at = time.perf_counter()
             for rollout_episode in range(args.rollout_episodes):
                 scenario_name = sampled_scenarios[rollout_episode]
                 scenario_config = env.load_scenario_by_name(scenario_name, scenario_dir)
@@ -2686,19 +2761,24 @@ def train(args):
                     for aid, reward in written_rewards.items():
                         episode_rewards[aid] += reward
 
+                    metrics_recorder.record_env_step(
+                        active_agent_ids=step_cache.keys(),
+                        rewards=rewards,
+                        reward_details=info.get('reward_details', {}) or {},
+                        reward_diagnostics_by_agent=(
+                            info.get('reward_diagnostics', {}) or {}
+                        ),
+                        actions=action_dict,
+                        context=(
+                            f"robust_v2 update={update} "
+                            f"episode={rollout_episode} step={step}"
+                        ),
+                    )
+
                     if visualizer is not None:
                         visualizer.handle_events()
                         if not visualizer.running:
                             raise KeyboardInterrupt
-
-                    if 'reward_details' in info:
-                        for aid in step_cache:
-                            details = info['reward_details'].get(aid, {})
-                            for key, val in details.items():
-                                comp_name = f"reward/{key}"
-                                if comp_name not in window_reward_components:
-                                    window_reward_components[comp_name] = []
-                                window_reward_components[comp_name].append(float(val))
 
                     next_obs = refresh_observations_after_active_change(
                         env=env,
@@ -2730,16 +2810,6 @@ def train(args):
                     agent_ids=agent_ids,
                     context=f"robust_v2 episode={rollout_episode}",
                 )
-                for aid in agent_ids:
-                    tb_writer.add_scalar(
-                        f'rollout/active_decision_steps_agent_{aid}',
-                        active_decision_steps[aid], total_episodes,
-                    )
-                    tb_writer.add_scalar(
-                        f'rollout/buffer_transition_count_agent_{aid}',
-                        episode_transition_counts[aid], total_episodes,
-                    )
-
                 # Phase A1: 严格三类终止分类
                 #   ep_success_to_goal: 所有 agent 都进入 goal_zone（True success）
                 #   ep_collision:       任一 agent 本回合撞过（含人行横道）
@@ -2788,10 +2858,24 @@ def train(args):
                 window_successes.append(1.0 if ep_success else 0.0)
                 window_collisions.append(1.0 if ep_collision else 0.0)
                 window_timeouts.append(1.0 if ep_timeout else 0.0)
-                for aid in agent_ids:
-                    window_per_agent_returns[aid].append(episode_rewards[aid])
+                metrics_recorder.finish_episode(
+                    episode_returns=episode_rewards,
+                    episode_length=ep_length,
+                    active_decision_steps=active_decision_steps,
+                    transition_counts=episode_transition_counts,
+                    success=ep_success,
+                    collision=ep_collision,
+                    timeout=ep_timeout,
+                    end_reason=episode_end_reason,
+                    scenario_name=scenario_name,
+                    context=(
+                        f"robust_v2 update={update} episode={rollout_episode}"
+                    ),
+                )
 
                 curriculum.record_scenario_result(scenario_name, ep_success)
+
+            rollout_seconds = time.perf_counter() - rollout_started_at
 
             # ===== PPO 更新 =====
             n_transitions = buffer.total_size()
@@ -2799,6 +2883,12 @@ def train(args):
                 aid: len(buffer.get_agent_data(aid)) for aid in agent_ids
             }
             skip_update = n_transitions < args.min_transitions_per_update
+            ppo_metrics = None
+            advantage_stats: Dict[int, Dict[str, float]] = {}
+            agent_stop_epoch: Dict[int, int] = {}
+            preupdate_ratio_errors: Dict[int, float] = {}
+            metrics_recorder.capture_model_snapshot(actors, critic)
+            ppo_started_at = time.perf_counter()
 
             if skip_update:
                 print(f"  [跳过] 总 transition 数 {n_transitions} < {args.min_transitions_per_update}，跳过 PPO 更新")
@@ -2815,9 +2905,7 @@ def train(args):
                     action_dim=3,
                     context=f"robust_v2 update={update}",
                 )
-                per_agent_tensors = prepared_batch.per_agent_tensors
                 advantage_stats = prepared_batch.advantage_stats
-                critic_states = prepared_batch.critic_states
 
                 update_result = run_mappo_ppo_update(
                     prepared=prepared_batch,
@@ -2841,60 +2929,65 @@ def train(args):
                 ppo_metrics = update_result.metrics
                 agent_stop_epoch = update_result.agent_stop_epoch
                 preupdate_ratio_errors = update_result.preupdate_ratio_errors
+            ppo_seconds = time.perf_counter() - ppo_started_at
+            metrics_recorder.record_model_update(actors, critic)
 
-            # ===== TensorBoard 记录 =====
+            # ===== 版本化、模块化指标记录 =====
+            # 每个 update 都落盘；--log-interval 只控制控制台打印频率。
+            actor_lrs = {
+                aid: float(actor_optims[aid].param_groups[0]["lr"])
+                for aid in agent_ids
+            }
+            critic_lr = float(critic_optim.param_groups[0]["lr"])
+            metrics_recorder.record_ppo_update(
+                ppo_metrics=ppo_metrics,
+                advantage_stats=advantage_stats,
+                preupdate_ratio_errors=preupdate_ratio_errors,
+                agent_stop_epoch=agent_stop_epoch,
+                transition_counts=n_transitions_per_agent,
+                actor_lrs=actor_lrs,
+                critic_lr=critic_lr,
+                skipped=skip_update,
+                max_grad_norm=args.max_grad_norm,
+            )
+            metrics_recorder.record_scalars(
+                {
+                    "episode/success_rate_cumulative": (
+                        total_successes / max(total_episodes, 1)
+                    ),
+                    "episode/collision_rate_cumulative": (
+                        total_collisions / max(total_episodes, 1)
+                    ),
+                    "episode/timeout_rate_cumulative": (
+                        total_timeouts / max(total_episodes, 1)
+                    ),
+                    "train/total_episodes_cumulative": total_episodes,
+                    "curriculum/available_scenario_count": len(available_scenarios),
+                    "curriculum/sampled_unique_scenario_count": len(
+                        set(sampled_scenarios)
+                    ),
+                    "timing/rollout_seconds": rollout_seconds,
+                    "timing/ppo_seconds": ppo_seconds,
+                    "timing/env_transitions_per_second": (
+                        n_transitions / max(rollout_seconds, 1e-12)
+                    ),
+                    "timing/update_seconds_before_commit": (
+                        time.perf_counter() - update_started_at
+                    ),
+                }
+            )
+
             if update % args.log_interval == 0 and len(window_episode_returns) > 0:
-                tb_writer.add_scalar('episode/avg_return',
-                    float(np.mean(window_episode_returns)), update)
-                tb_writer.add_scalar('episode/std_return',
-                    float(np.std(window_episode_returns)), update)
-                tb_writer.add_scalar('episode/avg_length',
-                    float(np.mean(window_episode_lengths)), update)
-                # Phase A1: 3 类终止分别记录
-                tb_writer.add_scalar('episode/rate_success_to_goal',
-                    float(np.mean(window_successes)), update)
-                tb_writer.add_scalar('episode/rate_collision',
-                    float(np.mean(window_collisions)), update)
-                tb_writer.add_scalar('episode/rate_timeout',
-                    float(np.mean(window_timeouts)), update)
-                # 向后兼容：保留旧 key，但语义已改为严格 success
-                tb_writer.add_scalar('episode/success_rate_window',
-                    float(np.mean(window_successes)), update)
-                tb_writer.add_scalar('episode/success_rate_cumulative',
-                    total_successes / max(total_episodes, 1), update)
-                tb_writer.add_scalar('episode/collision_rate_cumulative',
-                    total_collisions / max(total_episodes, 1), update)
-                tb_writer.add_scalar('episode/timeout_rate_cumulative',
-                    total_timeouts / max(total_episodes, 1), update)
-                tb_writer.add_scalar('episode/n_transitions',
-                    n_transitions, update)
-                for aid in agent_ids:
-                    tb_writer.add_scalar(
-                        f'episode/n_transitions_agent_{aid}',
-                        n_transitions_per_agent[aid], update,
-                    )
-
-                # Phase A3: lr / log_std 监控
-                tb_writer.add_scalar('train/lr_actor', cur_lr_a, update)
-                tb_writer.add_scalar('train/lr_critic', cur_lr_c, update)
-                for aid in agent_ids:
-                    with torch.no_grad():
-                        log_std_mean = float(actors[aid].log_std.mean().item())
-                    tb_writer.add_scalar(f'train/log_std_agent{aid}', log_std_mean, update)
-
-                for aid in agent_ids:
-                    if window_per_agent_returns[aid]:
-                        tb_writer.add_scalar(f'episode/return_agent_{aid}',
-                            float(np.mean(window_per_agent_returns[aid])), update)
-
                 avg_r = float(np.mean(window_episode_returns))
                 win_succ = float(np.mean(window_successes))
                 win_coll = float(np.mean(window_collisions))
                 win_to = float(np.mean(window_timeouts))
-                # Phase B2: 关键 reward 分量均值，验证是否还有"progress 主导"
+
                 def _mean_comp(name):
-                    vals = window_reward_components.get(f"reward/{name}", [])
-                    return float(np.mean(vals)) if vals else 0.0
+                    if name not in metrics_recorder.component_names:
+                        return 0.0
+                    return metrics_recorder.reward_component_mean(name)
+
                 comp_progress = _mean_comp("progress")
                 comp_approach = _mean_comp("approach")
                 comp_lane = _mean_comp("lane_invasion")
@@ -2915,81 +3008,15 @@ def train(args):
                       f"safety+ttc={comp_ttc:.3f}, lane={comp_lane:.3f}, collision={comp_collision:.3f}, "
                       f"step={comp_step:.3f}, success+bonus={comp_success:.3f}")
 
-                if window_reward_components:
-                    for comp_name, comp_values in window_reward_components.items():
-                        if comp_values:
-                            tb_writer.add_scalar(comp_name,
-                                float(np.mean(comp_values)), update)
-
-                if not skip_update and len(critic_states) > 0:
-                    tb_writer.add_scalar('ppo/critic_loss',
-                        float(np.mean(ppo_metrics["critic_loss"])), update)
-                    tb_writer.add_scalar('ppo/critic_grad_norm',
-                        float(np.mean(ppo_metrics["grad_norm_critic"])), update)
-                    tb_writer.add_scalar('ppo/explained_variance',
-                        ppo_metrics["explained_variance"], update)
-
-                    for aid in agent_ids:
-                        if aid in advantage_stats:
-                            stats = advantage_stats[aid]
-                            tb_writer.add_scalar(
-                                f'ppo/adv_raw_mean_agent{aid}',
-                                stats["raw_mean"], update,
-                            )
-                            tb_writer.add_scalar(
-                                f'ppo/adv_raw_std_agent{aid}',
-                                stats["raw_std"], update,
-                            )
-                            tb_writer.add_scalar(
-                                f'ppo/adv_normalized_mean_agent{aid}',
-                                stats["normalized_mean"], update,
-                            )
-                            tb_writer.add_scalar(
-                                f'ppo/adv_normalized_std_agent{aid}',
-                                stats["normalized_std"], update,
-                            )
-                            tb_writer.add_scalar(
-                                f'ppo/adv_normalization_applied_agent{aid}',
-                                stats["applied"], update,
-                            )
-                        if aid in preupdate_ratio_errors:
-                            tb_writer.add_scalar(
-                                f'ppo/preupdate_max_abs_ratio_error_agent{aid}',
-                                preupdate_ratio_errors[aid], update,
-                            )
-                        if ppo_metrics[f"actor_loss_{aid}"]:
-                            tb_writer.add_scalar(f'ppo/actor_loss_agent{aid}',
-                                float(np.mean(ppo_metrics[f"actor_loss_{aid}"])), update)
-                            tb_writer.add_scalar(f'ppo/entropy_agent{aid}',
-                                float(np.mean(ppo_metrics[f"entropy_{aid}"])), update)
-                            tb_writer.add_scalar(f'ppo/approx_kl_agent{aid}',
-                                float(np.mean(ppo_metrics[f"approx_kl_{aid}"])), update)
-                            tb_writer.add_scalar(f'ppo/clip_frac_agent{aid}',
-                                float(np.mean(ppo_metrics[f"clip_frac_{aid}"])), update)
-                            tb_writer.add_scalar(f'ppo/grad_norm_actor_agent{aid}',
-                                float(np.mean(ppo_metrics[f"grad_norm_actor_{aid}"])), update)
-                            # Phase A3: 该 agent 实际跑了多少个 PPO epoch（KL 早停诊断）
-                            tb_writer.add_scalar(f'ppo/stop_epoch_agent{aid}',
-                                agent_stop_epoch.get(aid, args.ppo_epochs), update)
-
-                # 场景指标
-                for scenario_name in curriculum.scenario_success_history:
-                    history = curriculum.scenario_success_history[scenario_name]
-                    if len(history) >= 3:
-                        win_rate = float(np.mean(history))
-                        safe_name = scenario_name.replace('.json', '').replace(' ', '_')[:40]
-                        tb_writer.add_scalar(f'scenarios/{safe_name}/success_rate_window',
-                            win_rate, update)
-                        tb_writer.add_scalar(f'scenarios/{safe_name}/sample_count',
-                            len(history), update)
-
-            # 一个 update 只有在 rollout、PPO、统计与日志全部结束后才提交。
-            # latest 每次覆盖；periodic 不可覆盖。训练过程不再选择 best。
-            tb_writer.flush()
+            # 先冻结本 update 指标并写入 checkpoint，再写 TensorBoard/JSONL。
+            # 若在两个动作之间中断，resume 会从 checkpoint 重放同一指标 payload。
+            metrics_payload = metrics_recorder.finalize_update(update)
             completed_update = update
+            last_metrics_payload = copy.deepcopy(metrics_payload)
             _save_safe_checkpoint(
                 include_periodic=(update % args.save_interval == 0)
             )
+            metrics_recorder.commit_payload(metrics_payload)
 
     except KeyboardInterrupt:
         print("训练中断：丢弃当前未完成 update，保留最近完整边界")
@@ -3007,7 +3034,7 @@ def train(args):
         if visualizer is not None:
             visualizer.close()
         env.close()
-        tb_writer.close()
+        metrics_recorder.close()
 
 
 def build_parser():
@@ -3108,6 +3135,12 @@ def build_parser():
     parser.add_argument("--save-dir", type=str, default="./logs/mappo_robust_v2")
     parser.add_argument("--save-interval", type=int, default=5)
     parser.add_argument("--log-interval", type=int, default=1)
+    parser.add_argument(
+        "--tb-histogram-interval",
+        type=int,
+        default=10,
+        help="参数直方图写入间隔；0 表示关闭，标量仍每个 update 记录",
+    )
     parser.add_argument("--reward-version", type=str, default="v2",
                         choices=["v1", "v2"], help="奖励函数版本 (v1=原始, v2=优化)")
 

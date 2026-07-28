@@ -38,6 +38,7 @@ from training.train_no_rllib_mappo_robust_v2 import (
     checkpoint_training_config,
     train,
 )
+from training.metrics_protocol import METRICS_PROTOCOL_VERSION
 
 
 def _protocol_versions():
@@ -46,6 +47,7 @@ def _protocol_versions():
         "action": ACTION_PROTOCOL_VERSION,
         "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
         "reward": "v2",
+        "metrics": METRICS_PROTOCOL_VERSION,
     }
 
 
@@ -99,6 +101,12 @@ def _checkpoint_payload():
             "scenario_pool_fingerprint": "f" * 64,
         },
         "rng_state": capture_rng_state(),
+        "last_metrics": {
+            "metrics_protocol_version": METRICS_PROTOCOL_VERSION,
+            "run_id": "P0_test_s42",
+            "update": 7,
+            "scalars": {"reward_audit/max_abs_step_residual": 0.0},
+        },
         "total_episodes": 10,
         "total_successes": 4,
         "total_collisions": 3,
@@ -338,6 +346,16 @@ class ResumeProtocolValidationTests(unittest.TestCase):
             validate_checkpoint_payload(
                 payload,
                 expected_protocol_versions=incompatible_protocol,
+                expected_model_spec=_model_spec(),
+                expected_training_config=_training_config(),
+            )
+
+        invalid_metrics = copy.deepcopy(payload)
+        invalid_metrics["last_metrics"]["scalars"]["invalid"] = float("nan")
+        with self.assertRaisesRegex(CheckpointProtocolError, "NaN/Inf"):
+            validate_checkpoint_payload(
+                invalid_metrics,
+                expected_protocol_versions=_protocol_versions(),
                 expected_model_spec=_model_spec(),
                 expected_training_config=_training_config(),
             )

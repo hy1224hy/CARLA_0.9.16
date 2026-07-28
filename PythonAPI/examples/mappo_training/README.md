@@ -24,6 +24,7 @@
 | **[FILE_INDEX.md](FILE_INDEX.md)** | 各文件功能详解索引 |
 | **[MANUAL_DATA_USAGE.md](MANUAL_DATA_USAGE.md)** | 手动驾驶数据采集指南 |
 | **[docs/毕业课题_研究推进TODO.md](docs/毕业课题_研究推进TODO.md)** | 当前唯一任务顺序、阶段门槛和实验登记 |
+| **[docs/MAPPO_TensorBoard指标协议.md](docs/MAPPO_TensorBoard指标协议.md)** | 当前基础 MAPPO 的奖励审计、聚合口径、训练健康指标和离线验证 |
 
 ---
 
@@ -153,7 +154,7 @@ CarlaUE4.exe
 ### 2. 训练正常智能体（2车）
 
 ```powershell
-# 当前仅允许在 TODO 的 P0-00B 至 P0-00F 通过后执行 P0-00G smoke
+# 当前仅允许在 TODO 的 P0-00B 至 P0-00F-TB 通过后执行 P0-00G smoke
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
   --run-id P0_00G_robust_v2_smoke_s42_<timestamp> `
   --updates 3 `
@@ -161,6 +162,7 @@ CarlaUE4.exe
   --rollout-episodes 4 `
   --min-transitions-per-update 64 `
   --max-steps 300 `
+  --tb-histogram-interval 1 `
   --seed 42 `
   --save-dir logs/P0_00G_robust_v2_smoke_s42_<timestamp>
 ```
@@ -230,11 +232,16 @@ python record_manual_control.py --agent-id 1 --output-dir ./manual_driving_data
 
 ### TensorBoard 监控
 
-训练过程中自动记录TensorBoard日志：
+当前 `robust_v2` 将同一 update payload 写入 `<RunID>/tb/` 和 `<RunID>/metrics.jsonl`，并通过固定 schema 区分禁用奖励、稀疏奖励与真实异常。奖励、PPO/Critic、动作、模型更新、场景和耗时的完整口径见 [TensorBoard 指标协议](docs/MAPPO_TensorBoard指标协议.md)。
 
-```bash
-tensorboard --logdir logs/
+```powershell
+tensorboard --logdir logs/<RunID>/tb
+
+..\..\..\venv\Scripts\python.exe -m utils.validate_tensorboard_run `
+  --run-dir logs/<RunID>
 ```
+
+验证器返回 `"status": "PASS"` 后，仍需在 P0-00G 人工检查真实 CARLA 的 LiDAR/TTC、终局和 PPO 曲线。旧训练入口的历史 TensorBoard 不属于当前指标协议。
 
 ## 训练流程建议
 

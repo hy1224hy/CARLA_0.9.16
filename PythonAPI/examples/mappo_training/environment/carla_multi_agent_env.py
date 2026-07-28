@@ -181,6 +181,9 @@ class CarlaMultiAgentEnv:
         # 用于记录累计奖励（用于计算平均值）
         self.episode_reward_buffer = {i: [] for i in range(self.num_agents)}
         self.episode_reward_details_buffer = {i: [] for i in range(self.num_agents)}
+        # 最新一步的原始奖励诊断。它不参与 reward 计算，只用于训练入口的
+        # 版本化指标协议区分“字段缺失 / 设计禁用 / 未触发 / 真实零值”。
+        self.last_reward_diagnostics: Dict[int, Dict[str, float]] = {}
         self.episode_step = 0
    
 
@@ -1154,7 +1157,13 @@ class CarlaMultiAgentEnv:
         observations = self._get_observations()
         
         # 计算奖励
-        rewards, reward_details = self._compute_rewards() 
+        rewards, reward_details = self._compute_rewards()
+        reward_diagnostics = {
+            agent_id: dict(values)
+            for agent_id, values in getattr(
+                self, "last_reward_diagnostics", {}
+            ).items()
+        }
 
         # 累积到episode缓冲区（用于计算episode平均值）
         if self.use_tensorboard:
@@ -1175,6 +1184,7 @@ class CarlaMultiAgentEnv:
         info = {
             'step': self.current_step,
             'reward_details': reward_details,
+            'reward_diagnostics': reward_diagnostics,
             'collisions': step_collisions,
             # 修复 #2：区分真正终止与时间截断，供训练侧 GAE 决定是否 bootstrap
             'terminated': dict(getattr(self, 'last_terminated', {})),
@@ -1227,6 +1237,20 @@ class CarlaMultiAgentEnv:
         """原始二元阶梯奖励（v1，用于 A/B 对比）"""
         rewards = {}
         reward_details = {}
+        reward_diagnostics = {}
+
+        def _empty_diagnostics(**overrides):
+            values = {
+                "progress_m": 0.0,
+                "speed_mps": 0.0,
+                "lateral_distance_m": 0.0,
+                "yaw_error_rad": 0.0,
+                "collision_event": 0.0,
+                "lane_invasion_sensor_event": 0.0,
+                "success_event": 0.0,
+            }
+            values.update({key: float(value) for key, value in overrides.items()})
+            return values
 
         for i, vehicle in enumerate(self.vehicles):
             # 已到达终点（含 disappear-at-target 被移除的车）：给 0，必须在 not-alive 之前判定
@@ -1236,6 +1260,7 @@ class CarlaMultiAgentEnv:
                     "progress": 0.0, "speed": 0.0, "centering": 0.0, "yaw": 0.0,
                     "collision": 0.0, "lane_invasion": 0.0, "step": 0.0, "success": 0.0,
                 }
+                reward_diagnostics[i] = _empty_diagnostics()
                 continue
             if not vehicle.is_alive:
                 rewards[i] = -100.0
@@ -1243,6 +1268,7 @@ class CarlaMultiAgentEnv:
                     "progress": 0.0, "speed": 0.0, "centering": 0.0, "yaw": 0.0,
                     "collision": -100.0, "lane_invasion": 0.0, "step": 0.0, "success": 0.0,
                 }
+                reward_diagnostics[i] = _empty_diagnostics(collision_event=1.0)
                 continue
 
             transform = vehicle.get_transform()
@@ -1269,6 +1295,7 @@ class CarlaMultiAgentEnv:
             # 3. 二元居中奖励
             current_waypoint = self.map.get_waypoint(transform.location)
             centering_reward = 0.0
+            lateral_dist = 0.0
             if current_waypoint:
                 veh_loc = transform.location
                 wp_loc = current_waypoint.transform.location
@@ -1332,6 +1359,17 @@ class CarlaMultiAgentEnv:
             }
             rewards[i] = reward
             reward_details[i] = details
+            reward_diagnostics[i] = _empty_diagnostics(
+                progress_m=progress,
+                speed_mps=speed,
+                lateral_distance_m=lateral_dist,
+                yaw_error_rad=angle_diff,
+                collision_event=float(collision_penalty != 0.0),
+                lane_invasion_sensor_event=float(
+                    sensor_invasion and not crosswalk
+                ),
+                success_event=float(success_reward != 0.0),
+            )
 
         # 对抗智能体处理（v1 版）
         for adv_id in self.adversarial_agent_ids:
@@ -1350,6 +1388,7 @@ class CarlaMultiAgentEnv:
                 reward_details[adv_id].update(adv_details_v1)
                 rewards[adv_id] = base_reward_v1
 
+        self.last_reward_diagnostics = reward_diagnostics
         return rewards, reward_details
 
     def _compute_rewards_v2(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
@@ -1363,6 +1402,29 @@ class CarlaMultiAgentEnv:
         """
         rewards = {}
         reward_details = {}
+        reward_diagnostics = {}
+
+        def _empty_diagnostics(**overrides):
+            values = {
+                "progress_m": 0.0,
+                "distance_to_goal_m": 0.0,
+                "speed_mps": 0.0,
+                "closing_speed_mps": 0.0,
+                "lateral_distance_m": 0.0,
+                "yaw_error_rad": 0.0,
+                "motion_gate": 0.0,
+                "lidar_min_normalized": 1.0,
+                "lidar_trigger_ray_count": 0.0,
+                "ttc_candidate_count": 0.0,
+                "ttc_trigger_count": 0.0,
+                "ttc_min_seconds_capped": 3.0,
+                "collision_event": 0.0,
+                "lane_invasion_sensor_event": 0.0,
+                "lane_deviation_penalty": 0.0,
+                "success_event": 0.0,
+            }
+            values.update({key: float(value) for key, value in overrides.items()})
+            return values
 
         # 可调超参数
         # ─── Phase B2 (R4) 重平衡 ───
@@ -1421,6 +1483,7 @@ class CarlaMultiAgentEnv:
                     "collision": 0.0, "lane_invasion": 0.0,
                     "step": 0.0, "success": 0.0, "time_bonus": 0.0,
                 }
+                reward_diagnostics[i] = _empty_diagnostics()
                 continue
 
             if not vehicle.is_alive:
@@ -1431,6 +1494,7 @@ class CarlaMultiAgentEnv:
                     "collision": COLLISION_PENALTY, "lane_invasion": 0.0,
                     "step": 0.0, "success": 0.0, "time_bonus": 0.0,
                 }
+                reward_diagnostics[i] = _empty_diagnostics(collision_event=1.0)
                 continue
 
             transform = vehicle.get_transform()
@@ -1564,8 +1628,10 @@ class CarlaMultiAgentEnv:
                 vehicle, ray_length=4.0, num_rays=11
             )
             safety_penalty = 0.0
+            lidar_trigger_ray_count = 0
             for d in lidar_dists:
                 if d < SAFE_THRESHOLD:
+                    lidar_trigger_ray_count += 1
                     safety_penalty += (
                         -SAFETY_LIDAR_WEIGHT * (SAFE_THRESHOLD - d) / SAFE_THRESHOLD
                     )
@@ -1578,11 +1644,15 @@ class CarlaMultiAgentEnv:
             TTC_MAX_RANGE = 10.0    # 最大前向检测距离（米）
 
             ttc_penalty = 0.0
+            ttc_candidate_count = 0
+            ttc_trigger_count = 0
+            ttc_min_seconds_capped = TTC_THRESHOLD
             rel_positions = self._get_relative_position_to_agents(i)
             for other_id, rel in rel_positions.items():
                 # 只关心同车道正前方的车辆
                 if abs(rel['lateral_dist']) < TTC_LATERAL_RANGE and rel['longitudinal_dist'] > 0:
                     if rel['longitudinal_dist'] < TTC_MAX_RANGE:
+                        ttc_candidate_count += 1
                         other_vehicle = self.vehicles[other_id]
                         other_vel = other_vehicle.get_velocity()
                         other_speed = math.sqrt(
@@ -1591,7 +1661,11 @@ class CarlaMultiAgentEnv:
                         rel_speed = speed - other_speed  # 正值表示自车更快
                         if rel_speed > 0:
                             ttc = rel['longitudinal_dist'] / rel_speed
+                            ttc_min_seconds_capped = min(
+                                ttc_min_seconds_capped, ttc
+                            )
                             if ttc < TTC_THRESHOLD:
+                                ttc_trigger_count += 1
                                 ttc_penalty += -TTC_WEIGHT * math.exp(-ttc / TTC_TAU)
 
             # ─── 8. 碰撞惩罚（COLLISION_PENALTY，当前 -150，见上方常量定义与调参注释） ───
@@ -1701,6 +1775,26 @@ class CarlaMultiAgentEnv:
 
             rewards[i] = reward
             reward_details[i] = details
+            reward_diagnostics[i] = _empty_diagnostics(
+                progress_m=progress,
+                distance_to_goal_m=current_dist,
+                speed_mps=speed,
+                closing_speed_mps=closing_speed,
+                lateral_distance_m=lateral_dist,
+                yaw_error_rad=angle_diff,
+                motion_gate=motion_gate,
+                lidar_min_normalized=float(np.min(lidar_dists)),
+                lidar_trigger_ray_count=lidar_trigger_ray_count,
+                ttc_candidate_count=ttc_candidate_count,
+                ttc_trigger_count=ttc_trigger_count,
+                ttc_min_seconds_capped=ttc_min_seconds_capped,
+                collision_event=float(collision_penalty != 0.0),
+                lane_invasion_sensor_event=float(
+                    sensor_invasion and not crosswalk
+                ),
+                lane_deviation_penalty=lane_dev_penalty,
+                success_event=float(success_reward != 0.0),
+            )
 
         # === 对抗智能体特殊处理 ===
         for adv_id in self.adversarial_agent_ids:
@@ -1714,6 +1808,7 @@ class CarlaMultiAgentEnv:
                 reward_details[adv_id].update(adv_details)
                 rewards[adv_id] = adv_reward
 
+        self.last_reward_diagnostics = reward_diagnostics
         return rewards, reward_details
     
     def _check_dones(self) -> Dict[int, bool]:

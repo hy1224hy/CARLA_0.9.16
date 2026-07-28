@@ -23,8 +23,8 @@ import numpy as np
 import torch
 
 
-CHECKPOINT_SCHEMA_VERSION = 1
-TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00f_v1"
+CHECKPOINT_SCHEMA_VERSION = 2
+TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00f_tb_v1"
 OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_v1"
 ACTION_PROTOCOL_VERSION = "tanh_gaussian_pre_tanh_z_v1"
 LIFECYCLE_PROTOCOL_VERSION = "agent_centric_terminated_truncated_v1"
@@ -348,6 +348,7 @@ def validate_checkpoint_payload(
         "run_metadata",
         "curriculum_state",
         "rng_state",
+        "last_metrics",
         "total_episodes",
         "total_successes",
         "total_collisions",
@@ -399,6 +400,8 @@ def validate_checkpoint_header(checkpoint: Mapping[str, Any]) -> None:
         "training_config",
         "lr_schedule",
         "rng_state",
+        "protocol_versions",
+        "last_metrics",
         "update",
     }
     missing = required - set(checkpoint)
@@ -440,6 +443,58 @@ def validate_checkpoint_header(checkpoint: Mapping[str, Any]) -> None:
         raise CheckpointProtocolError("checkpoint update must be an integer") from error
     if update < 0:
         raise CheckpointProtocolError("checkpoint update cannot be negative")
+
+    protocol_versions = checkpoint["protocol_versions"]
+    if not isinstance(protocol_versions, Mapping):
+        raise CheckpointProtocolError("protocol_versions must be a mapping")
+    metrics_protocol = str(protocol_versions.get("metrics", ""))
+    if not metrics_protocol:
+        raise CheckpointProtocolError(
+            "protocol_versions.metrics cannot be empty"
+        )
+    last_metrics = checkpoint["last_metrics"]
+    if update == 0:
+        if last_metrics not in (None, {}):
+            raise CheckpointProtocolError(
+                "update-0 checkpoint must not contain last_metrics"
+            )
+    else:
+        if not isinstance(last_metrics, Mapping):
+            raise CheckpointProtocolError(
+                "completed checkpoint must contain last_metrics mapping"
+            )
+        try:
+            metrics_update = int(last_metrics.get("update", -1))
+        except (TypeError, ValueError) as error:
+            raise CheckpointProtocolError(
+                "last_metrics update must be an integer"
+            ) from error
+        if metrics_update != update:
+            raise CheckpointProtocolError(
+                "last_metrics update does not match checkpoint update"
+            )
+        if last_metrics.get("metrics_protocol_version") != metrics_protocol:
+            raise CheckpointProtocolError("last_metrics protocol mismatch")
+        if str(last_metrics.get("run_id", "")) != str(run_metadata["run_id"]):
+            raise CheckpointProtocolError("last_metrics run_id mismatch")
+        scalars = last_metrics.get("scalars")
+        if not isinstance(scalars, Mapping) or not scalars:
+            raise CheckpointProtocolError(
+                "last_metrics scalars must be a non-empty mapping"
+            )
+        try:
+            scalar_values = np.asarray(
+                [float(value) for value in scalars.values()],
+                dtype=np.float64,
+            )
+        except (TypeError, ValueError) as error:
+            raise CheckpointProtocolError(
+                "last_metrics scalars must be numeric"
+            ) from error
+        if not np.all(np.isfinite(scalar_values)):
+            raise CheckpointProtocolError(
+                "last_metrics scalars contain NaN/Inf"
+            )
 
     if not isinstance(checkpoint["training_config"], Mapping):
         raise CheckpointProtocolError("training_config must be a mapping")

@@ -55,7 +55,7 @@ CarlaUE4.exe
 
 ```powershell
 # P0-00G：基础 MAPPO 三更新 smoke
-# 只允许在 P0-00B 至 P0-00F 全部通过后执行
+# 只允许在 P0-00B 至 P0-00F-TB 全部通过后执行
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
   --run-id P0_00G_robust_v2_smoke_s42_<timestamp> `
   --updates 3 `
@@ -63,6 +63,7 @@ CarlaUE4.exe
   --rollout-episodes 4 `
   --min-transitions-per-update 64 `
   --max-steps 300 `
+  --tb-histogram-interval 1 `
   --seed 42 `
   --save-dir logs/P0_00G_robust_v2_smoke_s42_<timestamp>
 
@@ -407,7 +408,7 @@ python -m utils.record_manual_control \
 # (在另一个终端)
 CarlaUE4.exe
 
-# 2. 先完成 TODO P0-00A 至 P0-00F 和全部单元测试
+# 2. 先完成 TODO P0-00A 至 P0-00F-TB 和全部单元测试
 
 # 3. 运行 P0-00G smoke（命令见“当前有效入口”）
 
@@ -466,17 +467,18 @@ python -m training.train_2red_1blue_ppo \
 
 ## TensorBoard 监控
 
-所有训练脚本都会自动记录 TensorBoard 日志：
+当前指标协议只对 `robust_v2` 生效。每个 Run 的 `tb/`、`metrics.jsonl` 与 checkpoint `last_metrics` 来自同一 update payload；旧训练入口的历史日志不得与当前协议混用。
 
-```bash
-# 启动 TensorBoard
-tensorboard --logdir logs/
+```powershell
+# 启动当前 Run 的 TensorBoard
+tensorboard --logdir logs/<RunID>/tb
 
-# 或指定特定子目录
-tensorboard --logdir logs/adversarial_training
+# 离线验收 schema、有限值、奖励守恒、update 连续及 TB/JSONL 对账
+..\..\..\venv\Scripts\python.exe -m utils.validate_tensorboard_run `
+  --run-dir logs/<RunID>
 ```
 
-然后在浏览器访问: `http://localhost:6006`
+然后在浏览器访问 `http://localhost:6006`。完整标签和全零奖励分量的判断方法见 [MAPPO TensorBoard 指标协议](docs/MAPPO_TensorBoard指标协议.md)。
 
 ---
 
@@ -495,7 +497,7 @@ A: 同一 Run 使用：
 python -m training.train_no_rllib_mappo_robust_v2 --resume latest \
   --save-dir logs/<original-run-id> --updates <new-stop-update>
 
-只允许从 P0-00F 当前协议生成且 checksum、manifest、Git、结构和配置校验通过的 checkpoint resume。
+只允许从 P0-00F-TB 当前 schema v2 协议生成且 checksum、manifest、Git、结构、配置和 `last_metrics` 校验通过的 checkpoint resume。
 旧 RLlib/minimal/robust v1/旧对抗 checkpoint 默认只能作历史评估或 pretrained weights，不能作为正式 resume 起点。
 ```
 
