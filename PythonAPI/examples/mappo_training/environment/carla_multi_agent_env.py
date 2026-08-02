@@ -128,6 +128,9 @@ class CarlaMultiAgentEnv:
 
         # 自定义起始位置（优先级高于start_waypoints）
         self.custom_start_transforms: Optional[List[carla.Transform]] = None
+        # 场景可为每辆车指定 reset 后的初始纵向速度。速度只设置初始状态，
+        # 不在 rollout 中覆盖策略动作，从而保持 PPO 的 action/log-prob 对齐。
+        self.custom_initial_speeds_mps: Dict[int, float] = {}
         # 自定义终点区域（矩形），None 表示使用直道默认终点
         self.goal_zone: Optional[Dict] = None
 
@@ -553,7 +556,10 @@ class CarlaMultiAgentEnv:
             "town": "Town02",          # 可选
             "goal_zone": { ... },      # 可选
             "agents": {                # 可选
-                "agent0": {"x": ..., "y": ..., "z": 0.5, "yaw": 90.0},
+                "agent0": {
+                    "x": ..., "y": ..., "z": 0.5, "yaw": 90.0,
+                    "initial_speed_mps": 3.0,
+                },
                 ...
             }
         }
@@ -573,6 +579,7 @@ class CarlaMultiAgentEnv:
         # 导致同一场景的任务定义取决于采样顺序。
         self.goal_zone = None
         self.custom_start_transforms = None
+        self.custom_initial_speeds_mps = {}
 
         # 1. 终点区域
         if "goal_zone" in config:
@@ -647,9 +654,92 @@ class CarlaMultiAgentEnv:
             else:
                 raise RuntimeError(f"无法生成车辆 {i}")
 
-        # 等待世界更新
+        # 车辆在 z=0.5m 生成后会有数帧竖直落体过程。若立即设置
+        # 水平速度，reset 返回的首帧观察会把竖直速度当成车速，而
+        # set_target_velocity 的水平分量要到下一次 tick 才可见。
+        # 先让车辆落地稳定，再在单独一帧中注入场景初速，使
+        # reset 观察与 JSON 定义的初始状态一致。
+        for _ in range(9):
+            self.world.tick()
+        self._prepare_velocity_warm_start()
+        # set_transform 与 set_target_velocity 在 CARLA 服务端都是异步命令。
+        # 分两个同步帧提交，避免同帧中 transform 偶发地覆盖速度。
         self.world.tick()
+        self._apply_initial_vehicle_speeds()
+        self.world.tick()
+        self._apply_initial_vehicle_speeds()
         time.sleep(0.5)
+        # 落地/预热帧只用于构造 reset 状态，不属于策略 rollout。
+        # 清除这些帧可能触发的瞬态传感器标志，避免计入第一步奖励。
+        for agent_id in range(self.num_agents):
+            self.collision_events[agent_id] = False
+            self.lane_invasion_events[agent_id] = False
+            self.crosswalk_invasion_events[agent_id] = False
+            if hasattr(self, "lane_invasion_details"):
+                self.lane_invasion_details[agent_id] = {
+                    "has_invasion": False,
+                    "crossed_markings": [],
+                    "marking_types": [],
+                }
+
+    def _prepare_velocity_warm_start(self):
+        """Pre-offset actors so the velocity warm-up tick ends at nominal x/y.
+
+        CARLA only exposes ``set_target_velocity`` after a synchronous tick, during
+        which a 5 m/s vehicle advances about 0.5 m.  Commit a transform one
+        ``speed * dt`` behind the JSON coordinate before that velocity tick.  The
+        settled road-height z is retained.
+        """
+        if not self.custom_start_transforms:
+            return
+        fixed_delta = self.world.get_settings().fixed_delta_seconds
+        warmup_seconds = float(fixed_delta if fixed_delta is not None else 0.1)
+        for agent_id, vehicle in enumerate(self.vehicles):
+            if (
+                vehicle is None
+                or not vehicle.is_alive
+                or agent_id >= len(self.custom_start_transforms)
+                or self.custom_start_transforms[agent_id] is None
+            ):
+                continue
+            configured = self.custom_start_transforms[agent_id]
+            current = vehicle.get_transform()
+            speed_mps = float(self.custom_initial_speeds_mps.get(agent_id, 0.0))
+            forward = configured.get_forward_vector()
+            vehicle.set_transform(
+                carla.Transform(
+                    carla.Location(
+                        x=float(
+                            configured.location.x
+                            - forward.x * speed_mps * warmup_seconds
+                        ),
+                        y=float(
+                            configured.location.y
+                            - forward.y * speed_mps * warmup_seconds
+                        ),
+                        z=float(current.location.z),
+                    ),
+                    configured.rotation,
+                )
+            )
+
+    def _apply_initial_vehicle_speeds(self):
+        """沿车辆出生朝向设置场景初始速度，不接管后续策略动作。"""
+        for agent_id, vehicle in enumerate(self.vehicles):
+            if vehicle is None or not vehicle.is_alive:
+                continue
+            speed_mps = float(self.custom_initial_speeds_mps.get(agent_id, 0.0))
+            if speed_mps <= 0.0:
+                continue
+            transform = vehicle.get_transform()
+            forward = transform.get_forward_vector()
+            vehicle.set_target_velocity(
+                carla.Vector3D(
+                    x=float(forward.x * speed_mps),
+                    y=float(forward.y * speed_mps),
+                    z=float(forward.z * speed_mps),
+                )
+            )
     
     def _attach_camera(self, agent_id: int, vehicle: carla.Actor):
         """
@@ -771,6 +861,7 @@ class CarlaMultiAgentEnv:
 
         # print(f"正在设置自定义起始位置...")
         self.custom_start_transforms = []
+        self.custom_initial_speeds_mps = {}
 
         for i in range(self.num_agents):
             agent_key = f"agent{i}"
@@ -809,8 +900,19 @@ class CarlaMultiAgentEnv:
                         rotation = carla.Rotation()
                         yaw_source = "默认(0)"
 
+                initial_speed_mps = float(pos.get("initial_speed_mps", 0.0))
+                if not math.isfinite(initial_speed_mps):
+                    raise ValueError(
+                        f"{agent_key}.initial_speed_mps 必须为有限数值"
+                    )
+                if not 0.0 <= initial_speed_mps <= 15.0:
+                    raise ValueError(
+                        f"{agent_key}.initial_speed_mps 必须在 [0, 15] m/s，"
+                        f"当前为 {initial_speed_mps}"
+                    )
                 transform = carla.Transform(location, rotation)
                 self.custom_start_transforms.append(transform)
+                self.custom_initial_speeds_mps[i] = initial_speed_mps
                 print(f"  智能体 {i} 起始位置已设置: x={location.x:.2f}, y={location.y:.2f}, z={location.z:.2f}, yaw={rotation.yaw:.2f} ({yaw_source})")
             elif i < len(self.start_waypoints):
                 # 没有自定义位置的智能体，使用默认位置

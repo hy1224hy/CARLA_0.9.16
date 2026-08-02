@@ -51,6 +51,58 @@ class AdaptiveScenarioSamplingTests(unittest.TestCase):
         self.assertLessEqual(max(counts.values()), 6)
         self.assertGreater(counts[scenarios[0]], min(counts.values()))
 
+    def test_family_coverage_keeps_adaptive_budget_for_sixteen_scenarios(self):
+        scenarios = [f"scenario_{index:02d}.json" for index in range(16)]
+        groups = {
+            scenario: f"family_{index // 4}"
+            for index, scenario in enumerate(scenarios)
+        }
+        np.random.seed(7)
+        sampled = sample_scenarios_stratified(
+            scenarios,
+            n_episodes=16,
+            success_rates={
+                scenario: (0.0 if index == 0 else 1.0)
+                for index, scenario in enumerate(scenarios)
+            },
+            sample_counts={scenario: 20 for scenario in scenarios},
+            mode="weighted",
+            coverage_groups=groups,
+        )
+        counts = Counter(sampled)
+        sampled_groups = {groups[scenario] for scenario in sampled}
+        self.assertEqual(len(sampled), 16)
+        self.assertEqual(sampled_groups, set(groups.values()))
+        self.assertGreater(counts[scenarios[0]], 1)
+
+    def test_family_coverage_rotates_to_least_sampled_member(self):
+        scenarios = ["a.json", "b.json", "c.json", "d.json"]
+        sampled = sample_scenarios_stratified(
+            scenarios,
+            n_episodes=2,
+            success_rates={scenario: 0.5 for scenario in scenarios},
+            sample_counts={
+                "a.json": 10,
+                "b.json": 0,
+                "c.json": 8,
+                "d.json": 1,
+            },
+            coverage_counts={
+                "a.json": 100,
+                "b.json": 20,
+                "c.json": 80,
+                "d.json": 10,
+            },
+            mode="weighted",
+            coverage_groups={
+                "a.json": "family_1",
+                "b.json": "family_1",
+                "c.json": "family_2",
+                "d.json": "family_2",
+            },
+        )
+        self.assertEqual(set(sampled), {"b.json", "d.json"})
+
     def test_empty_pool_fails_explicitly(self):
         with self.assertRaisesRegex(ValueError, "must not be empty"):
             sample_scenarios_stratified([], 16, mode="weighted")
@@ -64,7 +116,11 @@ class MetadataCurriculumTests(unittest.TestCase):
             for suffix in ("a", "b"):
                 path = self.scenario_dir / f"d{difficulty}_{suffix}.json"
                 path.write_text(
-                    json.dumps({"difficulty": difficulty}), encoding="utf-8"
+                    json.dumps({
+                        "difficulty": difficulty,
+                        "family": f"family_{difficulty}",
+                    }),
+                    encoding="utf-8",
                 )
 
     def tearDown(self):
@@ -104,6 +160,29 @@ class MetadataCurriculumTests(unittest.TestCase):
             set(curriculum.get_scenario_sampling_weights(19).values()),
             {1.0},
         )
+
+    def test_metadata_exposes_family_coverage_groups(self):
+        curriculum = CurriculumLearning(
+            str(self.scenario_dir),
+            mode="metadata",
+        )
+        scenarios = curriculum.curriculum_stages[-1]
+        groups = curriculum.get_scenario_coverage_groups(scenarios)
+        self.assertEqual(set(groups), set(scenarios))
+        self.assertEqual(set(groups.values()), {
+            "family_1", "family_2", "family_3"
+        })
+
+    def test_total_sample_count_survives_sliding_success_window(self):
+        curriculum = CurriculumLearning(
+            str(self.scenario_dir),
+            mode="metadata",
+        )
+        scenario = curriculum.curriculum_stages[0][0]
+        for _ in range(25):
+            curriculum.record_scenario_result(scenario, True)
+        self.assertEqual(curriculum.get_scenario_sample_count(scenario), 20)
+        self.assertEqual(curriculum.get_scenario_total_sample_count(scenario), 25)
 
 
 if __name__ == "__main__":

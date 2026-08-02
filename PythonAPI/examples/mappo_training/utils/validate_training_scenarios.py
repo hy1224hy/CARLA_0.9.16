@@ -75,7 +75,11 @@ def validate_scenario_pool(
         return [f"场景目录没有 JSON: {scenario_dir}"]
 
     difficulty_counts: Counter = Counter()
+    family_counts: Counter = Counter()
+    direction_counts: Counter = Counter()
     rear_role_counts: Counter = Counter()
+    speed_profile_counts: Counter = Counter()
+    schema_versions: Counter = Counter()
     for path in files:
         try:
             config = json.loads(path.read_text(encoding="utf-8"))
@@ -84,8 +88,11 @@ def validate_scenario_pool(
             continue
 
         prefix = path.name
-        if config.get("schema_version") != 2:
-            errors.append(f"{prefix}: schema_version 必须为 2")
+        schema_version = config.get("schema_version")
+        if schema_version not in {2, 3}:
+            errors.append(f"{prefix}: schema_version 必须为 2 或 3")
+        else:
+            schema_versions[int(schema_version)] += 1
         if config.get("town") != expected_town:
             errors.append(f"{prefix}: town 必须为 {expected_town}")
         try:
@@ -93,6 +100,26 @@ def validate_scenario_pool(
             difficulty_counts[difficulty] += 1
         except Exception:
             errors.append(f"{prefix}: 缺少合法 difficulty")
+
+        family = config.get("family")
+        if not isinstance(family, str) or not family.strip():
+            errors.append(f"{prefix}: 缺少合法 family")
+        else:
+            family_counts[family.strip()] += 1
+
+        tags = config.get("tags")
+        if not isinstance(tags, list) or not all(
+            isinstance(tag, str) for tag in tags
+        ):
+            errors.append(f"{prefix}: tags 必须为字符串列表")
+            tags = []
+        direction_tags = set(tags) & {
+            "eastbound", "westbound", "northbound", "southbound"
+        }
+        if len(direction_tags) != 1:
+            errors.append(f"{prefix}: 必须且只能有一个方向 tag")
+        else:
+            direction_counts[next(iter(direction_tags))] += 1
 
         goal_config = config.get("goal_zone")
         agents = config.get("agents")
@@ -116,6 +143,7 @@ def validate_scenario_pool(
 
         start_locations: Dict[str, carla.Location] = {}
         distances_to_goal: Dict[str, float] = {}
+        initial_speeds: Dict[str, float] = {}
         for agent_name, agent_config in agents.items():
             location = _as_location(agent_config)
             start_locations[agent_name] = location
@@ -145,6 +173,20 @@ def validate_scenario_pool(
             if not _route_reaches_goal(waypoint, goal):
                 errors.append(f"{prefix}/{agent_name}: 沿车道拓扑无法到达终点")
 
+            try:
+                initial_speed = float(agent_config.get("initial_speed_mps", 0.0))
+            except (TypeError, ValueError):
+                initial_speed = math.nan
+            initial_speeds[agent_name] = initial_speed
+            if not math.isfinite(initial_speed) or not 0.0 <= initial_speed <= 15.0:
+                errors.append(
+                    f"{prefix}/{agent_name}: initial_speed_mps 必须在 [0, 15]"
+                )
+            if schema_version == 3 and "initial_speed_mps" not in agent_config:
+                errors.append(
+                    f"{prefix}/{agent_name}: schema v3 必须显式给出 initial_speed_mps"
+                )
+
         separation = _planar_distance(
             start_locations["agent0"], start_locations["agent1"]
         )
@@ -152,15 +194,45 @@ def validate_scenario_pool(
             errors.append(f"{prefix}: 初始中心距 {separation:.2f}m < 8m")
         rear = max(distances_to_goal, key=distances_to_goal.get)
         rear_role_counts[rear] += 1
+        front = "agent1" if rear == "agent0" else "agent0"
+        rear_speed = initial_speeds[rear]
+        front_speed = initial_speeds[front]
+        if rear_speed == 0.0 and front_speed == 0.0:
+            speed_profile_counts["stationary"] += 1
+        elif math.isclose(rear_speed, front_speed, abs_tol=1e-6):
+            speed_profile_counts["same_speed_rolling"] += 1
+        elif rear_speed > front_speed:
+            speed_profile_counts["rear_closing"] += 1
+        else:
+            speed_profile_counts["front_faster"] += 1
+
+        if "stationary_start" in tags and (rear_speed != 0.0 or front_speed != 0.0):
+            errors.append(f"{prefix}: stationary_start 与初始速度不一致")
+        if "rolling_start" in tags and max(rear_speed, front_speed) <= 0.0:
+            errors.append(f"{prefix}: rolling_start 与初始速度不一致")
+        if "same_speed" in tags and not math.isclose(
+            rear_speed, front_speed, abs_tol=1e-6
+        ):
+            errors.append(f"{prefix}: same_speed 与初始速度不一致")
+        if "rear_faster" in tags and rear_speed <= front_speed:
+            errors.append(f"{prefix}: rear_faster 与前后车初始速度不一致")
 
     if len(difficulty_counts) > 1 and len(set(difficulty_counts.values())) != 1:
         errors.append(f"difficulty 场景数不均衡: {dict(difficulty_counts)}")
     if rear_role_counts.get("agent0", 0) != rear_role_counts.get("agent1", 0):
         errors.append(f"前后角色不均衡: {dict(rear_role_counts)}")
+    if schema_versions and set(schema_versions) == {3}:
+        if len(set(family_counts.values())) != 1:
+            errors.append(f"family 场景数不均衡: {dict(family_counts)}")
+        if len(direction_counts) != 4 or len(set(direction_counts.values())) != 1:
+            errors.append(f"道路方向不均衡: {dict(direction_counts)}")
 
     print(
         f"场景数={len(files)}, difficulty={dict(sorted(difficulty_counts.items()))}, "
-        f"后车角色={dict(sorted(rear_role_counts.items()))}"
+        f"family={dict(sorted(family_counts.items()))}, "
+        f"方向={dict(sorted(direction_counts.items()))}, "
+        f"后车角色={dict(sorted(rear_role_counts.items()))}, "
+        f"速度档={dict(sorted(speed_profile_counts.items()))}"
     )
     return errors
 

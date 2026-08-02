@@ -1887,8 +1887,10 @@ def sample_scenarios_stratified(
     n_episodes: int,
     success_rates: Optional[Dict[str, float]] = None,
     sample_counts: Optional[Dict[str, int]] = None,
+    coverage_counts: Optional[Dict[str, int]] = None,
     mode: str = "weighted",
     external_weights: Optional[Dict[str, float]] = None,
+    coverage_groups: Optional[Dict[str, str]] = None,
 ) -> List[str]:
     """从可用场景中采样 n_episodes 个场景。
 
@@ -1897,8 +1899,12 @@ def sample_scenarios_stratified(
         n_episodes: 需要采样的 episode 数
         success_rates: 各场景的历史成功率（weighted 模式需要）
         sample_counts: 各成功率对应的样本数，用于 Beta 先验平滑
+        coverage_counts: 各场景累计采样数，用于 family 内长期公平轮换
         mode: "random" | "stratified" | "weighted"
         external_weights: 外部权重（如课程软过渡权重），与 success_rates 相乘
+        coverage_groups: 可选的场景覆盖组（通常取 JSON family）。提供后，
+            weighted 模式优先覆盖成熟的场景族；族内优先选择历史采样最少
+            的场景，再把剩余配额按失败率分配。
 
     Returns:
         长度为 n_episodes 的场景文件名列表
@@ -1948,7 +1954,55 @@ def sample_scenarios_stratified(
             if external_weights is None
             or external_weights.get(scenario, 0.0) >= 0.5
         ]
-        if n_episodes >= len(mandatory_scenarios):
+        if coverage_groups is not None:
+            grouped: Dict[str, List[str]] = {}
+            for scenario in mandatory_scenarios:
+                group = str(coverage_groups.get(scenario, scenario))
+                grouped.setdefault(group, []).append(scenario)
+
+            group_names = sorted(grouped)
+            if n_episodes < len(group_names):
+                group_priorities = np.asarray(
+                    [
+                        sum(priorities[scenario] for scenario in grouped[group])
+                        for group in group_names
+                    ],
+                    dtype=np.float64,
+                )
+                group_priorities /= group_priorities.sum()
+                selected_groups = np.random.choice(
+                    group_names,
+                    size=n_episodes,
+                    replace=False,
+                    p=group_priorities,
+                ).tolist()
+            else:
+                selected_groups = group_names
+
+            for group in selected_groups:
+                candidates = list(grouped[group])
+                rotation_counts = (
+                    coverage_counts
+                    if coverage_counts is not None
+                    else sample_counts
+                )
+                if rotation_counts is not None and candidates:
+                    least_count = min(
+                        int(rotation_counts.get(scenario, 0))
+                        for scenario in candidates
+                    )
+                    candidates = [
+                        scenario for scenario in candidates
+                        if int(rotation_counts.get(scenario, 0)) == least_count
+                    ]
+                probs = np.asarray(
+                    [priorities[scenario] for scenario in candidates],
+                    dtype=np.float64,
+                )
+                probs /= probs.sum()
+                selected.append(str(np.random.choice(candidates, p=probs)))
+            remaining = n_episodes - len(selected)
+        elif n_episodes >= len(mandatory_scenarios):
             selected.extend(mandatory_scenarios)
             remaining = n_episodes - len(mandatory_scenarios)
         else:
@@ -2020,6 +2074,17 @@ class CurriculumLearning:
         if os.path.exists(scenario_dir):
             all_scenario_files = sorted([f for f in os.listdir(scenario_dir) if f.endswith('.json')])
 
+        self.scenario_families: Dict[str, str] = {}
+        for filename in all_scenario_files:
+            path = os.path.join(scenario_dir, filename)
+            try:
+                with open(path, "r", encoding="utf-8") as handle:
+                    config = json.load(handle)
+                family = str(config.get("family", filename)).strip()
+            except (OSError, ValueError, TypeError):
+                family = filename
+            self.scenario_families[filename] = family or filename
+
         if curriculum_stages is None and mode == "metadata":
             self.curriculum_stages = self._build_metadata_stages(
                 scenario_dir, all_scenario_files
@@ -2034,6 +2099,9 @@ class CurriculumLearning:
             self.curriculum_stages = curriculum_stages
 
         self.scenario_success_history: Dict[str, List[float]] = {f: [] for f in all_scenario_files}
+        self.scenario_total_sample_counts: Dict[str, int] = {
+            filename: 0 for filename in all_scenario_files
+        }
         print(f"课程学习初始化(mode={mode})，共 {len(self.curriculum_stages)} 个阶段，{len(all_scenario_files)} 个场景")
         print(f"  阶段构成: {[len(s) for s in self.curriculum_stages]}（近→远 / 易→难）")
         print(f"  过渡窗口: {transition_window} updates")
@@ -2184,6 +2252,17 @@ class CurriculumLearning:
         stage_idx = self._get_stage_idx(current_update)
         return self.curriculum_stages[min(stage_idx, len(self.curriculum_stages) - 1)]
 
+    def get_scenario_coverage_groups(
+        self, scenarios: List[str]
+    ) -> Dict[str, str]:
+        """返回批内覆盖组；metadata 课程按 family，旧课程逐场景覆盖。"""
+        if self.mode != "metadata":
+            return {scenario: scenario for scenario in scenarios}
+        return {
+            scenario: self.scenario_families.get(scenario, scenario)
+            for scenario in scenarios
+        }
+
     def get_scenario_sampling_weights(self, current_update: int) -> Dict[str, float]:
         """获取场景采样权重（软过渡版本）。
 
@@ -2213,6 +2292,9 @@ class CurriculumLearning:
         success_float = 1.0 if success else 0.0
         if scenario_name not in self.scenario_success_history:
             self.scenario_success_history[scenario_name] = []
+        self.scenario_total_sample_counts[scenario_name] = (
+            int(self.scenario_total_sample_counts.get(scenario_name, 0)) + 1
+        )
         self.scenario_success_history[scenario_name].append(success_float)
 
         if len(self.scenario_success_history[scenario_name]) > 20:
@@ -2227,6 +2309,9 @@ class CurriculumLearning:
 
     def get_scenario_sample_count(self, scenario_name: str) -> int:
         return len(self.scenario_success_history.get(scenario_name, []))
+
+    def get_scenario_total_sample_count(self, scenario_name: str) -> int:
+        return int(self.scenario_total_sample_counts.get(scenario_name, 0))
 
 
 # ============================================================
@@ -2567,6 +2652,14 @@ def train(args):
             str(name): list(values)
             for name, values in saved_curriculum["success_history"].items()
         }
+        saved_total_counts = saved_curriculum.get("total_sample_counts", {})
+        curriculum.scenario_total_sample_counts = {
+            scenario: int(saved_total_counts.get(
+                scenario,
+                len(curriculum.scenario_success_history.get(scenario, [])),
+            ))
+            for scenario in curriculum.scenario_total_sample_counts
+        }
         if start_update > args.updates:
             raise CheckpointProtocolError(
                 f"checkpoint completed update={completed_update}, but "
@@ -2761,6 +2854,12 @@ def train(args):
                         curriculum.scenario_success_history.items()
                     )
                 },
+                "total_sample_counts": {
+                    name: int(value)
+                    for name, value in (
+                        curriculum.scenario_total_sample_counts.items()
+                    )
+                },
             },
             "rng_state": capture_rng_state(),
             "last_metrics": copy.deepcopy(last_metrics_payload),
@@ -2848,6 +2947,7 @@ def train(args):
             # 获取成功率（weighted 模式需要）
             success_rates = None
             sample_counts = None
+            coverage_counts = None
             soft_weights = None
             if args.scenario_sampling_mode == "weighted":
                 soft_weights = curriculum.get_scenario_sampling_weights(update)
@@ -2863,6 +2963,10 @@ def train(args):
                     s: curriculum.get_scenario_sample_count(s)
                     for s in weighted_scenarios
                 }
+                coverage_counts = {
+                    s: curriculum.get_scenario_total_sample_count(s)
+                    for s in weighted_scenarios
+                }
             else:
                 weighted_scenarios = available_scenarios
 
@@ -2871,8 +2975,14 @@ def train(args):
                 n_episodes=args.rollout_episodes,
                 success_rates=success_rates,
                 sample_counts=sample_counts,
+                coverage_counts=coverage_counts,
                 mode=args.scenario_sampling_mode,
                 external_weights=soft_weights,
+                coverage_groups=(
+                    curriculum.get_scenario_coverage_groups(weighted_scenarios)
+                    if args.scenario_sampling_mode == "weighted"
+                    else None
+                ),
             )
             sampling_priorities = (
                 compute_scenario_sampling_priorities(
