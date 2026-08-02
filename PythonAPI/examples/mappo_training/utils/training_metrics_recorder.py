@@ -1,8 +1,9 @@
 """Centralized, versioned training-metric aggregation and persistence.
 
 Environment and optimizer code provide plain data to this module.  The module
-validates reward conservation, keeps agent/lifecycle ownership intact, and
-writes the same update-level scalar payload to TensorBoard and JSONL.
+validates reward conservation, keeps agent/lifecycle ownership intact, writes
+the same update-level scalar payload to TensorBoard and JSONL, and preserves a
+per-episode lifecycle audit trail for real-CARLA smoke validation.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from training.metrics_protocol import (
     DISABLED_REWARD_COMPONENTS,
+    EPISODE_RECORD_VERSION,
     METRICS_PROTOCOL_VERSION,
     REWARD_AUDIT_ATOL,
     SPARSE_REWARD_COMPONENTS,
@@ -31,6 +33,7 @@ from training.metrics_protocol import (
     reward_diagnostics,
     reward_schema_document,
     validate_active_reward_payload,
+    validate_episode_record,
 )
 
 
@@ -121,6 +124,29 @@ def _atomic_write_json(payload: Mapping[str, object], destination: Path) -> None
             temporary_path.unlink()
 
 
+def _atomic_write_jsonl(
+    payloads: Sequence[Mapping[str, object]], destination: Path
+) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    data = "".join(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n"
+        for payload in payloads
+    ).encode("utf-8")
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "wb") as file_obj:
+            file_obj.write(data)
+            file_obj.flush()
+            os.fsync(file_obj.fileno())
+        os.replace(temporary_path, destination)
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+
 def _finite_scalar(value: object, *, tag: str) -> float:
     try:
         scalar = float(value)
@@ -181,6 +207,7 @@ class TrainingMetricsRecorder:
         self.tb_dir = self.run_dir / "tb"
         self.tb_dir.mkdir(parents=True, exist_ok=True)
         self.jsonl_path = self.run_dir / "metrics.jsonl"
+        self.episode_jsonl_path = self.run_dir / "episodes.jsonl"
         self.schema_path = self.run_dir / "metrics_schema.json"
         self.run_id = str(run_id)
         self.agent_ids = tuple(int(agent_id) for agent_id in agent_ids)
@@ -210,6 +237,14 @@ class TrainingMetricsRecorder:
                 "agent_ids": list(self.agent_ids),
                 "tensorboard_directory": "tb",
                 "jsonl_file": self.jsonl_path.name,
+                "episode_records": {
+                    "version": EPISODE_RECORD_VERSION,
+                    "jsonl_file": self.episode_jsonl_path.name,
+                    "commit_semantics": (
+                        "fsync each episode before checkpoint; discard records "
+                        "ahead of the latest safe update on resume"
+                    ),
+                },
             }
         )
         if self.schema_path.is_file():
@@ -221,6 +256,9 @@ class TrainingMetricsRecorder:
         else:
             _atomic_write_json(schema, self.schema_path)
 
+        self._episode_record_counts_by_update = self._reconcile_episode_jsonl(
+            completed_update=int(completed_update)
+        )
         existing_updates = self._read_jsonl_updates()
         if existing_updates and existing_updates[-1] > completed_update:
             raise MetricsProtocolError(
@@ -243,14 +281,92 @@ class TrainingMetricsRecorder:
                 completed_update=completed_update,
                 resume_metrics_payload=resume_metrics_payload,
             )
+            self._validate_completed_episode_coverage(
+                completed_update=int(completed_update)
+            )
             self._reset_window()
         except Exception:
             self.writer.close()
             self._closed = True
             raise
 
+    def _reconcile_episode_jsonl(self, *, completed_update: int) -> Dict[int, int]:
+        if not self.episode_jsonl_path.is_file():
+            _atomic_write_jsonl([], self.episode_jsonl_path)
+            return {}
+
+        retained_records = []
+        counts: Dict[int, int] = {}
+        last_update = 0
+        expected_episode_index = 0
+        pruned = False
+        for line_number, line in enumerate(
+            self.episode_jsonl_path.read_text(encoding="utf-8").splitlines(),
+            start=1,
+        ):
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise MetricsProtocolError(
+                    f"episodes.jsonl line {line_number} is corrupt"
+                ) from error
+            normalized = validate_episode_record(
+                payload,
+                run_id=self.run_id,
+                agent_ids=self.agent_ids,
+                context=f"episodes.jsonl line {line_number}",
+            )
+            update = int(normalized["update"])
+            episode_index = int(normalized["episode_index"])
+            if update < last_update:
+                raise MetricsProtocolError(
+                    "episodes.jsonl updates must be non-decreasing"
+                )
+            if update != last_update:
+                expected_episode_index = 0
+                last_update = update
+            if episode_index != expected_episode_index:
+                raise MetricsProtocolError(
+                    f"episodes.jsonl update {update} expected episode_index "
+                    f"{expected_episode_index}, got {episode_index}"
+                )
+            expected_episode_index += 1
+            if update > completed_update:
+                pruned = True
+                continue
+            retained_records.append(normalized)
+            counts[update] = counts.get(update, 0) + 1
+
+        if pruned:
+            _atomic_write_jsonl(retained_records, self.episode_jsonl_path)
+        return counts
+
+    def _validate_completed_episode_coverage(self, *, completed_update: int) -> None:
+        metric_updates = set(self._metrics_payloads_by_update)
+        episode_updates = set(self._episode_record_counts_by_update)
+        if episode_updates != metric_updates:
+            raise MetricsProtocolError(
+                "episodes.jsonl completed updates differ from metrics.jsonl; "
+                f"episodes={sorted(episode_updates)}, metrics={sorted(metric_updates)}"
+            )
+        if metric_updates and max(metric_updates) != completed_update:
+            raise MetricsProtocolError(
+                "episode/metric audit does not reach the safe checkpoint update"
+            )
+        for update, payload in self._metrics_payloads_by_update.items():
+            expected = int(payload["scalars"]["episode/count"])
+            actual = self._episode_record_counts_by_update.get(update, 0)
+            if actual != expected:
+                raise MetricsProtocolError(
+                    f"episodes.jsonl update {update} count={actual}, "
+                    f"metrics episode/count={expected}"
+                )
+
     def _read_jsonl_updates(self) -> Sequence[int]:
         self._last_jsonl_payload: Optional[Dict[str, object]] = None
+        self._metrics_payloads_by_update: Dict[int, Dict[str, object]] = {}
         if not self.jsonl_path.is_file():
             return []
         updates = []
@@ -273,6 +389,7 @@ class TrainingMetricsRecorder:
                 )
             updates.append(update)
             self._last_jsonl_payload = normalized
+            self._metrics_payloads_by_update[update] = normalized
         return updates
 
     def _validate_payload(self, payload: Mapping[str, object]) -> Dict[str, object]:
@@ -456,10 +573,16 @@ class TrainingMetricsRecorder:
     def finish_episode(
         self,
         *,
+        update: int,
+        episode_index: int,
         episode_returns: Mapping[int, object],
         episode_length: int,
         active_decision_steps: Mapping[int, int],
         transition_counts: Mapping[int, int],
+        dones: Mapping[int, bool],
+        terminated: Mapping[int, bool],
+        truncated: Mapping[int, bool],
+        bootstrap_enabled: Mapping[int, bool],
         success: bool,
         collision: bool,
         timeout: bool,
@@ -469,6 +592,25 @@ class TrainingMetricsRecorder:
     ) -> None:
         if episode_length <= 0:
             raise MetricsProtocolError(f"{context}: episode_length must be positive")
+        expected_agent_ids = set(self.agent_ids)
+        lifecycle_mappings = {
+            "episode_returns": episode_returns,
+            "active_decision_steps": active_decision_steps,
+            "transition_counts": transition_counts,
+            "dones": dones,
+            "terminated": terminated,
+            "truncated": truncated,
+            "bootstrap_enabled": bootstrap_enabled,
+        }
+        for name, mapping in lifecycle_mappings.items():
+            if set(mapping) != expected_agent_ids:
+                raise MetricsProtocolError(
+                    f"{context}: {name} agent ids differ; "
+                    f"expected={sorted(expected_agent_ids)}, actual={sorted(mapping)}"
+                )
+
+        normalized_returns: Dict[int, float] = {}
+        episode_residuals: Dict[int, float] = {}
         for agent_id in self.agent_ids:
             if int(active_decision_steps[agent_id]) != int(transition_counts[agent_id]):
                 raise MetricsProtocolError(
@@ -481,10 +623,12 @@ class TrainingMetricsRecorder:
             episode_return = _finite_scalar(
                 episode_returns[agent_id], tag=f"episode_return_agent_{agent_id}"
             )
+            normalized_returns[agent_id] = episode_return
             component_sum = math.fsum(
                 self.current_episode_component_sums[agent_id].values()
             )
             residual = episode_return - component_sum
+            episode_residuals[agent_id] = residual
             episode_atol = REWARD_AUDIT_ATOL * max(
                 1, self.current_episode_active_counts[agent_id]
             )
@@ -494,10 +638,49 @@ class TrainingMetricsRecorder:
                     f"return={episode_return}, component_sum={component_sum}, "
                     f"residual={residual}, atol={episode_atol}"
                 )
+
+        episode_record = validate_episode_record(
+            {
+                "episode_record_version": EPISODE_RECORD_VERSION,
+                "run_id": self.run_id,
+                "update": int(update),
+                "episode_index": int(episode_index),
+                "created_at": _utc_now_iso(),
+                "scenario_name": str(scenario_name),
+                "episode_length": int(episode_length),
+                "episode_end_reason": str(end_reason),
+                "success": bool(success),
+                "collision": bool(collision),
+                "timeout": bool(timeout),
+                "agents": {
+                    str(agent_id): {
+                        "episode_return": normalized_returns[agent_id],
+                        "active_decision_steps": int(
+                            active_decision_steps[agent_id]
+                        ),
+                        "transition_count": int(transition_counts[agent_id]),
+                        "done": bool(dones[agent_id]),
+                        "terminated": bool(terminated[agent_id]),
+                        "truncated": bool(truncated[agent_id]),
+                        "bootstrap_enabled": bool(
+                            bootstrap_enabled[agent_id]
+                        ),
+                    }
+                    for agent_id in self.agent_ids
+                },
+            },
+            run_id=self.run_id,
+            agent_ids=self.agent_ids,
+            context=context,
+        )
+        self._append_episode_record(episode_record)
+
+        for agent_id in self.agent_ids:
+            residual = episode_residuals[agent_id]
             self.max_episode_reward_residual = max(
                 self.max_episode_reward_residual, abs(residual)
             )
-            self.episode_return_stats[agent_id].add(episode_return)
+            self.episode_return_stats[agent_id].add(normalized_returns[agent_id])
             for name in self.component_names:
                 self.episode_component_stats[agent_id][name].add(
                     self.current_episode_component_sums[agent_id][name]
@@ -525,6 +708,29 @@ class TrainingMetricsRecorder:
         self.scenario_stats[scenario]["collision"].add(float(bool(collision)))
         self.scenario_stats[scenario]["timeout"].add(float(bool(timeout)))
         self.scenario_stats[scenario]["length"].add(float(episode_length))
+
+    def _append_episode_record(self, payload: Mapping[str, object]) -> None:
+        update = int(payload["update"])
+        episode_index = int(payload["episode_index"])
+        if update != self._last_committed_update + 1:
+            raise MetricsProtocolError(
+                f"episode record update must be next safe update: "
+                f"last={self._last_committed_update}, new={update}"
+            )
+        expected_index = self._episode_record_counts_by_update.get(update, 0)
+        if episode_index != expected_index:
+            raise MetricsProtocolError(
+                f"episode record update {update} expected episode_index "
+                f"{expected_index}, got {episode_index}"
+            )
+        line = json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n"
+        with open(
+            self.episode_jsonl_path, "a", encoding="utf-8", newline="\n"
+        ) as file_obj:
+            file_obj.write(line)
+            file_obj.flush()
+            os.fsync(file_obj.fileno())
+        self._episode_record_counts_by_update[update] = expected_index + 1
 
     def record_scalar(self, tag: str, value: object) -> None:
         tag = str(tag).strip("/")
@@ -740,6 +946,14 @@ class TrainingMetricsRecorder:
             raise MetricsProtocolError("cannot finalize an update without episodes")
         if any(self.current_episode_active_counts.values()):
             raise MetricsProtocolError("cannot finalize with an unfinished episode")
+        recorded_episode_count = self._episode_record_counts_by_update.get(
+            int(update), 0
+        )
+        if recorded_episode_count != self.episode_count:
+            raise MetricsProtocolError(
+                f"episodes.jsonl update {update} count={recorded_episode_count}, "
+                f"recorder episode_count={self.episode_count}"
+            )
 
         scalars: Dict[str, float] = {}
 
@@ -867,6 +1081,7 @@ class TrainingMetricsRecorder:
         self.writer.flush()
         self._append_jsonl(normalized)
         self._last_committed_update = update
+        self._metrics_payloads_by_update[update] = normalized
 
     def commit_payload(self, payload: Mapping[str, object]) -> None:
         if self._pending_payload is not payload:

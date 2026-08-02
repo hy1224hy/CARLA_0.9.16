@@ -1,6 +1,6 @@
 # MAPPO 基础策略 checkpoint 与恢复训练协议
 
-> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。checkpoint schema：v2；训练协议：`mappo_robust_v2_p0_00f_tb_v1`；指标协议：`mappo_metrics_p0_00f_tb_v1`。旧 RLlib、robust v1、旧独立 MAPPO 以及 P0-00F schema v1 checkpoint 不适用正式 resume。
+> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。checkpoint schema：v2；训练协议：`mappo_robust_v2_p0_00g_v2`；指标协议：`mappo_metrics_p0_00g_v2`。旧 RLlib、robust v1、旧独立 MAPPO 以及旧指标协议 checkpoint 不适用正式 resume。
 
 ## 1. 三种操作必须区分
 
@@ -31,6 +31,7 @@
 ├── checkpoint_manifest.json
 ├── metrics_schema.json
 ├── metrics.jsonl
+├── episodes.jsonl
 └── tb/
 ```
 
@@ -40,6 +41,7 @@
 - `checkpoint_manifest.json`：登记 RunID、latest、interrupted、periodic 的 update、路径和 SHA256。
 - `metrics_schema.json`：指标协议、agent、奖励字段和聚合语义。
 - `metrics.jsonl`：每个完整 update 的可审计 scalar payload。
+- `episodes.jsonl`：每个 episode 的场景、终局和逐 agent 生命周期/transition/T-X/bootstrap 证据；resume 删除安全边界之后的未提交记录。
 - `tb/`：与 JSONL 同源的 TensorBoard 连续目录；resume 使用 `purge_step` 并在需要时从 checkpoint 重放最后一个 update。
 
 训练脚本不会创建 `best.pt`。未来的 `best_base_valid.pt` 只能由独立 C0/C1 验证流程从 immutable periodic checkpoints 中选择。
@@ -66,8 +68,9 @@
 - Actor/Critic LR、gamma、GAE lambda、clip、entropy、gradient norm、target KL；
 - hidden dim、log_std 初值、LR decay 开关；
 - 场景采样和课程学习参数。
+- checkpoint 保存间隔、控制台日志间隔和 TensorBoard histogram 间隔。
 
-允许改变：本次停止 update、保存/日志间隔、CARLA host/port、render 和输出操作参数。LR decay horizon 在 fresh run 时冻结；resume 延长 `--updates` 不会改变既有 LR 曲线。
+允许改变：本次停止 update、CARLA host/port、render 和输出操作参数。保存/日志/histogram 间隔属于同一 Run 的证据协议，不再允许 resume 时隐式回到默认值。LR decay horizon 在 fresh run 时冻结；resume 延长 `--updates` 不会改变既有 LR 曲线。
 
 P0-00F-TB 起，resume 还要求 checkpoint 的 `last_metrics.update`、RunID 和指标协议与 checkpoint 边界一致。若 checkpoint 已保存但 TensorBoard/JSONL 尚未写入，恢复时会重放该 payload；日志领先 checkpoint、出现 update gap 或 schema 改变时直接失败。详细口径见 [MAPPO TensorBoard 指标协议](./MAPPO_TensorBoard指标协议.md)。
 

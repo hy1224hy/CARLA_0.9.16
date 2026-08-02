@@ -56,6 +56,7 @@ CarlaUE4.exe
 ```powershell
 # P0-00G：基础 MAPPO 三更新 smoke
 # 只允许在 P0-00B 至 P0-00F-TB 全部通过后执行
+# 完整环境检查、受控中断和验收见 docs/P0-00G_真实CARLA_smoke运行规范.md
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
   --run-id P0_00G_robust_v2_smoke_s42_<timestamp> `
   --updates 3 `
@@ -63,6 +64,7 @@ CarlaUE4.exe
   --rollout-episodes 4 `
   --min-transitions-per-update 64 `
   --max-steps 300 `
+  --save-interval 1 `
   --tb-histogram-interval 1 `
   --seed 42 `
   --save-dir logs/P0_00G_robust_v2_smoke_s42_<timestamp>
@@ -473,9 +475,13 @@ python -m training.train_2red_1blue_ppo \
 # 启动当前 Run 的 TensorBoard
 tensorboard --logdir logs/<RunID>/tb
 
-# 离线验收 schema、有限值、奖励守恒、update 连续及 TB/JSONL 对账
+# P0-00G 严格验收逐 episode、PPO、update 连续及 TB/JSONL 对账
 ..\..\..\venv\Scripts\python.exe -m utils.validate_tensorboard_run `
-  --run-dir logs/<RunID>
+  --run-dir logs/<RunID> `
+  --expected-updates 1 2 3 4 `
+  --expected-episodes-per-update 4 `
+  --require-ppo-updates `
+  --max-preupdate-ratio-error 1e-6
 ```
 
 然后在浏览器访问 `http://localhost:6006`。完整标签和全零奖励分量的判断方法见 [MAPPO TensorBoard 指标协议](docs/MAPPO_TensorBoard指标协议.md)。

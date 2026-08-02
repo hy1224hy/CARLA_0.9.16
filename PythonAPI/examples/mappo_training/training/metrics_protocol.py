@@ -8,10 +8,11 @@ missing reward component from being silently interpreted as a real zero.
 from __future__ import annotations
 
 import math
-from typing import Dict, Iterable, Mapping, Tuple
+from typing import Dict, Iterable, Mapping, Sequence, Tuple
 
 
-METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00f_tb_v1"
+METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v2"
+EPISODE_RECORD_VERSION = "mappo_episode_record_v1"
 REWARD_AUDIT_ATOL = 1e-6
 
 REWARD_COMPONENTS: Dict[str, Tuple[str, ...]] = {
@@ -97,6 +98,203 @@ SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
 
 class MetricsProtocolError(RuntimeError):
     """Raised when metric input would make a dashboard untrustworthy."""
+
+
+def _strict_bool(value: object, *, field: str, context: str) -> bool:
+    if not isinstance(value, bool):
+        raise MetricsProtocolError(
+            f"{context}: {field} must be a JSON boolean, got {value!r}"
+        )
+    return value
+
+
+def _nonnegative_int(value: object, *, field: str, context: str) -> int:
+    if isinstance(value, bool):
+        raise MetricsProtocolError(
+            f"{context}: {field} must be an integer, got {value!r}"
+        )
+    try:
+        integer = int(value)
+    except (TypeError, ValueError) as error:
+        raise MetricsProtocolError(
+            f"{context}: {field} must be an integer, got {value!r}"
+        ) from error
+    if integer < 0 or integer != value:
+        raise MetricsProtocolError(
+            f"{context}: {field} must be a non-negative integer, got {value!r}"
+        )
+    return integer
+
+
+def validate_episode_record(
+    payload: Mapping[str, object],
+    *,
+    run_id: str,
+    agent_ids: Sequence[int],
+    context: str,
+) -> Dict[str, object]:
+    """Validate and normalize one committed-or-pending episode audit record."""
+    if not isinstance(payload, Mapping):
+        raise MetricsProtocolError(f"{context}: episode record must be a mapping")
+
+    expected_top_level = {
+        "episode_record_version",
+        "run_id",
+        "update",
+        "episode_index",
+        "created_at",
+        "scenario_name",
+        "episode_length",
+        "episode_end_reason",
+        "success",
+        "collision",
+        "timeout",
+        "agents",
+    }
+    actual_top_level = set(payload)
+    if actual_top_level != expected_top_level:
+        raise MetricsProtocolError(
+            f"{context}: episode record fields differ; "
+            f"missing={sorted(expected_top_level - actual_top_level)}, "
+            f"unknown={sorted(actual_top_level - expected_top_level)}"
+        )
+    if payload["episode_record_version"] != EPISODE_RECORD_VERSION:
+        raise MetricsProtocolError(f"{context}: episode record protocol mismatch")
+    if str(payload["run_id"]) != str(run_id):
+        raise MetricsProtocolError(f"{context}: episode record run_id mismatch")
+
+    update = _nonnegative_int(payload["update"], field="update", context=context)
+    if update <= 0:
+        raise MetricsProtocolError(f"{context}: episode update must be positive")
+    episode_index = _nonnegative_int(
+        payload["episode_index"], field="episode_index", context=context
+    )
+    episode_length = _nonnegative_int(
+        payload["episode_length"], field="episode_length", context=context
+    )
+    if episode_length <= 0:
+        raise MetricsProtocolError(f"{context}: episode_length must be positive")
+
+    created_at = str(payload["created_at"]).strip()
+    scenario_name = str(payload["scenario_name"]).strip()
+    end_reason = str(payload["episode_end_reason"]).strip()
+    if not created_at or not scenario_name or not end_reason:
+        raise MetricsProtocolError(
+            f"{context}: created_at, scenario_name and episode_end_reason must be non-empty"
+        )
+
+    success = _strict_bool(payload["success"], field="success", context=context)
+    collision = _strict_bool(
+        payload["collision"], field="collision", context=context
+    )
+    timeout = _strict_bool(payload["timeout"], field="timeout", context=context)
+    if sum((success, collision, timeout)) > 1:
+        raise MetricsProtocolError(
+            f"{context}: success/collision/timeout must be mutually exclusive"
+        )
+
+    agents_payload = payload["agents"]
+    if not isinstance(agents_payload, Mapping):
+        raise MetricsProtocolError(f"{context}: agents must be a mapping")
+    normalized_agent_ids = tuple(int(agent_id) for agent_id in agent_ids)
+    expected_agent_keys = {str(agent_id) for agent_id in normalized_agent_ids}
+    if set(agents_payload) != expected_agent_keys:
+        raise MetricsProtocolError(
+            f"{context}: episode agent ids differ; "
+            f"expected={sorted(expected_agent_keys)}, actual={sorted(agents_payload)}"
+        )
+
+    expected_agent_fields = {
+        "episode_return",
+        "active_decision_steps",
+        "transition_count",
+        "done",
+        "terminated",
+        "truncated",
+        "bootstrap_enabled",
+    }
+    normalized_agents: Dict[str, Dict[str, object]] = {}
+    for agent_id in normalized_agent_ids:
+        key = str(agent_id)
+        agent_payload = agents_payload[key]
+        agent_context = f"{context} agent={agent_id}"
+        if not isinstance(agent_payload, Mapping) or set(agent_payload) != expected_agent_fields:
+            actual_fields = set(agent_payload) if isinstance(agent_payload, Mapping) else set()
+            raise MetricsProtocolError(
+                f"{agent_context}: episode fields differ; "
+                f"missing={sorted(expected_agent_fields - actual_fields)}, "
+                f"unknown={sorted(actual_fields - expected_agent_fields)}"
+            )
+        active_steps = _nonnegative_int(
+            agent_payload["active_decision_steps"],
+            field="active_decision_steps",
+            context=agent_context,
+        )
+        transitions = _nonnegative_int(
+            agent_payload["transition_count"],
+            field="transition_count",
+            context=agent_context,
+        )
+        if active_steps != transitions:
+            raise MetricsProtocolError(
+                f"{agent_context}: active decisions do not match transitions"
+            )
+        if active_steps > episode_length:
+            raise MetricsProtocolError(
+                f"{agent_context}: active steps exceed episode length"
+            )
+        done = _strict_bool(agent_payload["done"], field="done", context=agent_context)
+        terminated = _strict_bool(
+            agent_payload["terminated"], field="terminated", context=agent_context
+        )
+        truncated = _strict_bool(
+            agent_payload["truncated"], field="truncated", context=agent_context
+        )
+        bootstrap_enabled = _strict_bool(
+            agent_payload["bootstrap_enabled"],
+            field="bootstrap_enabled",
+            context=agent_context,
+        )
+        if terminated and truncated:
+            raise MetricsProtocolError(
+                f"{agent_context}: terminated and truncated cannot both be true"
+            )
+        if done != (terminated or truncated):
+            raise MetricsProtocolError(
+                f"{agent_context}: done must equal terminated or truncated"
+            )
+        if bootstrap_enabled != truncated:
+            raise MetricsProtocolError(
+                f"{agent_context}: bootstrap_enabled must equal truncated"
+            )
+        normalized_agents[key] = {
+            "episode_return": _finite_float(
+                agent_payload["episode_return"],
+                field="episode_return",
+                context=agent_context,
+            ),
+            "active_decision_steps": active_steps,
+            "transition_count": transitions,
+            "done": done,
+            "terminated": terminated,
+            "truncated": truncated,
+            "bootstrap_enabled": bootstrap_enabled,
+        }
+
+    return {
+        "episode_record_version": EPISODE_RECORD_VERSION,
+        "run_id": str(run_id),
+        "update": update,
+        "episode_index": episode_index,
+        "created_at": created_at,
+        "scenario_name": scenario_name,
+        "episode_length": episode_length,
+        "episode_end_reason": end_reason,
+        "success": success,
+        "collision": collision,
+        "timeout": timeout,
+        "agents": normalized_agents,
+    }
 
 
 def reward_components(reward_version: str) -> Tuple[str, ...]:

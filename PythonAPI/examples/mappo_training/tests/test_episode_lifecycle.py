@@ -9,7 +9,10 @@ from training.lifecycle_semantics import (
     bootstrap_state_for_boundary,
     validate_lifecycle_flags,
 )
-from training.train_no_rllib_mappo_robust_v2 import compute_gae
+from training.train_no_rllib_mappo_robust_v2 import (
+    classify_base_episode_outcome,
+    compute_gae,
+)
 from utils.adversarial_metrics import extract_kinematics
 
 
@@ -56,6 +59,77 @@ class _Vehicle:
 
     def get_control(self):
         return _Control()
+
+
+class _WorldSettings:
+    def __init__(self, synchronous_mode=True, fixed_delta_seconds=0.1):
+        self.synchronous_mode = synchronous_mode
+        self.fixed_delta_seconds = fixed_delta_seconds
+
+
+class _World:
+    def __init__(self):
+        self.settings = _WorldSettings()
+        self.applied_settings = []
+
+    def get_settings(self):
+        return self.settings
+
+    def apply_settings(self, settings):
+        self.applied_settings.append(
+            (settings.synchronous_mode, settings.fixed_delta_seconds)
+        )
+
+
+class _TrafficManager:
+    def __init__(self):
+        self.synchronous_calls = []
+
+    def set_synchronous_mode(self, enabled):
+        self.synchronous_calls.append(enabled)
+
+
+class EnvironmentCleanupTests(unittest.TestCase):
+    def test_close_restores_world_timing_and_disables_tm_sync(self):
+        env = CarlaMultiAgentEnv.__new__(CarlaMultiAgentEnv)
+        env.use_tensorboard = False
+        env.tb_writer = None
+        env._cleanup = lambda: None
+        env.world = _World()
+        env.traffic_manager = _TrafficManager()
+        env._original_synchronous_mode = False
+        env._original_fixed_delta_seconds = None
+
+        env.close()
+
+        self.assertEqual(env.world.applied_settings, [(False, None)])
+        self.assertEqual(env.traffic_manager.synchronous_calls, [False])
+
+
+class BaseEpisodeOutcomeTests(unittest.TestCase):
+    def test_terminal_outcomes_follow_end_reason_and_are_mutually_exclusive(self):
+        self.assertEqual(
+            classify_base_episode_outcome("cooperative_success"),
+            (True, False, False),
+        )
+        self.assertEqual(
+            classify_base_episode_outcome("all_agents_reached"),
+            (True, False, False),
+        )
+        self.assertEqual(
+            classify_base_episode_outcome("cooperative_collision"),
+            (False, True, False),
+        )
+        self.assertEqual(
+            classify_base_episode_outcome("max_steps"),
+            (False, False, True),
+        )
+
+    def test_non_terminal_or_unclassified_reason_is_rejected(self):
+        for reason in ("running", "all_agents_terminated", "unknown"):
+            with self.subTest(reason=reason):
+                with self.assertRaisesRegex(RuntimeError, "non-classifiable"):
+                    classify_base_episode_outcome(reason)
 
 
 def _make_env(

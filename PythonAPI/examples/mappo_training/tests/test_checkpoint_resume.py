@@ -32,13 +32,73 @@ from training.checkpoint_protocol import (
     validate_checkpoint_payload,
 )
 from training.train_no_rllib_mappo_robust_v2 import (
+    CurriculumLearning,
     RESUME_IMMUTABLE_ARG_NAMES,
     apply_resume_configuration,
     build_parser,
     checkpoint_training_config,
     train,
+    validate_p0_smoke_interrupt_configuration,
 )
 from training.metrics_protocol import METRICS_PROTOCOL_VERSION
+
+
+class P0SmokeInterruptConfigurationTests(unittest.TestCase):
+    def test_interrupt_hook_requires_resume(self):
+        args = build_parser().parse_args(
+            ["--p0-smoke-interrupt-after-episodes", "1"]
+        )
+        with self.assertRaisesRegex(ValueError, "only valid with --resume"):
+            validate_p0_smoke_interrupt_configuration(args)
+
+    def test_interrupt_hook_must_fit_frozen_rollout(self):
+        args = build_parser().parse_args(
+            [
+                "--resume",
+                "latest",
+                "--rollout-episodes",
+                "4",
+                "--p0-smoke-interrupt-after-episodes",
+                "5",
+            ]
+        )
+        with self.assertRaisesRegex(ValueError, "cannot exceed"):
+            validate_p0_smoke_interrupt_configuration(args)
+
+    def test_interrupt_hook_accepts_resume_episode_boundary(self):
+        args = build_parser().parse_args(
+            [
+                "--resume",
+                "latest",
+                "--rollout-episodes",
+                "4",
+                "--p0-smoke-interrupt-after-episodes",
+                "1",
+            ]
+        )
+        self.assertEqual(validate_p0_smoke_interrupt_configuration(args), 1)
+
+
+class CurriculumResumeDeterminismTests(unittest.TestCase):
+    def test_classic_stage_order_is_stable_and_deduplicated(self):
+        scenario_files = [
+            "scenario_01_basic.json",
+            "scenario_02_left.json",
+            "scenario_03_parallel.json",
+            "scenario_04_right.json",
+            "scenario_05_far.json",
+        ]
+        stages = CurriculumLearning._build_default_stages(scenario_files)
+        self.assertEqual(
+            stages[1],
+            [
+                "scenario_01_basic.json",
+                "scenario_02_left.json",
+                "scenario_03_parallel.json",
+                "scenario_04_right.json",
+            ],
+        )
+        self.assertEqual(len(stages[1]), len(set(stages[1])))
 
 
 def _protocol_versions():
@@ -395,7 +455,15 @@ class ResumeProtocolValidationTests(unittest.TestCase):
             run_dir = ensure_fresh_run_directory(Path(tmp) / "new_run")
             self.assertTrue(run_dir.is_dir())
             save_checkpoint_file(_checkpoint_payload(), run_dir / "latest.pt")
-            with self.assertRaisesRegex(FileExistsError, "checkpoint artifacts"):
+            with self.assertRaisesRegex(FileExistsError, "run artifacts"):
+                ensure_fresh_run_directory(run_dir)
+
+    def test_fresh_run_rejects_existing_metric_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "new_run"
+            run_dir.mkdir()
+            (run_dir / "episodes.jsonl").write_text("", encoding="utf-8")
+            with self.assertRaisesRegex(FileExistsError, "run artifacts"):
                 ensure_fresh_run_directory(run_dir)
 
     def test_manifest_round_trip_is_atomic_and_readable(self):
@@ -428,6 +496,9 @@ class RobustV2CheckpointIntegrationTests(unittest.TestCase):
         saved_args.seed = 7
         saved_args.run_id = "P0_resume_s7"
         saved_args.lr_decay_horizon = 200
+        saved_args.save_interval = 1
+        saved_args.log_interval = 2
+        saved_args.tb_histogram_interval = 3
         checkpoint = self._resume_header(saved_args)
 
         resumed_args = build_parser().parse_args([])
@@ -446,6 +517,13 @@ class RobustV2CheckpointIntegrationTests(unittest.TestCase):
         drifted_args._explicit_cli_options = {"--gamma"}
         with self.assertRaisesRegex(CheckpointProtocolError, "cannot change --gamma"):
             apply_resume_configuration(drifted_args, checkpoint)
+
+        save_drift = build_parser().parse_args(["--save-interval", "5"])
+        save_drift._explicit_cli_options = {"--save-interval"}
+        with self.assertRaisesRegex(
+            CheckpointProtocolError, "cannot change --save-interval"
+        ):
+            apply_resume_configuration(save_drift, checkpoint)
 
     def test_resume_and_pretrained_are_rejected_before_carla_initialization(self):
         args = build_parser().parse_args(

@@ -199,6 +199,30 @@ class PpoUpdateHealthTests(unittest.TestCase):
                 context="stale actor",
             )
 
+    def test_preupdate_check_matches_transitionwise_rollout_geometry(self):
+        actor = Actor(obs_dim=19, act_dim=3, hidden=128)
+        observations = torch.randn(256, 19)
+        old_log_prob_parts = []
+        action_z_parts = []
+        with torch.no_grad():
+            for observation in observations:
+                _action, log_prob, action_z = actor.sample_action_z(
+                    observation.unsqueeze(0)
+                )
+                old_log_prob_parts.append(log_prob)
+                action_z_parts.append(action_z)
+
+        error = validate_initial_policy_ratio(
+            actor,
+            observations,
+            torch.cat(action_z_parts, dim=0),
+            torch.cat(old_log_prob_parts, dim=0),
+            tolerance=1e-6,
+            context="transitionwise rollout geometry",
+        )
+
+        self.assertEqual(error, 0.0)
+
     def test_one_synthetic_actor_critic_update_stays_finite(self):
         n_samples = 32
         actor = Actor(obs_dim=19, act_dim=3, hidden=32)

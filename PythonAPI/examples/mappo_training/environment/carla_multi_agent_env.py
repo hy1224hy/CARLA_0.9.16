@@ -88,6 +88,8 @@ class CarlaMultiAgentEnv:
         
         # 设置同步模式
         settings = self.world.get_settings()
+        self._original_synchronous_mode = bool(settings.synchronous_mode)
+        self._original_fixed_delta_seconds = settings.fixed_delta_seconds
         settings.synchronous_mode = True
         settings.fixed_delta_seconds = timestep
         self.world.apply_settings(settings)
@@ -557,6 +559,21 @@ class CarlaMultiAgentEnv:
         }
         兼容旧格式（顶层直接 agent0 而无 agents 嵌套）。
         """
+        configured_town = config.get("town")
+        if configured_town:
+            current_town = self.map.name.rsplit("/", 1)[-1]
+            if str(configured_town) != current_town:
+                raise ValueError(
+                    f"场景地图为 {configured_town!r}，当前 CARLA 地图为 "
+                    f"{current_town!r}"
+                )
+
+        # 场景必须按回合完整覆盖状态，不能让缺失字段继承上一回合。
+        # 旧实现会让没有 goal_zone 的 JSON 随机继承上一个场景的终点，
+        # 导致同一场景的任务定义取决于采样顺序。
+        self.goal_zone = None
+        self.custom_start_transforms = None
+
         # 1. 终点区域
         if "goal_zone" in config:
             self.set_goal_zone(config["goal_zone"])
@@ -2237,7 +2254,9 @@ class CarlaMultiAgentEnv:
             self.tb_writer.close()
             print(f"TensorBoard日志已保存到: {self.tb_log_dir}")
         self._cleanup()
+        self.traffic_manager.set_synchronous_mode(False)
         settings = self.world.get_settings()
-        settings.synchronous_mode = False
+        settings.synchronous_mode = self._original_synchronous_mode
+        settings.fixed_delta_seconds = self._original_fixed_delta_seconds
         self.world.apply_settings(settings)
 

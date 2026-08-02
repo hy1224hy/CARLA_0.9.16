@@ -24,7 +24,7 @@ import torch
 
 
 CHECKPOINT_SCHEMA_VERSION = 2
-TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00f_tb_v1"
+TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00g_v2"
 OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_v1"
 ACTION_PROTOCOL_VERSION = "tanh_gaussian_pre_tanh_z_v1"
 LIFECYCLE_PROTOCOL_VERSION = "agent_centric_terminated_truncated_v1"
@@ -206,6 +206,10 @@ def ensure_fresh_run_directory(save_dir: os.PathLike[str] | str) -> Path:
         run_dir / INTERRUPTED_CHECKPOINT_NAME,
         run_dir / PERIODIC_DIR_NAME,
         run_dir / MANIFEST_NAME,
+        run_dir / "metrics_schema.json",
+        run_dir / "metrics.jsonl",
+        run_dir / "episodes.jsonl",
+        run_dir / "tb",
     ]
     old_checkpoints = list(run_dir.glob("*.pt"))
     old_checkpoints.extend(run_dir.glob("*.pt.sha256"))
@@ -215,7 +219,7 @@ def ensure_fresh_run_directory(save_dir: os.PathLike[str] | str) -> Path:
     )
     if conflicts:
         raise FileExistsError(
-            "fresh run directory already contains checkpoint artifacts: "
+            "fresh run directory already contains protected run artifacts: "
             + ", ".join(conflicts)
         )
     return run_dir

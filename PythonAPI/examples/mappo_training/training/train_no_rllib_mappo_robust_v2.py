@@ -14,6 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 import argparse
 import copy
+import json
 import os
 import re
 import random
@@ -77,9 +78,28 @@ VALID_EPISODE_END_REASONS = frozenset({
     "max_steps",
     "all_agents_terminated",
 })
+BASE_SUCCESS_END_REASONS = frozenset({"cooperative_success", "all_agents_reached"})
+BASE_COLLISION_END_REASONS = frozenset(
+    {"cooperative_collision", "adversary_collision"}
+)
 
 OBS_DIM = 19
 ACTION_DIM = 3
+
+
+def classify_base_episode_outcome(
+    episode_end_reason: str,
+) -> Tuple[bool, bool, bool]:
+    """Return mutually exclusive success/collision/timeout terminal outcomes."""
+    reason = str(episode_end_reason)
+    success = reason in BASE_SUCCESS_END_REASONS
+    collision = reason in BASE_COLLISION_END_REASONS
+    timeout = reason == "max_steps"
+    if sum((success, collision, timeout)) != 1:
+        raise RuntimeError(
+            f"base episode ended with non-classifiable reason={reason!r}"
+        )
+    return success, collision, timeout
 
 RESUME_IMMUTABLE_ARG_NAMES = (
     "town",
@@ -107,6 +127,9 @@ RESUME_IMMUTABLE_ARG_NAMES = (
     "curriculum_transition_window",
     "curriculum_mode",
     "reward_version",
+    "save_interval",
+    "log_interval",
+    "tb_histogram_interval",
 )
 
 
@@ -972,7 +995,23 @@ def validate_initial_policy_ratio(
     ensure_finite_tensor(observations, name="observations", context=context)
     ensure_finite_tensor(action_z, name="action_z", context=context)
     ensure_finite_tensor(old_log_probs, name="old_log_probs", context=context)
-    new_log_probs, entropy = actor.evaluate_actions_z(observations, action_z)
+    # Rollout inference calls the actor once per active agent with batch size 1.
+    # Reproduce that geometry here: a large batched GEMM can differ from the
+    # batch-1 forward by several float32 ulps even with identical parameters,
+    # producing a false stale-policy failure at the strict 1e-6 threshold.
+    # PPO optimization remains minibatched; only this preflight check is
+    # transition-wise so it compares like with like.
+    log_prob_parts = []
+    entropy_parts = []
+    for index in range(batch_sizes["observations"]):
+        log_prob_part, entropy_part = actor.evaluate_actions_z(
+            observations[index:index + 1],
+            action_z[index:index + 1],
+        )
+        log_prob_parts.append(log_prob_part)
+        entropy_parts.append(entropy_part)
+    new_log_probs = torch.cat(log_prob_parts, dim=0)
+    entropy = torch.cat(entropy_parts, dim=0)
     ensure_finite_tensor(new_log_probs, name="new_log_probs", context=context)
     ensure_finite_tensor(entropy, name="entropy", context=context)
     if new_log_probs.shape != old_log_probs.shape:
@@ -1795,10 +1834,59 @@ def run_mappo_ppo_update(
 # 场景采样策略
 # ============================================================
 
+def compute_scenario_sampling_priorities(
+    available_scenarios: List[str],
+    success_rates: Optional[Dict[str, float]] = None,
+    sample_counts: Optional[Dict[str, int]] = None,
+    external_weights: Optional[Dict[str, float]] = None,
+) -> Dict[str, float]:
+    """计算可解释且有界的自适应场景优先级。
+
+    最近成功率使用 Beta(2, 2) 先验平滑，未采样场景按 50% 成功率处理，
+    避免旧实现把“未知”误当成“100% 失败”。最终困难度因子为
+    ``0.25 + posterior_failure``，再乘课程阶段权重。
+    """
+    priorities: Dict[str, float] = {}
+    for scenario in available_scenarios:
+        curriculum_weight = (
+            1.0 if external_weights is None
+            else float(external_weights.get(scenario, 0.0))
+        )
+        if not np.isfinite(curriculum_weight) or curriculum_weight < 0.0:
+            raise ValueError(
+                f"invalid external weight for {scenario}: {curriculum_weight}"
+            )
+
+        raw_rate = 0.5
+        if success_rates is not None:
+            raw_rate = float(success_rates.get(scenario, 0.5))
+            if not np.isfinite(raw_rate):
+                raise ValueError(
+                    f"non-finite success rate for {scenario}: {raw_rate}"
+                )
+            raw_rate = float(np.clip(raw_rate, 0.0, 1.0))
+
+        if sample_counts is None:
+            posterior_success = raw_rate
+        else:
+            count = max(0, int(sample_counts.get(scenario, 0)))
+            if count == 0:
+                posterior_success = 0.5
+            else:
+                posterior_success = (raw_rate * count + 2.0) / (count + 4.0)
+
+        posterior_failure = 1.0 - posterior_success
+        priorities[scenario] = curriculum_weight * (
+            0.25 + posterior_failure
+        )
+    return priorities
+
+
 def sample_scenarios_stratified(
     available_scenarios: List[str],
     n_episodes: int,
     success_rates: Optional[Dict[str, float]] = None,
+    sample_counts: Optional[Dict[str, int]] = None,
     mode: str = "weighted",
     external_weights: Optional[Dict[str, float]] = None,
 ) -> List[str]:
@@ -1808,16 +1896,39 @@ def sample_scenarios_stratified(
         available_scenarios: 可用场景文件名列表
         n_episodes: 需要采样的 episode 数
         success_rates: 各场景的历史成功率（weighted 模式需要）
+        sample_counts: 各成功率对应的样本数，用于 Beta 先验平滑
         mode: "random" | "stratified" | "weighted"
         external_weights: 外部权重（如课程软过渡权重），与 success_rates 相乘
 
     Returns:
         长度为 n_episodes 的场景文件名列表
     """
-    if mode == "random" or len(available_scenarios) == 0:
+    if n_episodes < 0:
+        raise ValueError("n_episodes must be non-negative")
+    if n_episodes == 0:
+        return []
+    if not available_scenarios:
+        raise ValueError("available_scenarios must not be empty")
+    if mode not in {"random", "stratified", "weighted"}:
+        raise ValueError(f"unsupported scenario sampling mode: {mode!r}")
+
+    if mode == "random":
         return [np.random.choice(available_scenarios) for _ in range(n_episodes)]
 
-    n_scenarios = len(available_scenarios)
+    priorities = compute_scenario_sampling_priorities(
+        available_scenarios=available_scenarios,
+        success_rates=success_rates,
+        sample_counts=sample_counts,
+        external_weights=external_weights,
+    )
+    if mode == "weighted":
+        active_scenarios = [s for s in available_scenarios if priorities[s] > 0.0]
+        if not active_scenarios:
+            raise ValueError("weighted sampling has no positive-weight scenarios")
+    else:
+        active_scenarios = list(available_scenarios)
+
+    n_scenarios = len(active_scenarios)
     selected = []
 
     if mode == "stratified":
@@ -1825,38 +1936,59 @@ def sample_scenarios_stratified(
         rounds = n_episodes // n_scenarios
         remainder = n_episodes % n_scenarios
         for _ in range(rounds):
-            selected.extend(available_scenarios)
+            selected.extend(active_scenarios)
         if remainder > 0:
-            selected.extend(np.random.choice(available_scenarios, size=remainder, replace=False).tolist())
+            selected.extend(np.random.choice(active_scenarios, size=remainder, replace=False).tolist())
 
     elif mode == "weighted":
-        # 分层轮询保证覆盖
-        if n_episodes >= n_scenarios:
-            selected.extend(available_scenarios)
-            remaining = n_episodes - n_scenarios
+        # 课程权重达到 0.5 后才进入强制覆盖集；刚引入的新场景仍可按
+        # 小权重被抽中，但不会因“每场景一次”让软过渡瞬间跳变。
+        mandatory_scenarios = [
+            scenario for scenario in active_scenarios
+            if external_weights is None
+            or external_weights.get(scenario, 0.0) >= 0.5
+        ]
+        if n_episodes >= len(mandatory_scenarios):
+            selected.extend(mandatory_scenarios)
+            remaining = n_episodes - len(mandatory_scenarios)
         else:
-            # episode 数少于场景数，随机选 n_episodes 个各 1 次
-            selected.extend(np.random.choice(available_scenarios, size=n_episodes, replace=False).tolist())
+            # 小 batch 也按优先级无放回抽样，避免退化成与难度无关的均匀随机。
+            probs = np.asarray(
+                [priorities[s] for s in mandatory_scenarios], dtype=np.float64
+            )
+            probs /= probs.sum()
+            selected.extend(
+                np.random.choice(
+                    mandatory_scenarios,
+                    size=n_episodes,
+                    replace=False,
+                    p=probs,
+                ).tolist()
+            )
             remaining = 0
 
-        # 剩余配额按失败率加权（合并外部权重如课程软过渡）
+        # 剩余配额按平滑失败率加权。设置批内上限，防止单一困难/不可解
+        # 场景吞掉整个更新，同时仍允许它高于均匀配额。
         if remaining > 0:
-            weights = []
-            for s in available_scenarios:
-                w = 1.0
-                if success_rates is not None:
-                    rate = success_rates.get(s, 0.5)
-                    w *= (1.0 - rate + 0.1)  # 失败率 + 最小权重
-                if external_weights is not None:
-                    w *= external_weights.get(s, 1.0)
-                weights.append(w)
-            total_w = sum(weights)
-            if total_w > 0:
-                probs = [w / total_w for w in weights]
-                extra = np.random.choice(available_scenarios, size=remaining, p=probs, replace=True).tolist()
-            else:
-                extra = np.random.choice(available_scenarios, size=remaining, replace=True).tolist()
-            selected.extend(extra)
+            counts = {s: selected.count(s) for s in active_scenarios}
+            uniform_quota = int(np.ceil(n_episodes / n_scenarios))
+            max_per_scenario = uniform_quota + max(
+                1, int(np.ceil(n_episodes * 0.10))
+            )
+            for _ in range(remaining):
+                eligible = [
+                    s for s in active_scenarios
+                    if counts[s] < max_per_scenario
+                ]
+                if not eligible:
+                    eligible = list(active_scenarios)
+                probs = np.asarray(
+                    [priorities[s] for s in eligible], dtype=np.float64
+                )
+                probs /= probs.sum()
+                chosen = str(np.random.choice(eligible, p=probs))
+                selected.append(chosen)
+                counts[chosen] += 1
 
     np.random.shuffle(selected)
     return selected
@@ -1888,7 +2020,11 @@ class CurriculumLearning:
         if os.path.exists(scenario_dir):
             all_scenario_files = sorted([f for f in os.listdir(scenario_dir) if f.endswith('.json')])
 
-        if curriculum_stages is None:
+        if curriculum_stages is None and mode == "metadata":
+            self.curriculum_stages = self._build_metadata_stages(
+                scenario_dir, all_scenario_files
+            )
+        elif curriculum_stages is None:
             # mode="classic" 强制走 basic/left|right/all 旧逻辑（回退距离课程，
             # 即使目录里存在 dist_<N>m 场景文件也忽略其距离分层）
             self.curriculum_stages = self._build_default_stages(
@@ -1901,6 +2037,45 @@ class CurriculumLearning:
         print(f"课程学习初始化(mode={mode})，共 {len(self.curriculum_stages)} 个阶段，{len(all_scenario_files)} 个场景")
         print(f"  阶段构成: {[len(s) for s in self.curriculum_stages]}（近→远 / 易→难）")
         print(f"  过渡窗口: {transition_window} updates")
+
+    @staticmethod
+    def _build_metadata_stages(
+        scenario_dir: str, all_scenario_files: List[str]
+    ) -> List[List[str]]:
+        """按 JSON 的 difficulty 字段构建累积课程阶段。"""
+        if not all_scenario_files:
+            raise ValueError(f"场景目录为空: {scenario_dir}")
+
+        difficulties: Dict[str, int] = {}
+        for filename in all_scenario_files:
+            path = os.path.join(scenario_dir, filename)
+            with open(path, "r", encoding="utf-8") as handle:
+                config = json.load(handle)
+            if "difficulty" not in config:
+                raise ValueError(
+                    f"metadata curriculum requires difficulty: {path}"
+                )
+            difficulty = int(config["difficulty"])
+            if difficulty < 1:
+                raise ValueError(
+                    f"scenario difficulty must be >= 1: {path}"
+                )
+            difficulties[filename] = difficulty
+
+        levels = sorted(set(difficulties.values()))
+        expected_levels = list(range(1, max(levels) + 1))
+        if levels != expected_levels:
+            raise ValueError(
+                "scenario difficulty levels must be consecutive from 1: "
+                f"found {levels}"
+            )
+        return [
+            [
+                filename for filename in all_scenario_files
+                if difficulties[filename] <= level
+            ]
+            for level in levels
+        ]
 
     @staticmethod
     def _build_default_stages(all_scenario_files: List[str], use_distance: bool = False) -> List[List[str]]:
@@ -1942,21 +2117,46 @@ class CurriculumLearning:
             f for f in pool
             if 'left' in f or 'right' in f or 'parallel' in f
         ]
-        stages.append(list(set(stage2)))
+        # Preserve the sorted scenario-pool order while removing duplicates.
+        # list(set(...)) is process-hash dependent and made strict resume fail
+        # when a fresh Python process rebuilt the same logical curriculum.
+        stages.append(list(dict.fromkeys(stage2)))
         stages.append(pool)
         return stages
 
     def _get_stage_idx(self, current_update: int) -> int:
         """获取当前所处的阶段索引"""
-        if current_update < self.warmup_updates:
+        n_stages = len(self.curriculum_stages)
+        if n_stages <= 1 or current_update < self.warmup_updates:
             return 0
         elif current_update >= self.full_scenario_updates:
-            return len(self.curriculum_stages) - 1
+            return n_stages - 1
+        elif n_stages == 2:
+            return 0
         else:
-            progress = (current_update - self.warmup_updates) / (
-                self.full_scenario_updates - self.warmup_updates
+            # stage 1 在 warmup 边界立即开始；中间阶段均匀分布，最后阶段
+            # 仍严格由 full_scenario_updates 开启。旧实现额外乘 n_stages，
+            # 使默认 10-update warmup 实际延长到 update 20。
+            middle_stage_count = n_stages - 2
+            span = max(1, self.full_scenario_updates - self.warmup_updates)
+            progress = (current_update - self.warmup_updates) / span
+            return min(
+                1 + int(progress * middle_stage_count), n_stages - 2
             )
-            return min(int(progress * len(self.curriculum_stages)), len(self.curriculum_stages) - 2)
+
+    def _stage_start_update(self, stage_idx: int) -> float:
+        """返回某阶段首次成为当前阶段的 update 边界。"""
+        n_stages = len(self.curriculum_stages)
+        if stage_idx <= 0:
+            return 0.0
+        if stage_idx >= n_stages - 1:
+            return float(self.full_scenario_updates)
+        middle_stage_count = n_stages - 2
+        return float(self.warmup_updates) + (
+            (stage_idx - 1)
+            * (self.full_scenario_updates - self.warmup_updates)
+            / max(1, middle_stage_count)
+        )
 
     def _compute_transition_alpha(self, current_update: int) -> float:
         """计算软过渡系数 α ∈ [0, 1]。
@@ -1968,28 +2168,16 @@ class CurriculumLearning:
         if stage_idx == 0:
             return 1.0  # 第一阶段，无旧场景
 
-        # 上一阶段切换到当前阶段的边界 update 数
-        # 简化：阶段 i 的起点大约在 warmup_updates + (full_scenario_updates - warmup_updates) * i / n_stages
         n_stages = len(self.curriculum_stages)
         if n_stages <= 1:
             return 1.0
-
-        # 与 _get_stage_idx 的实际过渡点对齐：
-        # 非末阶段: int(progress * n) >= stage_idx → update >= warmup + stage_idx/n * (full - warmup)
-        # 末阶段: update >= full_scenario_updates（_get_stage_idx 的显式检查）
-        if stage_idx == n_stages - 1:
-            stage_start = float(self.full_scenario_updates)
-        else:
-            stage_start = self.warmup_updates + (self.full_scenario_updates - self.warmup_updates) * stage_idx / n_stages
-        half_window = self.transition_window / 2.0
-
-        if current_update < stage_start - half_window:
-            return 0.0  # 完全旧阶段（不应出现，因为 _get_stage_idx 已经判断）
-        elif current_update > stage_start + half_window:
-            return 1.0  # 完全当前阶段
-        else:
-            # 线性过渡
-            return (current_update - (stage_start - half_window)) / self.transition_window
+        if self.transition_window <= 0:
+            return 1.0
+        stage_start = self._stage_start_update(stage_idx)
+        elapsed_updates = current_update - stage_start + 1.0
+        return float(np.clip(
+            elapsed_updates / self.transition_window, 0.0, 1.0
+        ))
 
     def get_available_scenarios(self, current_update: int) -> List[str]:
         """获取当前阶段的场景列表（硬切换，向后兼容）"""
@@ -2005,22 +2193,19 @@ class CurriculumLearning:
         alpha = self._compute_transition_alpha(current_update)
         stage_idx = self._get_stage_idx(current_update)
 
-        current_scenarios = self.curriculum_stages[min(stage_idx, len(self.curriculum_stages) - 1)]
-        weights = {}
+        current_scenarios = self.curriculum_stages[
+            min(stage_idx, len(self.curriculum_stages) - 1)
+        ]
+        if stage_idx == 0:
+            return {scenario: 1.0 for scenario in current_scenarios}
 
-        # 当前阶段场景权重
-        for s in current_scenarios:
-            weights[s] = 1.0
-
-        # 如果处于过渡期（α < 1），混入旧阶段场景
-        if alpha < 1.0 and stage_idx > 0:
-            prev_scenarios = self.curriculum_stages[stage_idx - 1]
-            prev_weight = 1.0 - alpha
-            for s in prev_scenarios:
-                if s in weights:
-                    weights[s] = max(weights[s], prev_weight)
-                else:
-                    weights[s] = prev_weight
+        previous_scenarios = set(self.curriculum_stages[stage_idx - 1])
+        # 阶段是累积集合：旧场景保持 1.0，仅本阶段新增场景从 alpha
+        # 逐步升到 1.0。旧实现给整个当前累积集合 1.0，软过渡事实上无效。
+        weights = {
+            scenario: (1.0 if scenario in previous_scenarios else alpha)
+            for scenario in current_scenarios
+        }
 
         return weights
 
@@ -2037,13 +2222,33 @@ class CurriculumLearning:
 
     def get_scenario_success_rate(self, scenario_name: str) -> float:
         if scenario_name not in self.scenario_success_history or len(self.scenario_success_history[scenario_name]) == 0:
-            return 0.0
+            return 0.5
         return float(np.mean(self.scenario_success_history[scenario_name]))
+
+    def get_scenario_sample_count(self, scenario_name: str) -> int:
+        return len(self.scenario_success_history.get(scenario_name, []))
 
 
 # ============================================================
 # 训练主函数
 # ============================================================
+
+def validate_p0_smoke_interrupt_configuration(args, *, check_rollout_bound=True):
+    """Validate the deterministic P0 smoke interrupt without changing training data."""
+    interrupt_after = int(args.p0_smoke_interrupt_after_episodes)
+    if interrupt_after < 0:
+        raise ValueError("--p0-smoke-interrupt-after-episodes must be non-negative")
+    if interrupt_after > 0 and not args.resume:
+        raise ValueError(
+            "--p0-smoke-interrupt-after-episodes is only valid with --resume"
+        )
+    if check_rollout_bound and interrupt_after > int(args.rollout_episodes):
+        raise ValueError(
+            "--p0-smoke-interrupt-after-episodes cannot exceed "
+            "--rollout-episodes"
+        )
+    return interrupt_after
+
 
 def train(args):
     if args.resume and args.pretrained_checkpoint:
@@ -2060,6 +2265,10 @@ def train(args):
         raise ValueError("--tb-histogram-interval must be non-negative")
     if args.lr_decay_horizon < 0:
         raise ValueError("--lr-decay-horizon must be non-negative")
+    validate_p0_smoke_interrupt_configuration(
+        args,
+        check_rollout_bound=not bool(args.resume),
+    )
 
     save_dir = os.path.abspath(args.save_dir)
     repository_root = Path(__file__).resolve().parents[4]
@@ -2101,6 +2310,7 @@ def train(args):
         )
         validate_checkpoint_header(resume_checkpoint)
         apply_resume_configuration(args, resume_checkpoint)
+        validate_p0_smoke_interrupt_configuration(args)
 
         manifest = load_manifest(Path(save_dir) / MANIFEST_NAME)
         if manifest.get("run_id") != args.run_id:
@@ -2195,10 +2405,14 @@ def train(args):
         "cuda" if torch.cuda.is_available() and not args.cpu else "cpu"
     )
 
-    scenario_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
-        "data",
-        "training_scenarios",
+    scenario_dir = (
+        os.path.abspath(args.scenario_dir)
+        if args.scenario_dir
+        else os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "data",
+            "training_scenarios_town02_v2",
+        )
     )
     curriculum = CurriculumLearning(
         scenario_dir=scenario_dir,
@@ -2633,17 +2847,22 @@ def train(args):
 
             # 获取成功率（weighted 模式需要）
             success_rates = None
+            sample_counts = None
+            soft_weights = None
             if args.scenario_sampling_mode == "weighted":
+                soft_weights = curriculum.get_scenario_sampling_weights(update)
+                weighted_scenarios = [
+                    scenario for scenario, weight in soft_weights.items()
+                    if weight > 0.0
+                ]
                 success_rates = {
                     s: curriculum.get_scenario_success_rate(s)
-                    for s in available_scenarios
+                    for s in weighted_scenarios
                 }
-
-            # 软过渡权重
-            soft_weights = None
-            if args.scenario_sampling_mode != "random":
-                soft_weights = curriculum.get_scenario_sampling_weights(update)
-                weighted_scenarios = list(soft_weights.keys())
+                sample_counts = {
+                    s: curriculum.get_scenario_sample_count(s)
+                    for s in weighted_scenarios
+                }
             else:
                 weighted_scenarios = available_scenarios
 
@@ -2651,8 +2870,19 @@ def train(args):
                 available_scenarios=weighted_scenarios,
                 n_episodes=args.rollout_episodes,
                 success_rates=success_rates,
+                sample_counts=sample_counts,
                 mode=args.scenario_sampling_mode,
                 external_weights=soft_weights,
+            )
+            sampling_priorities = (
+                compute_scenario_sampling_priorities(
+                    available_scenarios=weighted_scenarios,
+                    success_rates=success_rates,
+                    sample_counts=sample_counts,
+                    external_weights=soft_weights,
+                )
+                if args.scenario_sampling_mode == "weighted"
+                else {}
             )
 
             print(f"\n更新 {update}/{args.updates}, 可用场景数: {len(available_scenarios)}, "
@@ -2693,12 +2923,6 @@ def train(args):
                     aid: len(buffer.get_agent_data(aid)) for aid in agent_ids
                 }
                 ep_length = 0
-                ep_success = False
-                # Phase A2/A1: 必须在 rollout 循环里累积碰撞标志
-                # env.collision_events / crosswalk_invasion_events 在每步末尾被环境清零
-                # （见 carla_multi_agent_env.py:978-984），episode 结束后读是 0
-                # 这里用 info['collisions'] 每步 OR 累积，episode 内 sticky
-                ep_collision_sticky: Dict[int, bool] = {aid: False for aid in agent_ids}
                 final_dones: Dict[int, bool] = {aid: False for aid in agent_ids}
                 final_terminated = dict(info['terminated'])
                 final_truncated = dict(info['truncated'])
@@ -2741,12 +2965,6 @@ def train(args):
                     final_global_state = np.concatenate(
                         [np.asarray(next_obs[aid], dtype=np.float32) for aid in agent_ids]
                     )
-
-                    # Phase A1: 每步累积"本回合是否撞过"（info['collisions'] 已含人行横道）
-                    step_collisions = info.get('collisions', {}) or {}
-                    for aid in agent_ids:
-                        if step_collisions.get(aid, False):
-                            ep_collision_sticky[aid] = True
 
                     written_rewards = write_active_transitions(
                         buffer=buffer,
@@ -2810,22 +3028,12 @@ def train(args):
                     agent_ids=agent_ids,
                     context=f"robust_v2 episode={rollout_episode}",
                 )
-                # Phase A1: 严格三类终止分类
-                #   ep_success_to_goal: 所有 agent 都进入 goal_zone（True success）
-                #   ep_collision:       任一 agent 本回合撞过（含人行横道）
-                #   ep_timeout:         max_steps 截断且既未成功也未碰撞
-                # reached_target 是 sticky，可直接读 env；碰撞用循环里累积的 sticky 字典
-                ep_success_to_goal = all(
-                    env.reached_target.get(aid, False) for aid in agent_ids
+                # 严格互斥三类终局只服从环境发布的全局 end reason。这样即使
+                # success/collision sticky 信号在同一 tick 同时出现，也不会把一个
+                # episode 同时计入两个 outcome；逐 agent 事件仍保留在 diagnostics。
+                ep_success, ep_collision, ep_timeout = classify_base_episode_outcome(
+                    episode_end_reason
                 )
-                ep_collision_per_agent = dict(ep_collision_sticky)
-                ep_collision = any(ep_collision_per_agent.values())
-                ep_timeout = (
-                    ep_length >= args.max_steps
-                    and not ep_success_to_goal
-                    and not ep_collision
-                )
-                ep_success = ep_success_to_goal
 
                 if ep_success:
                     total_successes += 1
@@ -2837,6 +3045,7 @@ def train(args):
                 # P0-00B：bootstrap 类型只服从环境发布的最终 T/X 协议，不再根据
                 # reached_target 或碰撞 sticky 标志二次猜测。X 可来自 max_steps，
                 # 也可来自同伴红车碰撞造成的 agent-centric 外部中断。
+                episode_bootstrap_enabled = {aid: False for aid in agent_ids}
                 for aid in agent_ids:
                     boundary_count = len(buffer.episode_boundaries[aid])
                     buffer.mark_episode_end(aid)
@@ -2850,6 +3059,7 @@ def train(args):
                         context=f"robust_v2 agent={aid} episode={rollout_episode}",
                     )
                     buffer.add_episode_bootstrap(aid, bootstrap_state)
+                    episode_bootstrap_enabled[aid] = bootstrap_state is not None
 
                 # 记录 episode
                 avg_ret = float(np.mean([episode_rewards[aid] for aid in agent_ids]))
@@ -2859,10 +3069,16 @@ def train(args):
                 window_collisions.append(1.0 if ep_collision else 0.0)
                 window_timeouts.append(1.0 if ep_timeout else 0.0)
                 metrics_recorder.finish_episode(
+                    update=update,
+                    episode_index=rollout_episode,
                     episode_returns=episode_rewards,
                     episode_length=ep_length,
                     active_decision_steps=active_decision_steps,
                     transition_counts=episode_transition_counts,
+                    dones=final_dones,
+                    terminated=final_terminated,
+                    truncated=final_truncated,
+                    bootstrap_enabled=episode_bootstrap_enabled,
                     success=ep_success,
                     collision=ep_collision,
                     timeout=ep_timeout,
@@ -2874,6 +3090,18 @@ def train(args):
                 )
 
                 curriculum.record_scenario_result(scenario_name, ep_success)
+
+                if (
+                    args.p0_smoke_interrupt_after_episodes > 0
+                    and rollout_episode + 1
+                    == args.p0_smoke_interrupt_after_episodes
+                ):
+                    print(
+                        "  [P0 smoke] controlled interrupt after "
+                        f"update={update} episode={rollout_episode}; "
+                        "the incomplete update must be discarded on resume"
+                    )
+                    raise KeyboardInterrupt
 
             rollout_seconds = time.perf_counter() - rollout_started_at
 
@@ -2966,6 +3194,16 @@ def train(args):
                     "curriculum/sampled_unique_scenario_count": len(
                         set(sampled_scenarios)
                     ),
+                    **{
+                        f"sampling/{scenario}/batch_count": sampled_scenarios.count(
+                            scenario
+                        )
+                        for scenario in weighted_scenarios
+                    },
+                    **{
+                        f"sampling/{scenario}/priority": priority
+                        for scenario, priority in sampling_priorities.items()
+                    },
                     "timing/rollout_seconds": rollout_seconds,
                     "timing/ppo_seconds": ppo_seconds,
                     "timing/env_transitions_per_second": (
@@ -3089,6 +3327,15 @@ def build_parser():
                         help="Actor log_std 初始值（std=1.0），配合 target-kl 早停，给足初期探索空间")
 
     # 场景采样
+    parser.add_argument(
+        "--scenario-dir",
+        type=str,
+        default="",
+        help=(
+            "场景目录；默认 data/training_scenarios_town02_v2。"
+            "旧实验可显式传 data/training_scenarios"
+        ),
+    )
     parser.add_argument("--scenario-sampling-mode", type=str, default="weighted",
                         choices=["random", "stratified", "weighted"],
                         help="场景采样模式: random=随机, stratified=分层轮询, weighted=分层+失败率加权")
@@ -3098,10 +3345,11 @@ def build_parser():
     parser.add_argument("--full-scenario-updates", type=int, default=40, help="达到全场景的更新次数")
     parser.add_argument("--curriculum-transition-window", type=int, default=10,
                         help="阶段过渡窗口大小（v2 新增）")
-    parser.add_argument("--curriculum-mode", type=str, default="classic",
-                        choices=["classic", "distance"],
-                        help="课程模式: classic=basic/left|right/all 旧逻辑(默认,已回退距离课程); "
-                             "distance=按 dist_<N>m 距离分层(实验性,易诱发短距离原地不动)")
+    parser.add_argument("--curriculum-mode", type=str, default="metadata",
+                        choices=["metadata", "classic", "distance"],
+                        help="课程模式: metadata=读取 JSON difficulty(默认); "
+                             "classic=basic/left|right/all 旧逻辑; "
+                             "distance=按 dist_<N>m 距离分层(实验性)")
 
     # 其他
     parser.add_argument("--seed", type=int, default=42)
@@ -3130,6 +3378,15 @@ def build_parser():
         "--allow-resume-code-drift",
         action="store_true",
         help="显式允许 Git SHA/关键源码指纹不同的续训，并永久写入元数据",
+    )
+    parser.add_argument(
+        "--p0-smoke-interrupt-after-episodes",
+        type=int,
+        default=0,
+        help=(
+            "仅用于 P0 smoke：resume rollout 写完指定数量的 episode 后触发受控中断；"
+            "0 表示禁用，不改变 checkpoint 中冻结的训练配置"
+        ),
     )
 
     parser.add_argument("--save-dir", type=str, default="./logs/mappo_robust_v2")

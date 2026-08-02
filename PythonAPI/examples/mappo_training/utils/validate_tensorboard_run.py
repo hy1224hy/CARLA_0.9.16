@@ -6,11 +6,16 @@ import argparse
 import json
 import math
 from pathlib import Path
-from typing import Dict, List, Mapping
+from typing import Dict, List, Mapping, Optional, Sequence
 
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-from training.metrics_protocol import METRICS_PROTOCOL_VERSION, MetricsProtocolError
+from training.metrics_protocol import (
+    EPISODE_RECORD_VERSION,
+    METRICS_PROTOCOL_VERSION,
+    MetricsProtocolError,
+    validate_episode_record,
+)
 
 
 def _required_tags(schema: Mapping[str, object]) -> List[str]:
@@ -60,6 +65,31 @@ def _required_tags(schema: Mapping[str, object]) -> List[str]:
     return sorted(set(tags))
 
 
+def _ppo_required_tags(schema: Mapping[str, object]) -> List[str]:
+    tags = [
+        "critic/critic_loss",
+        "critic/grad_norm_critic",
+        "model/critic/update_norm",
+    ]
+    for agent_id in [int(value) for value in schema["agent_ids"]]:
+        prefix = f"policy/agent_{agent_id}"
+        tags.extend(
+            [
+                f"{prefix}/preupdate_max_abs_ratio_error",
+                f"{prefix}/actor_loss",
+                f"{prefix}/entropy",
+                f"{prefix}/approx_kl",
+                f"{prefix}/clip_frac",
+                f"{prefix}/ratio_mean",
+                f"{prefix}/ratio_min",
+                f"{prefix}/ratio_max",
+                f"{prefix}/grad_norm_actor",
+                f"model/actor_agent_{agent_id}/update_norm",
+            ]
+        )
+    return sorted(set(tags))
+
+
 def _load_jsonl(path: Path) -> List[Dict[str, object]]:
     if not path.is_file():
         raise FileNotFoundError(f"metrics JSONL not found: {path}")
@@ -92,7 +122,60 @@ def _load_jsonl(path: Path) -> List[Dict[str, object]]:
     return records
 
 
-def validate_metrics_run(run_dir: Path | str) -> Dict[str, object]:
+def _load_episode_jsonl(
+    path: Path, *, run_id: str, agent_ids: Sequence[int]
+) -> List[Dict[str, object]]:
+    if not path.is_file():
+        raise FileNotFoundError(f"episode JSONL not found: {path}")
+    records = []
+    last_update = 0
+    expected_episode_index = 0
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise MetricsProtocolError(
+                f"episodes.jsonl line {line_number} is corrupt"
+            ) from error
+        record = validate_episode_record(
+            payload,
+            run_id=run_id,
+            agent_ids=agent_ids,
+            context=f"episodes.jsonl line {line_number}",
+        )
+        update = int(record["update"])
+        episode_index = int(record["episode_index"])
+        if update < last_update:
+            raise MetricsProtocolError(
+                "episodes.jsonl updates must be non-decreasing"
+            )
+        if update != last_update:
+            expected_episode_index = 0
+            last_update = update
+        if episode_index != expected_episode_index:
+            raise MetricsProtocolError(
+                f"episodes.jsonl update {update} expected episode_index "
+                f"{expected_episode_index}, got {episode_index}"
+            )
+        expected_episode_index += 1
+        records.append(record)
+    if not records:
+        raise MetricsProtocolError("episodes.jsonl contains no completed episode")
+    return records
+
+
+def validate_metrics_run(
+    run_dir: Path | str,
+    *,
+    expected_updates: Optional[Sequence[int]] = None,
+    expected_episodes_per_update: Optional[int] = None,
+    require_ppo_updates: bool = False,
+    max_preupdate_ratio_error: Optional[float] = None,
+) -> Dict[str, object]:
     run_dir = Path(run_dir).resolve()
     schema_path = run_dir / "metrics_schema.json"
     if not schema_path.is_file():
@@ -101,7 +184,24 @@ def validate_metrics_run(run_dir: Path | str) -> Dict[str, object]:
     if schema.get("metrics_protocol_version") != METRICS_PROTOCOL_VERSION:
         raise MetricsProtocolError("metrics schema protocol mismatch")
     records = _load_jsonl(run_dir / "metrics.jsonl")
+    if any(str(record.get("run_id", "")) != str(schema["run_id"]) for record in records):
+        raise MetricsProtocolError("metrics.jsonl run_id differs from schema")
+    actual_updates = [int(record["update"]) for record in records]
+    if expected_updates is not None:
+        normalized_expected_updates = [int(update) for update in expected_updates]
+        if actual_updates != normalized_expected_updates:
+            raise MetricsProtocolError(
+                f"completed updates differ: expected={normalized_expected_updates}, "
+                f"actual={actual_updates}"
+            )
+    if expected_episodes_per_update is not None and expected_episodes_per_update <= 0:
+        raise ValueError("expected_episodes_per_update must be positive")
+    if max_preupdate_ratio_error is not None and max_preupdate_ratio_error <= 0:
+        raise ValueError("max_preupdate_ratio_error must be positive")
+
     required_tags = _required_tags(schema)
+    if require_ppo_updates:
+        required_tags = sorted(set(required_tags) | set(_ppo_required_tags(schema)))
 
     for record in records:
         scalars = record["scalars"]
@@ -114,6 +214,148 @@ def validate_metrics_run(run_dir: Path | str) -> Dict[str, object]:
             if not math.isfinite(float(value)):
                 raise MetricsProtocolError(
                     f"update {record['update']} tag {tag!r} contains NaN/Inf"
+                )
+        if expected_episodes_per_update is not None and int(
+            scalars["episode/count"]
+        ) != int(expected_episodes_per_update):
+            raise MetricsProtocolError(
+                f"update {record['update']} episode/count="
+                f"{int(scalars['episode/count'])}, expected="
+                f"{int(expected_episodes_per_update)}"
+            )
+        if require_ppo_updates and float(scalars["train/update_skipped"]) != 0.0:
+            raise MetricsProtocolError(
+                f"update {record['update']} skipped PPO and cannot pass P0-00G"
+            )
+
+    episode_schema = schema.get("episode_records")
+    if not isinstance(episode_schema, Mapping):
+        raise MetricsProtocolError("metrics schema has no episode_records protocol")
+    if episode_schema.get("version") != EPISODE_RECORD_VERSION:
+        raise MetricsProtocolError("episode record schema protocol mismatch")
+    agent_ids = [int(agent_id) for agent_id in schema["agent_ids"]]
+    episode_records = _load_episode_jsonl(
+        run_dir / str(episode_schema.get("jsonl_file", "episodes.jsonl")),
+        run_id=str(schema["run_id"]),
+        agent_ids=agent_ids,
+    )
+    episodes_by_update: Dict[int, List[Dict[str, object]]] = {}
+    for episode in episode_records:
+        episodes_by_update.setdefault(int(episode["update"]), []).append(episode)
+    if sorted(episodes_by_update) != actual_updates:
+        raise MetricsProtocolError(
+            "episode record updates differ from metrics updates; "
+            f"episodes={sorted(episodes_by_update)}, metrics={actual_updates}"
+        )
+
+    for record in records:
+        update = int(record["update"])
+        scalars = record["scalars"]
+        episodes = episodes_by_update[update]
+        expected_count = int(scalars["episode/count"])
+        if len(episodes) != expected_count:
+            raise MetricsProtocolError(
+                f"update {update} episodes.jsonl count={len(episodes)}, "
+                f"metrics episode/count={expected_count}"
+            )
+        lengths = [int(episode["episode_length"]) for episode in episodes]
+        if not math.isclose(
+            float(sum(lengths) / len(lengths)),
+            float(scalars["episode/length_mean"]),
+            rel_tol=1e-9,
+            abs_tol=1e-9,
+        ):
+            raise MetricsProtocolError(
+                f"update {update} episode length aggregate differs from records"
+            )
+        outcome_fields = {
+            "success": "episode/success_rate",
+            "collision": "episode/collision_rate",
+            "timeout": "episode/timeout_rate",
+        }
+        for field, tag in outcome_fields.items():
+            actual_rate = sum(bool(episode[field]) for episode in episodes) / len(
+                episodes
+            )
+            if not math.isclose(
+                actual_rate, float(scalars[tag]), rel_tol=1e-9, abs_tol=1e-9
+            ):
+                raise MetricsProtocolError(
+                    f"update {update} {field} aggregate differs from records"
+                )
+        end_reason_counts: Dict[str, int] = {}
+        for episode in episodes:
+            reason = str(episode["episode_end_reason"])
+            end_reason_counts[reason] = end_reason_counts.get(reason, 0) + 1
+        for reason, count in end_reason_counts.items():
+            tag = f"episode/end_reason/{reason}_count"
+            if tag not in scalars or int(scalars[tag]) != count:
+                raise MetricsProtocolError(
+                    f"update {update} end reason {reason!r} differs from records"
+                )
+        for agent_id in agent_ids:
+            key = str(agent_id)
+            active_total = sum(
+                int(episode["agents"][key]["active_decision_steps"])
+                for episode in episodes
+            )
+            transition_total = sum(
+                int(episode["agents"][key]["transition_count"])
+                for episode in episodes
+            )
+            if active_total != transition_total:
+                raise MetricsProtocolError(
+                    f"update {update} agent {agent_id} episode active/transition totals differ"
+                )
+            for tag in (
+                f"rollout/agent_{agent_id}/active_transition_count",
+                f"rollout/agent_{agent_id}/transition_count",
+            ):
+                if int(scalars[tag]) != active_total:
+                    raise MetricsProtocolError(
+                        f"update {update} {tag} differs from episode records"
+                    )
+            return_mean = sum(
+                float(episode["agents"][key]["episode_return"])
+                for episode in episodes
+            ) / len(episodes)
+            if not math.isclose(
+                return_mean,
+                float(scalars[f"episode/agent_{agent_id}/return_mean"]),
+                rel_tol=1e-9,
+                abs_tol=1e-9,
+            ):
+                raise MetricsProtocolError(
+                    f"update {update} agent {agent_id} return mean differs from records"
+                )
+
+    if require_ppo_updates:
+        ratio_limit = (
+            1e-6
+            if max_preupdate_ratio_error is None
+            else float(max_preupdate_ratio_error)
+        )
+        for record in records:
+            update = int(record["update"])
+            scalars = record["scalars"]
+            for agent_id in agent_ids:
+                ratio_error = float(
+                    scalars[
+                        f"policy/agent_{agent_id}/preupdate_max_abs_ratio_error"
+                    ]
+                )
+                if ratio_error >= ratio_limit:
+                    raise MetricsProtocolError(
+                        f"update {update} agent {agent_id} pre-update ratio error "
+                        f"{ratio_error} >= {ratio_limit}"
+                    )
+                if float(scalars[f"model/actor_agent_{agent_id}/update_norm"]) <= 0:
+                    raise MetricsProtocolError(
+                        f"update {update} agent {agent_id} actor did not update"
+                    )
+            if float(scalars["model/critic/update_norm"]) <= 0:
+                raise MetricsProtocolError(
+                    f"update {update} critic did not update"
                 )
 
     tb_dir = run_dir / str(schema.get("tensorboard_directory", "tb"))
@@ -160,7 +402,9 @@ def validate_metrics_run(run_dir: Path | str) -> Dict[str, object]:
     return {
         "run_dir": str(run_dir),
         "run_id": schema["run_id"],
-        "updates": [int(record["update"]) for record in records],
+        "updates": actual_updates,
+        "episode_record_version": EPISODE_RECORD_VERSION,
+        "episode_record_count": len(episode_records),
         "required_tag_count": len(required_tags),
         "tensorboard_scalar_tag_count": len(tensorboard_tags),
         "status": "PASS",
@@ -172,8 +416,24 @@ def main() -> None:
         description="Validate current MAPPO TensorBoard and metrics.jsonl artifacts"
     )
     parser.add_argument("--run-dir", required=True)
+    parser.add_argument("--expected-updates", type=int, nargs="+")
+    parser.add_argument("--expected-episodes-per-update", type=int)
+    parser.add_argument("--require-ppo-updates", action="store_true")
+    parser.add_argument("--max-preupdate-ratio-error", type=float)
     args = parser.parse_args()
-    print(json.dumps(validate_metrics_run(args.run_dir), ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            validate_metrics_run(
+                args.run_dir,
+                expected_updates=args.expected_updates,
+                expected_episodes_per_update=args.expected_episodes_per_update,
+                require_ppo_updates=args.require_ppo_updates,
+                max_preupdate_ratio_error=args.max_preupdate_ratio_error,
+            ),
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

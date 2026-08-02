@@ -25,6 +25,8 @@
 | **[MANUAL_DATA_USAGE.md](MANUAL_DATA_USAGE.md)** | 手动驾驶数据采集指南 |
 | **[docs/毕业课题_研究推进TODO.md](docs/毕业课题_研究推进TODO.md)** | 当前唯一任务顺序、阶段门槛和实验登记 |
 | **[docs/MAPPO_TensorBoard指标协议.md](docs/MAPPO_TensorBoard指标协议.md)** | 当前基础 MAPPO 的奖励审计、聚合口径、训练健康指标和离线验证 |
+| **[docs/P0-00G_真实CARLA_smoke运行规范.md](docs/P0-00G_真实CARLA_smoke运行规范.md)** | P0-00G 环境门槛、冻结命令、受控中断、产物和 PASS/HOLD 标准 |
+| **[docs/P0-00G_真实CARLA_smoke测试记录.md](docs/P0-00G_真实CARLA_smoke测试记录.md)** | P0-00G 逐次结果、失败根因、修复验证与最终 Judge 裁决 |
 
 ---
 
@@ -162,6 +164,7 @@ CarlaUE4.exe
   --rollout-episodes 4 `
   --min-transitions-per-update 64 `
   --max-steps 300 `
+  --save-interval 1 `
   --tb-histogram-interval 1 `
   --seed 42 `
   --save-dir logs/P0_00G_robust_v2_smoke_s42_<timestamp>
@@ -232,13 +235,17 @@ python record_manual_control.py --agent-id 1 --output-dir ./manual_driving_data
 
 ### TensorBoard 监控
 
-当前 `robust_v2` 将同一 update payload 写入 `<RunID>/tb/` 和 `<RunID>/metrics.jsonl`，并通过固定 schema 区分禁用奖励、稀疏奖励与真实异常。奖励、PPO/Critic、动作、模型更新、场景和耗时的完整口径见 [TensorBoard 指标协议](docs/MAPPO_TensorBoard指标协议.md)。
+当前 `robust_v2` 将同一 update payload 写入 `<RunID>/tb/` 和 `<RunID>/metrics.jsonl`，并将逐 episode 生命周期原始证据写入 `<RunID>/episodes.jsonl`。奖励、PPO/Critic、动作、模型更新、场景和耗时的完整口径见 [TensorBoard 指标协议](docs/MAPPO_TensorBoard指标协议.md)。
 
 ```powershell
 tensorboard --logdir logs/<RunID>/tb
 
 ..\..\..\venv\Scripts\python.exe -m utils.validate_tensorboard_run `
-  --run-dir logs/<RunID>
+  --run-dir logs/<RunID> `
+  --expected-updates 1 2 3 4 `
+  --expected-episodes-per-update 4 `
+  --require-ppo-updates `
+  --max-preupdate-ratio-error 1e-6
 ```
 
 验证器返回 `"status": "PASS"` 后，仍需在 P0-00G 人工检查真实 CARLA 的 LiDAR/TTC、终局和 PPO 曲线。旧训练入口的历史 TensorBoard 不属于当前指标协议。

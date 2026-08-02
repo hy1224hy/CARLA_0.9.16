@@ -218,6 +218,8 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
             context="episode step=1",
         )
         recorder.finish_episode(
+            update=1,
+            episode_index=0,
             episode_returns={
                 0: _reward(details_0),
                 1: _reward(details_1_a) + _reward(details_1_b),
@@ -225,6 +227,10 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
             episode_length=2,
             active_decision_steps={0: 1, 1: 2},
             transition_counts={0: 1, 1: 2},
+            dones={0: True, 1: True},
+            terminated={0: True, 1: True},
+            truncated={0: False, 1: False},
+            bootstrap_enabled={0: False, 1: False},
             success=False,
             collision=True,
             timeout=False,
@@ -308,6 +314,26 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
             self.assertEqual(len(records), 1)
             self.assertEqual(records[0]["scalars"], payload["scalars"])
 
+            episode_records = [
+                json.loads(line)
+                for line in (Path(temporary_dir) / "episodes.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(len(episode_records), 1)
+            self.assertEqual(episode_records[0]["update"], 1)
+            self.assertEqual(episode_records[0]["episode_index"], 0)
+            self.assertEqual(
+                episode_records[0]["agents"]["0"]["active_decision_steps"], 1
+            )
+            self.assertEqual(
+                episode_records[0]["agents"]["1"]["transition_count"], 2
+            )
+            self.assertFalse(
+                episode_records[0]["agents"]["1"]["bootstrap_enabled"]
+            )
+
             event_file = next(tb_dir.glob("events.out.tfevents.*"))
             accumulator = EventAccumulator(
                 str(event_file), size_guidance={"scalars": 0}
@@ -322,6 +348,7 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
             report = validate_metrics_run(temporary_dir)
             self.assertEqual(report["status"], "PASS")
             self.assertEqual(report["updates"], [1])
+            self.assertEqual(report["episode_record_count"], 1)
 
     def test_checkpoint_payload_replays_missing_metrics_after_crash(self):
         with tempfile.TemporaryDirectory() as temporary_dir:
@@ -380,10 +407,16 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(MetricsProtocolError, "active-step count"):
                 recorder.finish_episode(
+                    update=1,
+                    episode_index=0,
                     episode_returns={0: 1.0, 1: 1.0},
                     episode_length=1,
                     active_decision_steps={0: 0, 1: 1},
                     transition_counts={0: 0, 1: 1},
+                    dones={0: True, 1: True},
+                    terminated={0: True, 1: True},
+                    truncated={0: False, 1: False},
+                    bootstrap_enabled={0: False, 1: False},
                     success=False,
                     collision=False,
                     timeout=True,
@@ -393,6 +426,68 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
                 )
             recorder.close()
 
+    def test_episode_lifecycle_record_rejects_incorrect_bootstrap(self):
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            recorder = self._new_recorder(temporary_dir)
+            details = _reward_details(speed=1.0)
+            recorder.record_env_step(
+                active_agent_ids=[0, 1],
+                rewards={0: 1.0, 1: 1.0},
+                reward_details={0: details, 1: details},
+                reward_diagnostics_by_agent={
+                    0: _reward_diagnostics(),
+                    1: _reward_diagnostics(),
+                },
+                actions={0: [0.0, 0.0, 0.0], 1: [0.0, 0.0, 0.0]},
+                context="step",
+            )
+            with self.assertRaisesRegex(
+                MetricsProtocolError, "bootstrap_enabled must equal truncated"
+            ):
+                recorder.finish_episode(
+                    update=1,
+                    episode_index=0,
+                    episode_returns={0: 1.0, 1: 1.0},
+                    episode_length=1,
+                    active_decision_steps={0: 1, 1: 1},
+                    transition_counts={0: 1, 1: 1},
+                    dones={0: True, 1: True},
+                    terminated={0: False, 1: False},
+                    truncated={0: True, 1: True},
+                    bootstrap_enabled={0: False, 1: True},
+                    success=False,
+                    collision=False,
+                    timeout=True,
+                    end_reason="max_steps",
+                    scenario_name="scenario.json",
+                    context="episode",
+                )
+            recorder.close()
+
+    def test_resume_discards_episode_records_ahead_of_safe_checkpoint(self):
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            first = self._new_recorder(temporary_dir)
+            self._record_ragged_episode(first)
+            first.close()
+            self.assertTrue(
+                (Path(temporary_dir) / "episodes.jsonl")
+                .read_text(encoding="utf-8")
+                .strip()
+            )
+
+            resumed = self._new_recorder(
+                temporary_dir,
+                start_update=1,
+                completed_update=0,
+            )
+            resumed.close()
+            self.assertEqual(
+                (Path(temporary_dir) / "episodes.jsonl").read_text(
+                    encoding="utf-8"
+                ),
+                "",
+            )
+
     def test_non_skipped_ppo_health_metrics_are_namespaced(self):
         with tempfile.TemporaryDirectory() as temporary_dir:
             recorder = self._new_recorder(temporary_dir)
@@ -400,6 +495,10 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
             actors = {0: nn.Linear(2, 2), 1: nn.Linear(2, 2)}
             critic = nn.Linear(3, 1)
             recorder.capture_model_snapshot(actors, critic)
+            with torch.no_grad():
+                actors[0].weight.add_(0.01)
+                actors[1].weight.sub_(0.02)
+                critic.bias.add_(0.03)
             recorder.record_model_update(actors, critic)
             ppo_metrics = {
                 "critic_loss": [2.0],
@@ -453,7 +552,16 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
                 scalars["policy/agent_0/grad_clip_activation_rate"], 1.0
             )
             self.assertEqual(scalars["critic/grad_clip_activation_rate"], 1.0)
+            recorder.commit_payload(payload)
             recorder.close()
+            report = validate_metrics_run(
+                temporary_dir,
+                expected_updates=[1],
+                expected_episodes_per_update=1,
+                require_ppo_updates=True,
+                max_preupdate_ratio_error=1e-6,
+            )
+            self.assertEqual(report["status"], "PASS")
 
 
 if __name__ == "__main__":

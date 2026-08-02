@@ -86,8 +86,8 @@
 
 | 文件名 | 功能说明 |
 |--------|----------|
-| **training_metrics_recorder.py** | **[CURRENT]** 按 active agent 聚合奖励、PPO/Critic、动作、模型、场景和耗时，并同源写入 TB/JSONL | 当前 `robust_v2` 的模块化指标入口 |
-| **validate_tensorboard_run.py** | **[CURRENT]** 离线校验指标 schema、有限值、奖励守恒、update 顺序及 TensorBoard/JSONL 对账 | P0-00G smoke 和后续正式 Run 的验收命令 |
+| **training_metrics_recorder.py** | **[CURRENT]** 按 active agent 聚合奖励/PPO，并写入 TB、逐 update metrics 和逐 episode 生命周期记录 | 当前 `robust_v2` 的模块化指标入口 |
+| **validate_tensorboard_run.py** | **[CURRENT]** 离线校验指标 schema、逐 episode 对账、PPO 门槛、update 顺序及 TensorBoard/JSONL 一致性 | P0-00G smoke 和后续正式 Run 的验收命令 |
 | **mappo_logger.py** | **[LEGACY]** 旧训练日志工具；未实现当前固定 schema、active ownership 和 checkpoint 重放 | 历史入口参考，不用于当前 `robust_v2` |
 | **manual_data_loader.py** | 手动驾驶数据加载器 |
 | | - 加载、解析手动采集的数据 |
@@ -111,6 +111,7 @@
 | **logs/<RunID>/checkpoint_manifest.json** | Run checkpoint 路径、update 与 SHA256 登记 |
 | **logs/<RunID>/tb/** | 当前 Run 的 TensorBoard event；与 JSONL 使用同一 update payload |
 | **logs/<RunID>/metrics.jsonl** | 可审计的逐 update scalar payload；严格递增并可由 checkpoint 重放 |
+| **logs/<RunID>/episodes.jsonl** | 可审计的逐 episode 终局与 per-agent active steps/transition/T-X/bootstrap 记录；resume 裁剪安全边界后的记录 |
 | **logs/<RunID>/metrics_schema.json** | 指标协议、奖励字段、agent 和聚合口径 |
 | **requirements.txt** | Python依赖包列表 |
 
@@ -125,6 +126,8 @@
 | **MANUAL_DATA_USAGE.md** | 手动驾驶数据采集与使用详细指南 |
 | **docs/MAPPO_checkpoint与恢复训练协议.md** | P0-00F fresh/pretrained/resume 语义、目录结构、兼容规则和标准命令 |
 | **docs/MAPPO_TensorBoard指标协议.md** | P0-00F-TB 奖励 schema、聚合口径、PPO/模型指标、事务顺序和验证命令 |
+| **docs/P0-00G_真实CARLA_smoke运行规范.md** | P0-00G 环境门槛、冻结命令、受控中断、预期产物与 PASS/HOLD 标准 |
+| **docs/P0-00G_真实CARLA_smoke测试记录.md** | P0-00G 每次环境、fresh、中断、resume、validator、失败根因、修复证据与 Judge 裁决 |
 | **tests/test_checkpoint_resume.py** | 原子保存、哈希、RNG/optimizer 连续、协议拒绝和训练入口 checkpoint 回归测试 |
 | **tests/test_training_metrics.py** | 奖励守恒、字段拒绝、ragged agent/稀疏事件聚合、PPO/模型指标、TB/JSONL 对账及 checkpoint 重放测试 |
 
