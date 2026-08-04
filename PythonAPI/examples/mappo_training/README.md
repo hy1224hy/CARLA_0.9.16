@@ -24,6 +24,8 @@
 | **[FILE_INDEX.md](FILE_INDEX.md)** | 各文件功能详解索引 |
 | **[MANUAL_DATA_USAGE.md](MANUAL_DATA_USAGE.md)** | 手动驾驶数据采集指南 |
 | **[docs/毕业课题_研究推进TODO.md](docs/毕业课题_研究推进TODO.md)** | 当前唯一任务顺序、阶段门槛和实验登记 |
+| **[docs/P0-BASE-01_基础策略正式实验契约.md](docs/P0-BASE-01_基础策略正式实验契约.md)** | 正式 JSON 参数、分段停点、HOLD 规则、Run 证据链和标准命令 |
+| **[docs/P0-BASE_基础策略实验记录.md](docs/P0-BASE_基础策略实验记录.md)** | 基础策略 fresh/resume/C0/GO-HOLD 人工实验台账 |
 | **[docs/MAPPO_TensorBoard指标协议.md](docs/MAPPO_TensorBoard指标协议.md)** | 当前基础 MAPPO 的奖励审计、聚合口径、训练健康指标和离线验证 |
 | **[docs/P0-00G_真实CARLA_smoke运行规范.md](docs/P0-00G_真实CARLA_smoke运行规范.md)** | P0-00G 环境门槛、冻结命令、受控中断、产物和 PASS/HOLD 标准 |
 | **[docs/P0-00G_真实CARLA_smoke测试记录.md](docs/P0-00G_真实CARLA_smoke测试记录.md)** | P0-00G 逐次结果、失败根因、修复验证与最终 Judge 裁决 |
@@ -133,6 +135,8 @@ python -m utils.record_manual_control --agent-id 0
 ```
 
 不要从 `training/` 子目录直接执行文件，也不要从本文档历史段落复制 deprecated 命令。
+
+P0-BASE 正式训练必须带 `--experiment-contract configs/base_mappo/p0_base_pilot_v1.json`，且只在登记停点运行；科学参数不再允许从 CLI 覆盖。当前 P0-BASE-01 已完成，但 P0-BASE-02 C0 evaluator 完成前仍不得启动正式 pilot。标准命令见 [P0-BASE-01 正式实验契约](docs/P0-BASE-01_基础策略正式实验契约.md)。
 
 依赖包括：
 - torch &gt;= 1.9.0

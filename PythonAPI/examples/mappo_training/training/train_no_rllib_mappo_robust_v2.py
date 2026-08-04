@@ -35,6 +35,15 @@ from training.lifecycle_semantics import (
     validate_lifecycle_flags,
 )
 from training.metrics_protocol import METRICS_PROTOCOL_VERSION
+from training.experiment_contract import (
+    ExperimentContractError,
+    apply_experiment_contract,
+    enforce_formal_transition_minimum,
+    initialize_experiment_evidence,
+    update_experiment_evidence,
+    validate_resume_experiment_evidence,
+    verify_critical_sources_clean,
+)
 from utils.training_metrics_recorder import TrainingMetricsRecorder
 from training.checkpoint_protocol import (
     ACTION_PROTOCOL_VERSION,
@@ -2336,6 +2345,13 @@ def validate_p0_smoke_interrupt_configuration(args, *, check_rollout_bound=True)
 
 
 def train(args):
+    project_dir = Path(__file__).resolve().parents[1]
+    repository_root = Path(__file__).resolve().parents[4]
+    if getattr(args, "experiment_contract", "") and not getattr(
+        args, "_experiment_contract_metadata", None
+    ):
+        apply_experiment_contract(args, project_dir=project_dir)
+
     if args.resume and args.pretrained_checkpoint:
         raise ValueError(
             "--resume and --pretrained-checkpoint are mutually exclusive"
@@ -2356,23 +2372,30 @@ def train(args):
     )
 
     save_dir = os.path.abspath(args.save_dir)
-    repository_root = Path(__file__).resolve().parents[4]
     current_git = get_git_metadata(repository_root)
-    code_fingerprint = files_fingerprint(
-        [
-            Path(__file__).resolve(),
-            Path(__file__).resolve().with_name("checkpoint_protocol.py"),
-            Path(__file__).resolve().with_name("lifecycle_semantics.py"),
-            Path(__file__).resolve().with_name("metrics_protocol.py"),
-            Path(__file__).resolve().parents[1]
-            / "utils"
-            / "training_metrics_recorder.py",
-            Path(__file__).resolve().parents[1] / "models" / "actor_critic.py",
-            Path(__file__).resolve().parents[1]
-            / "environment"
-            / "carla_multi_agent_env.py",
-        ]
+    fingerprint_paths = [
+        Path(__file__).resolve(),
+        Path(__file__).resolve().with_name("experiment_contract.py"),
+        Path(__file__).resolve().with_name("checkpoint_protocol.py"),
+        Path(__file__).resolve().with_name("lifecycle_semantics.py"),
+        Path(__file__).resolve().with_name("metrics_protocol.py"),
+        project_dir / "utils" / "training_metrics_recorder.py",
+        project_dir / "models" / "actor_critic.py",
+        project_dir / "environment" / "carla_multi_agent_env.py",
+    ]
+    experiment_contract_metadata = getattr(
+        args, "_experiment_contract_metadata", None
     )
+    if experiment_contract_metadata:
+        fingerprint_paths.append(Path(experiment_contract_metadata["path"]))
+        verify_critical_sources_clean(
+            repository_root=repository_root,
+            project_dir=project_dir,
+            relative_paths=experiment_contract_metadata["payload"][
+                "critical_source_paths"
+            ],
+        )
+    code_fingerprint = files_fingerprint(fingerprint_paths)
     resume_checkpoint = None
     resume_digest = ""
     resume_path = None
@@ -2394,6 +2417,18 @@ def train(args):
             resume_path, map_location="cpu"
         )
         validate_checkpoint_header(resume_checkpoint)
+        if experiment_contract_metadata:
+            saved_contract_sha = str(
+                resume_checkpoint["run_metadata"].get(
+                    "experiment_contract_sha256", ""
+                )
+            )
+            if saved_contract_sha != experiment_contract_metadata["sha256"]:
+                raise ExperimentContractError(
+                    "resume checkpoint experiment contract SHA256 mismatch: "
+                    f"{saved_contract_sha!r} != "
+                    f"{experiment_contract_metadata['sha256']!r}"
+                )
         apply_resume_configuration(args, resume_checkpoint)
         validate_p0_smoke_interrupt_configuration(args)
 
@@ -2577,6 +2612,20 @@ def train(args):
     )
     training_config = checkpoint_training_config(args)
     pool_fingerprint = scenario_pool_fingerprint(scenario_dir)
+    if experiment_contract_metadata:
+        if resume_checkpoint is not None:
+            validate_resume_experiment_evidence(
+                args=args, run_dir=Path(save_dir)
+            )
+        else:
+            initialize_experiment_evidence(
+                args=args,
+                run_dir=Path(save_dir),
+                git_metadata=current_git,
+                code_fingerprint=code_fingerprint,
+                scenario_pool_fingerprint=pool_fingerprint,
+                training_config=training_config,
+            )
 
     def _create_validated_env():
         created_env = CarlaMultiAgentEnv(
@@ -2666,7 +2715,17 @@ def train(args):
                 f"--updates={args.updates}; choose a larger stop update"
             )
 
-        env = _create_validated_env()
+        try:
+            env = _create_validated_env()
+        except Exception as error:
+            update_experiment_evidence(
+                args=args,
+                run_dir=Path(save_dir),
+                completed_update=completed_update,
+                status="ERROR_PRE_TRAIN",
+                notes=f"environment initialization failed: {error}",
+            )
+            raise
         run_metadata = copy.deepcopy(
             resume_checkpoint["run_metadata"]
         )
@@ -2700,10 +2759,30 @@ def train(args):
                     or resume_code_drift
                 ),
                 "code_drift_history": code_drift_history,
+                "experiment_contract_id": (
+                    experiment_contract_metadata["contract_id"]
+                    if experiment_contract_metadata
+                    else run_metadata.get("experiment_contract_id", "")
+                ),
+                "experiment_contract_sha256": (
+                    experiment_contract_metadata["sha256"]
+                    if experiment_contract_metadata
+                    else run_metadata.get("experiment_contract_sha256", "")
+                ),
             }
         )
     else:
-        env = _create_validated_env()
+        try:
+            env = _create_validated_env()
+        except Exception as error:
+            update_experiment_evidence(
+                args=args,
+                run_dir=Path(save_dir),
+                completed_update=completed_update,
+                status="ERROR_PRE_TRAIN",
+                notes=f"environment initialization failed: {error}",
+            )
+            raise
         source_type = (
             "pretrained_weights"
             if pretrained_checkpoint is not None
@@ -2734,6 +2813,26 @@ def train(args):
             "resume_count": 0,
             "code_drift_override": False,
             "code_drift_history": [],
+            "experiment_contract_id": (
+                experiment_contract_metadata["contract_id"]
+                if experiment_contract_metadata
+                else ""
+            ),
+            "experiment_contract_sha256": (
+                experiment_contract_metadata["sha256"]
+                if experiment_contract_metadata
+                else ""
+            ),
+            "experiment_contract_canonical_sha256": (
+                experiment_contract_metadata["canonical_sha256"]
+                if experiment_contract_metadata
+                else ""
+            ),
+            "planned_total_updates": (
+                experiment_contract_metadata["planned_total_updates"]
+                if experiment_contract_metadata
+                else int(args.updates)
+            ),
         }
         manifest = {
             "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
@@ -2766,9 +2865,27 @@ def train(args):
             resume_metrics_payload=last_metrics_payload,
             histogram_interval=args.tb_histogram_interval,
         )
-    except Exception:
+        update_experiment_evidence(
+            args=args,
+            run_dir=Path(save_dir),
+            completed_update=completed_update,
+            status="RUNNING",
+        )
+    except Exception as error:
+        try:
+            update_experiment_evidence(
+                args=args,
+                run_dir=Path(save_dir),
+                completed_update=completed_update,
+                status="ERROR_PRE_TRAIN",
+                notes=f"metrics recorder initialization failed: {error}",
+            )
+        except Exception as evidence_error:
+            print(f"  [警告] 实验台账错误状态写入失败: {evidence_error}")
         if visualizer is not None:
             visualizer.close()
+        if "metrics_recorder" in locals():
+            metrics_recorder.close()
         env.close()
         raise
     print(f"RunID: {args.run_id}")
@@ -2924,6 +3041,8 @@ def train(args):
             f"{interrupted_path}"
         )
 
+    experiment_status = "RUNNING"
+    experiment_notes = ""
     try:
         if resume_checkpoint is None:
             _save_safe_checkpoint(include_periodic=False)
@@ -3221,6 +3340,9 @@ def train(args):
                 aid: len(buffer.get_agent_data(aid)) for aid in agent_ids
             }
             skip_update = n_transitions < args.min_transitions_per_update
+            enforce_formal_transition_minimum(
+                args=args, total_transitions=n_transitions
+            )
             ppo_metrics = None
             advantage_stats: Dict[int, Dict[str, float]] = {}
             agent_stop_epoch: Dict[int, int] = {}
@@ -3365,24 +3487,71 @@ def train(args):
                 include_periodic=(update % args.save_interval == 0)
             )
             metrics_recorder.commit_payload(metrics_payload)
+        experiment_status = "SEGMENT_COMPLETED"
 
     except KeyboardInterrupt:
+        experiment_status = "INTERRUPTED"
+        experiment_notes = "user interrupt; current incomplete update discarded"
         print("训练中断：丢弃当前未完成 update，保留最近完整边界")
         try:
             _save_interrupted_checkpoint()
         except Exception as save_error:
             print(f"  [警告] interrupted checkpoint 保存失败: {save_error}")
-    except Exception:
+    except Exception as error:
+        experiment_status = (
+            "HOLD" if experiment_contract_metadata else "ERROR"
+        )
+        experiment_notes = f"{type(error).__name__}: {error}"
         try:
             _save_interrupted_checkpoint()
         except Exception as save_error:
             print(f"  [警告] 异常退出时保存 interrupted 失败: {save_error}")
         raise
     finally:
+        active_exception = sys.exc_info()[0] is not None
+        cleanup_errors = []
         if visualizer is not None:
-            visualizer.close()
-        env.close()
-        metrics_recorder.close()
+            try:
+                visualizer.close()
+            except Exception as error:
+                cleanup_errors.append(f"visualizer.close: {error}")
+        try:
+            env.close()
+        except Exception as error:
+            cleanup_errors.append(f"env.close: {error}")
+        try:
+            metrics_recorder.close()
+        except Exception as error:
+            cleanup_errors.append(f"metrics_recorder.close: {error}")
+        if cleanup_errors:
+            cleanup_note = "; ".join(cleanup_errors)
+            experiment_notes = "; ".join(
+                note for note in (experiment_notes, cleanup_note) if note
+            )
+            experiment_status = (
+                "HOLD" if experiment_contract_metadata else "ERROR"
+            )
+
+        evidence_error = None
+        try:
+            update_experiment_evidence(
+                args=args,
+                run_dir=Path(save_dir),
+                completed_update=completed_update,
+                status=experiment_status,
+                notes=experiment_notes,
+            )
+        except Exception as error:
+            evidence_error = error
+        if evidence_error is not None:
+            if active_exception:
+                print(f"  [警告] 实验台账最终状态写入失败: {evidence_error}")
+            else:
+                raise evidence_error
+        if cleanup_errors and not active_exception:
+            raise RuntimeError(
+                "training cleanup failed: " + "; ".join(cleanup_errors)
+            )
 
 
 def build_parser():
@@ -3483,6 +3652,15 @@ def build_parser():
         type=str,
         default="",
         help="可选：记录到 checkpoint 的冻结配置文件路径及 SHA256",
+    )
+    parser.add_argument(
+        "--experiment-contract",
+        type=str,
+        default="",
+        help=(
+            "P0-BASE 正式实验契约 JSON；启用后科学参数仅由契约提供，"
+            "CLI 必须显式给出 --updates/--run-id/--save-dir"
+        ),
     )
     parser.add_argument(
         "--allow-resume-code-drift",

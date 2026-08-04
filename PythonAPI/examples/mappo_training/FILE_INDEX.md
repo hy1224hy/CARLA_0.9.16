@@ -47,6 +47,7 @@
 | **lifecycle_semantics.py** | **[CURRENT]** 统一校验 `done/terminated/truncated` 并选择合法 bootstrap state | 两个当前入口共享的 P0-00B 协议 |
 | **checkpoint_protocol.py** | **[CURRENT]** 版本化 checkpoint、原子保存/SHA256、manifest、RNG 捕获恢复和严格兼容校验 | `robust_v2` 的 P0-00F 协议；无 CARLA 单测入口 |
 | **metrics_protocol.py** | **[CURRENT]** 版本化奖励分量/raw diagnostic schema、有限值和奖励守恒校验 | `robust_v2` 的 P0-00F-TB 指标协议；不依赖 CARLA/TensorBoard |
+| **experiment_contract.py** | **[CURRENT]** P0-BASE 严格 JSON 契约、正式 CLI 约束、关键源码预检、resolved config/manifest/registry 原子证据链 | P0-BASE-01；在 CARLA/optimizer 前 fail-fast |
 | **train_rllib.py** | **[DEPRECATED]** 历史 RLlib 共享 PPO | 禁止新训练/论文结果 |
 | **train_no_rllib_mappo.py** | **[DEPRECATED]** 早期独立 MAPPO | 历史参考 |
 | **train_no_rllib_mappo_robust.py** | **[DEPRECATED]** robust v1 | 历史参考 |
@@ -114,6 +115,10 @@
 | **logs/<RunID>/metrics.jsonl** | 可审计的逐 update scalar payload；严格递增并可由 checkpoint 重放 |
 | **logs/<RunID>/episodes.jsonl** | 可审计的逐 episode 终局与 per-agent active steps/transition/T-X/bootstrap 记录；resume 裁剪安全边界后的记录 |
 | **logs/<RunID>/metrics_schema.json** | 指标协议、奖励字段、agent 和聚合口径 |
+| **logs/<RunID>/resolved_config.json** | P0-BASE 正式 Run 的解析参数、契约/Git/源码/场景指纹与停止规则 |
+| **logs/<RunID>/experiment_manifest.json** | P0-BASE Run 的 PREPARED/RUNNING/SEGMENT_COMPLETED/INTERRUPTED/ERROR 状态 |
+| **configs/base_mappo/p0_base_pilot_v1.json** | seed 42 基础 MAPPO pilot 的机器可读正式参数真值与登记停点 |
+| **experiments/base_mappo_registry.csv** | 每个正式基础 Run 一行的跨 Run 机器可读索引 |
 | **requirements.txt** | Python依赖包列表 |
 
 ---
@@ -130,9 +135,12 @@
 | **docs/P0-00G_真实CARLA_smoke运行规范.md** | P0-00G 环境门槛、冻结命令、受控中断、预期产物与 PASS/HOLD 标准 |
 | **docs/P0-00G_真实CARLA_smoke测试记录.md** | P0-00G 每次环境、fresh、中断、resume、validator、失败根因、修复证据与 Judge 裁决 |
 | **docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md** | 无基础 checkpoint 的 success/reward/lifecycle 两层真实 CARLA 测试、PASS 门槛、命令和逐次结果 |
+| **docs/P0-BASE-01_基础策略正式实验契约.md** | 正式参数依据、命令、证据链、停止规则、风险边界和验收 |
+| **docs/P0-BASE_基础策略实验记录.md** | fresh/resume/C0/GO-HOLD 逐 Run 人工实验台账模板 |
 | **tests/test_checkpoint_resume.py** | 原子保存、哈希、RNG/optimizer 连续、协议拒绝和训练入口 checkpoint 回归测试 |
 | **tests/test_training_metrics.py** | 奖励守恒、字段拒绝、ragged agent/稀疏事件聚合、PPO/模型指标、TB/JSONL 对账及 checkpoint 重放测试 |
 | **tests/test_success_logic_smoke.py** | 近终点场景几何与 success reward/terminated/truncated/active/global-reason 审计器回归测试 |
+| **tests/test_experiment_contract.py** | JSON schema、全批上界、CLI 覆盖拒绝、身份漂移和 registry/manifest 原子更新测试 |
 
 ---
 

@@ -433,7 +433,7 @@ python -m utils.record_manual_control \
 
 ### 当前流程 1：基础策略
 
-```bash
+```powershell
 # 1. 启动 CARLA
 # (在另一个终端)
 CarlaUE4.exe
@@ -444,24 +444,30 @@ CarlaUE4.exe
 
 # 4. 完成 P0-BASE-00/01/02：冻结源码、版本化配置/registry 和基础策略 C0 evaluator
 
-# 5. 先用 seed 42 做分段试训；P0-BASE-04 GO 后才按同一配置扩展多 seed
-python -m training.train_no_rllib_mappo_robust_v2 \
-    --run-id <unique-run-id> \
-    --save-dir logs/<unique-run-id> \
-    --lr-decay-horizon <frozen-total-updates> \
-    <frozen-config-args>
+# 5. P0-BASE-02 完成后，只用冻结契约运行 seed 42 的第一个 5-update 分段
+$stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$runId = "P0_BASE_MAPPO_Town02_s42_$stamp"
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --experiment-contract configs/base_mappo/p0_base_pilot_v1.json `
+  --updates 5 `
+  --run-id $runId `
+  --save-dir "logs/$runId"
 
 # 6. 通过冻结的独立 C0 验证，从 periodic checkpoint 生成 best_base_valid.pt
 ```
 
-#### 基础策略 checkpoint/resume（P0-00F）
+#### 基础策略正式契约 checkpoint/resume（P0-00F + P0-BASE-01）
 
 ```powershell
-# 同一 Run 严格恢复；训练配置、seed、LR horizon 会从 checkpoint 恢复
+# 同一正式 Run 严格恢复到下一个登记停点；契约 SHA、配置、seed、LR horizon 均校验
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
-  --resume latest `
-  --save-dir logs/<original-run-id> `
-  --updates <stop-update-greater-than-saved-update>
+  --experiment-contract configs/base_mappo/p0_base_pilot_v1.json `
+  --updates 10 `
+  --run-id $runId `
+  --save-dir "logs/$runId" `
+  --resume latest
+
+# 以下 pretrained 语义只供新契约设计或历史诊断；P0_BASE_MAPPO_TOWN02_PILOT_V1 明确禁止 pretrained
 
 # 从已有权重开启新 Run；不会继承 optimizer/update/课程/RNG
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
@@ -472,7 +478,7 @@ python -m training.train_no_rllib_mappo_robust_v2 \
   --seed 43
 ```
 
-`--resume latest` 不存在、哈希损坏、Git/协议/显式训练配置不一致时会直接失败，不会从零启动或部分加载。训练期不再产生 `best.pt`；后续仅由独立 C0/C1 验证从 immutable periodic checkpoint 生成 `best_base_valid.pt`。详细文件结构和兼容规则见 `docs/MAPPO_checkpoint与恢复训练协议.md`。
+`--resume latest` 不存在、哈希损坏、Git/协议/训练配置/实验契约不一致时会直接失败，不会从零启动或部分加载。正式 CLI 只允许 endpoint/device/登记停点/RunID/目录/resume，科学参数覆盖会 fail-fast。训练期不再产生 `best.pt`；后续仅由独立 C0/C1 验证从 immutable periodic checkpoint 生成 `best_base_valid.pt`。正式参数和证据链见 `docs/P0-BASE-01_基础策略正式实验契约.md`，checkpoint 文件结构见 `docs/MAPPO_checkpoint与恢复训练协议.md`。
 
 ### 当前流程 2：单蓝车对抗
 
