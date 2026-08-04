@@ -9,7 +9,7 @@
 
 | 用途 | 唯一有效入口 | 当前许可 |
 |---|---|---|
-| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | 完成 P0-BASE-00/01/02 后只允许单 seed 分段试训；P0-BASE-04 GO 后才允许多 seed 长训练 |
+| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | P0-BASE-00/01/02 已完成；先冻结 P0-BASE-04 数值门槛，再允许单 seed 分段试训；门槛判定 GO 后才允许多 seed |
 | Phase 1 单蓝车 | `python -m training.train_2red_1blue_ppo` | P0-06 通过前禁止启动 |
 
 以下入口均为 **DEPRECATED/历史参考**：`train_rllib.py`、`carla_rllib_wrapper.py`、`train_no_rlib_sharedpolicy.py`、`train_no_rllib_mappo.py`、`train_no_rllib_mappo_robust.py`、`train_adversarial_ppo.py`、`run_adversarial_training_with_viz.py` 以及旧 multi v1/v2。它们不得用于新训练、恢复修复后的训练、生成正式 checkpoint 或论文结果；未来确需使用时，必须先迁移当前生命周期、GAE、指标和 checkpoint 协议并重新验收。
@@ -25,6 +25,7 @@
 | **[MANUAL_DATA_USAGE.md](MANUAL_DATA_USAGE.md)** | 手动驾驶数据采集指南 |
 | **[docs/毕业课题_研究推进TODO.md](docs/毕业课题_研究推进TODO.md)** | 当前唯一任务顺序、阶段门槛和实验登记 |
 | **[docs/P0-BASE-01_基础策略正式实验契约.md](docs/P0-BASE-01_基础策略正式实验契约.md)** | 正式 JSON 参数、分段停点、HOLD 规则、Run 证据链和标准命令 |
+| **[docs/P0-BASE-02_基础策略C0评估协议.md](docs/P0-BASE-02_基础策略C0评估协议.md)** | 基础 checkpoint 的固定 C0 case、确定性动作、证据 schema、validator 和重复性命令 |
 | **[docs/P0-BASE_基础策略实验记录.md](docs/P0-BASE_基础策略实验记录.md)** | 基础策略 fresh/resume/C0/GO-HOLD 人工实验台账 |
 | **[docs/MAPPO_TensorBoard指标协议.md](docs/MAPPO_TensorBoard指标协议.md)** | 当前基础 MAPPO 的奖励审计、聚合口径、训练健康指标和离线验证 |
 | **[docs/P0-00G_真实CARLA_smoke运行规范.md](docs/P0-00G_真实CARLA_smoke运行规范.md)** | P0-00G 环境门槛、冻结命令、受控中断、产物和 PASS/HOLD 标准 |
@@ -53,6 +54,8 @@ mappo_training/
 │   ├── run_adversarial_training_with_viz.py  # [DEPRECATED] 早期启动器
 │   └── pretrain_with_manual_data.py    # 手动数据预训练
 ├── 评估脚本
+│   ├── evaluate_base_policy_c0.py      # [CURRENT] 基础策略冻结 C0 evaluator
+│   ├── validate_base_c0_run.py         # [CURRENT] C0 产物重算/重复性 validator
 │   ├── evaluate_rllib.py
 │   ├── evaluate_rllib_checkpoint.py
 │   ├── evaluate_no_rllib_mappo.py
@@ -136,7 +139,7 @@ python -m utils.record_manual_control --agent-id 0
 
 不要从 `training/` 子目录直接执行文件，也不要从本文档历史段落复制 deprecated 命令。
 
-P0-BASE 正式训练必须带 `--experiment-contract configs/base_mappo/p0_base_pilot_v1.json`，且只在登记停点运行；科学参数不再允许从 CLI 覆盖。当前 P0-BASE-01 已完成，但 P0-BASE-02 C0 evaluator 完成前仍不得启动正式 pilot。标准命令见 [P0-BASE-01 正式实验契约](docs/P0-BASE-01_基础策略正式实验契约.md)。
+P0-BASE 正式训练必须带 `--experiment-contract configs/base_mappo/p0_base_pilot_v1.json`，且只在登记停点运行；科学参数不再允许从 CLI 覆盖。P0-BASE-01/02 已完成，下一步必须在查看正式 pilot 结果前冻结 P0-BASE-04 数值门槛，之后才允许启动 seed 42 分段试训。训练命令见 [P0-BASE-01 正式实验契约](docs/P0-BASE-01_基础策略正式实验契约.md)，评估命令见 [P0-BASE-02 C0 评估协议](docs/P0-BASE-02_基础策略C0评估协议.md)。
 
 依赖包括：
 - torch &gt;= 1.9.0
@@ -218,7 +221,14 @@ P0-06 通过后，使用经过独立 C0/C1 验证的基础红车 checkpoint：
 
 ### 4. 评估
 
-当前正式 C0/C1/C2 评估器仍在 P0-04 计划中。下面的旧评估入口只可读取历史 checkpoint 做诊断，不得形成当前协议结论：
+基础策略专用、无蓝车 C0 evaluator 已冻结；对抗研究使用的统一 C0/C1/C2 evaluator 仍在 P0-04 计划中。
+
+```powershell
+python -m evaluation.evaluate_base_policy_c0 --help
+python -m evaluation.validate_base_c0_run --help
+```
+
+下面的旧评估入口只可读取历史 checkpoint 做诊断，不得形成当前协议结论：
 
 ```bash
 # [DEPRECATED] 评估历史 RLlib 智能体

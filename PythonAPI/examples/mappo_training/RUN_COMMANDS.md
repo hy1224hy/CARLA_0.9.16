@@ -8,7 +8,7 @@
 > - 基础策略唯一入口：`training.train_no_rllib_mappo_robust_v2`。
 > - Phase 1 单蓝车唯一入口：`training.train_2red_1blue_ppo`。
 > - RLlib、shared-policy、minimal/robust v1、旧 adversarial PPO 和旧 multi 入口全部是 **DEPRECATED**，不得用于新训练、resume、正式 checkpoint 或论文结果。
-> - P0-00G 已通过；完成 P0-BASE-00/01/02 后只允许单 seed 分段基础策略试训，P0-BASE-04 GO 后才允许多 seed 长训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
+> - P0-00G 和 P0-BASE-00/01/02 已通过；必须先在查看 pilot 结果前冻结 P0-BASE-04 数值门槛，之后才允许 seed 42 分段试训；门槛判定 GO 后才允许多 seed 长训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
 
 ---
 
@@ -305,7 +305,29 @@ python -m training.pretrain_with_manual_data \
 
 ## 评估脚本
 
-### 1. evaluate_no_rllib_mappo.py - 评估 MAPPO 模型
+### 1. evaluate_base_policy_c0.py - 当前基础策略 C0 evaluator
+
+**功能：** 按冻结 `p0_base_c0_eval_v1` 契约对 periodic checkpoint 执行无蓝车/无额外交通的 gate 或 held-out validation，输出逐 episode 证据、汇总和清理审计。
+
+```powershell
+$stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$evalId = "P0_BASE_C0_gate_u000005_$stamp"
+..\..\..\venv\Scripts\python.exe -m evaluation.evaluate_base_policy_c0 `
+  --checkpoint logs/<RunID>/periodic/ckpt_update_000005.pt `
+  --profile gate `
+  --eval-id $evalId `
+  --output-dir "evaluations/$evalId"
+
+..\..\..\venv\Scripts\python.exe -m evaluation.validate_base_c0_run `
+  --output-dir "evaluations/$evalId" `
+  --expected-checkpoint logs/<RunID>/periodic/ckpt_update_000005.pt
+```
+
+完整 profile、恢复、重复性和 HOLD 规则见 `docs/P0-BASE-02_基础策略C0评估协议.md`。
+
+---
+
+### 2. evaluate_no_rllib_mappo.py - 历史 MAPPO 诊断
 
 **功能：** 加载 checkpoint 并评估正常智能体的表现
 
@@ -316,7 +338,7 @@ python -m evaluation.evaluate_no_rllib_mappo --checkpoint <path>
 
 ---
 
-### 2. evaluate_adversarial_ppo.py - 评估对抗模型
+### 3. evaluate_adversarial_ppo.py - 历史对抗模型诊断
 
 **功能：** 评估训练好的对抗智能体
 
@@ -327,7 +349,7 @@ python -m evaluation.evaluate_adversarial_ppo --checkpoint <path>
 
 ---
 
-### 3. evaluate_with_speedup.py - 加速场景评估
+### 4. evaluate_with_speedup.py - 加速场景评估
 
 **功能：** 在加速场景中评估对抗智能体的鲁棒性
 
@@ -444,7 +466,7 @@ CarlaUE4.exe
 
 # 4. 完成 P0-BASE-00/01/02：冻结源码、版本化配置/registry 和基础策略 C0 evaluator
 
-# 5. P0-BASE-02 完成后，只用冻结契约运行 seed 42 的第一个 5-update 分段
+# 5. 在查看 pilot 结果前完成 P0-BASE-04 数值门槛预注册；随后只用冻结契约运行 seed 42 的第一个 5-update 分段
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $runId = "P0_BASE_MAPPO_Town02_s42_$stamp"
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `

@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：P0-BASE-01 契约已冻结；P0-BASE-02 未完成，尚未启动正式基础策略 pilot。
+> 当前状态：P0-BASE-01 训练契约和 P0-BASE-02 C0 评估协议均已冻结；尚未启动正式基础策略 pilot，下一步先完成 P0-BASE-04 数值门槛预注册。
 
 ## 1. 登记规则
 
@@ -14,13 +14,14 @@
 
 | 契约 ID | 配置 | 用途 | seed | 计划停点 | 状态 |
 |---|---|---|---:|---|---|
-| `P0_BASE_MAPPO_TOWN02_PILOT_V1` | `configs/base_mappo/p0_base_pilot_v1.json` | Town02 两红车基础 MAPPO 单 seed 工程 pilot | 42 | 5/10/20/30/40/60/80/100 | FROZEN；等待 P0-BASE-02 |
+| `P0_BASE_MAPPO_TOWN02_PILOT_V1` | `configs/base_mappo/p0_base_pilot_v1.json` | Town02 两红车基础 MAPPO 单 seed 工程 pilot | 42 | 5/10/20/30/40/60/80/100 | FROZEN；等待 P0-BASE-04 门槛 |
+| `P0_BASE_C0_TOWN02_V1` | `configs/evaluation/p0_base_c0_eval_v1.json` | 无蓝车/无额外交通的 gate 与 held-out validation | gate: 42001；validation: 51001/51002/51003 | 对应训练 update 5/10/20/30/40/60/80/100 | FROZEN；等待正式 checkpoint |
 
 ## 3. Run 总表
 
 | 日期 | RunID | Git SHA | 契约 SHA256 | 当前 update | 训练状态 | strict validator | C0 | GO/HOLD | 下一动作 |
 |---|---|---|---|---:|---|---|---|---|---|
-| — | — | — | — | — | 尚未运行 | — | P0-BASE-02 pending | HOLD | 先实现并冻结基础 C0 evaluator |
+| — | — | — | — | — | 尚未运行 | — | evaluator frozen；无 checkpoint 结果 | HOLD | 看结果前先冻结 P0-BASE-04 数值门槛 |
 
 ## 4. 单 Run 记录模板
 
