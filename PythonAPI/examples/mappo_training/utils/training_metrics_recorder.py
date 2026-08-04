@@ -23,12 +23,14 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from training.metrics_protocol import (
+    ACTION_RATE_NAMES,
     DISABLED_REWARD_COMPONENTS,
     EPISODE_RECORD_VERSION,
     METRICS_PROTOCOL_VERSION,
     REWARD_AUDIT_ATOL,
     SPARSE_REWARD_COMPONENTS,
     MetricsProtocolError,
+    env_action_diagnostics,
     reward_components,
     reward_diagnostics,
     reward_schema_document,
@@ -481,14 +483,7 @@ class TrainingMetricsRecorder:
         self.action_stats = {
             aid: {
                 name: RunningStats()
-                for name in (
-                    "throttle",
-                    "steer",
-                    "brake",
-                    "throttle_boundary",
-                    "steer_boundary",
-                    "brake_boundary",
-                )
+                for name in ("throttle", "steer", "brake", *ACTION_RATE_NAMES)
             }
             for aid in self.agent_ids
         }
@@ -563,9 +558,10 @@ class TrainingMetricsRecorder:
                 "throttle": throttle,
                 "steer": steer,
                 "brake": brake,
-                "throttle_boundary": float(throttle <= 0.01 or throttle >= 0.99),
-                "steer_boundary": float(abs(steer) >= 0.99),
-                "brake_boundary": float(brake <= 0.01 or brake >= 0.99),
+                **env_action_diagnostics(
+                    normalized_actions[agent_id],
+                    context=f"{context} agent={agent_id}",
+                ),
             }
             for name, value in action_values.items():
                 self.action_stats[agent_id][name].add(value)
@@ -1033,7 +1029,7 @@ class TrainingMetricsRecorder:
                 put(f"{prefix}/nonzero_rate", stats.nonzero_rate)
             for name, stats in self.action_stats[agent_id].items():
                 prefix = f"action/agent_{agent_id}/{name}"
-                if name.endswith("_boundary"):
+                if name in ACTION_RATE_NAMES:
                     put(f"{prefix}_rate", stats.mean)
                 else:
                     put(f"{prefix}/mean", stats.mean)

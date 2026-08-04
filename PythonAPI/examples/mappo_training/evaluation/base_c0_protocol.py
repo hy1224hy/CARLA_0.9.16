@@ -31,6 +31,7 @@ from training.checkpoint_protocol import (
     validate_checkpoint_header,
 )
 from training.metrics_protocol import (
+    ACTION_RATE_NAMES,
     METRICS_PROTOCOL_VERSION,
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
@@ -38,7 +39,7 @@ from training.metrics_protocol import (
 
 
 C0_PROTOCOL_VERSION = "p0_base_c0_eval_v1"
-C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v1"
+C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v2"
 C0_SUMMARY_VERSION = "p0_base_c0_summary_v1"
 C0_MANIFEST_VERSION = "p0_base_c0_manifest_v1"
 C0_RESOLVED_CONFIG_VERSION = "p0_base_c0_resolved_v1"
@@ -741,6 +742,7 @@ def validate_episode_record(
         if agent["reached_target"] != success_from_diagnostics:
             raise C0ProtocolError(f"agent {agent_id} reached flag differs from success diagnostics")
         actions = agent["actions"]
+        action_rate_fields = {f"{name}_rate" for name in ACTION_RATE_NAMES}
         _require_exact_fields(
             actions,
             {
@@ -748,9 +750,7 @@ def validate_episode_record(
                 "throttle_mean",
                 "steer_mean",
                 "brake_mean",
-                "throttle_boundary_rate",
-                "steer_boundary_rate",
-                "brake_boundary_rate",
+                *action_rate_fields,
             },
             context=f"agent {agent_id}.actions",
         )
@@ -760,9 +760,7 @@ def validate_episode_record(
             "throttle_mean",
             "steer_mean",
             "brake_mean",
-            "throttle_boundary_rate",
-            "steer_boundary_rate",
-            "brake_boundary_rate",
+            *sorted(action_rate_fields),
         ):
             value = actions[name]
             if active_steps == 0:
@@ -772,6 +770,54 @@ def validate_episode_record(
                 raise C0ProtocolError(f"agent {agent_id} action statistic outside [0,1]")
             elif active_steps and name == "steer_mean" and not -1.0 <= float(value) <= 1.0:
                 raise C0ProtocolError(f"agent {agent_id} steer mean outside [-1,1]")
+        if active_steps:
+            def rate(name: str) -> float:
+                return float(actions[f"{name}_rate"])
+
+            if not math.isclose(
+                rate("throttle_boundary"),
+                rate("throttle_zero") + rate("throttle_saturation"),
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            ):
+                raise C0ProtocolError(
+                    f"agent {agent_id} throttle boundary decomposition is invalid"
+                )
+            if not math.isclose(
+                rate("brake_boundary"),
+                rate("brake_zero") + rate("brake_saturation"),
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            ):
+                raise C0ProtocolError(
+                    f"agent {agent_id} brake boundary decomposition is invalid"
+                )
+            if not math.isclose(
+                rate("steer_boundary"),
+                rate("steer_saturation"),
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            ):
+                raise C0ProtocolError(
+                    f"agent {agent_id} steer boundary decomposition is invalid"
+                )
+            mode_total = sum(
+                rate(name)
+                for name in (
+                    "throttle_mode",
+                    "brake_mode",
+                    "coast_mode",
+                    "longitudinal_conflict",
+                )
+            )
+            if not math.isclose(mode_total, 1.0, rel_tol=0.0, abs_tol=1e-12):
+                raise C0ProtocolError(
+                    f"agent {agent_id} longitudinal mode rates do not conserve"
+                )
+            if rate("longitudinal_conflict") != 0.0:
+                raise C0ProtocolError(
+                    f"agent {agent_id} violates winner-take-all longitudinal control"
+                )
         returns.append(episode_return)
         active_total += active_steps
 

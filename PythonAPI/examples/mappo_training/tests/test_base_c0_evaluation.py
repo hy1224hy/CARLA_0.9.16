@@ -37,9 +37,11 @@ from training.checkpoint_protocol import (
     sha256_file,
 )
 from training.metrics_protocol import (
+    ACTION_RATE_NAMES,
     METRICS_PROTOCOL_VERSION,
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
+    env_action_diagnostics,
 )
 
 
@@ -103,6 +105,7 @@ def _stats(value=0.0):
 def _agent_record(*, return_value=-0.05):
     components = {name: 0.0 for name in REWARD_COMPONENTS["v2"]}
     components["step"] = return_value
+    action_rates = env_action_diagnostics([0.5, 0.0, 0.0], context="fixture")
     return {
         "episode_return": return_value,
         "active_decision_steps": 1,
@@ -119,9 +122,7 @@ def _agent_record(*, return_value=-0.05):
             "throttle_mean": 0.5,
             "steer_mean": 0.0,
             "brake_mean": 0.0,
-            "throttle_boundary_rate": 0.0,
-            "steer_boundary_rate": 0.0,
-            "brake_boundary_rate": 1.0,
+            **{f"{name}_rate": action_rates[name] for name in ACTION_RATE_NAMES},
         },
     }
 
@@ -281,6 +282,33 @@ class C0EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(C0ProtocolError, "conserve"):
             validate_episode_record(
                 broken,
+                eval_id="eval",
+                profile="smoke",
+                checkpoint_sha256="c" * 64,
+                expected_case=self.case,
+            )
+
+    def test_action_rate_evidence_enforces_decomposition_and_wta(self):
+        record = _episode_record(self.case, eval_id="eval", checkpoint_sha="c" * 64)
+
+        broken_boundary = copy.deepcopy(record)
+        broken_boundary["agents"]["0"]["actions"]["brake_boundary_rate"] = 0.5
+        with self.assertRaisesRegex(C0ProtocolError, "boundary decomposition"):
+            validate_episode_record(
+                broken_boundary,
+                eval_id="eval",
+                profile="smoke",
+                checkpoint_sha256="c" * 64,
+                expected_case=self.case,
+            )
+
+        conflict = copy.deepcopy(record)
+        action_stats = conflict["agents"]["0"]["actions"]
+        action_stats["throttle_mode_rate"] = 0.0
+        action_stats["longitudinal_conflict_rate"] = 1.0
+        with self.assertRaisesRegex(C0ProtocolError, "winner-take-all"):
+            validate_episode_record(
+                conflict,
                 eval_id="eval",
                 profile="smoke",
                 checkpoint_sha256="c" * 64,

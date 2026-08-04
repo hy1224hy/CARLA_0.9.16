@@ -53,8 +53,10 @@ from training.checkpoint_protocol import (
 from training.experiment_contract import verify_critical_sources_clean
 from training.lifecycle_semantics import validate_lifecycle_flags
 from training.metrics_protocol import (
+    ACTION_RATE_NAMES,
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
+    env_action_diagnostics,
     validate_active_reward_payload,
 )
 from training.train_no_rllib_mappo_robust_v2 import action_tanh_to_env
@@ -104,7 +106,7 @@ class AgentEpisodeAccumulator:
         self.residual_max = 0.0
         self.diagnostics = {name: ScalarStats() for name in REWARD_DIAGNOSTICS["v2"]}
         self.action_sums = np.zeros(3, dtype=np.float64)
-        self.action_boundaries = np.zeros(3, dtype=np.int64)
+        self.action_rate_counts = {name: 0 for name in ACTION_RATE_NAMES}
         self.final_done = False
         self.final_terminated = False
         self.final_truncated = False
@@ -127,14 +129,12 @@ class AgentEpisodeAccumulator:
         for name, value in diagnostics.items():
             self.diagnostics[name].add(value, context=f"{context}.{name}")
         self.action_sums += np.asarray(action, dtype=np.float64)
-        self.action_boundaries += np.asarray(
-            [
-                action[0] <= 0.01 or action[0] >= 0.99,
-                abs(action[1]) >= 0.99,
-                action[2] <= 0.01 or action[2] >= 0.99,
-            ],
-            dtype=np.int64,
+        action_rates = env_action_diagnostics(
+            action,
+            context=f"{context}.action",
         )
+        for name, value in action_rates.items():
+            self.action_rate_counts[name] += int(value)
 
     def set_lifecycle(self, *, done: bool, terminated: bool, truncated: bool) -> None:
         self.final_done = done
@@ -144,15 +144,15 @@ class AgentEpisodeAccumulator:
     def as_dict(self, *, reached_target: bool) -> Dict[str, Any]:
         if self.active_steps:
             means = self.action_sums / self.active_steps
-            boundaries = self.action_boundaries / self.active_steps
             action_stats: Dict[str, Any] = {
                 "count": self.active_steps,
                 "throttle_mean": float(means[0]),
                 "steer_mean": float(means[1]),
                 "brake_mean": float(means[2]),
-                "throttle_boundary_rate": float(boundaries[0]),
-                "steer_boundary_rate": float(boundaries[1]),
-                "brake_boundary_rate": float(boundaries[2]),
+                **{
+                    f"{name}_rate": float(count / self.active_steps)
+                    for name, count in self.action_rate_counts.items()
+                },
             }
         else:
             action_stats = {
@@ -160,9 +160,7 @@ class AgentEpisodeAccumulator:
                 "throttle_mean": None,
                 "steer_mean": None,
                 "brake_mean": None,
-                "throttle_boundary_rate": None,
-                "steer_boundary_rate": None,
-                "brake_boundary_rate": None,
+                **{f"{name}_rate": None for name in ACTION_RATE_NAMES},
             }
         diagnostic_payload = {name: stats.as_dict() for name, stats in self.diagnostics.items()}
         collision = (

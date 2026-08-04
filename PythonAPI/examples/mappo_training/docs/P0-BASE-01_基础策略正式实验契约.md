@@ -127,7 +127,7 @@ fresh Run 在连接 CARLA 前产生：
 - update 被跳过、缺失任一 required metric，或没有达到最小有效 transition。
 - CARLA actor 泄漏数大于 0，或同步模式/环境设置未恢复。
 - checkpoint SHA/schema/manifest、JSONL、逐 episode 记录或 strict validator 任一不完整/失败。
-- 首段任一动作边界率超过 `0.65` 时先发出 warning；结合 entropy、KL、clip fraction、回报分量和视频判断是否升级为 HOLD，不能仅因成功率上涨忽略动作退化。
+- 首段 `steer_saturation_rate` 超过 `0.65` 时先发出 warning；throttle/brake 只检查各自的**上界饱和率**，不能把互斥映射产生的零值计为饱和。JSON 中保留的 `action_boundary_rate_warning=0.65` 由 P0-BASE-04 按此语义解释；结合 entropy、KL、clip fraction、驾驶模式率、回报分量和视频判断是否升级为 HOLD。
 
 成功率、碰撞率和 timeout 的正式 GO/HOLD 数值阈值必须在 P0-BASE-02 evaluator 完成后、查看 seed 42 pilot 结果前于 P0-BASE-04 冻结。训练 JSON 中只预留外部 `p0_base_c0_eval_v1` 接口和 milestone，不会在 P0-BASE-02 回写或改变本契约 SHA；评估器和性能门槛使用各自版本化文件。当前阶段刻意不编造一个没有独立评估依据的成功率阈值。
 

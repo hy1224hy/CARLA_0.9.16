@@ -82,7 +82,7 @@
 - [x] **P0-00D 修正 GAE 与优势标准化口径**：每个 episode 独立计算原始 GAE，同一 agent 拼接全部 episode 后在 rollout 上统一标准化；Critic 保持原始 return，PPO 更新前强制 `ratio≈1` 并检查数值有限。
 - [x] **P0-00E 补 MAPPO/PPO 算法回归测试**：生产 batch 准备、clipped actor loss 与完整 optimizer update 已抽取并由 10 项新测试直接调用；多 agent 时间顺序、Critic int/batch agent-id、空 agent、异常输入零污染和全量回归均通过。
 - [x] **P0-00F 修正基础策略 checkpoint/resume 协议**：训练只保存原子 `latest`、不可覆盖 periodic 和安全 `interrupted`；补齐 schema/protocol、RNG、课程、LR horizon、RunID/Git/config/source/manifest，并以 16 项测试验证严格恢复。
-- [x] **P0-00F-TB 修正并模块化 TensorBoard 指标**：环境发布固定奖励分解与原始诊断；独立 recorder 按 active agent 聚合奖励、PPO/Critic/动作/模型/耗时，TB 与 JSONL 同源且可由 checkpoint 重放；9 项专项、全量 60 项测试通过。
+- [x] **P0-00F-TB 修正并模块化 TensorBoard 指标**：环境发布固定奖励分解与原始诊断；独立 recorder 按 active agent 聚合奖励、PPO/Critic/动作/模型/耗时，TB 与 JSONL 同源且可由 checkpoint 重放；动作诊断已在开训前升级至 v3，将互斥产生的踏板零值与真正上界饱和拆开。
 - [x] **P0-00G-PREP 补齐 smoke 证据协议**：新增 `episodes.jsonl` 与安全边界裁剪，严格 validator 对账逐 episode/agent 生命周期；终局结果由 `episode_end_reason` 唯一分类；smoke 固定 `save_interval=1`，保存/日志/histogram 间隔纳入 resume 不可漂移配置；运行规范已冻结，全量 71 项无 CARLA 测试通过。
 - [x] GO **P0-00G 运行 robust_v2 三更新 smoke**：前两 Run 暴露的课程顺序/清理残留和 precheck batch 几何假阳性已修复；第三个 Run 的 fresh 1–3、update 4 中断/恢复、16 episode、strict validator、checkpoint、清理与用户人工视觉确认全部通过。未提供视觉编号/录像，success 路径转入 C0 补验；详见 [测试记录](./P0-00G_真实CARLA_smoke测试记录.md)。
 - [x] GO **P0-00G-SUCCESS 策略无关地补验真实 success 路径**：`teleport` 在 step 1/2、`scripted` 在 step 32/55 依次触发两车 success；每车 `success=100`、`success_event=1`、terminated 且不 truncated，最终 `all_agents_reached`，collision 0。两次清理均恢复异步/None、actor 0/0；专项 8 项、全量 93 项回归通过。详见 [规范与记录](./P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)。
@@ -257,7 +257,7 @@
 - [x] 所有奖励分量按 agent 有效 transition、episode sum、pooled transition 和 team episode 四种口径聚合；失活 agent 不补 0、不扩大分母。
 - [x] 将 `progress/alive` 标为 v2 有意禁用项；将 LiDAR/TTC/碰撞/成功/time bonus 标为稀疏或门控项；`lane_invasion` 因含连续偏离惩罚保持常规项。
 - [x] 环境发布 progress、速度、横向/yaw 误差、LiDAR 最小值/触发 ray、TTC 候选/触发、sensor 事件等原始诊断，不改变原奖励数值公式。
-- [x] 接入 advantage、Actor/Critic loss、entropy、KL、clip、ratio、梯度裁剪、value 分布、动作边界、参数/更新范数、LR、课程和耗时；参数 histogram 间隔可配置。
+- [x] 接入 advantage、Actor/Critic loss、entropy、KL、clip、ratio、梯度裁剪、value 分布、动作零值/饱和/模式/冲突率、参数/更新范数、LR、课程和耗时；参数 histogram 间隔可配置。
 - [x] 每个完整 update 将同一 payload 写入 `tb/` 与 `metrics.jsonl`，并保存为 checkpoint 的 `last_metrics`；checkpoint 已提交但日志未提交时由 resume 精确重放。
 - [x] 新增 `utils.validate_tensorboard_run`，离线检查协议、必需标签、有限值、奖励守恒、update 连续和 TensorBoard/JSONL 数值一致。
 - [x] 新增 9 项专项测试并运行全量 60 项测试；无需 CARLA 的奖励路径、ragged agent、稀疏事件、PPO 指标、模型更新和恢复故障窗口均已覆盖。
@@ -319,7 +319,7 @@
 - [x] 建立版本控制配置 [`p0_base_pilot_v1.json`](../configs/base_mappo/p0_base_pilot_v1.json)、机器 registry 与[独立人工实验台账](./P0-BASE_基础策略实验记录.md)；正式模式禁止只在命令行历史或 argparse 默认值保存参数。
 - [x] 冻结 Town02 v3 场景池及运行时 fingerprint、weighted/metadata 采样课程、seed 42 pilot、100-update LR horizon、16 episodes/update、`max_steps=1000` 和完整 PPO/GAE/LR 参数；登记停点为 5/10/20/30/40/60/80/100。
 - [x] 冻结 checkpoint/log/histogram/C0 milestone；每个 fresh Run 在连接 CARLA 前写 `resolved_config.json`、实验 manifest 和 registry，checkpoint 继续记录 RunID、Git、命令、配置/契约 SHA、运行时版本和输出目录。
-- [x] 冻结停止规则：NaN/Inf、奖励/ratio 守恒、生命周期/active transition 对账、空/跳过 update、actor 泄漏、同步模式恢复、checkpoint/JSONL/validator/必需产物任一失败立即 HOLD；动作边界率大于 0.65 先 warning 并联合 KL/entropy/视频判定。
+- [x] 冻结停止规则：NaN/Inf、奖励/ratio 守恒、生命周期/active transition 对账、空/跳过 update、actor 泄漏、同步模式恢复、checkpoint/JSONL/validator/必需产物任一失败立即 HOLD；`0.65` 动作 warning 只对真正的 steer/踏板上界饱和率解释，互斥映射产生的踏板零值不得触发饱和警报。
 - [x] 正式 CLI 只允许运行端点、设备、登记停点、RunID/目录和 strict resume；科学参数覆盖、未知 JSON 字段、非登记停点、关键源码 dirty、RunID/目录或契约 SHA 漂移均在 CARLA/optimizer 前 fail-fast。
 
 > **执行状态：COMPLETED / GO TO P0-BASE-02（2026-08-04）。** 完整设计、参数依据、命令、风险边界与验收见 [P0-BASE-01 正式实验契约](./P0-BASE-01_基础策略正式实验契约.md)。本阶段用 MAPPO/PPO 一手资料和 P0 smoke 健康指标校准参数：保留 5 epochs、`clip=0.15`、`target_kl=0.02` 等已验收参数，将正式 `minibatch_size` 设为 32768，使最大两车 rollout 的 critic 每 epoch 仍为单全批；未运行 CARLA 或查看策略成功结果后调参。专项 12 项契约/证据测试已通过；全量回归和提交状态在本阶段代码修改记录中登记。P0-BASE-02 仍是启动 seed 42 正式 pilot 前的硬门槛。
@@ -333,6 +333,16 @@
 - [x] 旧 `evaluation/evaluate_no_rllib_mappo.py` 仅作历史诊断；不得用于正式 checkpoint 选择。
 
 > **执行状态：COMPLETED / GO TO P0-BASE-04（2026-08-04）。** 机器真值为 [`p0_base_c0_eval_v1.json`](../configs/evaluation/p0_base_c0_eval_v1.json)，设计、命令、证据 schema、失败边界和风险复盘见 [P0-BASE-02 基础策略 C0 评估协议](./P0-BASE-02_基础策略C0评估协议.md)。7 项专项与全量 112 项无 CARLA 回归、8 个 held-out 场景离线验证、两个入口 `--help` 和差异检查通过。当前没有正式基础 checkpoint，因此本阶段没有伪造真实 success 结果；首次真实性能数据只能在 P0-BASE-04 阈值预注册后由 P0-BASE-03 产生。
+
+#### P0-BASE-04-PREP 动作空间与边界指标澄清
+
+- [x] 核对 CARLA `VehicleControl` 与自带纵向 controller：保留油门/刹车互斥作为物理约束。
+- [x] 确认 `winner_take_all_v1` 是固定 latent-to-env 映射，PPO rollout/log-prob/ratio 始终使用同一映射前 action；不构成概率口径错误，Actor/Critic/action dimension 均保持不变。
+- [x] 指标协议升级为 `mappo_metrics_p0_00g_v3`：拆分 throttle/brake zero 与 upper saturation，增加 steer saturation、throttle/brake/coast mode 和 longitudinal conflict rate。
+- [x] C0 逐回合 action 证据升级为 `p0_base_c0_episode_v2`，validator 强制模式率守恒且 `longitudinal_conflict_rate=0`。
+- [x] 旧 throttle/brake combined boundary 只保留追溯用途；P0-BASE-04 不得用它触发 GO/HOLD。
+
+> **执行状态：COMPLETED（由本次 Git 提交冻结）。** 完整原理、方案比较、当前映射限制、指标定义和兼容性见 [MAPPO 车辆动作空间与边界指标协议](./MAPPO_车辆动作空间与边界指标协议.md)。新增专项及全量 116 项无 CARLA 回归通过。本项不等于 P0-BASE-04 数值门槛已经完成；下一步仍需把 `*_saturation_rate` 等正确指标写入机器可读 GO/HOLD 契约。
 
 #### P0-BASE-03 至 P0-BASE-06 运行与选模
 
@@ -705,6 +715,7 @@ git rev-parse HEAD
 | 2026-08-04 | `345ea04` | success smoke evaluator、8 项专项测试、P0-00G/SUCCESS 证据、README/RUN_COMMANDS/FILE_INDEX/研究 TODO | 冻结策略无关的真实 success 验证入口及证据；统一基础训练前置顺序为 P0-BASE；不修改训练/环境算法 | 全量 93 项；Town02 16 场景离线 validator；训练/success `--help`；历史四更新 strict validator；`git diff --check` 全部 PASS | 不改变任何 checkpoint 字段、网络或训练语义 | P0-00G-SUCCESS、P0-BASE-00 |
 | 2026-08-04 | `P0-BASE-01` | `experiment_contract.py`、正式 JSON config、registry、12 项 tests、契约/实验记录文档与项目入口文档 | 增加 contract-owned 参数、关键源码预检、resolved config/manifest/registry 证据链；正式 minibatch 按最大 rollout 冻结为单全批 32768 | 12 项契约专项及全量回归；JSON 严格 schema/CLI 覆盖/身份漂移/原子台账 fail-fast；入口 help、场景 validator、diff check | 网络、reward/lifecycle、GAE/PPO 公式和 checkpoint schema 不变；正式 checkpoint `run_metadata` 追加契约身份；源码指纹已变化，正式 Run 必须 fresh | P0-BASE-01 |
 | 2026-08-04 | `P0-BASE-02` | C0 JSON 契约、8 个 held-out 场景、协议/evaluator/validator、7 项 tests、评估协议与项目入口文档 | 正式评估只接收登记 periodic checkpoint；确定性逐 active-agent 执行；原子逐 episode 证据、精确恢复、summary 重算、防泄漏、清理和双 Run 重复性审计 | 7 项 C0 专项及全量 112 项；场景 validator、两个入口 help、AST/diff check；无正式 checkpoint，未运行或虚构性能结果 | 不改变网络、训练、环境、奖励或 checkpoint schema；仅收紧正式评估资格和证据口径 | P0-BASE-02 |
+| 2026-08-04 | `P0-BASE-04-PREP` | `metrics_protocol.py`、训练 recorder、C0 evaluator/validator、动作专项测试、动作协议/TensorBoard/checkpoint/C0/TODO 文档 | 保留三维 WTA 互斥映射；将踏板 zero 与 upper saturation 分离，增加 longitudinal mode/conflict 守恒；combined pedal boundary 降为追溯指标 | 动作 helper、训练聚合、C0 严格 schema 和 WTA 映射专项测试；全量 116 项、两个入口 help、场景 validator、diff check 通过 | 指标协议升为 v3、C0 episode evidence 升为 v2；网络和环境 action 不变；旧指标 checkpoint 不作正式 strict resume | P0-BASE-04-PREP |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志
@@ -726,6 +737,7 @@ git rev-parse HEAD
 | 2026-08-02 | 基础策略训练前置于对抗碰撞归因，但必须先冻结源码、正式配置和基础 C0 evaluator，再按单 seed 分段试训 -> GO/HOLD -> 多 seed -> 独立选模推进 | P0-00G-SUCCESS、93 项回归和 Town02 v3 的 16 场景真实验证已关闭基础算法/环境工程风险；P0-01/02 只影响蓝车 impact 归因，不阻塞无蓝车 C0；C0 与 Phase 1 又必须先有合格基础 checkpoint | 等 P0-01 至 P0-06 全部完成才训练基础策略；或跳过配置/评估直接批量长训 | P0-BASE、P0-01 至 P0-06、Phase 1 |
 | 2026-08-04 | 基础策略正式参数只由版本化 JSON 契约提供；seed 42 先按登记停点分段，PPO 每 epoch 使用单全批并在 P0-BASE-02/04 前不按成功结果调参 | MAPPO 对过多 epoch/minibatch 更敏感；当前最大 critic rollout 为 32000 条，32768 可保证单全批；现有 smoke 只足以证明数值有限，不能提供性能调参依据 | 继续使用 argparse 默认 `minibatch=256`；把命令行历史当配置；在看到成功曲线后挑 seed/停点/阈值 | P0-BASE-01 至 P0-BASE-04、所有正式基础 Run |
 | 2026-08-04 | 基础 C0 将训练内健康 gate 与 held-out checkpoint validation 分离；两者均固定完整场景目录和 seed，正式动作只用 Actor mean | 用训练场景选模会产生泄漏；随机动作会混入策略噪声；只保存汇总无法审计奖励和 agent-specific 生命周期 | 继续使用历史 evaluator；只跑有利场景；评估时从策略分布采样；手工填写结果表 | P0-BASE-02 至 P0-BASE-06、后续 C0/C1/C2 迁移 |
+| 2026-08-04 | 保留基础 MAPPO 三维 `winner_take_all_v1` 油门/刹车互斥映射；GO/HOLD 只使用拆分后的上界饱和率，踏板零值只解释控制模式 | 互斥符合车辆纵向控制；映射是 PPO latent policy 的确定性环境适配，不破坏 ratio；combined boundary 将正常零踏板误报为饱和 | 用 combined throttle/brake boundary 直接 HOLD；训练中途改二维 action；允许油刹同时生效 | P0-BASE-04、基础训练/C0；二维 signed-longitudinal 只能作为新协议 fresh Run |
 | 2026-07-20 | 通信放在无通信双蓝基线之后 | 否则无法把多车数量收益与消息通信收益分离 | 直接在现有双蓝脚本加入 attention | P3-P5 |
 | 2026-07-20 | 先固定红池 PSRO，再做双边演进 | 降低非平稳性，先验证 pool 和 meta-solver 的科学有效性 | 一开始同时训练红蓝双方 | P4-P6 |
 | YYYY-MM-DD | `<decision>` | `<evidence>` | `<alternatives>` | `<scope>` |

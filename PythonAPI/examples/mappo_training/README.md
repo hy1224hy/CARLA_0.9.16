@@ -28,6 +28,7 @@
 | **[docs/P0-BASE-02_基础策略C0评估协议.md](docs/P0-BASE-02_基础策略C0评估协议.md)** | 基础 checkpoint 的固定 C0 case、确定性动作、证据 schema、validator 和重复性命令 |
 | **[docs/P0-BASE_基础策略实验记录.md](docs/P0-BASE_基础策略实验记录.md)** | 基础策略 fresh/resume/C0/GO-HOLD 人工实验台账 |
 | **[docs/MAPPO_TensorBoard指标协议.md](docs/MAPPO_TensorBoard指标协议.md)** | 当前基础 MAPPO 的奖励审计、聚合口径、训练健康指标和离线验证 |
+| **[docs/MAPPO_车辆动作空间与边界指标协议.md](docs/MAPPO_车辆动作空间与边界指标协议.md)** | 油门/刹车互斥映射的算法语义、保留理由、限制及 v3 动作诊断口径 |
 | **[docs/P0-00G_真实CARLA_smoke运行规范.md](docs/P0-00G_真实CARLA_smoke运行规范.md)** | P0-00G 环境门槛、冻结命令、受控中断、产物和 PASS/HOLD 标准 |
 | **[docs/P0-00G_真实CARLA_smoke测试记录.md](docs/P0-00G_真实CARLA_smoke测试记录.md)** | P0-00G 逐次结果、失败根因、修复验证与最终 Judge 裁决 |
 | **[docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md](docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)** | 无 checkpoint 的固定场景 success/reward/lifecycle 隔离测试、命令与逐次记录 |

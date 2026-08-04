@@ -1,6 +1,6 @@
 # MAPPO TensorBoard 指标与奖励审计协议
 
-> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。指标协议版本：`mappo_metrics_p0_00g_v2`；逐 episode 协议：`mappo_episode_record_v1`。本协议不自动覆盖旧 RLlib、robust v1、旧对抗 PPO 或尚未迁移的 `train_2red_1blue_ppo.py`。
+> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。指标协议版本：`mappo_metrics_p0_00g_v3`；逐 episode 协议：`mappo_episode_record_v1`。本协议不自动覆盖旧 RLlib、robust v1、旧对抗 PPO 或尚未迁移的 `train_2red_1blue_ppo.py`。
 
 ## 1. 目的
 
@@ -74,7 +74,7 @@ episode 级再次校验 `episode_return` 与逐步分量和，容差上限为 `a
 - `rollout/*`：每 agent active transition、进入 PPO 的 transition 数和跳过更新标志。
 - `episode/*`、`scenario/*`：回报、长度、成功/碰撞/超时、终局原因和分场景统计。
 - `diagnostic/*`：速度、位置误差、LiDAR、TTC、碰撞/越线/成功原始信号。
-- `action/*`：油门、转向、刹车分布及边界占比。
+- `action/*`：油门、转向、刹车分布；踏板零值率与真正上界饱和率；油门/刹车/滑行模式率及油刹冲突率。旧 throttle/brake combined boundary 同时包含互斥产生的零值，不能直接作为饱和门槛；完整语义见 [车辆动作空间与边界指标协议](./MAPPO_车辆动作空间与边界指标协议.md)。
 - `advantage/*`：标准化前后统计和样本数。
 - `policy/*`：loss、entropy/bonus、ratio、KL、clip fraction、梯度裁剪、stop epoch、log_std。
 - `critic/*`：value loss、explained variance、预测/return 分布、绝对误差、样本数和梯度裁剪。
@@ -102,3 +102,5 @@ tensorboard --logdir logs/<RunID>/tb
 P0-00G 验证器必须返回 `"status": "PASS"`。它检查协议、update 顺序、必需标签、全部 scalar 有限、逐步奖励守恒、逐 episode/agent 生命周期与 transition 汇总，以及 TensorBoard 与 JSONL 在每个 update 的数值一致性。省略严格参数时只执行通用结构验证，不能替代 P0-00G 验收。
 
 P0-00F-TB 的无 CARLA 测试只能证明指标协议和聚合逻辑正确。LiDAR、TTC、碰撞 sensor、真实 episode 终局和真实 PPO 数值是否符合预期，仍必须在 P0-00G CARLA smoke 中通过 validator、TensorBoard 和场景原始记录共同确认。
+
+v3 只修正动作诊断口径，没有改变三维 Actor 或环境 action。由于 checkpoint 会绑定指标协议版本，v2 checkpoint 不得作为 v3 正式 Run 的 strict resume 来源。

@@ -11,9 +11,25 @@ import math
 from typing import Dict, Iterable, Mapping, Sequence, Tuple
 
 
-METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v2"
+METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v3"
 EPISODE_RECORD_VERSION = "mappo_episode_record_v1"
 REWARD_AUDIT_ATOL = 1e-6
+ACTION_ZERO_THRESHOLD = 0.01
+ACTION_SATURATION_THRESHOLD = 0.99
+ACTION_RATE_NAMES = (
+    "throttle_boundary",
+    "steer_boundary",
+    "brake_boundary",
+    "throttle_zero",
+    "throttle_saturation",
+    "steer_saturation",
+    "brake_zero",
+    "brake_saturation",
+    "throttle_mode",
+    "brake_mode",
+    "coast_mode",
+    "longitudinal_conflict",
+)
 
 REWARD_COMPONENTS: Dict[str, Tuple[str, ...]] = {
     "v1": (
@@ -98,6 +114,77 @@ SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
 
 class MetricsProtocolError(RuntimeError):
     """Raised when metric input would make a dashboard untrustworthy."""
+
+
+def env_action_diagnostics(
+    action: Sequence[object],
+    *,
+    context: str,
+) -> Dict[str, float]:
+    """Classify one CARLA ``[throttle, steer, brake]`` command.
+
+    Lower-bound occupancy and upper-bound saturation are deliberately
+    separate. The production action adapter makes throttle and brake mutually
+    exclusive, so a zero pedal is normally a control mode rather than evidence
+    that the policy has saturated.
+    """
+    try:
+        if len(action) != 3:
+            raise MetricsProtocolError(
+                f"{context}: environment action must have length 3"
+            )
+        throttle, steer, brake = (float(value) for value in action)
+    except MetricsProtocolError:
+        raise
+    except (TypeError, ValueError, OverflowError) as error:
+        raise MetricsProtocolError(
+            f"{context}: environment action must be a numeric length-3 sequence"
+        ) from error
+
+    values = (throttle, steer, brake)
+    if not all(math.isfinite(value) for value in values):
+        raise MetricsProtocolError(f"{context}: environment action contains NaN/Inf")
+    if not 0.0 <= throttle <= 1.0:
+        raise MetricsProtocolError(f"{context}: throttle is outside [0,1]")
+    if not -1.0 <= steer <= 1.0:
+        raise MetricsProtocolError(f"{context}: steer is outside [-1,1]")
+    if not 0.0 <= brake <= 1.0:
+        raise MetricsProtocolError(f"{context}: brake is outside [0,1]")
+
+    throttle_zero = throttle <= ACTION_ZERO_THRESHOLD
+    brake_zero = brake <= ACTION_ZERO_THRESHOLD
+    throttle_active = not throttle_zero
+    brake_active = not brake_zero
+    conflict = throttle_active and brake_active
+    throttle_mode = throttle_active and not brake_active
+    brake_mode = brake_active and not throttle_active
+    coast_mode = not throttle_active and not brake_active
+
+    return {
+        # Backward-compatible combined boundary indicators. These remain
+        # observable but must not be used as throttle/brake saturation gates.
+        "throttle_boundary": float(
+            throttle_zero or throttle >= ACTION_SATURATION_THRESHOLD
+        ),
+        "steer_boundary": float(abs(steer) >= ACTION_SATURATION_THRESHOLD),
+        "brake_boundary": float(
+            brake_zero or brake >= ACTION_SATURATION_THRESHOLD
+        ),
+        # Decision-safe diagnostics.
+        "throttle_zero": float(throttle_zero),
+        "throttle_saturation": float(
+            throttle >= ACTION_SATURATION_THRESHOLD
+        ),
+        "steer_saturation": float(
+            abs(steer) >= ACTION_SATURATION_THRESHOLD
+        ),
+        "brake_zero": float(brake_zero),
+        "brake_saturation": float(brake >= ACTION_SATURATION_THRESHOLD),
+        "throttle_mode": float(throttle_mode),
+        "brake_mode": float(brake_mode),
+        "coast_mode": float(coast_mode),
+        "longitudinal_conflict": float(conflict),
+    }
 
 
 def _strict_bool(value: object, *, field: str, context: str) -> bool:

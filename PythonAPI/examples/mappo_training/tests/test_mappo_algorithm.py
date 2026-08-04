@@ -10,6 +10,7 @@ from models.actor_critic import Actor, AgentConditionedCritic
 from training.train_no_rllib_mappo_robust_v2 import (
     RolloutBuffer,
     Transition,
+    action_tanh_to_env,
     compute_clipped_actor_loss,
     prepare_mappo_update_batch,
     run_mappo_ppo_update,
@@ -22,6 +23,21 @@ OBS_DIM = 19
 STATE_DIM = 38
 ACTION_DIM = 3
 AGENT_IDS = [0, 1]
+
+
+class ActionMappingRegressionTests(unittest.TestCase):
+    def test_winner_take_all_mapping_is_bounded_and_mutually_exclusive(self):
+        cases = (
+            ([-1.0, 0.0, -1.0], [0.0, 0.0, 0.0]),
+            ([0.0, 0.25, 0.0], [0.5, 0.25, 0.0]),
+            ([-0.5, -0.25, 0.5], [0.0, -0.25, 0.75]),
+            ([1.0, 1.0, -1.0], [1.0, 1.0, 0.0]),
+        )
+        for latent, expected in cases:
+            with self.subTest(latent=latent):
+                action = action_tanh_to_env(np.asarray(latent, dtype=np.float32))
+                np.testing.assert_allclose(action, expected, atol=1e-7)
+                self.assertFalse(action[0] > 0.0 and action[2] > 0.0)
 
 
 def _make_models():

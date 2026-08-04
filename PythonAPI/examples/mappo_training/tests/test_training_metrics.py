@@ -11,8 +11,10 @@ import torch.nn as nn
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from training.metrics_protocol import (
+    ACTION_RATE_NAMES,
     METRICS_PROTOCOL_VERSION,
     MetricsProtocolError,
+    env_action_diagnostics,
     reward_components,
     reward_diagnostics,
     reward_schema_document,
@@ -46,6 +48,42 @@ def _reward(details):
 
 
 class MetricsProtocolTests(unittest.TestCase):
+    def test_action_diagnostics_separate_zero_saturation_and_modes(self):
+        throttle = env_action_diagnostics([0.5, 0.0, 0.0], context="throttle")
+        self.assertEqual(throttle["throttle_mode"], 1.0)
+        self.assertEqual(throttle["brake_zero"], 1.0)
+        self.assertEqual(throttle["brake_saturation"], 0.0)
+        self.assertEqual(throttle["longitudinal_conflict"], 0.0)
+
+        saturated = env_action_diagnostics([1.0, -1.0, 0.0], context="saturated")
+        self.assertEqual(saturated["throttle_saturation"], 1.0)
+        self.assertEqual(saturated["steer_saturation"], 1.0)
+        self.assertEqual(saturated["throttle_boundary"], 1.0)
+
+        coast = env_action_diagnostics([0.0, 0.0, 0.0], context="coast")
+        self.assertEqual(coast["coast_mode"], 1.0)
+
+        conflict = env_action_diagnostics([0.2, 0.0, 0.3], context="conflict")
+        self.assertEqual(conflict["longitudinal_conflict"], 1.0)
+        self.assertEqual(
+            sum(
+                conflict[name]
+                for name in (
+                    "throttle_mode",
+                    "brake_mode",
+                    "coast_mode",
+                    "longitudinal_conflict",
+                )
+            ),
+            1.0,
+        )
+        self.assertEqual(set(conflict), set(ACTION_RATE_NAMES))
+
+        for action in ([0.0, 0.0], [1.1, 0.0, 0.0], [0.0, float("nan"), 0.0]):
+            with self.subTest(action=action):
+                with self.assertRaises(MetricsProtocolError):
+                    env_action_diagnostics(action, context="invalid")
+
     def test_schema_distinguishes_disabled_and_sparse_zero_components(self):
         schema = reward_schema_document("v2")
         self.assertFalse(schema["reward_components"]["progress"]["enabled"])
@@ -286,6 +324,24 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
                 scalars["rollout/agent_1/active_transition_count"], 2.0
             )
             self.assertEqual(scalars["reward_status/progress/enabled"], 0.0)
+            self.assertEqual(
+                scalars["action/agent_0/brake_zero_rate"], 1.0
+            )
+            self.assertEqual(
+                scalars["action/agent_0/brake_saturation_rate"], 0.0
+            )
+            self.assertEqual(
+                scalars["action/agent_1/throttle_saturation_rate"], 0.5
+            )
+            self.assertEqual(
+                scalars["action/agent_1/steer_saturation_rate"], 0.5
+            )
+            self.assertEqual(
+                scalars["action/agent_1/throttle_mode_rate"], 1.0
+            )
+            self.assertEqual(
+                scalars["action/agent_1/longitudinal_conflict_rate"], 0.0
+            )
             self.assertLess(
                 scalars["reward_audit/max_abs_episode_residual"], 1e-12
             )
@@ -349,6 +405,28 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
             self.assertEqual(report["status"], "PASS")
             self.assertEqual(report["updates"], [1])
             self.assertEqual(report["episode_record_count"], 1)
+
+    def test_validator_rejects_tampered_longitudinal_action_modes(self):
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            recorder = self._new_recorder(temporary_dir)
+            self._record_ragged_episode(recorder)
+            self._record_model_and_skipped_ppo(recorder)
+            payload = recorder.finalize_update(1)
+            recorder.commit_payload(payload)
+            recorder.close()
+
+            metrics_path = Path(temporary_dir) / "metrics.jsonl"
+            record = json.loads(metrics_path.read_text(encoding="utf-8"))
+            scalars = record["scalars"]
+            scalars["action/agent_0/throttle_mode_rate"] = 0.0
+            scalars["action/agent_0/longitudinal_conflict_rate"] = 1.0
+            metrics_path.write_text(
+                json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(MetricsProtocolError, "winner-take-all"):
+                validate_metrics_run(temporary_dir)
 
     def test_checkpoint_payload_replays_missing_metrics_after_crash(self):
         with tempfile.TemporaryDirectory() as temporary_dir:

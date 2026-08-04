@@ -46,7 +46,7 @@
 | **train_2red_1blue_ppo.py** | **[CURRENT]** 单蓝车 PPO 唯一入口 | P0-06 通过后的 Phase 1 |
 | **lifecycle_semantics.py** | **[CURRENT]** 统一校验 `done/terminated/truncated` 并选择合法 bootstrap state | 两个当前入口共享的 P0-00B 协议 |
 | **checkpoint_protocol.py** | **[CURRENT]** 版本化 checkpoint、原子保存/SHA256、manifest、RNG 捕获恢复和严格兼容校验 | `robust_v2` 的 P0-00F 协议；无 CARLA 单测入口 |
-| **metrics_protocol.py** | **[CURRENT]** 版本化奖励分量/raw diagnostic schema、有限值和奖励守恒校验 | `robust_v2` 的 P0-00F-TB 指标协议；不依赖 CARLA/TensorBoard |
+| **metrics_protocol.py** | **[CURRENT]** 版本化奖励分量/raw diagnostic schema、动作零值/饱和/模式诊断、有限值和奖励守恒校验 | `robust_v2` 的 P0-00F-TB 指标协议；不依赖 CARLA/TensorBoard |
 | **experiment_contract.py** | **[CURRENT]** P0-BASE 严格 JSON 契约、正式 CLI 约束、关键源码预检、resolved config/manifest/registry 原子证据链 | P0-BASE-01；在 CARLA/optimizer 前 fail-fast |
 | **train_rllib.py** | **[DEPRECATED]** 历史 RLlib 共享 PPO | 禁止新训练/论文结果 |
 | **train_no_rllib_mappo.py** | **[DEPRECATED]** 早期独立 MAPPO | 历史参考 |
@@ -138,6 +138,7 @@
 | **MANUAL_DATA_USAGE.md** | 手动驾驶数据采集与使用详细指南 |
 | **docs/MAPPO_checkpoint与恢复训练协议.md** | P0-00F fresh/pretrained/resume 语义、目录结构、兼容规则和标准命令 |
 | **docs/MAPPO_TensorBoard指标协议.md** | P0-00F-TB 奖励 schema、聚合口径、PPO/模型指标、事务顺序和验证命令 |
+| **docs/MAPPO_车辆动作空间与边界指标协议.md** | 基础 MAPPO 油门/刹车互斥映射、PPO 语义、已知限制及 zero/saturation/mode/conflict 指标口径 |
 | **docs/P0-00G_真实CARLA_smoke运行规范.md** | P0-00G 环境门槛、冻结命令、受控中断、预期产物与 PASS/HOLD 标准 |
 | **docs/P0-00G_真实CARLA_smoke测试记录.md** | P0-00G 每次环境、fresh、中断、resume、validator、失败根因、修复证据与 Judge 裁决 |
 | **docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md** | 无基础 checkpoint 的 success/reward/lifecycle 两层真实 CARLA 测试、PASS 门槛、命令和逐次结果 |

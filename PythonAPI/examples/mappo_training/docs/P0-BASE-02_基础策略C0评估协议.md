@@ -73,7 +73,7 @@ C0 只包含两辆合作红车：
 - 最终 done/terminated/truncated；
 - 15 个 v2 奖励分量累计和及最大奖励守恒残差；
 - 16 个原始安全/运动诊断的 count/min/max/mean/last；
-- 油门、转向、刹车均值和动作边界率。
+- 油门、转向、刹车均值；零值率、真正上界饱和率、油门/刹车/滑行模式率和油刹冲突率。逐回合 action 证据版本为 `p0_base_c0_episode_v2`；旧 combined boundary 只保留追溯用途。
 
 评估器只为动作前 `active_mask=True` 的车辆计算和提交动作，也只审计这些车辆当步产生的奖励；网络维度保持固定，失活车辆不生成虚假 transition。每一步都要求：
 

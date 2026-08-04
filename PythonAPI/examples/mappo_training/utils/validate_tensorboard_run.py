@@ -11,6 +11,7 @@ from typing import Dict, List, Mapping, Optional, Sequence
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from training.metrics_protocol import (
+    ACTION_RATE_NAMES,
     EPISODE_RECORD_VERSION,
     METRICS_PROTOCOL_VERSION,
     MetricsProtocolError,
@@ -61,6 +62,14 @@ def _required_tags(schema: Mapping[str, object]) -> List[str]:
                 f"optimizer/actor_agent_{agent_id}/lr",
                 f"model/actor_agent_{agent_id}/parameter_norm",
             ]
+        )
+        tags.extend(
+            f"action/agent_{agent_id}/{name}/mean"
+            for name in ("throttle", "steer", "brake")
+        )
+        tags.extend(
+            f"action/agent_{agent_id}/{name}_rate"
+            for name in ACTION_RATE_NAMES
         )
     return sorted(set(tags))
 
@@ -214,6 +223,57 @@ def validate_metrics_run(
             if not math.isfinite(float(value)):
                 raise MetricsProtocolError(
                     f"update {record['update']} tag {tag!r} contains NaN/Inf"
+                )
+        for agent_id in [int(value) for value in schema["agent_ids"]]:
+            def action_rate(name: str) -> float:
+                value = float(scalars[f"action/agent_{agent_id}/{name}_rate"])
+                if not 0.0 <= value <= 1.0:
+                    raise MetricsProtocolError(
+                        f"update {record['update']} agent {agent_id} "
+                        f"action rate {name!r} is outside [0,1]"
+                    )
+                return value
+
+            for pedal in ("throttle", "brake"):
+                if not math.isclose(
+                    action_rate(f"{pedal}_boundary"),
+                    action_rate(f"{pedal}_zero")
+                    + action_rate(f"{pedal}_saturation"),
+                    rel_tol=0.0,
+                    abs_tol=1e-12,
+                ):
+                    raise MetricsProtocolError(
+                        f"update {record['update']} agent {agent_id} "
+                        f"{pedal} boundary decomposition is invalid"
+                    )
+            if not math.isclose(
+                action_rate("steer_boundary"),
+                action_rate("steer_saturation"),
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            ):
+                raise MetricsProtocolError(
+                    f"update {record['update']} agent {agent_id} "
+                    "steer boundary decomposition is invalid"
+                )
+            mode_total = sum(
+                action_rate(name)
+                for name in (
+                    "throttle_mode",
+                    "brake_mode",
+                    "coast_mode",
+                    "longitudinal_conflict",
+                )
+            )
+            if not math.isclose(mode_total, 1.0, rel_tol=0.0, abs_tol=1e-12):
+                raise MetricsProtocolError(
+                    f"update {record['update']} agent {agent_id} "
+                    "longitudinal action modes do not conserve"
+                )
+            if action_rate("longitudinal_conflict") != 0.0:
+                raise MetricsProtocolError(
+                    f"update {record['update']} agent {agent_id} violates "
+                    "winner-take-all longitudinal control"
                 )
         if expected_episodes_per_update is not None and int(
             scalars["episode/count"]

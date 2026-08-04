@@ -1,6 +1,6 @@
 # MAPPO 基础策略 checkpoint 与恢复训练协议
 
-> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。checkpoint schema：v2；训练协议：`mappo_robust_v2_p0_00g_v2`；指标协议：`mappo_metrics_p0_00g_v2`。旧 RLlib、robust v1、旧独立 MAPPO 以及旧指标协议 checkpoint 不适用正式 resume。
+> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。checkpoint schema：v2；训练协议：`mappo_robust_v2_p0_00g_v2`；指标协议：`mappo_metrics_p0_00g_v3`。旧 RLlib、robust v1、旧独立 MAPPO 以及旧指标协议 checkpoint 不适用正式 resume。
 
 ## 1. 三种操作必须区分
 
