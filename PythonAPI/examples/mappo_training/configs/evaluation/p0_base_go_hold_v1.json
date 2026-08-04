@@ -1,0 +1,168 @@
+{
+  "protocol_version": "p0_base_go_hold_v1",
+  "contract_id": "P0_BASE_GO_HOLD_TOWN02_V1",
+  "status": "frozen",
+  "purpose": "Pre-registered evidence, numerical-health, milestone-capability, and held-out validation decisions for the first two-agent Town02 MAPPO base-policy pilot.",
+  "bindings": {
+    "training_contract_path": "configs/base_mappo/p0_base_pilot_v1.json",
+    "training_contract_id": "P0_BASE_MAPPO_TOWN02_PILOT_V1",
+    "training_contract_sha256": "342a1fdb14743428cc2c73e1658de4eb3eaf6cbb6ad5988ff29b64529e051f6f",
+    "c0_contract_path": "configs/evaluation/p0_base_c0_eval_v1.json",
+    "c0_contract_id": "P0_BASE_C0_TOWN02_V1",
+    "c0_contract_sha256": "0314f53a15c0095a3f1c6d7e9022054bbfc20403efbde052881096ae7f3f2832",
+    "metrics_protocol_version": "mappo_metrics_p0_00g_v3",
+    "c0_episode_record_version": "p0_base_c0_episode_v2",
+    "pilot_seed": 42,
+    "milestone_profile": "gate",
+    "validation_profile": "validation",
+    "required_repeats": 2,
+    "agent_ids": [0, 1]
+  },
+  "evidence_rules": {
+    "expected_episodes_per_update": 16,
+    "reward_conservation_abs_error_max": 0.000001,
+    "preupdate_ratio_abs_error_max_exclusive": 0.000001,
+    "missing_required_metric_count_max": 0,
+    "nonfinite_metric_count_max": 0,
+    "longitudinal_conflict_rate_max": 0.0,
+    "allow_skipped_ppo_updates": false,
+    "require_segment_completed": true,
+    "require_formal_periodic_checkpoint": true,
+    "require_c0_validator_pass": true,
+    "require_repeatability_pass": true,
+    "max_other_outcome_count": 0
+  },
+  "training_health": {
+    "approx_kl": {
+      "warning_above": 0.02,
+      "hold_once_above": 0.1,
+      "hold_consecutive_above": 0.05,
+      "hold_consecutive_updates": 2
+    },
+    "clip_fraction": {
+      "warning_above": 0.5,
+      "hold_consecutive_above": 0.8,
+      "hold_consecutive_updates": 2
+    },
+    "gradient_clip_activation": {
+      "warning_above": 0.8,
+      "warning_consecutive_updates": 3
+    },
+    "critic_explained_variance": {
+      "warning_below": -0.5,
+      "warning_consecutive_updates": 5
+    },
+    "action_saturation": {
+      "warning_above": 0.65,
+      "warning_consecutive_updates": 3,
+      "channels": ["throttle", "steer", "brake"]
+    },
+    "actor_log_std": {
+      "warning_at_or_below": -0.99,
+      "warning_above": 1.0,
+      "warning_consecutive_updates": 3
+    }
+  },
+  "milestone_rules": [
+    {
+      "update": 5,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": false
+    },
+    {
+      "update": 10,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": false
+    },
+    {
+      "update": 20,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": false
+    },
+    {
+      "update": 30,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": false
+    },
+    {
+      "update": 40,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": true
+    },
+    {
+      "update": 60,
+      "rule_type": "minimum_capability",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "min_success_count": 1,
+      "max_collision_count": 8
+    },
+    {
+      "update": 80,
+      "rule_type": "provisional_candidate",
+      "pass_decision": "CANDIDATE",
+      "fail_decision": "CONTINUE_WITH_WARNING",
+      "min_success_count": 12,
+      "max_collision_count": 2,
+      "max_timeout_count": 4
+    },
+    {
+      "update": 100,
+      "rule_type": "pilot_go",
+      "pass_decision": "PILOT_GO",
+      "fail_decision": "PILOT_NO_GO",
+      "min_success_count": 14,
+      "max_collision_count": 0,
+      "max_timeout_count": 2,
+      "min_success_per_family": 3,
+      "max_lane_invasion_episode_count": 0
+    }
+  ],
+  "validation_acceptance": {
+    "release_stage": "P0-BASE-06",
+    "case_count": 24,
+    "min_success_count": 18,
+    "max_collision_count": 0,
+    "max_timeout_count": 6,
+    "max_other_count": 0,
+    "min_success_per_family": 4,
+    "min_success_per_scenario": 1,
+    "max_lane_invasion_episode_count": 0,
+    "pass_decision": "VALIDATION_ACCEPT",
+    "fail_decision": "VALIDATION_REJECT"
+  },
+  "decision_policy": {
+    "returns_are_selection_criteria": false,
+    "gate_repeat_is_additional_sample": false,
+    "warnings_block_pilot_go": false,
+    "update_80_can_release_multiseed": false,
+    "only_update_100_pilot_go_releases_multiseed": true,
+    "threshold_override_allowed": false,
+    "threshold_commit_must_be_ancestor_of_run_origin": true
+  },
+  "outputs": {
+    "decision_root": "decisions/base_mappo",
+    "decision_report": "go_hold_decision.json"
+  },
+  "critical_source_paths": [
+    "evaluation/base_go_hold_protocol.py",
+    "evaluation/judge_base_go_hold.py",
+    "configs/evaluation/p0_base_go_hold_v1.json"
+  ],
+  "limitations": [
+    "These are engineering release gates for the registered pilot, not statistical safety guarantees.",
+    "The gate profile is in-distribution and cannot replace the held-out validation profile.",
+    "The repeated C0 run checks discrete reproducibility and is not counted as a second performance sample.",
+    "No threshold may be relaxed after observing formal pilot outcomes; a changed rule requires a new contract ID and fresh runs."
+  ]
+}

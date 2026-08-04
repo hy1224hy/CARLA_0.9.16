@@ -166,7 +166,7 @@ $evalId = "P0_BASE_C0_validation_u000005_$stamp"
 - 可以跳过 seed 42 pilot 直接批量训练；
 - validation 中的 24 episodes 足以替代最终论文多 seed 统计。
 
-性能 GO/HOLD 数值门槛由 P0-BASE-04 在查看正式 pilot 结果前另行冻结。这样避免一方面在没有基础策略结果时编造阈值，另一方面在看到结果后放宽标准。
+性能 GO/HOLD 数值门槛已经由 P0-BASE-04 在任何正式 pilot 结果产生前冻结，机器真值为 [`p0_base_go_hold_v1.json`](../configs/evaluation/p0_base_go_hold_v1.json)，完整解释见 [P0-BASE-04 门槛协议](./P0-BASE-04_GO-HOLD数值门槛预注册.md)。C0 第二次重复执行只检查离散可复现性，性能计数只取第一套 case，避免把重复性运行伪装成额外样本量。
 
 ## 8. 风险复盘
 

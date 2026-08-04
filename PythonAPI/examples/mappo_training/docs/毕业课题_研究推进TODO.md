@@ -10,10 +10,10 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                                                  |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                                              |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                                                         |
-| 当前工程基线    | `P0-BASE-02-GO`：基础策略 C0 契约、确定性 evaluator、8 个 held-out 场景、逐 episode 证据、恢复/重算 validator 和重复性比较已实现；NEXT 为 P0-BASE-04 性能门槛预注册 |
+| 当前工程基线    | `P0-BASE-04-FROZEN`：训练/C0/GO-HOLD 三套契约与离线裁决证据链均已冻结；尚无正式策略性能结果，NEXT 为 P0-BASE-03 seed 42 的 update 5 分段试训 |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                                                   |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                                               |
-| 当前有效自动化测试 | 共 112 项通过（2026-08-04）：新增 7 项 C0 契约/checkpoint/确定性数据流/恢复/重算/防篡改/重复性专项；其余覆盖算法、生命周期、checkpoint、场景、指标、success 和正式训练契约 |
+| 当前有效自动化测试 | 共 129 项通过（2026-08-04）：其中 13 项 P0-BASE-04 契约/临界值/连续 update/里程碑/held-out 判定专项；其余覆盖算法、生命周期、checkpoint、场景、指标、success、正式训练与 C0 契约 |
 | 最近训练产物    | 2026-07-05 的 `train_2red_1blue_ppo` 中断实验；产生于生命周期修复前，只能作历史参考                                                                                                           |
 | 本文档创建日期   | 2026-07-20                                                                                                                                                            |
 | 最后更新日期    | 2026-08-04                                                                                                                                                            |
@@ -23,7 +23,7 @@
 | 阶段 | 状态 | 结论 |
 |---|---|---|
 | 基础 CARLA 多车环境与 MAPPO | REAL SMOKE + SUCCESS VERIFIED | P0-00G 自动链路、用户人工视觉及固定场景 success 两层真实测试通过；不代表 MAPPO 性能/收敛已验证 |
-| 基础 MAPPO 策略训练与选择 | SOURCE + TRAIN/EVAL CONTRACTS FROZEN / THRESHOLDS NEXT | P0-BASE-00/01/02 已完成；先冻结 P0-BASE-04 数值门槛，再做 seed 42 分段试训，当前仍无训练性能结论 |
+| 基础 MAPPO 策略训练与选择 | SOURCE + TRAIN/EVAL/DECISION CONTRACTS FROZEN / PILOT NEXT | P0-BASE-00/01/02/04 已完成；只允许 seed 42 从 update 5 开始分段试训，当前仍无训练性能结论，多 seed 尚未放行 |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -89,8 +89,8 @@
 - [x] GO **P0-BASE-00 冻结可训练源码基线**：success smoke 脚本、8 项专项测试和文档已审阅并提交为 `345ea04`；`Pipfile` 与 `.obsidian/workspace.json` 未纳入。全量 93 项、Town02 16 场景离线 validator、两个入口 `--help`、历史四更新 strict validator 和 `git diff --check` 均通过。
 - [x] GO **P0-BASE-01 冻结正式实验契约**：机器真值为版本控制 JSON；固定 Git/源码/场景指纹、seed 42 pilot、100-update LR horizon、课程、单全批 PPO、停点、证据链和 HOLD 规则；12 项专项与全量 105 项回归通过。
 - [x] GO **P0-BASE-02 建立基础策略专用 C0 evaluator**：冻结无蓝车/无额外交通的 smoke/gate/validation 三套 case，确定性 Actor mean、训练/验证集内容 SHA 隔离、逐 episode JSONL、互斥结局、逐车奖励与安全诊断、checkpoint provenance、严格恢复/离线重算和双 Run 离散重复性比较均已实现；历史 evaluator 继续只作诊断。
-- [ ] NEXT **P0-BASE-04 预注册 GO/HOLD 数值门槛**：P0-BASE-02 输出口径已冻结；必须在启动/查看 P0-BASE-03 pilot 结果前冻结 C0 成功/碰撞/超时、安全性和训练健康阈值，禁止事后放宽。
-- [ ] BLOCKED **P0-BASE-03 单 seed 分段试训**：只等待 P0-BASE-04 门槛冻结；seed 42 fresh 启动，按 update 5/10/20/30/40/60/80/100 登记停点逐段运行 validator 与 C0；任一契约规则失败立即 HOLD，不一次性直跑完整预算。
+- [x] **P0-BASE-04 预注册 GO/HOLD 数值门槛**：机器 JSON 已冻结证据硬失败、KL/clip/梯度/critic/探索/真实动作饱和健康线、8 个停点能力线及 P0-BASE-06 held-out 下界；离线 judge 绑定 Run origin Git 中的阈值/代码 blob，输出不可覆盖裁决，累计回报不参与 GO。
+- [ ] NEXT **P0-BASE-03 单 seed 分段试训**：P0-BASE-04 已解除前置阻塞；seed 42 fresh 启动，只先跑 update 5，再逐停点运行 strict validator、两次 C0 gate 和唯一 GO/HOLD judge；任一 `HOLD` 立即停止，不一次性直跑完整预算。
 - [ ] BLOCKED **P0-BASE-05 扩展多 seed 正式训练**：仅在 P0-BASE-04 GO 后，以同一 commit/config 运行 seeds `42,123,2024`；不得依据中间结果修改预算、奖励或场景，失败 Run 同样登记。
 - [ ] BLOCKED **P0-BASE-06 独立评估并选择 checkpoint**：用冻结 C0 协议评估全部 periodic checkpoint，先安全门槛、再任务成功与稳定性；生成 `best_base_valid.pt`，登记 SHA256、来源 Run/commit/config，禁止按训练 rollout 选模。
 - [ ] BLOCKED **P0-01 精确记录碰撞对象**：基础策略试训不依赖对抗 impact 归因；取得可用基础 checkpoint 后进入本项，从 CARLA collision event 保存对方 actor id/type，并区分 `red-blue`、`blue-blue`、`static/world`，禁止继续用“最近红车”猜测 impact 对象。
@@ -344,9 +344,21 @@
 
 > **执行状态：COMPLETED（由本次 Git 提交冻结）。** 完整原理、方案比较、当前映射限制、指标定义和兼容性见 [MAPPO 车辆动作空间与边界指标协议](./MAPPO_车辆动作空间与边界指标协议.md)。新增专项及全量 116 项无 CARLA 回归通过。本项不等于 P0-BASE-04 数值门槛已经完成；下一步仍需把 `*_saturation_rate` 等正确指标写入机器可读 GO/HOLD 契约。
 
+#### P0-BASE-04 GO/HOLD 数值门槛预注册
+
+- [x] 冻结机器契约 [`p0_base_go_hold_v1.json`](../configs/evaluation/p0_base_go_hold_v1.json)，绑定 P0-BASE-01 训练契约 SHA、P0-BASE-02 C0 契约 SHA、metrics v3、C0 episode v2、seed 42、gate/validation profile 和两次重复性审计。
+- [x] 证据硬门槛逐 update 检查：16 episodes、奖励残差 `<=1e-6`、ratio 误差 `<1e-6`、缺失/非有限/跳过 PPO/纵向冲突/other 终局均为 0；训练/C0 validator、periodic checkpoint、manifest、清理和重复性必须全部 PASS。
+- [x] 数值健康门槛冻结：KL `>0.02` warning、单次 `>0.10` 或连续 2 update `>0.05` HOLD；clip fraction `>0.50` warning、连续 2 update `>0.80` HOLD；梯度裁剪、critic EV、log_std 和三通道真实上界饱和只按登记连续窗口 warning。
+- [x] 能力门槛冻结：update 5–40 以健康为主，60 至少 `1/16` success 且 collision `<=8`，80 候选 `12/16` success，100 只有 `>=14/16` success、0 collision、`<=2` timeout、各族 `>=3/4` success 且 0 lane invasion 才为 `PILOT_GO`。
+- [x] 预先冻结 P0-BASE-06 held-out 下界：`18/24` success、0 collision、`<=6` timeout、0 other/lane invasion、各族 `>=4/6` 且每场景 `>=1/3`；当前不打开 held-out 结果。
+- [x] 实现 `base_go_hold_protocol.py` 与 `judge_base_go_hold.py`：不提供阈值 CLI override；只读取已完成的训练/C0 产物；性能只计第一套 C0，第二套仅检查离散重复性；Run origin Git 必须含有同 blob 的阈值契约与判定源码；裁决目录不可覆盖。
+- [x] 13 项专项覆盖未知字段/绑定 SHA 篡改、KL/clip/ratio/reward 临界值、连续 update、动作饱和 warning、缺失/非有限、各里程碑边界、重复性/other HOLD、lane invasion 和 validation 边界。
+
+> **执行状态：COMPLETED / GO TO P0-BASE-03（2026-08-04）。** 详细口径、风险边界、标准命令和五维验收见 [P0-BASE-04 GO/HOLD 数值门槛预注册](./P0-BASE-04_GO-HOLD数值门槛预注册.md)。本阶段没有运行 CARLA、没有查看或制造正式 checkpoint 性能结果，也没有改动 MAPPO/PPO、网络、环境、奖励、课程、动作映射或 checkpoint schema。完成仅表示“判定规则已预注册”，不表示 seed 42 已 GO；现在只解除 P0-BASE-03 update 5 的启动阻塞。
+
 #### P0-BASE-03 至 P0-BASE-06 运行与选模
 
-- [ ] **预注册判定**：C0 输出口径冻结后、启动 pilot 前写明 GO/HOLD 数值门槛；至少要求出现自主 success、终局/奖励/transition 守恒、训练数值稳定且不存在静止刷分、越界刷分或碰撞换回报。每个停点只应用门槛，不得重写门槛。
+- [x] **预注册判定**：C0 输出口径冻结后、启动 pilot 前已写明 GO/HOLD 数值门槛；累计回报不参与 GO，最终用自主 success、0 collision/lane invasion、终局/奖励/transition 守恒、场景覆盖和训练数值稳定联合判定。每个停点只应用同一契约，不得重写门槛。
 - [ ] **分段试训**：门槛预注册后只运行 seed 42，fresh 启动；在 updates 5/10/20/30/40/60/80/100 登记停点保存、校验并做 C0，覆盖 warmup、课程切换、full-stage 起点和后续收敛区间。
 - [ ] **多 seed 扩展**：P0-BASE-04 GO 后，才使用完全相同 commit/config 扩展 seeds `42,123,2024`；先完成开发级 3 seed，论文最终是否扩为 5 seed 另行冻结。
 - [ ] **独立选模**：对 periodic checkpoints 使用同一冻结 C0 验证集；安全门槛优先，其次比较 success、collision/timeout 和跨 seed 稳定性，输出 `best_base_valid.pt` 及 manifest。
@@ -716,6 +728,7 @@ git rev-parse HEAD
 | 2026-08-04 | `P0-BASE-01` | `experiment_contract.py`、正式 JSON config、registry、12 项 tests、契约/实验记录文档与项目入口文档 | 增加 contract-owned 参数、关键源码预检、resolved config/manifest/registry 证据链；正式 minibatch 按最大 rollout 冻结为单全批 32768 | 12 项契约专项及全量回归；JSON 严格 schema/CLI 覆盖/身份漂移/原子台账 fail-fast；入口 help、场景 validator、diff check | 网络、reward/lifecycle、GAE/PPO 公式和 checkpoint schema 不变；正式 checkpoint `run_metadata` 追加契约身份；源码指纹已变化，正式 Run 必须 fresh | P0-BASE-01 |
 | 2026-08-04 | `P0-BASE-02` | C0 JSON 契约、8 个 held-out 场景、协议/evaluator/validator、7 项 tests、评估协议与项目入口文档 | 正式评估只接收登记 periodic checkpoint；确定性逐 active-agent 执行；原子逐 episode 证据、精确恢复、summary 重算、防泄漏、清理和双 Run 重复性审计 | 7 项 C0 专项及全量 112 项；场景 validator、两个入口 help、AST/diff check；无正式 checkpoint，未运行或虚构性能结果 | 不改变网络、训练、环境、奖励或 checkpoint schema；仅收紧正式评估资格和证据口径 | P0-BASE-02 |
 | 2026-08-04 | `P0-BASE-04-PREP` | `metrics_protocol.py`、训练 recorder、C0 evaluator/validator、动作专项测试、动作协议/TensorBoard/checkpoint/C0/TODO 文档 | 保留三维 WTA 互斥映射；将踏板 zero 与 upper saturation 分离，增加 longitudinal mode/conflict 守恒；combined pedal boundary 降为追溯指标 | 动作 helper、训练聚合、C0 严格 schema 和 WTA 映射专项测试；全量 116 项、两个入口 help、场景 validator、diff check 通过 | 指标协议升为 v3、C0 episode evidence 升为 v2；网络和环境 action 不变；旧指标 checkpoint 不作正式 strict resume | P0-BASE-04-PREP |
+| 2026-08-04 | `P0-BASE-04` | GO/HOLD JSON 契约、纯判定协议、离线 judge、13 项边界测试、门槛协议与入口/TODO 文档 | 冻结证据/数值/里程碑/held-out 门槛；只用主 C0 计性能、repeat C0 查重复性；origin Git blob 防事后改阈值；报告不可覆盖 | 契约 preflight、judge `--help`、13 项专项及全量 129 项、训练/C0 contract preflight、场景 validator、diff check | 不改网络、环境、奖励、训练更新、动作映射或 checkpoint schema；只新增判定层；当前无性能 GO | P0-BASE-04 |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志
@@ -738,6 +751,7 @@ git rev-parse HEAD
 | 2026-08-04 | 基础策略正式参数只由版本化 JSON 契约提供；seed 42 先按登记停点分段，PPO 每 epoch 使用单全批并在 P0-BASE-02/04 前不按成功结果调参 | MAPPO 对过多 epoch/minibatch 更敏感；当前最大 critic rollout 为 32000 条，32768 可保证单全批；现有 smoke 只足以证明数值有限，不能提供性能调参依据 | 继续使用 argparse 默认 `minibatch=256`；把命令行历史当配置；在看到成功曲线后挑 seed/停点/阈值 | P0-BASE-01 至 P0-BASE-04、所有正式基础 Run |
 | 2026-08-04 | 基础 C0 将训练内健康 gate 与 held-out checkpoint validation 分离；两者均固定完整场景目录和 seed，正式动作只用 Actor mean | 用训练场景选模会产生泄漏；随机动作会混入策略噪声；只保存汇总无法审计奖励和 agent-specific 生命周期 | 继续使用历史 evaluator；只跑有利场景；评估时从策略分布采样；手工填写结果表 | P0-BASE-02 至 P0-BASE-06、后续 C0/C1/C2 迁移 |
 | 2026-08-04 | 保留基础 MAPPO 三维 `winner_take_all_v1` 油门/刹车互斥映射；GO/HOLD 只使用拆分后的上界饱和率，踏板零值只解释控制模式 | 互斥符合车辆纵向控制；映射是 PPO latent policy 的确定性环境适配，不破坏 ratio；combined boundary 将正常零踏板误报为饱和 | 用 combined throttle/brake boundary 直接 HOLD；训练中途改二维 action；允许油刹同时生效 | P0-BASE-04、基础训练/C0；二维 signed-longitudinal 只能作为新协议 fresh Run |
+| 2026-08-04 | P0-BASE-04 的 GO/HOLD 不使用累计回报；update 5–40 健康优先，60 设最低学习信号，80 只作候选，只有 update 100 的成功/安全/场景族门槛可放行多 seed | return 易受 shaping 与刷分影响；早期硬设高成功率会误杀学习，允许在 80/100 间择优又会引入 checkpoint cherry-picking；0 collision/lane invasion 防止以危险行为换成功 | 按最高回报选模；update 5 即要求 success；update 80 达标就批量训练；看完曲线再调门槛 | P0-BASE-03 至 P0-BASE-06、基础策略实验结论 |
 | 2026-07-20 | 通信放在无通信双蓝基线之后 | 否则无法把多车数量收益与消息通信收益分离 | 直接在现有双蓝脚本加入 attention | P3-P5 |
 | 2026-07-20 | 先固定红池 PSRO，再做双边演进 | 降低非平稳性，先验证 pool 和 meta-solver 的科学有效性 | 一开始同时训练红蓝双方 | P4-P6 |
 | YYYY-MM-DD | `<decision>` | `<evidence>` | `<alternatives>` | `<scope>` |
@@ -769,8 +783,8 @@ git rev-parse HEAD
 - [x] 第 5 天：完成 P0-BASE-00，提交 `345ea04`；排除个人 Pipfile/Obsidian 状态，93 项回归、场景 validator、入口和历史 strict validator 复核通过。
 - [x] 第 6 天上半：完成 P0-BASE-01，固化正式 JSON contract、单全批 PPO 数据使用、registry/manifest、停止规则和独立实验台账。
 - [x] 第 6 天下半：完成 P0-BASE-02，冻结基础策略专用 C0 evaluator、场景/episode seeds、输出 schema、恢复/validator 与双 Run 重复性比较。
-- [ ] NEXT 第 7 天前半：在查看正式 pilot 结果前完成 P0-BASE-04，冻结成功/碰撞/timeout、安全和训练健康数值门槛。
-- [ ] 第 7 天下半：门槛冻结后只运行 seed 42 的登记停点分段试训，每段执行 validator 和独立 C0；任一门槛失败立即 HOLD。
+- [x] 第 7 天前半：在查看正式 pilot 结果前完成 P0-BASE-04，冻结成功/碰撞/timeout、安全和训练健康数值门槛，并实现不可覆盖离线 judge。
+- [ ] NEXT 第 7 天下半：只启动 seed 42 的 update 5 fresh 分段；完成 strict validator、两次独立 C0 gate 和 GO/HOLD judge 后再决定是否 resume 到 update 10。
 
 ### 第 2 周：决定基础策略批量放行，再进入对抗可信化
 
@@ -809,4 +823,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B 至 P0-00G-SUCCESS 已闭合基础 MAPPO 的终止/bootstrap、active-mask、GAE/PPO、生产更新、checkpoint/resume、指标审计、真实 CARLA 工程 smoke 和固定场景 success 链路；P0-BASE-00/01/02 已分别冻结合格源码、正式训练契约和独立 C0 评估协议。当前 NEXT 是在查看任何正式 pilot 结果前完成 P0-BASE-04 数值门槛预注册；之后才允许 seed 42 分段试训，P0-BASE-04 明确 GO 前不得批量训练。当前仍没有训练好的正式基础 checkpoint，不能把协议/逻辑 PASS 表述为策略性能 PASS。P0-01 至 P0-06 和 P0-05M 不再阻塞无蓝车的基础策略试训，但仍是任何对抗策略长训练的硬门槛；Phase 1 通过后，双蓝、PSRO 与通信才可能成为可辩护的研究贡献。
+本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B 至 P0-00G-SUCCESS 已闭合基础 MAPPO 的终止/bootstrap、active-mask、GAE/PPO、生产更新、checkpoint/resume、指标审计、真实 CARLA 工程 smoke 和固定场景 success 链路；P0-BASE-00/01/02/04 已分别冻结合格源码、正式训练契约、独立 C0 评估协议和不可事后放宽的数值裁决契约。当前 NEXT 是 P0-BASE-03：只启动 seed 42 的 update 5 fresh 分段，完成 strict validator、两次 C0 gate 和唯一 judge 后再决定是否续跑。P0-BASE-04 明确 `PILOT_GO` 前不得批量训练。当前仍没有训练好的正式基础 checkpoint，不能把协议/逻辑 PASS 表述为策略性能 PASS。P0-01 至 P0-06 和 P0-05M 不再阻塞无蓝车的基础策略试训，但仍是任何对抗策略长训练的硬门槛；Phase 1 通过后，双蓝、PSRO 与通信才可能成为可辩护的研究贡献。

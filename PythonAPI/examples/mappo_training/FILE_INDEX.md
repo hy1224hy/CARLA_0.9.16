@@ -66,6 +66,8 @@
 | **base_c0_protocol.py** | **[CURRENT]** 无 CARLA 依赖的 C0 严格契约、checkpoint provenance、case 展开、逐回合 schema、汇总和重复性协议 |
 | **evaluate_base_policy_c0.py** | **[CURRENT]** 两红车确定性 C0 执行器；按 active-mask 运行 smoke/gate/held-out validation，支持精确前缀恢复 |
 | **validate_base_c0_run.py** | **[CURRENT]** 独立重算 JSON/CSV、校验 SHA/case/清理并可比较双 Run 离散重复性 |
+| **base_go_hold_protocol.py** | **[CURRENT]** 无 CARLA 依赖的 P0-BASE-04 严格阈值 schema、训练健康、C0 汇总和里程碑/held-out 纯判定逻辑 |
+| **judge_base_go_hold.py** | **[CURRENT]** 绑定训练、periodic checkpoint、双 C0、重复性及 Run-origin Git blob 的不可覆盖离线裁决入口 |
 | **evaluate_rllib.py** | **[DEPRECATED]** 评估历史 RLlib 智能体 |
 | **evaluate_rllib_checkpoint.py** | **[DEPRECATED]** 加载历史 RLlib checkpoint |
 | **evaluate_no_rllib_mappo.py** | 诊断历史独立 MAPPO checkpoint；非当前统一 C0/C1/C2 结论入口 |
@@ -122,9 +124,11 @@
 | **logs/<RunID>/experiment_manifest.json** | P0-BASE Run 的 PREPARED/RUNNING/SEGMENT_COMPLETED/INTERRUPTED/ERROR 状态 |
 | **configs/base_mappo/p0_base_pilot_v1.json** | seed 42 基础 MAPPO pilot 的机器可读正式参数真值与登记停点 |
 | **configs/evaluation/p0_base_c0_eval_v1.json** | 基础 C0 的环境、checkpoint 资格、smoke/gate/validation cases、终局和输出机器真值 |
+| **configs/evaluation/p0_base_go_hold_v1.json** | P0-BASE-04 证据、数值健康、分段能力、批量放行和 held-out 接受门槛的机器真值 |
 | **data/evaluation_scenarios/base_c0_validation_v1/** | 与训练场景按内容 SHA 隔离的 8 个 Town02 held-out 基础策略验证场景 |
 | **experiments/base_mappo_registry.csv** | 每个正式基础 Run 一行的跨 Run 机器可读索引 |
 | **evaluations/<EvalID>/** | C0 resolved config、manifest、逐 episode JSONL、summary JSON/CSV 与 validator report |
+| **decisions/base_mappo/<DecisionID>/** | 绑定阈值/Git/训练/checkpoint/双 C0 证据的不可覆盖 GO/HOLD JSON 裁决 |
 | **requirements.txt** | Python依赖包列表 |
 
 ---
@@ -144,12 +148,14 @@
 | **docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md** | 无基础 checkpoint 的 success/reward/lifecycle 两层真实 CARLA 测试、PASS 门槛、命令和逐次结果 |
 | **docs/P0-BASE-01_基础策略正式实验契约.md** | 正式参数依据、命令、证据链、停止规则、风险边界和验收 |
 | **docs/P0-BASE-02_基础策略C0评估协议.md** | 基础策略 C0 定义、三个 profile、checkpoint 资格、证据 schema、运行/复核命令和风险边界 |
+| **docs/P0-BASE-04_GO-HOLD数值门槛预注册.md** | P0-BASE-04 判定状态、硬失败、健康/能力/held-out 数值线、运行命令与变更纪律 |
 | **docs/P0-BASE_基础策略实验记录.md** | fresh/resume/C0/GO-HOLD 逐 Run 人工实验台账模板 |
 | **tests/test_checkpoint_resume.py** | 原子保存、哈希、RNG/optimizer 连续、协议拒绝和训练入口 checkpoint 回归测试 |
 | **tests/test_training_metrics.py** | 奖励守恒、字段拒绝、ragged agent/稀疏事件聚合、PPO/模型指标、TB/JSONL 对账及 checkpoint 重放测试 |
 | **tests/test_success_logic_smoke.py** | 近终点场景几何与 success reward/terminated/truncated/active/global-reason 审计器回归测试 |
 | **tests/test_experiment_contract.py** | JSON schema、全批上界、CLI 覆盖拒绝、身份漂移和 registry/manifest 原子更新测试 |
 | **tests/test_base_c0_evaluation.py** | C0 场景隔离、checkpoint provenance、确定性 active-agent runner、奖励守恒、恢复顺序、summary 防篡改和重复性测试 |
+| **tests/test_base_go_hold.py** | 阈值契约绑定、防漂移、逐 update 污染、数值临界值、里程碑和 held-out 判定回归测试 |
 
 ---
 

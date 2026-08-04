@@ -8,7 +8,7 @@
 > - 基础策略唯一入口：`training.train_no_rllib_mappo_robust_v2`。
 > - Phase 1 单蓝车唯一入口：`training.train_2red_1blue_ppo`。
 > - RLlib、shared-policy、minimal/robust v1、旧 adversarial PPO 和旧 multi 入口全部是 **DEPRECATED**，不得用于新训练、resume、正式 checkpoint 或论文结果。
-> - P0-00G 和 P0-BASE-00/01/02 已通过；必须先在查看 pilot 结果前冻结 P0-BASE-04 数值门槛，之后才允许 seed 42 分段试训；门槛判定 GO 后才允许多 seed 长训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
+> - P0-00G 和 P0-BASE-00/01/02/04 已通过；当前只允许 seed 42 从 update 5 开始分段试训，每段必须执行 strict validator、两次 C0 gate 和冻结 judge；只有 update 100 `PILOT_GO` 后才允许多 seed 长训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
 
 ---
 
@@ -327,6 +327,32 @@ $evalId = "P0_BASE_C0_gate_u000005_$stamp"
 
 ---
 
+### 1B. judge_base_go_hold.py - P0-BASE-04 唯一离线数值裁决
+
+**功能：** 同时校验完整训练证据、formal periodic checkpoint、两次 C0、离散重复性和预注册 Git blob，再按冻结数值门槛输出不可覆盖的 JSON 决策。累计回报不参与 GO。
+
+```powershell
+# 无 CARLA 契约预检
+..\..\..\venv\Scripts\python.exe -m evaluation.base_go_hold_protocol `
+  --contract configs/evaluation/p0_base_go_hold_v1.json
+
+# 当前示例是 update 5；EvalA/EvalB 必须是同 checkpoint 的两次独立 gate
+$decisionId = "P0_BASE_GO_HOLD_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+..\..\..\venv\Scripts\python.exe -m evaluation.judge_base_go_hold `
+  --mode milestone `
+  --go-hold-contract configs/evaluation/p0_base_go_hold_v1.json `
+  --run-dir logs/<RunID> `
+  --checkpoint logs/<RunID>/periodic/ckpt_update_000005.pt `
+  --c0-output-dir evaluations/<EvalA> `
+  --c0-repeat-output-dir evaluations/<EvalB> `
+  --output-dir "decisions/base_mappo/$decisionId" `
+  --expected-update 5
+```
+
+`HOLD`、`PILOT_NO_GO`、`VALIDATION_REJECT` 返回非 0。完整门槛、比较符和 update 60/80/100 状态含义见 `docs/P0-BASE-04_GO-HOLD数值门槛预注册.md`。
+
+---
+
 ### 2. evaluate_no_rllib_mappo.py - 历史 MAPPO 诊断
 
 **功能：** 加载 checkpoint 并评估正常智能体的表现
@@ -464,9 +490,9 @@ CarlaUE4.exe
 
 # 3. 运行 P0-00G smoke（命令见“当前有效入口”）
 
-# 4. 完成 P0-BASE-00/01/02：冻结源码、版本化配置/registry 和基础策略 C0 evaluator
+# 4. 已完成 P0-BASE-00/01/02/04：冻结源码、训练契约、C0 evaluator 和 GO/HOLD 数值裁决
 
-# 5. 在查看 pilot 结果前完成 P0-BASE-04 数值门槛预注册；随后只用冻结契约运行 seed 42 的第一个 5-update 分段
+# 5. 只用冻结契约运行 seed 42 的第一个 5-update 分段
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $runId = "P0_BASE_MAPPO_Town02_s42_$stamp"
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
@@ -475,7 +501,8 @@ $runId = "P0_BASE_MAPPO_Town02_s42_$stamp"
   --run-id $runId `
   --save-dir "logs/$runId"
 
-# 6. 通过冻结的独立 C0 验证，从 periodic checkpoint 生成 best_base_valid.pt
+# 6. 执行 strict validator、两次独立 C0 gate 和 P0-BASE-04 judge；只有裁决允许才 resume 到下一停点
+# 7. 只有 update 100 PILOT_GO 后才进入多 seed；P0-BASE-06 再从 held-out validation 生成 best_base_valid.pt
 ```
 
 #### 基础策略正式契约 checkpoint/resume（P0-00F + P0-BASE-01）
