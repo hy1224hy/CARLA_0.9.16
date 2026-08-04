@@ -1,6 +1,6 @@
 # P0-00G 真实 CARLA smoke 测试记录
 
-> 记录状态：PASS / GO TO P0-BASE-00（用户确认人工视觉无异常；success 补验通过）
+> 记录状态：PASS / FROZEN BY P0-BASE-00 (`345ea04`)（用户确认人工视觉无异常；success 补验通过）
 > 开始时间：2026-08-02 16:23:30 +08:00
 > 裁决范围：当前未提交修复工作树的端到端工程 smoke；不构成策略性能或正式可复现版本的证明。
 
@@ -141,7 +141,7 @@
 
 | ID | 问题 | 影响 | 最小验证/修复 | 状态 |
 |---|---|---|---|---|
-| I-001 | 当前工作树非 clean，未冻结到新 commit | 通过只能归属于记录的 dirty source fingerprint，不能宣称任意 commit 可复现 | 保留 Git SHA、dirty paths 和训练器源码 fingerprint；正式实验前提交并重做门槛 smoke | OPEN/KNOWN LIMIT |
+| I-001 | smoke 执行时工作树非 clean，尚未冻结到新 commit | 当次通过只能归属于记录的 dirty source fingerprint，不能直接宣称任意 commit 可复现 | 已审阅差异并将 success 工具、测试和证据冻结到 `345ea04`；93 项回归、场景 validator、入口与历史 strict validator 复核通过 | CLOSED BY P0-BASE-00 |
 | I-002 | 工具执行无法可靠向后台 Windows 训练进程发送一次 Ctrl+C | 若用强杀模拟，会绕过清理逻辑并使 interrupted 证据无效 | 增加仅 resume 可用的确定性 episode 边界中断钩子，走原有 `KeyboardInterrupt` 分支；配置和真实路径均验证 | CLOSED |
 | I-003 | 当前无法由自动化终端替代人工视觉观察 | 自动指标通过仍不能排除明显出生重叠、瞬移或错误驾驶方向 | 用户已确认人工视觉无异常；未提供编号/录像，保留证据强度限制 | CLOSED/USER CONFIRMED |
 | I-004 | 当前主 Run 的 16 个已提交 episode 均未 success，且控制台聚合的 progress 为 0 | smoke 已覆盖 collision/max_steps，但没有真实 success 路径证据；progress=0 若被误读会造成指标失真结论 | 已确认 `reward_status/progress/enabled=0` 且 raw `diagnostic/progress_m` 非零；主 Run 不改，另以 teleport/scripted 两层真实补验关闭 success 覆盖缺口 | CLOSED BY SUPPLEMENT |
@@ -171,4 +171,4 @@
 
 ### Judge 裁决
 
-**GO TO P0-BASE-00**。自动工程 smoke、用户人工视觉以及策略无关的 teleport/scripted success 两层补验均通过，基础 MAPPO 的真实 CARLA 数据流和固定场景成功链路门槛闭合。该裁决允许冻结可训练源码基线；完成 P0-BASE-00/01/02 后才允许单 seed 分段试训，P0-BASE-04 GO 前仍禁止多 seed 批量训练。策略性能、远距离成功率和独立 C0 尚未验证。
+**PASS / FROZEN BY P0-BASE-00 (`345ea04`)**。自动工程 smoke、用户人工视觉以及策略无关的 teleport/scripted success 两层补验均通过，基础 MAPPO 的真实 CARLA 数据流和固定场景成功链路门槛闭合。P0-BASE-00 已冻结可训练源码基线；继续完成 P0-BASE-01/02 后才允许单 seed 分段试训，P0-BASE-04 GO 前仍禁止多 seed 批量训练。策略性能、远距离成功率和独立 C0 尚未验证。

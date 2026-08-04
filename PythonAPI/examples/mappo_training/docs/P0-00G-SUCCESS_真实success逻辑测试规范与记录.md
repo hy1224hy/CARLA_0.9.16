@@ -1,6 +1,6 @@
 # P0-00G-SUCCESS 真实 success 逻辑测试规范与记录
 
-> 当前状态：PASS / GO TO P0-BASE-00
+> 当前状态：PASS / FROZEN BY P0-BASE-00 (`345ea04`)
 > 建立日期：2026-08-02
 > 裁决范围：验证固定场景中的终点区域、成功奖励和 episode 生命周期；不评价 MAPPO 收敛或基础策略能力。
 
@@ -106,4 +106,6 @@
 
 ## 8. 当前 Judge 裁决
 
-**GO TO P0-BASE-00**：策略无关的纯逻辑层和近终点集成层均在真实 CARLA 中无污染 PASS，固定场景 success 覆盖缺口关闭。完成源码、正式配置和基础 C0 evaluator 冻结后，只允许单 seed 分段试训；它不证明基础策略性能，也不授权多 seed 批量训练，后者继续 HOLD 至 P0-BASE-04 明确 GO。
+**PASS / FROZEN BY P0-BASE-00 (`345ea04`)**：策略无关的纯逻辑层和近终点集成层均在真实 CARLA 中无污染 PASS，固定场景 success 覆盖缺口关闭。继续完成正式配置和基础 C0 evaluator 冻结后，只允许单 seed 分段试训；它不证明基础策略性能，也不授权多 seed 批量训练，后者继续 HOLD 至 P0-BASE-04 明确 GO。
+
+2026-08-04，P0-BASE-00 已将该工具、测试和证据冻结到 `345ea044e5d0071b3be8bf9896bb18bfffaa6d36`；复核未改变上述证据边界，下一项为 P0-BASE-01。

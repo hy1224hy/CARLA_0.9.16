@@ -1,6 +1,6 @@
 # P0-00G 真实 CARLA smoke 运行规范
 
-> 状态：PASS / GO TO P0-BASE-00（2026-08-04 复核时全量 93 项测试通过，用户确认人工视觉无异常）。主 Run 的 fresh、中断、恢复、strict validator、checkpoint 与清理门槛通过；随后 `teleport` 纯逻辑和近终点 `scripted` success 补验均在真实 CARLA 中通过。未提供视觉 episode 编号/录像，策略性能与远距离成功率仍未验证。唯一适用训练入口为 `training.train_no_rllib_mappo_robust_v2`；逐次证据与失败 Run 处置见 [P0-00G 真实 CARLA smoke 测试记录](./P0-00G_真实CARLA_smoke测试记录.md)，success 补验见 [P0-00G-SUCCESS 规范与记录](./P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)。
+> 状态：PASS / FROZEN BY P0-BASE-00 (`345ea04`)（2026-08-04 复核时全量 93 项测试通过，用户确认人工视觉无异常）。主 Run 的 fresh、中断、恢复、strict validator、checkpoint 与清理门槛通过；随后 `teleport` 纯逻辑和近终点 `scripted` success 补验均在真实 CARLA 中通过。未提供视觉 episode 编号/录像，策略性能与远距离成功率仍未验证。唯一适用训练入口为 `training.train_no_rllib_mappo_robust_v2`；逐次证据与失败 Run 处置见 [P0-00G 真实 CARLA smoke 测试记录](./P0-00G_真实CARLA_smoke测试记录.md)，success 补验见 [P0-00G-SUCCESS 规范与记录](./P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)。
 
 ## 1. 目的与结论边界
 
