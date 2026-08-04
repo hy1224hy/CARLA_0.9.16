@@ -8,7 +8,7 @@
 > - 基础策略唯一入口：`training.train_no_rllib_mappo_robust_v2`。
 > - Phase 1 单蓝车唯一入口：`training.train_2red_1blue_ppo`。
 > - RLlib、shared-policy、minimal/robust v1、旧 adversarial PPO 和旧 multi 入口全部是 **DEPRECATED**，不得用于新训练、resume、正式 checkpoint 或论文结果。
-> - P0-00G 前禁止运行训练 smoke；P0-06 前禁止基础策略或对抗策略长训练。
+> - P0-00G 已通过；完成 P0-BASE-00/01/02 后只允许单 seed 分段基础策略试训，P0-BASE-04 GO 后才允许多 seed 长训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
 
 ---
 
@@ -44,6 +44,34 @@ CarlaUE4.exe
 # 降低画质以提升性能
 ./CarlaUE4.sh -quality-level=Low
 ```
+
+---
+
+## 策略无关的固定场景 success smoke
+
+本测试不需要训练好的基础 checkpoint。先用真实环境中的顺序传送隔离验证 success/reward/lifecycle，再用近终点固定油门验证短距离运动链路；禁止把未收敛策略到不了终点误判为 success 实现错误。
+
+```powershell
+# A. 必须先通过：纯终点逻辑；预计两车依次 success
+..\..\..\venv\Scripts\python.exe -B -m evaluation.smoke_test_success_logic `
+  --mode teleport `
+  --scenario data/training_scenarios/scenario_01_basic.json `
+  --seed 42 `
+  --follow-spectator
+
+# B. A 通过后运行：近终点、低油门直行
+..\..\..\venv\Scripts\python.exe -B -m evaluation.smoke_test_success_logic `
+  --mode scripted `
+  --scenario data/training_scenarios/scenario_01_basic.json `
+  --lead-distance 5 `
+  --following-gap 10 `
+  --throttle 0.30 `
+  --max-steps 250 `
+  --seed 42 `
+  --follow-spectator
+```
+
+两次 `result.json` 都必须为 `status=PASS`，并且路径中不能混入 collision/crosswalk 事件。产物与错误归因见 [P0-00G-SUCCESS 规范与记录](docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)。
 
 ---
 
@@ -414,16 +442,16 @@ CarlaUE4.exe
 
 # 3. 运行 P0-00G smoke（命令见“当前有效入口”）
 
-# 4. 完成 P0-01 至 P0-06；在此之前禁止长训练
+# 4. 完成 P0-BASE-00/01/02：冻结源码、版本化配置/registry 和基础策略 C0 evaluator
 
-# 5. 门槛通过后，用版本化配置启动 robust_v2 正式训练
+# 5. 先用 seed 42 做分段试训；P0-BASE-04 GO 后才按同一配置扩展多 seed
 python -m training.train_no_rllib_mappo_robust_v2 \
     --run-id <unique-run-id> \
     --save-dir logs/<unique-run-id> \
     --lr-decay-horizon <frozen-total-updates> \
     <frozen-config-args>
 
-# 6. 通过独立 C0/C1 验证，从 periodic checkpoint 生成 best_base_valid.pt
+# 6. 通过冻结的独立 C0 验证，从 periodic checkpoint 生成 best_base_valid.pt
 ```
 
 #### 基础策略 checkpoint/resume（P0-00F）

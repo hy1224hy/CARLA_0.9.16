@@ -10,10 +10,10 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                                                  |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                                              |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                                                         |
-| 当前工程基线    | `P0-00G-GO`：71 项回归、第三个 Run 的 fresh/interruption/resume/strict validator 与用户人工视觉确认通过；NEXT 为 P0-01 精确碰撞对象，批量实验仍 HOLD                                                        |
-| 当前研究阶段    | P0-00 基础 MAPPO 算法数据流闭环 -> Phase 0 指标可信化 -> Phase 1 单对抗车有效性验证                                                                                                          |
+| 当前工程基线    | `P0-BASE-READINESS`：P0-00G-SUCCESS、93 项回归和 Town02 v3 的 16 场景真实验证均通过；NEXT 为冻结源码/正式配置/C0 评估器，再做单 seed 分段基础策略试训 |
+| 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                                                   |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                                               |
-| 当前有效自动化测试 | 共 71 项通过（2026-08-02）：新增受控中断配置、课程 stage 确定顺序、world timing/TM 清理和 rollout/precheck 同 batch 几何；其余覆盖算法/生命周期、checkpoint/resume、指标/逐 episode/TensorBoard 与严格 P0 validator |
+| 当前有效自动化测试 | 共 93 项通过（2026-08-02）：含 success 验证器 8 项几何/协议回归；其余覆盖算法/生命周期、checkpoint/resume、场景采样、指标/逐 episode/TensorBoard 与严格 P0 validator |
 | 最近训练产物    | 2026-07-05 的 `train_2red_1blue_ppo` 中断实验；产生于生命周期修复前，只能作历史参考                                                                                                           |
 | 本文档创建日期   | 2026-07-20                                                                                                                                                            |
 | 最后更新日期    | 2026-08-02                                                                                                                                                            |
@@ -22,7 +22,8 @@
 
 | 阶段 | 状态 | 结论 |
 |---|---|---|
-| 基础 CARLA 多车环境与 MAPPO | REAL SMOKE AUTO VERIFIED | P0-00G 自动链路通过：4 updates、16 episodes、受控中断与 strict resume/validator；人工视觉门槛未闭合，不代表性能或 success 路径已验证 |
+| 基础 CARLA 多车环境与 MAPPO | REAL SMOKE + SUCCESS VERIFIED | P0-00G 自动链路、用户人工视觉及固定场景 success 两层真实测试通过；不代表 MAPPO 性能/收敛已验证 |
+| 基础 MAPPO 策略训练与选择 | READY WITH GATES | 无新的算法级修复阻塞；必须先冻结源码、正式配置和独立 C0 评估器，再做单 seed 分段试训，达到预注册门槛后才扩展多 seed |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -73,7 +74,7 @@
 
 ## 3. 下一步唯一主线
 
-以下任务严格按顺序执行。在 `P0-00G` 完成前不运行任何训练 smoke；在 `P0-06` 完成前，不启动新的基础策略或对抗策略长训练。
+以下任务严格按顺序执行。P0-00G 已完成；完成 `P0-BASE-00/01/02` 后才允许单 seed 分段基础策略试训，`P0-BASE-04` 判定 GO 前禁止多 seed 批量训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M 完成。
 
 - [x] **P0-00A 冻结训练入口**：基础策略只维护 `train_no_rllib_mappo_robust_v2.py`，Phase 1 单蓝车只维护 `train_2red_1blue_ppo.py`；README、运行命令和文件索引已标记 RLlib 和其他旧入口停止使用。
 - [x] **P0-00B 冻结并适配 terminated/truncated 语义**：采用 agent-centric 回报边界；同伴红车碰撞时未碰撞红车按 truncation bootstrap，红车成功/碰撞时蓝车按对抗任务结局 termination；环境、两个当前入口和 15 项测试已同步。
@@ -84,7 +85,15 @@
 - [x] **P0-00F-TB 修正并模块化 TensorBoard 指标**：环境发布固定奖励分解与原始诊断；独立 recorder 按 active agent 聚合奖励、PPO/Critic/动作/模型/耗时，TB 与 JSONL 同源且可由 checkpoint 重放；9 项专项、全量 60 项测试通过。
 - [x] **P0-00G-PREP 补齐 smoke 证据协议**：新增 `episodes.jsonl` 与安全边界裁剪，严格 validator 对账逐 episode/agent 生命周期；终局结果由 `episode_end_reason` 唯一分类；smoke 固定 `save_interval=1`，保存/日志/histogram 间隔纳入 resume 不可漂移配置；运行规范已冻结，全量 71 项无 CARLA 测试通过。
 - [x] GO **P0-00G 运行 robust_v2 三更新 smoke**：前两 Run 暴露的课程顺序/清理残留和 precheck batch 几何假阳性已修复；第三个 Run 的 fresh 1–3、update 4 中断/恢复、16 episode、strict validator、checkpoint、清理与用户人工视觉确认全部通过。未提供视觉编号/录像，success 路径转入 C0 补验；详见 [测试记录](./P0-00G_真实CARLA_smoke测试记录.md)。
-- [ ] NEXT **P0-01 精确记录碰撞对象**：从 CARLA collision event 保存对方 actor id/type，并区分 `red-blue`、`blue-blue`、`static/world`；禁止继续用“最近红车”猜测 impact 对象。
+- [x] GO **P0-00G-SUCCESS 策略无关地补验真实 success 路径**：`teleport` 在 step 1/2、`scripted` 在 step 32/55 依次触发两车 success；每车 `success=100`、`success_event=1`、terminated 且不 truncated，最终 `all_agents_reached`，collision 0。两次清理均恢复异步/None、actor 0/0；专项 8 项、全量 93 项回归通过。详见 [规范与记录](./P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)。
+- [ ] NEXT **P0-BASE-00 冻结可训练源码基线**：审阅并提交当前 success smoke 脚本、测试和文档，排除 `.obsidian/workspace.json`；重跑 93 项回归、Town02 场景离线验证和 `git diff --check`，确保训练相关源码树无未登记修改。
+- [ ] BLOCKED **P0-BASE-01 冻结正式实验契约**：等待 P0-BASE-00；使用版本控制配置和 registry 固定 Git SHA、场景池/hash、协议版本、seed、预算、课程、rollout/PPO 参数、checkpoint/eval 间隔、RunID 和停止规则；正式 Run 不得只依赖 argparse 默认值。
+- [ ] BLOCKED **P0-BASE-02 建立基础策略专用 C0 evaluator**：等待 P0-BASE-01；确定性动作、固定场景/seed、逐 episode JSONL、互斥结局、checkpoint SHA256 和评估协议元数据必须齐全；历史 `evaluate_no_rllib_mappo.py` 只作诊断，不参与正式选模。
+- [ ] BLOCKED **P0-BASE-03 单 seed 分段试训**：等待 P0-BASE-02；从 seed 42 fresh 启动，按 update 5/10/20/30/40 保留里程碑并逐段运行 validator 与 C0；NaN/Inf、指标守恒失败、PPO 无有效更新、actor 泄漏或清理失败时立即 HOLD，不一次性直跑完整预算。
+- [ ] BLOCKED **P0-BASE-04 执行预注册 GO/HOLD 门槛**：等待 P0-BASE-03；在查看试训结果前冻结 C0 成功/碰撞/超时、安全性和训练健康门槛；至少观察到自主 success 且无奖励投机，才允许扩展训练。
+- [ ] BLOCKED **P0-BASE-05 扩展多 seed 正式训练**：仅在 P0-BASE-04 GO 后，以同一 commit/config 运行 seeds `42,123,2024`；不得依据中间结果修改预算、奖励或场景，失败 Run 同样登记。
+- [ ] BLOCKED **P0-BASE-06 独立评估并选择 checkpoint**：用冻结 C0 协议评估全部 periodic checkpoint，先安全门槛、再任务成功与稳定性；生成 `best_base_valid.pt`，登记 SHA256、来源 Run/commit/config，禁止按训练 rollout 选模。
+- [ ] BLOCKED **P0-01 精确记录碰撞对象**：基础策略试训不依赖对抗 impact 归因；取得可用基础 checkpoint 后进入本项，从 CARLA collision event 保存对方 actor id/type，并区分 `red-blue`、`blue-blue`、`static/world`，禁止继续用“最近红车”猜测 impact 对象。
 - [ ] BLOCKED **P0-02 修复转向量提取**：等待 P0-01；`extract_kinematics()` 正确处理 NumPy action `[throttle, steer, brake]`，不能把正常步骤的 steer 恒记为 0。
 - [ ] BLOCKED **P0-03 补指标和奖励单元测试**：等待 P0-02；创建 `tests/test_adversarial_metrics.py`、`tests/test_adversarial_reward.py`。
 - [ ] BLOCKED **P0-04 实现 C0/C1/C2 统一评估器**：等待 P0-03；创建 `evaluation/evaluate_adversarial_c012.py`，输出逐 episode 原始记录和汇总统计。
@@ -279,7 +288,55 @@
 - [x] 使用同一 `save_dir --resume latest --updates 4` 恢复 1 个 update，检查 next update、LR、课程、累计统计、JSONL 和 TensorBoard `tb/` 连续；中断测试确认 `interrupted.pt` 等于最近完整边界。
 - [x] 用户确认人工视觉检查无出生重叠、瞬移、方向错误、异常冻结或重置问题；未提供 episode 编号/录像，success 路径未出现并转入 C0 补验。
 
+#### P0-00G-SUCCESS 策略无关的真实 success 补验
+
+> **执行状态：PASS / GO TO P0-BASE-00（2026-08-02）。** 该补验不加载 Actor/checkpoint，避免把策略未收敛混入 success 逻辑判断；纯逻辑与短距离集成层均在真实 CARLA 中无污染通过。
+
+- [x] 实现 `teleport` 隔离模式：每次只把一辆 active 车移入 goal zone，仍通过真实 `env.step()` 观察奖励和终局。
+- [x] 实现 `scripted` 近终点模式：首车距终点近边界 5 m、后车间隔 10 m，固定低油门直行并记录逐步位置。
+- [x] 固定门槛：success 同步产生正 success reward/`success_event=1`/terminated、移出 active；最终严格为 `all_agents_reached`；碰撞/横道污染拒绝 PASS。
+- [x] 每次输出 `effective_scenario.json`、`steps.jsonl`、`result.json`；专项 8 项和全量 93 项回归通过。
+- [x] REAL `teleport` PASS：Run `P0_00G_SUCCESS_teleport_s42_20260802_222443`，两车在 step 1/2 success，最终 `all_agents_reached`，collision 0，清理通过。
+- [x] REAL `scripted` PASS：Run `P0_00G_SUCCESS_scripted_s42_20260802_222523`，两车在 step 32/55 success，先到车退出后后车继续 active，collision 0，清理通过。
+
 **P0-00 完成定义**：P0-00B 至 P0-00G 全部通过，测试输出和 smoke Run 已登记；此时仅证明基础 MAPPO 训练数据流可信，不代表基础策略性能已经达标。
+
+### P0-BASE 基础 MAPPO 策略训练与选择
+
+> **审计结论（2026-08-02）**：下一条研究主线应是训练并独立验证基础 MAPPO 策略。当前没有发现必须继续修改 MAPPO/环境算法逻辑后才能试训的阻塞；但“可以开始受控试训”不等于“可以直接批量长训”。先冻结源码、实验契约和基础策略专用 C0 evaluator，才能让训练结果可复现、可比较、可选模。
+
+#### P0-BASE-00 源码与证据冻结
+
+- [ ] 审阅当前未提交的 success smoke 脚本、专项测试、README/命令/索引和 P0-00G 文档，确认内容与真实 Run 证据一致。
+- [ ] 提交训练相关源码与文档；不提交个人 Obsidian workspace、训练日志、checkpoint、视频和 TensorBoard event。
+- [ ] 在提交候选树上重跑 93 项无 CARLA 回归、Town02 v3 场景离线 validator、训练入口 `--help` 和 `git diff --check`。
+- [ ] 记录冻结 Git SHA；正式训练期间若源码变化，必须使用新 RunID 并重新通过本门槛。
+
+#### P0-BASE-01 正式实验契约
+
+- [ ] 建立版本控制配置和实验 registry，禁止仅在命令行历史或 argparse 默认值中保存正式参数。
+- [ ] 冻结 Town02 v3 场景池清单及 hash、场景采样方式、课程阶段/转换窗口、seed、总 updates、每 update episodes、`max_steps`、PPO/GAE/LR 参数和 LR horizon。
+- [ ] 冻结 checkpoint、日志、直方图和独立评估间隔；每个 Run 记录 RunID、Git SHA、完整命令、配置 hash、CARLA/Python/Torch 版本和输出目录。
+- [ ] 冻结停止规则：NaN/Inf、奖励/指标守恒失败、生命周期对账失败、无有效 PPO transition/update、CARLA actor 泄漏、同步模式未恢复、checkpoint/JSONL/validator 不完整均立即 HOLD。
+
+#### P0-BASE-02 基础策略 C0 评估协议
+
+- [ ] 为两辆红车定义独立 C0 评估：冻结 checkpoint、确定性动作、固定场景与固定 episode seeds，不加入蓝车或额外交通。
+- [ ] 输出逐 episode JSONL 和汇总 JSON/CSV；结局严格互斥为 success、collision、timeout/other，并保留每车 success、碰撞、长度、回报分量和安全诊断。
+- [ ] 记录评估协议版本、Git SHA、配置 hash、checkpoint SHA256 和命令；相同输入重复评估时离散结局一致。
+- [ ] 旧 `evaluation/evaluate_no_rllib_mappo.py` 仅作历史诊断；迁移到当前 observation/action/lifecycle/metrics/checkpoint 协议前不得用于正式 checkpoint 选择。
+
+#### P0-BASE-03 至 P0-BASE-06 运行与选模
+
+- [ ] **分段试训**：先只运行 seed 42，fresh 启动；在 updates 5/10/20/30/40 停点保存、校验并做 C0，覆盖 warmup、课程切换及 full-stage 起点。
+- [ ] **预注册判定**：查看结果前写明 GO/HOLD 数值门槛；至少要求出现自主 success、终局/奖励/transition 守恒、训练数值稳定且不存在静止刷分、越界刷分或碰撞换回报。
+- [ ] **多 seed 扩展**：P0-BASE-04 GO 后，才使用完全相同 commit/config 扩展 seeds `42,123,2024`；先完成开发级 3 seed，论文最终是否扩为 5 seed 另行冻结。
+- [ ] **独立选模**：对 periodic checkpoints 使用同一冻结 C0 验证集；安全门槛优先，其次比较 success、collision/timeout 和跨 seed 稳定性，输出 `best_base_valid.pt` 及 manifest。
+- [ ] **产物登记**：每个成功或失败 Run 都更新实验登记表；登记 checkpoint SHA、配置、C0 结果、停止原因和下一动作。
+
+**P0-BASE 进入训练门槛**：P0-BASE-00/01/02 全部完成后，仅允许 P0-BASE-03 单 seed 分段试训。
+
+**P0-BASE 批量放行门槛**：P0-BASE-04 明确 GO 后才允许多 seed；P0-BASE-06 生成独立验证通过的基础 checkpoint 后，才把它作为 Phase 1 红车冻结策略。
 
 ### P0-A 已实现基础与复审项
 
@@ -654,7 +711,8 @@ git rev-parse HEAD
 | 2026-07-21 | **CONFIRMED/IMPLEMENTED**：终止/截断按 agent-specific 任务边界判定，而不是按全局 reset 一刀切 | 同伴红车碰撞后，未碰撞红车理论驾驶回报仍存在，按 `X` bootstrap；红车成功或碰撞均使蓝车对抗任务产生结局，按 `T` 切断 bootstrap | 全局事件一律 `T`；非直接事件一律 `X` | 环境、robust_v2、单蓝车、生命周期测试；未启用的 adversary 全局碰撞兼容分支保持旧语义 |
 | 2026-07-22 | **CONFIRMED/IMPLEMENTED**：MAPPO 保持固定 Actor/Critic 特征维度，允许每个 agent 的有效 transition 数动态不同；失活槽位只可作为仍活跃队友的 centralized-state 占位，不再以失活 agent 为目标生成样本 | 网络输入结构必须固定；当前 `Dict[agent_id, List[Transition]]` 天然支持变长轨迹，符合 agent-specific 回报边界 | 动态改变网络输入维度；用全零伪 transition 补齐；只在 loss 端临时 mask | `robust_v2` collector、buffer、critic batch、后续 GAE/PPO |
 | 2026-07-23 | **CONFIRMED/IMPLEMENTED**：GAE 逐 episode 计算原始值，优势在 per-agent rollout 拼接后统一标准化；旧导入入口暂留显式兼容 wrapper | 保留 episode 边界同时避免逐 episode 标准化抹掉不同结局的相对强弱；不在 P0-00D 越权改变对抗/PSRO 入口 | 保持逐 episode 单独标准化；一次混合所有 agent；隐式改变所有导入方 | `robust_v2` 与 P0-00D tests；其他入口后续显式迁移 |
-| 2026-07-20 | 先完成 C0/C1/C2 和精确归因，再启动长训练 | 当前指标仍可能误判 steer 与碰撞对象，旧训练无法形成可信结论 | 直接延长 7 月 5 日旧 run | P0-P1 |
+| 2026-07-20 | **SUPERSEDED FOR BASE TRAINING**：先完成 C0/C1/C2 和精确归因，再启动任何长训练 | 该顺序适用于对抗策略，但若把 P0-01 至 P0-06 同样前置于基础策略，会因 C0/Phase 1 都需要合格基础 checkpoint 而形成循环依赖 | 直接延长 7 月 5 日旧 run | 对抗 P0-P1 仍有效；基础训练改由 P0-BASE 门槛控制 |
+| 2026-08-02 | 基础策略训练前置于对抗碰撞归因，但必须先冻结源码、正式配置和基础 C0 evaluator，再按单 seed 分段试训 -> GO/HOLD -> 多 seed -> 独立选模推进 | P0-00G-SUCCESS、93 项回归和 Town02 v3 的 16 场景真实验证已关闭基础算法/环境工程风险；P0-01/02 只影响蓝车 impact 归因，不阻塞无蓝车 C0；C0 与 Phase 1 又必须先有合格基础 checkpoint | 等 P0-01 至 P0-06 全部完成才训练基础策略；或跳过配置/评估直接批量长训 | P0-BASE、P0-01 至 P0-06、Phase 1 |
 | 2026-07-20 | 通信放在无通信双蓝基线之后 | 否则无法把多车数量收益与消息通信收益分离 | 直接在现有双蓝脚本加入 attention | P3-P5 |
 | 2026-07-20 | 先固定红池 PSRO，再做双边演进 | 降低非平稳性，先验证 pool 和 meta-solver 的科学有效性 | 一开始同时训练红蓝双方 | P4-P6 |
 | YYYY-MM-DD | `<decision>` | `<evidence>` | `<alternatives>` | `<scope>` |
@@ -673,7 +731,7 @@ git rev-parse HEAD
 
 ## 18. 推荐的近期两周执行顺序
 
-### 第 1 周：消除结论污染源
+### 第 1 周：冻结基础策略训练契约并完成单 seed 试训
 
 - [x] 第 1 天：完成 P0-00B，修正 terminated/truncated 语义并改写生命周期测试（15 项通过）。
 - [x] 第 2 天：完成 P0-00C，`robust_v2` 全链路接入 `active_mask`；一车提前终止 mock 与 18 项回归测试通过。
@@ -683,16 +741,17 @@ git rev-parse HEAD
 - [x] 第 4 天中段：完成 P0-00F-TB，冻结并模块化奖励/TensorBoard 指标协议，全量 60 项无 CARLA 回归测试通过。
 - [x] 第 4 天下半准备：完成 P0-00G-PREP 与三项真实 smoke 修复，补齐互斥终局、逐 episode 证据、periodic/resume、课程顺序、清理和 ratio 数值几何，全量 71 项测试通过。
 - [x] 第 4 天下半：P0-00G 自动 smoke、strict validator、update 4 恢复与用户视觉确认通过；正式 commit 冻结仍是后续实验前条件。
-- [ ] 第 5-6 天：实现精确碰撞对象、steer/control 解析及 P0-B/P0-C 测试。
-- [ ] 第 7 天：复查全部测试、smoke 原始记录和代码 diff；任一门槛失败则不进入评估器开发。
+- [ ] NEXT 第 5 天：完成 P0-BASE-00，审阅并提交当前 success 补验源码/测试/文档，排除个人 Obsidian 状态；冻结通过回归与场景验证的 Git SHA。
+- [ ] 第 6 天：完成 P0-BASE-01/02，固化正式 config/registry、停止规则和基础策略专用 C0 evaluator/固定 seeds。
+- [ ] 第 7 天：只运行 seed 42 的 5/10/20/30/40 updates 分段试训，每段执行 validator 和独立 C0；任一门槛失败立即 HOLD。
 
-### 第 2 周：完成评估闭环，再决定是否进入单蓝车
+### 第 2 周：决定基础策略批量放行，再进入对抗可信化
 
-- [ ] 第 1-3 天：实现 C0/C1/C2 evaluator、互斥结局校验和逐 episode JSONL。
-- [ ] 第 4 天：建立 config、registry、latest/periodic 和独立 best-checkpoint 选择流程。
-- [ ] 第 5 天：运行一次小规模 C0/C1/C2，复查原始记录、重复性和 C0 基础能力。
-- [ ] 第 6 天：仅当 P0-06 通过时运行单蓝车 3-update smoke，手工重放典型 episode。
-- [ ] 第 7 天：决定是否允许启动 3 seed 单蓝车训练；未通过则回到对应 P0 任务，不以延长训练替代修复。
+- [ ] 第 1 天：按预注册 P0-BASE-04 门槛复核单 seed 结果；不得看到结果后放宽阈值。
+- [ ] 第 2-4 天：仅在 GO 后以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
+- [ ] 第 5 天：用冻结 C0 验证全部 periodic checkpoints，生成带 SHA/manifest 的 `best_base_valid.pt`。
+- [ ] 第 6 天：开始 P0-01/P0-02，修复对抗碰撞对象和 steer/control 解析，并补相应测试。
+- [ ] 第 7 天：继续 P0-03 至 P0-06 与 P0-05M；只有这些门槛通过后才决定是否运行单蓝车 smoke。
 
 日期是建议节奏，不是完成标准；CARLA 实验遇到环境 bug 时优先修复可复现性，不用训练时长掩盖问题。
 
@@ -723,4 +782,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B 至 P0-00G 已闭合基础 MAPPO 的终止/bootstrap、active-mask、GAE/PPO、生产更新、checkpoint/resume、指标审计和真实 CARLA smoke；当前 NEXT 是 P0-01 精确碰撞归因。P0-01 至 P0-06、单蓝车证据协议迁移和修复树 commit 完成前仍不允许正式批量/长训练。Phase 1 通过后，双蓝、PSRO 与通信才可能成为可辩护的研究贡献。
+本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B 至 P0-00G-SUCCESS 已闭合基础 MAPPO 的终止/bootstrap、active-mask、GAE/PPO、生产更新、checkpoint/resume、指标审计、真实 CARLA 工程 smoke 和固定场景 success 链路；当前 NEXT 是 P0-BASE-00 冻结可训练源码基线，随后冻结正式配置和基础策略 C0 evaluator。完成这三项后可以开始单 seed 分段基础策略试训，但 P0-BASE-04 GO 前不得批量训练。P0-01 至 P0-06 和 P0-05M 不再阻塞无蓝车的基础策略试训，但仍是任何对抗策略长训练的硬门槛；Phase 1 通过后，双蓝、PSRO 与通信才可能成为可辩护的研究贡献。

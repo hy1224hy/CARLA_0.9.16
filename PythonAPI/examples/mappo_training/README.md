@@ -9,7 +9,7 @@
 
 | 用途 | 唯一有效入口 | 当前许可 |
 |---|---|---|
-| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | P0-00 修复期间只允许单元测试和指定 smoke，P0-06 前禁止长训练 |
+| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | 完成 P0-BASE-00/01/02 后只允许单 seed 分段试训；P0-BASE-04 GO 后才允许多 seed 长训练 |
 | Phase 1 单蓝车 | `python -m training.train_2red_1blue_ppo` | P0-06 通过前禁止启动 |
 
 以下入口均为 **DEPRECATED/历史参考**：`train_rllib.py`、`carla_rllib_wrapper.py`、`train_no_rlib_sharedpolicy.py`、`train_no_rllib_mappo.py`、`train_no_rllib_mappo_robust.py`、`train_adversarial_ppo.py`、`run_adversarial_training_with_viz.py` 以及旧 multi v1/v2。它们不得用于新训练、恢复修复后的训练、生成正式 checkpoint 或论文结果；未来确需使用时，必须先迁移当前生命周期、GAE、指标和 checkpoint 协议并重新验收。
@@ -27,6 +27,7 @@
 | **[docs/MAPPO_TensorBoard指标协议.md](docs/MAPPO_TensorBoard指标协议.md)** | 当前基础 MAPPO 的奖励审计、聚合口径、训练健康指标和离线验证 |
 | **[docs/P0-00G_真实CARLA_smoke运行规范.md](docs/P0-00G_真实CARLA_smoke运行规范.md)** | P0-00G 环境门槛、冻结命令、受控中断、产物和 PASS/HOLD 标准 |
 | **[docs/P0-00G_真实CARLA_smoke测试记录.md](docs/P0-00G_真实CARLA_smoke测试记录.md)** | P0-00G 逐次结果、失败根因、修复验证与最终 Judge 裁决 |
+| **[docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md](docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)** | 无 checkpoint 的固定场景 success/reward/lifecycle 隔离测试、命令与逐次记录 |
 
 ---
 
@@ -153,6 +154,30 @@ CarlaUE4.exe
 ./CarlaUE4.sh
 ```
 
+### 1.1 无 checkpoint 验证 success 逻辑
+
+不要先用未收敛策略验证终点逻辑。下面的入口在真实 CARLA 中顺序把车辆传送到终点，直接审计 success 奖励、`terminated/truncated`、`active_mask` 和 `all_agents_reached`；通过后再运行 `--mode scripted` 的近终点低油门短距离测试。
+
+```powershell
+..\..\..\venv\Scripts\python.exe -B -m evaluation.smoke_test_success_logic `
+  --mode teleport `
+  --scenario data/training_scenarios/scenario_01_basic.json `
+  --seed 42 `
+  --follow-spectator
+
+..\..\..\venv\Scripts\python.exe -B -m evaluation.smoke_test_success_logic `
+  --mode scripted `
+  --scenario data/training_scenarios/scenario_01_basic.json `
+  --lead-distance 5 `
+  --following-gap 10 `
+  --throttle 0.30 `
+  --max-steps 250 `
+  --seed 42 `
+  --follow-spectator
+```
+
+每次运行写入唯一的 `logs/success_logic_smoke_<timestamp>/`，完整门槛见 [success 逻辑测试规范与记录](docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)。该 PASS 只证明环境成功链路，不证明 MAPPO 收敛。
+
 ### 2. 训练正常智能体（2车）
 
 ```powershell
@@ -254,8 +279,9 @@ tensorboard --logdir logs/<RunID>/tb
 
 ### 阶段 0：代码与指标可信化
 1. 严格完成 TODO 的 P0-00A 至 P0-00G
-2. 完成 P0-01 至 P0-06
-3. 只有通过阶段门槛，才允许启动正式长训练
+2. 完成 P0-BASE-00/01/02 后，用单 seed 分段试训并按预注册门槛作 GO/HOLD
+3. P0-BASE-04 GO 后才能扩展多 seed，并通过独立 C0 选择基础 checkpoint
+4. 基础 checkpoint 合格后完成 P0-01 至 P0-06 和 P0-05M，再进入对抗训练
 
 ### 阶段1：正常智能体训练
 1. （可选）采集手动驾驶数据

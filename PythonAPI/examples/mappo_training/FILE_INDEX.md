@@ -68,6 +68,7 @@
 | **evaluate_adversarial_ppo.py** | 诊断历史对抗 checkpoint；非当前统一 C0/C1/C2 结论入口 |
 | **evaluate_adversarial.py** | 对抗场景综合评估 |
 | **evaluate_with_speedup.py** | 在提速场景下评估（测试对抗智能体鲁棒性） |
+| **smoke_test_success_logic.py** | **[CURRENT]** 不加载 checkpoint，以顺序传送和近终点固定油门在真实 CARLA 中验收 success 奖励与生命周期；每次写 `result.json`/`steps.jsonl` |
 
 ---
 
@@ -128,8 +129,10 @@
 | **docs/MAPPO_TensorBoard指标协议.md** | P0-00F-TB 奖励 schema、聚合口径、PPO/模型指标、事务顺序和验证命令 |
 | **docs/P0-00G_真实CARLA_smoke运行规范.md** | P0-00G 环境门槛、冻结命令、受控中断、预期产物与 PASS/HOLD 标准 |
 | **docs/P0-00G_真实CARLA_smoke测试记录.md** | P0-00G 每次环境、fresh、中断、resume、validator、失败根因、修复证据与 Judge 裁决 |
+| **docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md** | 无基础 checkpoint 的 success/reward/lifecycle 两层真实 CARLA 测试、PASS 门槛、命令和逐次结果 |
 | **tests/test_checkpoint_resume.py** | 原子保存、哈希、RNG/optimizer 连续、协议拒绝和训练入口 checkpoint 回归测试 |
 | **tests/test_training_metrics.py** | 奖励守恒、字段拒绝、ragged agent/稀疏事件聚合、PPO/模型指标、TB/JSONL 对账及 checkpoint 重放测试 |
+| **tests/test_success_logic_smoke.py** | 近终点场景几何与 success reward/terminated/truncated/active/global-reason 审计器回归测试 |
 
 ---
 

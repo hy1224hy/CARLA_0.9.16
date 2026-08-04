@@ -1,6 +1,6 @@
 # P0-00G 真实 CARLA smoke 测试记录
 
-> 记录状态：PASS / GO（用户确认人工视觉无异常）
+> 记录状态：PASS / GO TO P0-BASE-00（用户确认人工视觉无异常；success 补验通过）
 > 开始时间：2026-08-02 16:23:30 +08:00
 > 裁决范围：当前未提交修复工作树的端到端工程 smoke；不构成策略性能或正式可复现版本的证明。
 
@@ -126,7 +126,16 @@
 - 期望：训练退出后 `vehicle.*` 和 `sensor.*` 恢复到基线 0；至少 3 个 episode 有可复核视觉观察，且终局至少覆盖两类。
 - 自动观察：fresh、中断、最终 resume 三次退出后均为 Town02 异步、`fixed_delta_seconds=None`、车辆/传感器 0/0；训练过程中观察到同步模式与 2 辆车/6 个传感器，说明清理比较有真实创建基线。终局已覆盖 collision 与 max_steps 两类。
 - 用户证据：2026-08-02 用户确认人工视觉检查未发现问题，据此关闭出生重叠、瞬移、方向错误、异常冻结和 episode 重置的操作门槛。
-- 证据限制：未提供 episode 编号或录像，无法由第三方复核；第三个 Run 也没有 success，故真实 success 终局仍未验证。该限制不阻塞基础工程 smoke，但必须在 C0 评估中补足 success 路径。
+- 证据限制：未提供 episode 编号或录像，无法由第三方复核；第三个训练 Run 本身没有 success，因此它单独不能证明成功终局。下述策略无关补验随后关闭逻辑覆盖缺口，但不替代训练后 C0 性能评估。
+
+### P0G-SUCCESS 策略无关的真实 success 补验
+
+- 状态：PASS
+- 前置环境：2026-08-02 22:24:43，用户重启的本安装 CARLA 监听 2000；client/server 均为 0.9.16；Town10HD_Opt、异步/None、车辆/传感器 0/0。
+- 纯逻辑 Run：`P0_00G_SUCCESS_teleport_s42_20260802_222443`。两车在 step 1/2 分别获得 `success=100`、`success_event=1`，均 terminated 且不 truncated；第一车到点时第二车仍 active、全局仍 running，第二车到点后严格为 `all_agents_reached`；collision 0。证据：[result.json](../logs/P0_00G_SUCCESS_teleport_s42_20260802_222443/result.json)、[steps.jsonl](../logs/P0_00G_SUCCESS_teleport_s42_20260802_222443/steps.jsonl)。
+- 近终点 Run：`P0_00G_SUCCESS_scripted_s42_20260802_222523`。两车从 `y=256/246` 以 throttle 0.30 直行，在 step 32/55 分别 success；step 31/54 的 `y=260.9079/260.9331` 均仍在终点近边界 `y=261` 外，下一步进入后正确触发。先到车辆退出后，后车继续 active 且无物理阻塞；最终 `all_agents_reached`、collision 0。证据：[result.json](../logs/P0_00G_SUCCESS_scripted_s42_20260802_222523/result.json)、[steps.jsonl](../logs/P0_00G_SUCCESS_scripted_s42_20260802_222523/steps.jsonl)。
+- 连续运行与清理：两次 Run 使用同一 CARLA 服务且均成功；每次退出恢复异步/`fixed_delta=None`、车辆/传感器 0/0。当前证据不支持“只有第一次运行正确”或“第二次服务器卡死”。这不能追溯证明历史某次运行没有卡顿。
+- 范围限制：补验确认 goal zone、success 奖励、生命周期、先到车移除和短距离直行链路；不证明 MAPPO 收敛、远距离成功率、跨 seed 鲁棒性或 checkpoint 质量。完整分析见 [success 规范与记录](./P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)。
 
 ## 3. 问题登记
 
@@ -135,18 +144,20 @@
 | I-001 | 当前工作树非 clean，未冻结到新 commit | 通过只能归属于记录的 dirty source fingerprint，不能宣称任意 commit 可复现 | 保留 Git SHA、dirty paths 和训练器源码 fingerprint；正式实验前提交并重做门槛 smoke | OPEN/KNOWN LIMIT |
 | I-002 | 工具执行无法可靠向后台 Windows 训练进程发送一次 Ctrl+C | 若用强杀模拟，会绕过清理逻辑并使 interrupted 证据无效 | 增加仅 resume 可用的确定性 episode 边界中断钩子，走原有 `KeyboardInterrupt` 分支；配置和真实路径均验证 | CLOSED |
 | I-003 | 当前无法由自动化终端替代人工视觉观察 | 自动指标通过仍不能排除明显出生重叠、瞬移或错误驾驶方向 | 用户已确认人工视觉无异常；未提供编号/录像，保留证据强度限制 | CLOSED/USER CONFIRMED |
-| I-004 | 当前主 Run 的 16 个已提交 episode 均未 success，且控制台聚合的 progress 为 0 | smoke 已覆盖 collision/max_steps，但没有真实 success 路径证据；progress=0 若被误读会造成指标失真结论 | 已确认 `reward_status/progress/enabled=0` 且 raw `diagnostic/progress_m` 非零；不改主 Run数据，success 路径列为未验证 | OPEN/KNOWN COVERAGE GAP |
+| I-004 | 当前主 Run 的 16 个已提交 episode 均未 success，且控制台聚合的 progress 为 0 | smoke 已覆盖 collision/max_steps，但没有真实 success 路径证据；progress=0 若被误读会造成指标失真结论 | 已确认 `reward_status/progress/enabled=0` 且 raw `diagnostic/progress_m` 非零；主 Run 不改，另以 teleport/scripted 两层真实补验关闭 success 覆盖缺口 | CLOSED BY SUPPLEMENT |
 | I-005 | classic 课程 stage2 使用无序 `set`，跨进程重建顺序不稳定 | strict resume 对同一逻辑课程误报漂移，P0G-S2 无法开始，恢复性未成立 | 保序去重并新增顺序回归；新 RunID 重跑 fresh→interrupt→resume | CLOSED（真实跨进程 resume 通过） |
 | I-006 | 环境退出只恢复异步，`fixed_delta_seconds` 留为 0.1，Traffic Manager 同步未关闭 | CARLA 全局状态污染后续客户端，actor=0 仍不能视为完整清理 | 记录并恢复原始 world timing，关闭本环境启用的 TM sync；mock 与 fresh/interruption/resume 真实路径验证 | CLOSED |
 | I-007 | precheck 合批前向与 rollout batch=1 前向存在 float32 ulp 差异 | 固定 1e-6 门槛会随机接受 9.54e-7、拒绝 1.43e-6，造成相同未更新策略的假阳性 | precheck 匹配 rollout 的逐 transition 几何，保持 1e-6 和 stale-policy 负例；真实四 update 均为 0 | CLOSED |
+| I-008 | 主 Run 的 16 个 episode 没有 success，无法把策略能力与终点逻辑分开 | 直接先训练或延长轮次仍无法单独证明 success reward/lifecycle 正确 | `teleport` 与近终点 `scripted` 连续真实运行均无污染 PASS；逐步 JSONL、结果和清理证据已保存 | CLOSED |
 
 ## 4. 当前裁决
 
 ### 已确认事实
 
-- 71 项无 CARLA 回归通过；当前主 Run 的 fresh→controlled interrupt→resume→strict validator 全部通过。
+- 主 smoke 当时的 71 项无 CARLA 回归通过；新增 success 测试后当前全量为 93 项通过；当前主 Run 的 fresh→controlled interrupt→resume→strict validator 全部通过。
 - 16 条已提交 episode、四次 PPO、TensorBoard/JSONL、checkpoint/manifest/checksum 和 actor/world 清理满足自动门槛。
 - 当前主 Run 只出现 collision 与 max_steps，没有 success；没有可复核视觉记录；工作树为 dirty。
+- 后续策略无关补验中，teleport 两车在 step 1/2、scripted 两车在 step 32/55 触发 success；success/lifecycle/终局/清理全部满足冻结门槛。
 
 ### 合理推断
 
@@ -155,9 +166,9 @@
 
 ### 尚未验证与缺失信息
 
-- 尚未验证：真实 success 终局、策略性能/收敛、场景鲁棒性、精确碰撞对象和视觉上是否存在出生重叠/瞬移/方向错误。
-- 缺失信息：至少 3 个 episode 的人工窗口或录像记录；当前修复树对应的正式 commit。
+- 尚未验证：策略性能/收敛、远距离场景成功率、跨 seed 鲁棒性和精确碰撞对象。用户已确认人工视觉未见出生重叠/瞬移/方向错误，但没有 episode 编号或录像可供第三方复核。
+- 缺失信息：至少 3 个训练 episode 的编号/录像记录；当前修复树对应的正式 commit。
 
 ### Judge 裁决
 
-**GO（P0-00G 完成）**。自动工程 smoke 与用户人工视觉确认均通过，基础 MAPPO 真实 CARLA 数据流门槛闭合。该 GO 只允许进入 P0-01，不授权批量或长训练；当前 Run 没有 success，且修复树仍未冻结到 commit。批量实验继续 HOLD，直到 P0-01 至 P0-06、单蓝车日志/checkpoint 协议迁移和基线能力评估完成。
+**GO TO P0-BASE-00**。自动工程 smoke、用户人工视觉以及策略无关的 teleport/scripted success 两层补验均通过，基础 MAPPO 的真实 CARLA 数据流和固定场景成功链路门槛闭合。该裁决允许冻结可训练源码基线；完成 P0-BASE-00/01/02 后才允许单 seed 分段试训，P0-BASE-04 GO 前仍禁止多 seed 批量训练。策略性能、远距离成功率和独立 C0 尚未验证。
