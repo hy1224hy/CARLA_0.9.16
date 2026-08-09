@@ -13,10 +13,10 @@
 | 当前工程基线    | `P0-BASE-04-FROZEN`：训练/C0/GO-HOLD 三套契约与离线裁决证据链均已冻结；尚无正式策略性能结果，NEXT 为 P0-BASE-03 seed 42 的 update 5 分段试训 |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                                                   |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                                               |
-| 当前有效自动化测试 | 共 129 项通过（2026-08-04）：其中 13 项 P0-BASE-04 契约/临界值/连续 update/里程碑/held-out 判定专项；其余覆盖算法、生命周期、checkpoint、场景、指标、success、正式训练与 C0 契约 |
+| 当前有效自动化测试 | 共 130 项通过（2026-08-09）：新增 CARLA 冷启动/地图加载 60 秒 RPC timeout 顺序测试；其余覆盖算法、生命周期、checkpoint、场景、指标、success、正式训练、C0 与 GO/HOLD 契约 |
 | 最近训练产物    | 2026-07-05 的 `train_2red_1blue_ppo` 中断实验；产生于生命周期修复前，只能作历史参考                                                                                                           |
 | 本文档创建日期   | 2026-07-20                                                                                                                                                            |
-| 最后更新日期    | 2026-08-04                                                                                                                                                            |
+| 最后更新日期    | 2026-08-09                                                                                                                                                            |
 
 ### 阶段状态
 
@@ -355,6 +355,16 @@
 - [x] 13 项专项覆盖未知字段/绑定 SHA 篡改、KL/clip/ratio/reward 临界值、连续 update、动作饱和 warning、缺失/非有限、各里程碑边界、重复性/other HOLD、lane invasion 和 validation 边界。
 
 > **执行状态：COMPLETED / GO TO P0-BASE-03（2026-08-04）。** 详细口径、风险边界、标准命令和五维验收见 [P0-BASE-04 GO/HOLD 数值门槛预注册](./P0-BASE-04_GO-HOLD数值门槛预注册.md)。本阶段没有运行 CARLA、没有查看或制造正式 checkpoint 性能结果，也没有改动 MAPPO/PPO、网络、环境、奖励、课程、动作映射或 checkpoint schema。完成仅表示“判定规则已预注册”，不表示 seed 42 已 GO；现在只解除 P0-BASE-03 update 5 的启动阻塞。
+
+#### P0-BASE-03-PREP CARLA 冷启动可靠性
+
+- [x] 预实验启动时复现 Windows packaged CARLA 冷加载 Town02 超过原硬编码 10 秒 RPC timeout；失败发生在环境构造、首个 episode 和 PPO update 之前，不属于学习速度或算法失败。
+- [x] 将连接/地图加载抽取为 `_connect_and_load_world()`，统一使用 `CARLA_RPC_TIMEOUT_SECONDS=60.0`；该值只控制真实墙钟等待，不改变 `fixed_delta_seconds=0.1`、`max_steps=1000`、场景、奖励、动作或训练预算。
+- [x] 新增 mock 测试验证 Client -> timeout -> `load_world("Town02")` 调用顺序；全量 130 项无 CARLA 回归通过。
+- [x] 按用户要求删除未完成 update 1、零 episode/transition/PPO update 的无效预实验日志与 registry 行；不将它保留为性能实验或纳入任何统计。
+- [x] 后续 CARLA 服务器由用户手动启动；训练端只访问 `127.0.0.1:2000`，一旦服务卡死/超时立即停止并通知用户重启，不再由自动流程重启服务器。
+
+> **执行状态：READY FOR FRESH UPDATE 5（2026-08-09）。** 修复需先形成新 Git commit，再用新 RunID fresh 开始；禁止恢复已删除的 update-0 初始化 checkpoint。
 
 #### P0-BASE-03 至 P0-BASE-06 运行与选模
 
@@ -729,6 +739,7 @@ git rev-parse HEAD
 | 2026-08-04 | `P0-BASE-02` | C0 JSON 契约、8 个 held-out 场景、协议/evaluator/validator、7 项 tests、评估协议与项目入口文档 | 正式评估只接收登记 periodic checkpoint；确定性逐 active-agent 执行；原子逐 episode 证据、精确恢复、summary 重算、防泄漏、清理和双 Run 重复性审计 | 7 项 C0 专项及全量 112 项；场景 validator、两个入口 help、AST/diff check；无正式 checkpoint，未运行或虚构性能结果 | 不改变网络、训练、环境、奖励或 checkpoint schema；仅收紧正式评估资格和证据口径 | P0-BASE-02 |
 | 2026-08-04 | `P0-BASE-04-PREP` | `metrics_protocol.py`、训练 recorder、C0 evaluator/validator、动作专项测试、动作协议/TensorBoard/checkpoint/C0/TODO 文档 | 保留三维 WTA 互斥映射；将踏板 zero 与 upper saturation 分离，增加 longitudinal mode/conflict 守恒；combined pedal boundary 降为追溯指标 | 动作 helper、训练聚合、C0 严格 schema 和 WTA 映射专项测试；全量 116 项、两个入口 help、场景 validator、diff check 通过 | 指标协议升为 v3、C0 episode evidence 升为 v2；网络和环境 action 不变；旧指标 checkpoint 不作正式 strict resume | P0-BASE-04-PREP |
 | 2026-08-04 | `P0-BASE-04` | GO/HOLD JSON 契约、纯判定协议、离线 judge、13 项边界测试、门槛协议与入口/TODO 文档 | 冻结证据/数值/里程碑/held-out 门槛；只用主 C0 计性能、repeat C0 查重复性；origin Git blob 防事后改阈值；报告不可覆盖 | 契约 preflight、judge `--help`、13 项专项及全量 129 项、训练/C0 contract preflight、场景 validator、diff check | 不改网络、环境、奖励、训练更新、动作映射或 checkpoint schema；只新增判定层；当前无性能 GO | P0-BASE-04 |
+| 2026-08-09 | `P0-BASE-03-PREP` | `carla_multi_agent_env.py`、lifecycle tests、研究 TODO/实验记录 | 冷启动/地图加载 RPC timeout 从硬编码 10 秒提升为 60 秒并抽取可测试 helper；CARLA 改为用户手动维护，超时只通知不自动重启 | 连接专项 1 项及全量 130 项通过；Town02/训练参数/仿真时间语义不变 | 网络、reward/lifecycle、动作、checkpoint schema 和训练契约参数不变；源码指纹变化，正式 Run 必须 fresh | P0-BASE-03-PREP |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志

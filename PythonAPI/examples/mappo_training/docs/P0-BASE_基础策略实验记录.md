@@ -3,6 +3,7 @@
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
 > 当前状态：P0-BASE-01/02/04 训练、C0 和 GO/HOLD 契约均已冻结；尚未启动正式基础策略 pilot，下一步只运行 seed 42 的 update 5 fresh 分段。
+> 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
 

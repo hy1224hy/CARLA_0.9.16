@@ -15,6 +15,21 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 from datetime import datetime
 
+
+# Cold map loading on the packaged Windows server can legitimately take longer
+# than the old 10 s RPC timeout.  This is an operational startup timeout only;
+# it does not change synchronous simulation time or episode length.
+CARLA_RPC_TIMEOUT_SECONDS = 60.0
+
+
+def _connect_and_load_world(host: str, port: int, town: str):
+    """Connect to CARLA and load the requested map with the startup timeout."""
+    client = carla.Client(host, port)
+    client.set_timeout(CARLA_RPC_TIMEOUT_SECONDS)
+    world = client.load_world(town)
+    return client, world
+
+
 class CarlaMultiAgentEnv:
     """CARLA多智能体环境"""
     
@@ -75,12 +90,9 @@ class CarlaMultiAgentEnv:
         self.OBS_SPEED_SCALE = 30.0   # speed 归一化尺度（m/s）
         self.OBS_CLIP = 5.0           # 防御性裁剪上限（正常范围内不触发，仅兜底）
         
-        # 连接CARLA客户端
-        self.client = carla.Client(host, port)
-        self.client.set_timeout(10.0)
-        
-        # 加载世界
-        self.world = self.client.load_world(town)
+        # 连接 CARLA 并加载世界。RPC timeout 只保护冷启动/地图加载，
+        # 不参与 synchronous fixed_delta_seconds 或 episode max_steps。
+        self.client, self.world = _connect_and_load_world(host, port, town)
         self.map = self.world.get_map()
 
         # 人行横道多边形缓存（懒加载，主动检测车辆是否压横道）

@@ -1,9 +1,14 @@
 import types
 import unittest
+from unittest import mock
 
 import numpy as np
 
-from environment.carla_multi_agent_env import CarlaMultiAgentEnv
+from environment.carla_multi_agent_env import (
+    CARLA_RPC_TIMEOUT_SECONDS,
+    CarlaMultiAgentEnv,
+    _connect_and_load_world,
+)
 from training.adversarial_reward import AdversarialRewardComputer, RewardConfig
 from training.lifecycle_semantics import (
     bootstrap_state_for_boundary,
@@ -87,6 +92,25 @@ class _TrafficManager:
 
     def set_synchronous_mode(self, enabled):
         self.synchronous_calls.append(enabled)
+
+
+class EnvironmentConnectionTests(unittest.TestCase):
+    @mock.patch("environment.carla_multi_agent_env.carla.Client")
+    def test_cold_world_load_uses_registered_startup_timeout(self, client_cls):
+        client = client_cls.return_value
+        world = object()
+        client.load_world.return_value = world
+
+        actual_client, actual_world = _connect_and_load_world(
+            "127.0.0.1", 2000, "Town02"
+        )
+
+        self.assertEqual(CARLA_RPC_TIMEOUT_SECONDS, 60.0)
+        client_cls.assert_called_once_with("127.0.0.1", 2000)
+        client.set_timeout.assert_called_once_with(60.0)
+        client.load_world.assert_called_once_with("Town02")
+        self.assertIs(actual_client, client)
+        self.assertIs(actual_world, world)
 
 
 class EnvironmentCleanupTests(unittest.TestCase):
