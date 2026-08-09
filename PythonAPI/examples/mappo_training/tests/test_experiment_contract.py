@@ -11,6 +11,7 @@ from training.experiment_contract import (
     EXPERIMENT_CONTRACT_VERSION,
     EXPERIMENT_MANIFEST_NAME,
     RESOLVED_CONFIG_NAME,
+    TRAINER_ARG_NAMES,
     ExperimentContractError,
     apply_experiment_contract,
     enforce_formal_transition_minimum,
@@ -192,6 +193,15 @@ class ExperimentEvidenceTests(unittest.TestCase):
             )
             self.assertTrue((run_dir / RESOLVED_CONFIG_NAME).is_file())
             self.assertTrue((run_dir / EXPERIMENT_MANIFEST_NAME).is_file())
+            with (run_dir / RESOLVED_CONFIG_NAME).open(
+                "r", encoding="utf-8"
+            ) as handle:
+                resolved = json.load(handle)
+            self.assertEqual(
+                set(resolved["resolved_training_config"]),
+                set(TRAINER_ARG_NAMES),
+            )
+            self.assertEqual(resolved["resolved_training_config"]["seed"], 42)
             validate_resume_experiment_evidence(args=args, run_dir=run_dir)
 
             update_experiment_evidence(
@@ -233,6 +243,33 @@ class ExperimentEvidenceTests(unittest.TestCase):
             )
             args._experiment_contract_metadata["sha256"] = "different"
             with self.assertRaisesRegex(ExperimentContractError, "SHA256 mismatch"):
+                validate_resume_experiment_evidence(args=args, run_dir=run_dir)
+
+    def test_resume_rejects_resolved_seed_drift(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_dir = root / "P0_BASE_MAPPO_Town02_s42_20260804_210000"
+            run_dir.mkdir()
+            args = _formal_args(run_dir)
+            metadata = apply_experiment_contract(args, project_dir=PROJECT_DIR)
+            metadata["registry_path"] = str(root / "registry.csv")
+            initialize_experiment_evidence(
+                args=args,
+                run_dir=run_dir,
+                git_metadata={"commit": "abc123", "dirty": False, "dirty_paths": []},
+                code_fingerprint="code-fingerprint",
+                scenario_pool_fingerprint="scenario-fingerprint",
+                training_config={"gamma": args.gamma},
+            )
+            resolved_path = run_dir / RESOLVED_CONFIG_NAME
+            with resolved_path.open("r", encoding="utf-8") as handle:
+                resolved = json.load(handle)
+            resolved["resolved_training_config"]["seed"] = 7
+            with resolved_path.open("w", encoding="utf-8") as handle:
+                json.dump(resolved, handle)
+            with self.assertRaisesRegex(
+                ExperimentContractError, "resolved training config mismatch"
+            ):
                 validate_resume_experiment_evidence(args=args, run_dir=run_dir)
 
 

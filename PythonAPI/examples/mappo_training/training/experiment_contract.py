@@ -720,6 +720,31 @@ def initialize_experiment_evidence(
         return
     payload = metadata["payload"]
     now = utc_now_iso()
+    checkpoint_training_config = dict(training_config)
+    unknown_checkpoint_fields = sorted(
+        set(checkpoint_training_config) - set(TRAINER_ARG_NAMES)
+    )
+    if unknown_checkpoint_fields:
+        raise ExperimentContractError(
+            "checkpoint training config contains fields outside the formal contract: "
+            f"{unknown_checkpoint_fields}"
+        )
+    resolved_training_config = {
+        name: getattr(args, name) for name in TRAINER_ARG_NAMES
+    }
+    checkpoint_mismatches = {
+        name: {
+            "checkpoint": value,
+            "resolved": resolved_training_config[name],
+        }
+        for name, value in checkpoint_training_config.items()
+        if resolved_training_config[name] != value
+    }
+    if checkpoint_mismatches:
+        raise ExperimentContractError(
+            "checkpoint and formal resolved training config differ: "
+            f"{checkpoint_mismatches}"
+        )
     resolved = {
         "evidence_schema_version": "p0_base_resolved_config_v1",
         "created_at": now,
@@ -731,7 +756,12 @@ def initialize_experiment_evidence(
         "contract_canonical_sha256": metadata["canonical_sha256"],
         "requested_stop_update": int(args.updates),
         "planned_total_updates": metadata["planned_total_updates"],
-        "resolved_training_config": dict(training_config),
+        # Checkpoint compatibility intentionally stores only resume-immutable
+        # fields.  Formal experiment evidence must instead retain every
+        # contract-owned trainer argument, including the seed, so downstream
+        # GO/HOLD provenance checks never have to infer it from a filename or
+        # a different artifact.
+        "resolved_training_config": resolved_training_config,
         "resolved_scenario_dir": str(Path(args.scenario_dir).resolve()),
         "scenario_pool_fingerprint": scenario_pool_fingerprint,
         "git": dict(git_metadata),
@@ -846,6 +876,17 @@ def validate_resume_experiment_evidence(*, args: Namespace, run_dir: Path) -> No
             raise ExperimentContractError(f"{label} run_id mismatch")
         if document.get("contract_sha256") != metadata["sha256"]:
             raise ExperimentContractError(f"{label} contract SHA256 mismatch")
+    expected_training_config = {
+        name: getattr(args, name) for name in TRAINER_ARG_NAMES
+    }
+    if resolved.get("resolved_training_config") != expected_training_config:
+        raise ExperimentContractError(
+            "formal resume resolved training config mismatch"
+        )
+    if resolved.get("resolved_scenario_dir") != str(Path(args.scenario_dir).resolve()):
+        raise ExperimentContractError(
+            "formal resume resolved scenario directory mismatch"
+        )
 
 
 def preflight_experiment_contract(

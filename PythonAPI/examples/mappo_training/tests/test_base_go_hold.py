@@ -1,4 +1,6 @@
 import copy
+import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -11,6 +13,8 @@ from evaluation.base_go_hold_protocol import (
     summarize_c0_gate,
     validate_go_hold_contract,
 )
+from evaluation.judge_base_go_hold import _validate_training_run
+from training.checkpoint_protocol import sha256_file
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -119,6 +123,84 @@ class GoHoldContractTests(unittest.TestCase):
         drift["bindings"]["c0_contract_sha256"] = "0" * 64
         with self.assertRaisesRegex(GoHoldProtocolError, "SHA256"):
             validate_go_hold_contract(drift, project_dir=PROJECT_DIR)
+
+
+class TrainingEvidenceIntegrationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.contract = load_go_hold_contract(CONTRACT_PATH, project_dir=PROJECT_DIR)[
+            "payload"
+        ]
+
+    def _write_training_evidence(self, run_dir: Path, *, seed):
+        binding = self.contract["bindings"]
+        run_id = run_dir.name
+        resolved = {
+            "evidence_schema_version": "p0_base_resolved_config_v1",
+            "created_at": "2026-08-09T00:00:00+00:00",
+            "run_id": run_id,
+            "run_dir": str(run_dir.resolve()),
+            "contract_id": binding["training_contract_id"],
+            "contract_path": str(
+                (PROJECT_DIR / binding["training_contract_path"]).resolve()
+            ),
+            "contract_sha256": binding["training_contract_sha256"],
+            "contract_canonical_sha256": "canonical",
+            "requested_stop_update": 5,
+            "planned_total_updates": 100,
+            "resolved_training_config": {"seed": seed},
+            "resolved_scenario_dir": str(run_dir / "scenarios"),
+            "scenario_pool_fingerprint": "scenario-fingerprint",
+            "git": {"commit": "a" * 40, "dirty": False, "dirty_paths": []},
+            "code_fingerprint": "code-fingerprint",
+            "health_stop_rules": {},
+            "evaluation_contract": {},
+        }
+        resolved_path = run_dir / "resolved_config.json"
+        with resolved_path.open("w", encoding="utf-8") as handle:
+            json.dump(resolved, handle)
+        manifest = {
+            "evidence_schema_version": "p0_base_experiment_manifest_v1",
+            "run_id": run_id,
+            "contract_id": binding["training_contract_id"],
+            "contract_sha256": binding["training_contract_sha256"],
+            "resolved_config_sha256": sha256_file(resolved_path),
+            "requested_stop_update": 5,
+            "completed_update": 5,
+            "status": "SEGMENT_COMPLETED",
+            "created_at": "2026-08-09T00:00:00+00:00",
+            "updated_at": "2026-08-09T00:01:00+00:00",
+            "notes": "",
+        }
+        with (run_dir / "experiment_manifest.json").open(
+            "w", encoding="utf-8"
+        ) as handle:
+            json.dump(manifest, handle)
+
+    def test_judge_accepts_bound_seed_and_rejects_missing_seed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = (
+                Path(temp_dir)
+                / "P0_BASE_MAPPO_Town02_s42_20260809_000000"
+            )
+            run_dir.mkdir()
+            self._write_training_evidence(run_dir, seed=42)
+            result = _validate_training_run(
+                run_dir=run_dir,
+                expected_update=5,
+                go_hold=self.contract,
+            )
+            self.assertEqual(result["run_id"], run_dir.name)
+
+            self._write_training_evidence(run_dir, seed=None)
+            with self.assertRaisesRegex(
+                GoHoldProtocolError, "seed differs from the pilot binding"
+            ):
+                _validate_training_run(
+                    run_dir=run_dir,
+                    expected_update=5,
+                    go_hold=self.contract,
+                )
 
 
 class TrainingHealthBoundaryTests(unittest.TestCase):
