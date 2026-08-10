@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：第一次 seed 42 / update 5 分段已完成训练与双 C0，但 GO/HOLD 来源预检发现 `resolved_config.json` 漏记 seed，故该 Run 只作诊断、不得正式续跑；证据修复通过回归后以新 RunID fresh 重跑。
+> 当前状态：正式 Run `P0_BASE_MAPPO_Town02_s42_20260809_204729` 的冻结 judge 在 update 10 给出 `CONTINUE_WITH_WARNING`，但新增行为诊断确认确定性 Actor 已塌缩为全程刹车。研究者已在 update 11 仅收集 2/16 episode、尚未进行 PPO 更新时停止续训；安全边界仍为 update 10。旧裁决不篡改，当前 Run 作为诊断样本封存，不再恢复；下一步先冻结动作/奖励/Critic 修复协议，再用新契约和新 RunID fresh 训练。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
@@ -23,9 +23,39 @@
 
 | 日期 | RunID | Git SHA | 契约 SHA256 | 当前 update | 训练状态 | strict validator | C0 | GO/HOLD | 下一动作 |
 |---|---|---|---|---:|---|---|---|---|---|
+| 2026-08-09 | `P0_BASE_MAPPO_Town02_s42_20260809_204729` | `8c6d582` | `342a1f...f6f` | 10 | `INTERRUPTED / DIAGNOSTIC HOLD`；安全 checkpoint 仍为 u10 | PASS：10 updates / 160 episodes / 583 scalar tags；u11 的 2 条临时 episode 不计入 | 两次 gate 均 0/16 success、0/16 collision、16/16 timeout；离散重复性 PASS；确定性两车 100% brake mode | 冻结 judge 保留 `CONTINUE_WITH_WARNING`；研究者因未注册的制动塌缩失败模式停止 | 禁止 resume；设计 v2 动作/奖励/Critic 与早期门槛，fresh 新 Run |
 | 2026-08-09 | `P0_BASE_MAPPO_Town02_s42_20260809_173321` | `8a0bd9d` | `342a1f...f6f` | 5 | `EVIDENCE_HOLD`；模型仅诊断 | PASS：5 updates / 80 episodes / 570 scalar tags | 两次 gate 均 0/16 success、0/16 collision、16/16 timeout；离散重复性 PASS | 来源预检 HOLD：resolved config 漏记 seed，未进入性能裁决 | 提交证据修复后新 RunID fresh 重跑 update 5；禁止 resume 本 Run |
 
 ## 4. 已运行记录
+
+### `P0_BASE_MAPPO_Town02_s42_20260809_204729`
+
+- 输入：训练契约 `P0_BASE_MAPPO_TOWN02_PILOT_V1`，seed 42，fresh，来源 Git `8c6d582849c12c146a690e52772f05c8dcdcc835`；resolved config 已实测包含 seed 42 和全量 contract trainer args。
+- update 1–5：80 episodes、44614 个 agent-transition，约 13 分 34 秒；训练内 success 始终 0，collision 从 1.0 降到 0.625，timeout 从 0 升到 0.375，平均回合从 130.75 增至 550.38。KL、clip、ratio、reward residual、finite/schema 和 skipped update 均通过硬门槛。
+- checkpoint：`logs/P0_BASE_MAPPO_Town02_s42_20260809_204729/periodic/ckpt_update_000005.pt`，SHA256 `8a67c57d6755ebd421ea91e4d545aa77f1b260639a0d5fe208c2b6915d2f5054`。
+- C0：主 `P0_BASE_C0_gate_u000005_20260809_210149`、重复 `P0_BASE_C0_gate_u000005_20260809_211015`；两次均 16 timeout、0 success、0 collision，离散签名完全一致，所有 identity/schema/reward/summary/cleanup 校验 PASS。主 C0 有 6/16 lane-invasion episode。
+- judge：`decisions/base_mappo/P0_BASE_GO_HOLD_u000005_20260809_211849/go_hold_decision.json`，预注册、Run origin、seed、checkpoint、训练、C0 和重复性证据均 PASS；结论 `CONTINUE_WITH_WARNING`。warning 为 Critic gradient clipping activation 连续 5 updates 大于 0.8，以及 6 个 gate episode 出现 lane invasion；无 hard/capability failure，多 seed 未放行。
+- 判断：update 5 仍是健康停点，0 success 按预注册规则不触发 HOLD；确定性策略尚未形成到达能力，因此未调参并按原身份续至 update 10。
+
+#### update 6–10 分段与诊断
+
+- 严格恢复：沿用同一 RunID、Git `8c6d582`、resolved config 与 seed 42，从 update 5 完整边界恢复；updates 1–10 连续、160 episodes、583 个 TensorBoard scalar tags，strict validator PASS。
+- 训练趋势：updates 6–10 success 始终为 0；collision rate 依次为 `0.6875/0.5625/0.4375/0.3125/0.4375`，timeout rate 依次为 `0.3125/0.4375/0.5625/0.6875/0.5625`，平均回合长度升至约 `607–836` 步。Actor 的 KL、clip、ratio、梯度与有限性检查保持健康。
+- checkpoint：`logs/P0_BASE_MAPPO_Town02_s42_20260809_204729/periodic/ckpt_update_000010.pt`，SHA256 `4917f2259d4afd77cf621b862fbe17f2a30819961e86a5c08834a4408a677436`。
+- Critic 诊断：update 10 未裁剪梯度范数约 `85.84`，裁剪上限 `0.5`、激活率 `1.0`；explained variance 约 `0.00037`，return target 为 `-15.19±7.24`，value prediction 为 `-4.90±0.08`。这表示 Critic 当前几乎输出常数、拟合不足，会使 advantage baseline 噪声较大并拖慢学习；但更新前 ratio 误差为 0，Actor KL/clip 正常，算法回归也已通过，故没有证据将其归类为 GAE、PPO 梯度方向或实现错误。
+- 行为诊断：update 10 的随机训练动作中，两车 brake mode 约为 `68%`、平均速度仅约 `0.055 m/s`；主 C0 的确定性 Actor mean 更明确地退化为两车 `throttle_mode=0`、`brake_mode=1.0`，平均速度分别约 `0.016/0.024 m/s`。因此 timeout 的直接机制是 Actor 确定性策略选择全程刹车；Critic warning 是可能强化/延长该局部最优的间接学习质量问题，不等于梯度实现错误。
+- C0：主 `P0_BASE_C0_gate_u000010_20260809_220248`、重复 `P0_BASE_C0_gate_u000010_20260809_221225`；两次均 16 timeout、0 success、0 collision、episode length 全为 1000，离散签名完全一致，全部 validator 与 cleanup audit PASS。主 C0 有 11/16 lane-invasion episode。
+- judge：`decisions/base_mappo/P0_BASE_GO_HOLD_u000010_20260809_222131/go_hold_decision.json`；来源、训练健康、checkpoint、C0 与重复性全部 PASS，结论 `CONTINUE_WITH_WARNING`。warning 为 Critic gradient clipping activation 连续 10 updates 大于 0.8，以及 11 个 gate episode 出现 lane invasion；无 hard/capability failure，多 seed 未放行。
+- 冻结 judge 判断：update 10 尚未证明基础驾驶能力，但 v1 门槛在 updates 5–40 只执行既有健康判定，0 success 与 brake mode 塌缩均未注册为 HOLD，因此机器裁决仍为 `CONTINUE_WITH_WARNING`。该结果必须保留，不得事后改写。
+
+#### update 20 续训停止与诊断封存
+
+- 2026-08-09 曾按 v1 裁决尝试从 update 10 严格恢复到 update 20；恢复身份检查通过，但在 update 11 仅完成 2/16 rollout episode、尚未执行本 update PPO、metrics commit 或 checkpoint 保存时，研究者要求先判断是否已可定位失败原因。
+- 训练进程已停止；`latest.pt` 与 periodic checkpoint 的安全边界均保持 update 10。两条 update 11 episode 只属于安全 checkpoint 之后的未提交前缀，不纳入训练、C0、judge 或论文统计；任何后续 strict resume 原本也会按 recorder 协议自动裁掉该前缀。
+- registry/manifest 记为 `INTERRUPTED`，不是 CARLA 环境导致的性能失败。强制停止后 CARLA timing 被人工恢复为 async/None，随后服务无响应，需用户重启；该服务器状态不改变 update 1–10 和两次 C0 已完成证据。
+- 新增诊断结论：训练中 brake mode 从 u1 的约 `46%/55%` 增至 u10 的约 `69%/68%`，agent 0 平均速度从约 `0.692` 降到 `0.054 m/s`；同时 collision 下降而 timeout 上升。u10 的 agent 0 每回合 `steer_rate=-272.23`、`jerk=-123.14`、`step=-80.47`，远大于 `speed=+26.79`，说明当前奖励规模使带噪移动比保持制动更差。三维 WTA 的独立 throttle/brake 隐变量、`init_log_std=0` 和只惩罚 throttle 变化而不惩罚 brake 变化共同放大该局部最优。
+- Critic 的连续裁剪、explained variance 近 0 与近常数 value output 会增加优势噪声，是必须修复的学习质量问题；但 ratio/KL/clip/finite 与生产算法测试均未显示 GAE/PPO 概率或梯度方向实现错误，因此不把 Critic warning 单独定为全程刹车的直接原因。
+- 研究决策：不再消耗算力延长 v1 Run。冻结 judge 的历史结论继续保留为 `CONTINUE_WITH_WARNING`，人工研究结论记录为 `DIAGNOSTIC HOLD`；所有会改变 action dimension、奖励规模、value normalization 或早期门槛的修复必须形成新协议、新 Git 提交、新 RunID，并从随机初始化 fresh 训练，禁止继续利用 u10 权重作正式基线。
 
 ### `P0_BASE_MAPPO_Town02_s42_20260809_173321`
 
