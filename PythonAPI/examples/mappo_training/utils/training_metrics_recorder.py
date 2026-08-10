@@ -209,6 +209,7 @@ class TrainingMetricsRecorder:
         completed_update: int,
         resume_metrics_payload: Optional[Mapping[str, object]] = None,
         histogram_interval: int = 10,
+        critic_protocol: Optional[Mapping[str, object]] = None,
     ) -> None:
         self.run_dir = Path(run_dir).resolve()
         self.run_dir.mkdir(parents=True, exist_ok=True)
@@ -239,6 +240,8 @@ class TrainingMetricsRecorder:
         self._pending_histogram_modules = None
 
         schema = reward_schema_document(self.reward_version)
+        if critic_protocol is not None:
+            schema["critic_protocol"] = dict(critic_protocol)
         schema.update(
             {
                 "run_id": self.run_id,
@@ -914,6 +917,15 @@ class TrainingMetricsRecorder:
             "return_target_mean",
             "return_target_std",
             "value_error_abs_mean",
+            "normalized_value_prediction_mean",
+            "normalized_value_prediction_std",
+            "normalized_return_target_mean",
+            "normalized_return_target_std",
+            "value_normalizer_mean",
+            "value_normalizer_std",
+            "value_normalizer_variance",
+            "value_normalizer_debiasing_term",
+            "value_normalizer_update_count",
         )
         for name in critic_metric_names:
             value = self._mean_metric(ppo_metrics, name)

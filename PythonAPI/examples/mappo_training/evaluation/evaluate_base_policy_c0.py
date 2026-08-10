@@ -29,6 +29,8 @@ from evaluation.base_c0_protocol import (
     C0_RESOLVED_CONFIG_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
     LEGACY_C0_PROTOCOL_VERSION,
+    REWARD_C0_EPISODE_RECORD_VERSION,
+    REWARD_C0_PROTOCOL_VERSION,
     C0ProtocolError,
     ScalarStats,
     append_jsonl,
@@ -74,7 +76,7 @@ from training.action_protocol import (
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v3.json"
+DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v4.json"
 
 
 def _set_seed(seed: int, env: CarlaMultiAgentEnv | None = None) -> None:
@@ -369,7 +371,11 @@ def _run_case(
             else (
                 ACTION_C0_EPISODE_RECORD_VERSION
                 if contract["protocol_version"] == ACTION_C0_PROTOCOL_VERSION
-                else C0_EPISODE_RECORD_VERSION
+                else (
+                    REWARD_C0_EPISODE_RECORD_VERSION
+                    if contract["protocol_version"] == REWARD_C0_PROTOCOL_VERSION
+                    else C0_EPISODE_RECORD_VERSION
+                )
             )
         ),
         "eval_id": eval_id,
@@ -590,8 +596,8 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
         and not args.allow_diagnostic_checkpoint
     ):
         raise C0ProtocolError(
-            "historical C0 v1/v2 is read-only evidence; new executions require "
-            "the reward-v3 C0 contract, or an explicit diagnostic smoke invocation"
+            "historical C0 v1/v2/v3 is read-only evidence; new executions require "
+            "the R3 C0 v4 contract, or an explicit diagnostic smoke invocation"
         )
     if args.allow_diagnostic_checkpoint and args.profile != "smoke":
         raise C0ProtocolError("diagnostic checkpoints are restricted to the smoke profile")

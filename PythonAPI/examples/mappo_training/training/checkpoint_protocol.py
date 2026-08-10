@@ -28,9 +28,11 @@ from training.action_protocol import (
 )
 
 LEGACY_CHECKPOINT_SCHEMA_VERSION = 2
-CHECKPOINT_SCHEMA_VERSION = 3
+ACTION_CHECKPOINT_SCHEMA_VERSION = 3
+CHECKPOINT_SCHEMA_VERSION = 4
 LEGACY_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00g_v2"
-TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_action_v2_p0_00g_v3"
+ACTION_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_action_v2_p0_00g_v3"
+TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_valuenorm_p0_00g_v4"
 OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_v1"
 LIFECYCLE_PROTOCOL_VERSION = "agent_centric_terminated_truncated_v1"
 
@@ -341,6 +343,7 @@ def validate_checkpoint_payload(
     expected_action_spec: Mapping[str, Any],
     expected_model_spec: Mapping[str, Any],
     expected_training_config: Mapping[str, Any],
+    expected_critic_spec: Optional[Mapping[str, Any]] = None,
 ) -> None:
     validate_checkpoint_header(checkpoint)
     required = {
@@ -349,6 +352,8 @@ def validate_checkpoint_payload(
         "update",
         "actors",
         "critic",
+        "value_normalizer",
+        "critic_spec",
         "actor_optims",
         "critic_optim",
         "args",
@@ -375,6 +380,11 @@ def validate_checkpoint_payload(
         ("action_spec", checkpoint["action_spec"], expected_action_spec),
         ("model_spec", checkpoint["model_spec"], expected_model_spec),
         ("training_config", checkpoint["training_config"], expected_training_config),
+        *(
+            (("critic_spec", checkpoint["critic_spec"], expected_critic_spec),)
+            if expected_critic_spec is not None
+            else ()
+        ),
     )
     mismatches = []
     for group_name, saved, expected in comparisons:
@@ -405,6 +415,10 @@ def validate_checkpoint_payload(
             )
     if not isinstance(checkpoint["curriculum_state"], Mapping):
         raise CheckpointProtocolError("curriculum_state must be a mapping")
+    if not isinstance(checkpoint["value_normalizer"], Mapping):
+        raise CheckpointProtocolError("value_normalizer must be a state mapping")
+    if not isinstance(checkpoint["critic_spec"], Mapping):
+        raise CheckpointProtocolError("critic_spec must be a mapping")
 
 
 def validate_checkpoint_header(
@@ -438,16 +452,21 @@ def validate_checkpoint_header(
         == LEGACY_TRAINING_PROTOCOL_VERSION
         and protocol_versions.get("action") == LEGACY_ACTION_PROTOCOL_VERSION
     )
-    expected_schema = (
-        LEGACY_CHECKPOINT_SCHEMA_VERSION
-        if allow_legacy and is_legacy
-        else CHECKPOINT_SCHEMA_VERSION
+    is_action_historical = (
+        checkpoint["checkpoint_schema_version"] == ACTION_CHECKPOINT_SCHEMA_VERSION
+        and checkpoint["training_protocol_version"]
+        == ACTION_TRAINING_PROTOCOL_VERSION
+        and protocol_versions.get("action") == ACTION_PROTOCOL_VERSION
     )
-    expected_training_protocol = (
-        LEGACY_TRAINING_PROTOCOL_VERSION
-        if allow_legacy and is_legacy
-        else TRAINING_PROTOCOL_VERSION
-    )
+    if allow_legacy and is_legacy:
+        expected_schema = LEGACY_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = LEGACY_TRAINING_PROTOCOL_VERSION
+    elif allow_legacy and is_action_historical:
+        expected_schema = ACTION_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = ACTION_TRAINING_PROTOCOL_VERSION
+    else:
+        expected_schema = CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = TRAINING_PROTOCOL_VERSION
     if checkpoint["checkpoint_schema_version"] != expected_schema:
         raise CheckpointProtocolError(
             "checkpoint schema mismatch: "
@@ -464,6 +483,12 @@ def validate_checkpoint_header(
         raise CheckpointProtocolError(
             "current checkpoint header missing required field: action_spec"
         )
+    if not is_legacy and not is_action_historical:
+        for field in ("value_normalizer", "critic_spec"):
+            if field not in checkpoint:
+                raise CheckpointProtocolError(
+                    f"current checkpoint header missing required field: {field}"
+                )
     run_metadata = checkpoint["run_metadata"]
     if not isinstance(run_metadata, Mapping):
         raise CheckpointProtocolError("run_metadata must be a mapping")

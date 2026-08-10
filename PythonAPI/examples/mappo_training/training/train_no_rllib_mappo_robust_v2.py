@@ -41,6 +41,12 @@ from training.action_protocol import (
     action_tanh_to_env,
 )
 from training.metrics_protocol import METRICS_PROTOCOL_VERSION
+from training.value_normalization import (
+    VALUE_LOSS_PROTOCOL_VERSION,
+    VALUE_NORMALIZATION_PROTOCOL_VERSION,
+    ValueNormalizer,
+    normalized_huber_loss,
+)
 from training.experiment_contract import (
     ExperimentContractError,
     apply_experiment_contract,
@@ -131,6 +137,10 @@ RESUME_IMMUTABLE_ARG_NAMES = (
     "clip_eps",
     "ent_coef",
     "max_grad_norm",
+    "value_norm_beta",
+    "value_norm_epsilon",
+    "value_norm_variance_floor",
+    "huber_delta",
     "hidden_dim",
     "target_kl",
     "lr_decay",
@@ -164,6 +174,8 @@ def checkpoint_protocol_versions(reward_version: str) -> Dict[str, str]:
         "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
         "reward": str(reward_version),
         "metrics": METRICS_PROTOCOL_VERSION,
+        "value_normalization": VALUE_NORMALIZATION_PROTOCOL_VERSION,
+        "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
     }
 
 
@@ -184,6 +196,7 @@ def checkpoint_model_spec(
         "agent_ids": list(agent_ids),
         "hidden_dim": int(hidden_dim),
         "critic_type": "AgentConditionedCritic",
+        "critic_output_semantics": "normalized_value",
     }
 
 
@@ -240,8 +253,9 @@ def _load_pretrained_weights(
     checkpoint: Dict[str, object],
     actors: Dict[int, Actor],
     critic: AgentConditionedCritic,
+    value_normalizer: ValueNormalizer,
 ) -> Dict[str, object]:
-    """Load current-v2 weights only; progress/RNG deliberately remain fresh."""
+    """Load current R3 weights only; progress/RNG deliberately remain fresh."""
     validate_checkpoint_header(checkpoint)
     if checkpoint.get("action_spec") != action_protocol_spec():
         raise CheckpointProtocolError(
@@ -273,12 +287,20 @@ def _load_pretrained_weights(
 
     critic_loaded = False
     critic_error = "missing critic"
-    if "critic" in checkpoint:
+    if "critic" in checkpoint and "value_normalizer" in checkpoint:
+        critic_before = copy.deepcopy(critic.state_dict())
+        normalizer_before = copy.deepcopy(value_normalizer.state_dict())
         try:
             critic.load_state_dict(checkpoint["critic"], strict=True)
+            value_normalizer.load_state_dict(
+                checkpoint["value_normalizer"], strict=True
+            )
+            value_normalizer.validate_state()
             critic_loaded = True
             critic_error = ""
         except (RuntimeError, ValueError) as error:
+            critic.load_state_dict(critic_before, strict=True)
+            value_normalizer.load_state_dict(normalizer_before, strict=True)
             critic_error = str(error)
     return {
         "actors_loaded": sorted(actors),
@@ -408,6 +430,7 @@ def build_active_step_cache(
     device: torch.device,
     *,
     context: str,
+    value_normalizer: Optional[ValueNormalizer] = None,
 ) -> Tuple[Dict[int, np.ndarray], Dict[int, Dict]]:
     """Sample exactly one decision for each currently active agent.
 
@@ -439,7 +462,13 @@ def build_active_step_cache(
             obs_t = torch.as_tensor(
                 obs, dtype=torch.float32, device=device
             ).unsqueeze(0)
-            value = float(critic(global_state_t, aid).item())
+            normalized_value = critic(global_state_t, aid)
+            value_tensor = (
+                value_normalizer.denormalize(normalized_value)
+                if value_normalizer is not None
+                else normalized_value
+            )
+            value = float(value_tensor.item())
             action_tanh_t, logp_t, z_t = actors[aid].sample_action_z(obs_t)
 
             action_tanh = action_tanh_t.squeeze(0).cpu().numpy()
@@ -1266,6 +1295,7 @@ def prepare_mappo_update_batch(
     state_dim: int,
     action_dim: int,
     context: str,
+    value_normalizer: Optional[ValueNormalizer] = None,
 ) -> PreparedMAPPOUpdateBatch:
     """Build the exact actor/critic batches used by the production update."""
     for name, dim in (
@@ -1361,7 +1391,12 @@ def prepare_mappo_update_batch(
                 bootstrap_tensor = torch.as_tensor(
                     bootstrap_np, dtype=torch.float32, device=device
                 ).unsqueeze(0)
-                bootstrap_prediction = critic(bootstrap_tensor, aid)
+                normalized_prediction = critic(bootstrap_tensor, aid)
+                bootstrap_prediction = (
+                    value_normalizer.denormalize(normalized_prediction)
+                    if value_normalizer is not None
+                    else normalized_prediction
+                )
                 ensure_finite_tensor(
                     bootstrap_prediction,
                     name=f"bootstrap_value[{episode_index}]",
@@ -1517,6 +1552,7 @@ def compute_critic_value_loss(
     returns: torch.Tensor,
     *,
     context: str,
+    huber_delta: float = 10.0,
 ) -> torch.Tensor:
     if value_predictions.ndim != 1 or value_predictions.shape != returns.shape:
         raise ValueError(
@@ -1528,7 +1564,9 @@ def compute_critic_value_loss(
         value_predictions, name="value_predictions", context=context
     )
     ensure_finite_tensor(returns, name="returns", context=context)
-    loss = 0.5 * (returns - value_predictions).pow(2).mean()
+    loss = normalized_huber_loss(
+        value_predictions, returns, delta=huber_delta
+    )
     ensure_finite_tensor(loss, name="critic_loss", context=context)
     return loss
 
@@ -1579,6 +1617,8 @@ def run_mappo_ppo_update(
     ent_coef: float,
     max_grad_norm: float,
     target_kl: float,
+    value_normalizer: Optional[ValueNormalizer] = None,
+    huber_delta: float = 10.0,
     shuffle: bool = True,
     context: str,
 ) -> MAPPOUpdateResult:
@@ -1605,6 +1645,8 @@ def run_mappo_ppo_update(
         raise ValueError(f"{context}: ent_coef must be finite and non-negative")
     if not np.isfinite(target_kl) or target_kl < 0:
         raise ValueError(f"{context}: target_kl must be finite and non-negative")
+    if not np.isfinite(huber_delta) or huber_delta <= 0:
+        raise ValueError(f"{context}: huber_delta must be finite and positive")
     batch_agents = set(prepared.per_agent_tensors)
     for name, mapping in (("actors", actors), ("actor_optims", actor_optims)):
         missing = batch_agents - set(mapping)
@@ -1684,6 +1726,15 @@ def run_mappo_ppo_update(
     critic_state_t = prepared.critic_states
     critic_ret_t = prepared.critic_returns
     critic_aid_t = prepared.critic_agent_ids
+    if value_normalizer is not None:
+        value_normalizer.update(critic_ret_t)
+        critic_target_t = value_normalizer.normalize(critic_ret_t)
+        metrics.update({
+            f"value_normalizer_{name}": value
+            for name, value in value_normalizer.statistics().items()
+        })
+    else:
+        critic_target_t = critic_ret_t
 
     for epoch in range(ppo_epochs):
         critic_indices = np.arange(critic_state_t.shape[0])
@@ -1697,7 +1748,10 @@ def run_mappo_ppo_update(
             )
             value_predictions = critic(critic_state_t[mb], critic_aid_t[mb])
             critic_loss = compute_critic_value_loss(
-                value_predictions, critic_ret_t[mb], context=critic_context
+                value_predictions,
+                critic_target_t[mb],
+                context=critic_context,
+                huber_delta=huber_delta,
             )
             critic_optim.zero_grad()
             critic_loss.backward()
@@ -1812,7 +1866,12 @@ def run_mappo_ppo_update(
                 agent_stop_epoch[aid] = epoch + 1
 
     with torch.no_grad():
-        value_predictions = critic(critic_state_t, critic_aid_t)
+        normalized_value_predictions = critic(critic_state_t, critic_aid_t)
+        value_predictions = (
+            value_normalizer.denormalize(normalized_value_predictions)
+            if value_normalizer is not None
+            else normalized_value_predictions
+        )
         ensure_finite_tensor(
             value_predictions,
             name="explained_variance_value_predictions",
@@ -1837,6 +1896,18 @@ def run_mappo_ppo_update(
             critic_ret_t.std(unbiased=False).item()
         )
         metrics["value_error_abs_mean"] = float(value_error.abs().mean().item())
+        metrics["normalized_value_prediction_mean"] = float(
+            normalized_value_predictions.mean().item()
+        )
+        metrics["normalized_value_prediction_std"] = float(
+            normalized_value_predictions.std(unbiased=False).item()
+        )
+        metrics["normalized_return_target_mean"] = float(
+            critic_target_t.mean().item()
+        )
+        metrics["normalized_return_target_std"] = float(
+            critic_target_t.std(unbiased=False).item()
+        )
 
     return MAPPOUpdateResult(
         metrics=metrics,
@@ -2372,6 +2443,14 @@ def train(args):
         raise ValueError("--tb-histogram-interval must be non-negative")
     if args.lr_decay_horizon < 0:
         raise ValueError("--lr-decay-horizon must be non-negative")
+    if not 0.0 <= args.value_norm_beta < 1.0:
+        raise ValueError("--value-norm-beta must be in [0, 1)")
+    if args.value_norm_epsilon <= 0.0:
+        raise ValueError("--value-norm-epsilon must be positive")
+    if args.value_norm_variance_floor <= 0.0:
+        raise ValueError("--value-norm-variance-floor must be positive")
+    if args.huber_delta <= 0.0:
+        raise ValueError("--huber-delta must be positive")
     validate_p0_smoke_interrupt_configuration(
         args,
         check_rollout_bound=not bool(args.resume),
@@ -2389,6 +2468,7 @@ def train(args):
         Path(__file__).resolve().with_name("checkpoint_protocol.py"),
         Path(__file__).resolve().with_name("lifecycle_semantics.py"),
         Path(__file__).resolve().with_name("metrics_protocol.py"),
+        Path(__file__).resolve().with_name("value_normalization.py"),
         project_dir / "utils" / "training_metrics_recorder.py",
         project_dir / "models" / "actor_critic.py",
         project_dir / "environment" / "carla_multi_agent_env.py",
@@ -2576,6 +2656,14 @@ def train(args):
         hidden=args.hidden_dim,
     ).to(device)
     critic_optim = optim.Adam(critic.parameters(), lr=args.lr_critic)
+    value_normalizer = ValueNormalizer(
+        beta=args.value_norm_beta,
+        epsilon=args.value_norm_epsilon,
+        variance_floor=args.value_norm_variance_floor,
+        device=device,
+    )
+    critic_spec = value_normalizer.spec()
+    critic_spec["huber_delta"] = float(args.huber_delta)
 
     init_lr_actor = args.lr_actor
     init_lr_critic = args.lr_critic
@@ -2600,7 +2688,7 @@ def train(args):
     pretrained_load_report = None
     if pretrained_checkpoint is not None:
         pretrained_load_report = _load_pretrained_weights(
-            pretrained_checkpoint, actors, critic
+            pretrained_checkpoint, actors, critic, value_normalizer
         )
         print(f"加载预训练权重: {pretrained_path}")
         if not pretrained_load_report["critic_loaded"]:
@@ -2673,6 +2761,7 @@ def train(args):
             expected_action_spec=current_action_spec,
             expected_model_spec=model_spec,
             expected_training_config=training_config,
+            expected_critic_spec=critic_spec,
         )
         saved_curriculum = resume_checkpoint["curriculum_state"]
         if saved_curriculum.get("scenario_pool_fingerprint") != pool_fingerprint:
@@ -2698,6 +2787,10 @@ def train(args):
             critic_optim.load_state_dict(
                 resume_checkpoint["critic_optim"]
             )
+            value_normalizer.load_state_dict(
+                resume_checkpoint["value_normalizer"], strict=True
+            )
+            value_normalizer.validate_state()
         except (KeyError, RuntimeError, ValueError) as error:
             raise CheckpointProtocolError(
                 f"failed to restore complete model/optimizer state: {error}"
@@ -2876,6 +2969,7 @@ def train(args):
             completed_update=completed_update,
             resume_metrics_payload=last_metrics_payload,
             histogram_interval=args.tb_histogram_interval,
+            critic_protocol=critic_spec,
         )
         update_experiment_evidence(
             args=args,
@@ -2950,6 +3044,8 @@ def train(args):
                 aid: actors[aid].state_dict() for aid in agent_ids
             },
             "critic": critic.state_dict(),
+            "value_normalizer": value_normalizer.state_dict(),
+            "critic_spec": critic_spec,
             "actor_optims": {
                 aid: actor_optims[aid].state_dict()
                 for aid in agent_ids
@@ -3182,6 +3278,7 @@ def train(args):
                         agent_ids=agent_ids,
                         device=device,
                         context=f"robust_v2 episode={rollout_episode} step={step}",
+                        value_normalizer=value_normalizer,
                     )
                     for aid in step_cache:
                         active_decision_steps[aid] += 1
@@ -3381,6 +3478,7 @@ def train(args):
                     state_dim=state_dim,
                     action_dim=ACTION_DIM,
                     context=f"robust_v2 update={update}",
+                    value_normalizer=value_normalizer,
                 )
                 advantage_stats = prepared_batch.advantage_stats
 
@@ -3400,6 +3498,8 @@ def train(args):
                     ent_coef=args.ent_coef,
                     max_grad_norm=args.max_grad_norm,
                     target_kl=args.target_kl,
+                    value_normalizer=value_normalizer,
+                    huber_delta=args.huber_delta,
                     shuffle=True,
                     context=f"robust_v2 update={update}",
                 )
@@ -3616,6 +3716,22 @@ def build_parser():
     parser.add_argument("--ent-coef", type=float, default=0.03,
                         help="熵损失系数（v2 修复：0.01→0.03），防止 log_std 早期塌缩")
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
+    parser.add_argument(
+        "--value-norm-beta", type=float, default=0.99999,
+        help="ValueNorm running-moment decay (official MAPPO default)",
+    )
+    parser.add_argument(
+        "--value-norm-epsilon", type=float, default=1e-5,
+        help="ValueNorm debiasing numerical floor",
+    )
+    parser.add_argument(
+        "--value-norm-variance-floor", type=float, default=1e-2,
+        help="Minimum ValueNorm variance (official MAPPO implementation)",
+    )
+    parser.add_argument(
+        "--huber-delta", type=float, default=10.0,
+        help="Huber threshold in normalized return units",
+    )
     parser.add_argument("--hidden-dim", type=int, default=128)
     parser.add_argument("--target-kl", type=float, default=0.02,
                         help="PPO 单 agent 单 epoch approx_kl 超过 1.5×target-kl 时早停")

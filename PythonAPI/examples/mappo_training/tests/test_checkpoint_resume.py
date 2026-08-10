@@ -41,6 +41,11 @@ from training.train_no_rllib_mappo_robust_v2 import (
     validate_p0_smoke_interrupt_configuration,
 )
 from training.metrics_protocol import METRICS_PROTOCOL_VERSION
+from training.value_normalization import (
+    VALUE_LOSS_PROTOCOL_VERSION,
+    VALUE_NORMALIZATION_PROTOCOL_VERSION,
+    ValueNormalizer,
+)
 from training.action_protocol import action_protocol_spec, legacy_action_protocol_spec
 
 
@@ -109,6 +114,8 @@ def _protocol_versions():
         "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
         "reward": "v2",
         "metrics": METRICS_PROTOCOL_VERSION,
+        "value_normalization": VALUE_NORMALIZATION_PROTOCOL_VERSION,
+        "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
     }
 
 
@@ -121,6 +128,7 @@ def _model_spec():
         "agent_ids": [0, 1],
         "hidden_dim": 32,
         "critic_type": "AgentConditionedCritic",
+        "critic_output_semantics": "normalized_value",
     }
 
 
@@ -134,6 +142,7 @@ def _training_config():
 
 
 def _checkpoint_payload():
+    value_normalizer = ValueNormalizer()
     return {
         "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
         "training_protocol_version": TRAINING_PROTOCOL_VERSION,
@@ -142,6 +151,8 @@ def _checkpoint_payload():
         "update": 7,
         "actors": {0: {"weight": torch.tensor([1.0])}, 1: {"weight": torch.tensor([2.0])}},
         "critic": {"weight": torch.tensor([3.0])},
+        "value_normalizer": value_normalizer.state_dict(),
+        "critic_spec": value_normalizer.spec(),
         "actor_optims": {0: {"state": {}}, 1: {"state": {}}},
         "critic_optim": {"state": {}},
         "args": {"gamma": 0.997},

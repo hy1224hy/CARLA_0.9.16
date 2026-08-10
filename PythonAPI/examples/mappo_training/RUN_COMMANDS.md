@@ -493,11 +493,11 @@ CarlaUE4.exe
 # 4. R0/WTA v1 已在 update 10 诊断封存，禁止继续 resume/pretrained
 
 # 5. R1 二维动作与 R2 有界 reward-v3 协议已完成，但当前仍为 HOLD：
-#    必须依次完成 R3 Critic 稳定化、R4 GO/HOLD v2 和 R5 真实 smoke。
+#    R3 Critic 稳定化与真实机制诊断已完成；仍必须完成 R4 GO/HOLD v2 和 R5 最终入口 smoke。
 #    在 TODO 明确解除 HOLD 前，不启动 CARLA 训练，不执行下方历史正式命令。
 
 # 6. 最终修复版将使用新的最终契约、新 RunID 和随机初始化 fresh pilot；
-#    configs/base_mappo/p0_base_reward_v3.json 冻结 R2 奖励对照，不代表 R3-R5 已验收。
+#    configs/base_mappo/p0_base_critic_v4.json 冻结 R3 对照，不代表 R4-R5 已验收。
 ```
 
 #### 历史 v1 checkpoint/resume（封存，不得执行）
@@ -507,7 +507,7 @@ CarlaUE4.exe
 # 当前代码会以 schema/action_spec/model_spec 严格拒绝 WTA v1 权重。
 ```
 
-当前 schema v3 checkpoint 会绑定二维 `action_spec` 和 reward v3 契约；`--resume latest` 不存在、哈希损坏、Git/动作/奖励/指标/训练配置/实验契约不一致时直接失败，不会从零启动或部分加载。训练期不产生 `best.pt`；未来仅由独立验证从 immutable periodic checkpoint 生成 `best_base_valid.pt`。R1 动作与 R2 奖励原理分别见 `docs/R1_二维纵向动作协议_论文正文与实验设计.md`、`docs/R2_奖励预算校准_论文正文与实验设计.md`，checkpoint 文件结构见 `docs/MAPPO_checkpoint与恢复训练协议.md`。
+当前 schema v4 checkpoint 会绑定二维 `action_spec`、reward v3、ValueNorm 状态和 critic spec；`--resume latest` 不存在、哈希损坏、Git/动作/奖励/Critic/指标/训练配置/实验契约不一致时直接失败，不会从零启动或部分加载。训练期不产生 `best.pt`；未来仅由独立验证从 immutable periodic checkpoint 生成 `best_base_valid.pt`。R1/R2/R3 原理分别见对应论文正文，checkpoint 文件结构见 `docs/MAPPO_checkpoint与恢复训练协议.md`。
 
 ### 当前流程 2：单蓝车对抗
 

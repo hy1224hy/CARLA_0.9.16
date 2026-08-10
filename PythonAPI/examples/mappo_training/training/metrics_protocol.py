@@ -16,9 +16,11 @@ from environment.base_reward_v3 import (
     reward_v3_spec,
 )
 from training.action_protocol import action_protocol_spec
+from training.value_normalization import value_normalization_spec
 
 LEGACY_METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v3"
-METRICS_PROTOCOL_VERSION = "mappo_metrics_action_v2_p0_00g_v4"
+ACTION_METRICS_PROTOCOL_VERSION = "mappo_metrics_action_v2_p0_00g_v4"
+METRICS_PROTOCOL_VERSION = "mappo_metrics_valuenorm_p0_00g_v5"
 EPISODE_RECORD_VERSION = "mappo_episode_record_v1"
 REWARD_AUDIT_ATOL = 1e-6
 ACTION_ZERO_THRESHOLD = 0.01
@@ -433,6 +435,7 @@ def reward_schema_document(reward_version: str) -> Dict[str, object]:
     document = {
         "metrics_protocol_version": METRICS_PROTOCOL_VERSION,
         "action_protocol": action_protocol_spec(),
+        "critic_protocol": value_normalization_spec(),
         "reward_version": reward_version,
         "reward_components": {
             name: {

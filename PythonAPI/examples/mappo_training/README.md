@@ -9,7 +9,7 @@
 
 | 用途 | 唯一有效入口 | 当前许可 |
 |---|---|---|
-| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | R0 Run 已诊断封存，R1 二维动作与 R2 有界奖励协议已完成；当前被 R3–R5 阻塞，禁止启动/恢复 CARLA 正式训练 |
+| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | R0 Run 已诊断封存，R1 二维动作、R2 有界奖励与 R3 ValueNorm Critic 已完成；当前被 R4–R5 阻塞，禁止启动/恢复 CARLA 正式长训 |
 | Phase 1 单蓝车 | `python -m training.train_2red_1blue_ppo` | P0-06 通过前禁止启动 |
 
 以下入口均为 **DEPRECATED/历史参考**：`train_rllib.py`、`carla_rllib_wrapper.py`、`train_no_rlib_sharedpolicy.py`、`train_no_rllib_mappo.py`、`train_no_rllib_mappo_robust.py`、`train_adversarial_ppo.py`、`run_adversarial_training_with_viz.py` 以及旧 multi v1/v2。它们不得用于新训练、恢复修复后的训练、生成正式 checkpoint 或论文结果；未来确需使用时，必须先迁移当前生命周期、GAE、指标和 checkpoint 协议并重新验收。
@@ -32,6 +32,7 @@
 | **[docs/MAPPO_车辆动作空间与边界指标协议.md](docs/MAPPO_车辆动作空间与边界指标协议.md)** | 二维 signed-longitudinal 动作、连续死区、二维策略/三维环境审计及 v1 只读兼容 |
 | **[docs/R1_二维纵向动作协议_论文正文与实验设计.md](docs/R1_二维纵向动作协议_论文正文与实验设计.md)** | 可直接用于论文的车辆动力学、动作映射、PPO 概率推导、文献、风险与测试计划 |
 | **[docs/R2_奖励预算校准_论文正文与实验设计.md](docs/R2_奖励预算校准_论文正文与实验设计.md)** | reward v3 的论文依据、预算不等式、轨迹排序、敏感性与测试计划 |
+| **[docs/R3_Critic价值归一化_论文正文与真实CARLA验证.md](docs/R3_Critic价值归一化_论文正文与真实CARLA验证.md)** | ValueNorm+Huber 的论文依据、严格恢复语义与真实 CARLA A/B 证据 |
 | **[docs/P0-00G_真实CARLA_smoke运行规范.md](docs/P0-00G_真实CARLA_smoke运行规范.md)** | P0-00G 环境门槛、冻结命令、受控中断、产物和 PASS/HOLD 标准 |
 | **[docs/P0-00G_真实CARLA_smoke测试记录.md](docs/P0-00G_真实CARLA_smoke测试记录.md)** | P0-00G 逐次结果、失败根因、修复验证与最终 Judge 裁决 |
 | **[docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md](docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)** | 无 checkpoint 的固定场景 success/reward/lifecycle 隔离测试、命令与逐次记录 |
@@ -141,7 +142,7 @@ python -m utils.record_manual_control --agent-id 0
 
 不要从 `training/` 子目录直接执行文件，也不要从本文档历史段落复制 deprecated 命令。
 
-`p0_base_pilot_v1.json`、WTA checkpoint 和 GO/HOLD v1 已全部封存为历史证据，不得继续 resume/pretrained。R1 已建立 action-v2，R2 已建立 reward-v3 训练/C0/metrics 协议，但仍不构成开训许可；必须按 TODO 完成 R3 Critic、R4 GO/HOLD v2 与 R5 真实 smoke，之后才允许用最终新契约、新 RunID 和随机初始化 fresh pilot。评估协议见 [P0-BASE-02 C0 协议](docs/P0-BASE-02_基础策略C0评估协议.md)，理论见 [R1 动作正文](docs/R1_二维纵向动作协议_论文正文与实验设计.md)与 [R2 奖励正文](docs/R2_奖励预算校准_论文正文与实验设计.md)。
+`p0_base_pilot_v1.json`、WTA checkpoint 和 GO/HOLD v1 已全部封存为历史证据，不得继续 resume/pretrained。R1 已建立 action-v2，R2 已建立 reward-v3，R3 已建立 schema-v4/ValueNorm+Huber/metrics-v5/C0-v4 并通过真实机制诊断，但仍不构成开训许可；必须按 TODO 完成 R4 GO/HOLD v2 与 R5 最终入口 smoke，之后才允许用最终新契约、新 RunID 和随机初始化 fresh pilot。评估协议见 [P0-BASE-02 C0 协议](docs/P0-BASE-02_基础策略C0评估协议.md)，理论见 [R1 动作正文](docs/R1_二维纵向动作协议_论文正文与实验设计.md)、[R2 奖励正文](docs/R2_奖励预算校准_论文正文与实验设计.md)与 [R3 Critic 正文](docs/R3_Critic价值归一化_论文正文与真实CARLA验证.md)。
 
 依赖包括：
 - torch &gt;= 1.9.0

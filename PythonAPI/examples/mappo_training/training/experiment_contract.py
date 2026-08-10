@@ -23,10 +23,11 @@ from training.checkpoint_protocol import atomic_write_json, sha256_file, utc_now
 
 
 EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_v1"
+CRITIC_EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_v2"
 RESOLVED_CONFIG_NAME = "resolved_config.json"
 EXPERIMENT_MANIFEST_NAME = "experiment_manifest.json"
 
-TRAINER_ARG_NAMES = (
+LEGACY_TRAINER_ARG_NAMES = (
     "town",
     "straight_road_length",
     "timestep",
@@ -59,6 +60,13 @@ TRAINER_ARG_NAMES = (
     "tb_histogram_interval",
     "reward_version",
 )
+TRAINER_ARG_NAMES = LEGACY_TRAINER_ARG_NAMES
+CRITIC_TRAINER_ARG_NAMES = LEGACY_TRAINER_ARG_NAMES[:16] + (
+    "value_norm_beta",
+    "value_norm_epsilon",
+    "value_norm_variance_floor",
+    "huber_delta",
+) + LEGACY_TRAINER_ARG_NAMES[16:]
 
 _TOP_LEVEL_FIELDS = frozenset(
     {
@@ -202,10 +210,13 @@ def validate_experiment_contract(
         raise ExperimentContractError("experiment contract root must be an object")
     _expect_exact_fields(payload, _TOP_LEVEL_FIELDS, "contract")
 
-    if payload["contract_version"] != EXPERIMENT_CONTRACT_VERSION:
+    if payload["contract_version"] not in {
+        EXPERIMENT_CONTRACT_VERSION,
+        CRITIC_EXPERIMENT_CONTRACT_VERSION,
+    }:
         raise ExperimentContractError(
             "unsupported contract_version="
-            f"{payload['contract_version']!r}; expected {EXPERIMENT_CONTRACT_VERSION!r}"
+            f"{payload['contract_version']!r}"
         )
     _require_nonempty_string(payload["contract_id"], "contract_id")
     if payload["status"] != "frozen":
@@ -251,7 +262,12 @@ def validate_experiment_contract(
     trainer_args = payload["trainer_args"]
     if not isinstance(trainer_args, dict):
         raise ExperimentContractError("trainer_args must be an object")
-    _expect_exact_fields(trainer_args, TRAINER_ARG_NAMES, "trainer_args")
+    contract_trainer_arg_names = (
+        CRITIC_TRAINER_ARG_NAMES
+        if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION
+        else LEGACY_TRAINER_ARG_NAMES
+    )
+    _expect_exact_fields(trainer_args, contract_trainer_arg_names, "trainer_args")
 
     for name in (
         "max_steps",
@@ -298,8 +314,23 @@ def validate_experiment_contract(
         _require_number(
             trainer_args[name], f"trainer_args.{name}", minimum=0.0, maximum=1.0
         )
-        if float(trainer_args[name]) <= 0.0:
-            raise ExperimentContractError(f"trainer_args.{name} must be > 0")
+    if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION:
+        _require_number(
+            trainer_args["value_norm_beta"],
+            "trainer_args.value_norm_beta",
+            minimum=0.0,
+            maximum=1.0,
+        )
+        if float(trainer_args["value_norm_beta"]) >= 1.0:
+            raise ExperimentContractError("trainer_args.value_norm_beta must be < 1")
+        for name in (
+            "value_norm_epsilon",
+            "value_norm_variance_floor",
+            "huber_delta",
+        ):
+            _require_number(trainer_args[name], f"trainer_args.{name}", minimum=0.0)
+            if float(trainer_args[name]) <= 0.0:
+                raise ExperimentContractError(f"trainer_args.{name} must be > 0")
     _require_number(trainer_args["init_log_std"], "trainer_args.init_log_std")
     if not isinstance(trainer_args["lr_decay"], bool):
         raise ExperimentContractError("trainer_args.lr_decay must be boolean")
@@ -532,7 +563,12 @@ def apply_experiment_contract(
     record = load_experiment_contract(contract_path, project_dir=project_dir)
     payload = record["payload"]
     trainer_args = payload["trainer_args"]
-    for name in TRAINER_ARG_NAMES:
+    contract_trainer_arg_names = (
+        CRITIC_TRAINER_ARG_NAMES
+        if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION
+        else LEGACY_TRAINER_ARG_NAMES
+    )
+    for name in contract_trainer_arg_names:
         value = trainer_args[name]
         if name == "scenario_dir":
             value = str(_resolve_inside_project(project_dir, value, "scenario_dir"))
@@ -721,10 +757,15 @@ def initialize_experiment_evidence(
     if not metadata:
         return
     payload = metadata["payload"]
+    contract_trainer_arg_names = (
+        CRITIC_TRAINER_ARG_NAMES
+        if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION
+        else LEGACY_TRAINER_ARG_NAMES
+    )
     now = utc_now_iso()
     checkpoint_training_config = dict(training_config)
     unknown_checkpoint_fields = sorted(
-        set(checkpoint_training_config) - set(TRAINER_ARG_NAMES)
+        set(checkpoint_training_config) - set(contract_trainer_arg_names)
     )
     if unknown_checkpoint_fields:
         raise ExperimentContractError(
@@ -732,7 +773,7 @@ def initialize_experiment_evidence(
             f"{unknown_checkpoint_fields}"
         )
     resolved_training_config = {
-        name: getattr(args, name) for name in TRAINER_ARG_NAMES
+        name: getattr(args, name) for name in contract_trainer_arg_names
     }
     checkpoint_mismatches = {
         name: {
@@ -865,6 +906,12 @@ def validate_resume_experiment_evidence(*, args: Namespace, run_dir: Path) -> No
     metadata = getattr(args, "_experiment_contract_metadata", None)
     if not metadata:
         return
+    payload = metadata["payload"]
+    contract_trainer_arg_names = (
+        CRITIC_TRAINER_ARG_NAMES
+        if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION
+        else LEGACY_TRAINER_ARG_NAMES
+    )
     resolved_path = run_dir / RESOLVED_CONFIG_NAME
     manifest_path = run_dir / EXPERIMENT_MANIFEST_NAME
     if not resolved_path.is_file() or not manifest_path.is_file():
@@ -879,7 +926,7 @@ def validate_resume_experiment_evidence(*, args: Namespace, run_dir: Path) -> No
         if document.get("contract_sha256") != metadata["sha256"]:
             raise ExperimentContractError(f"{label} contract SHA256 mismatch")
     expected_training_config = {
-        name: getattr(args, name) for name in TRAINER_ARG_NAMES
+        name: getattr(args, name) for name in contract_trainer_arg_names
     }
     if resolved.get("resolved_training_config") != expected_training_config:
         raise ExperimentContractError(

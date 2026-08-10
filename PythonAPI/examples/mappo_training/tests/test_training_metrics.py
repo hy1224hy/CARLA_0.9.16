@@ -801,6 +801,15 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
                 "return_target_mean": 1.2,
                 "return_target_std": 0.6,
                 "value_error_abs_mean": 0.3,
+                "normalized_value_prediction_mean": 0.0,
+                "normalized_value_prediction_std": 0.8,
+                "normalized_return_target_mean": 0.0,
+                "normalized_return_target_std": 1.0,
+                "value_normalizer_mean": 1.2,
+                "value_normalizer_std": 0.6,
+                "value_normalizer_variance": 0.36,
+                "value_normalizer_debiasing_term": 0.001,
+                "value_normalizer_update_count": 1.0,
             }
             for aid in (0, 1):
                 ppo_metrics.update(

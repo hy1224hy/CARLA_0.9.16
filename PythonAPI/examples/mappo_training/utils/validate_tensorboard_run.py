@@ -12,6 +12,7 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 
 from training.metrics_protocol import (
     ACTION_RATE_NAMES,
+    ACTION_METRICS_PROTOCOL_VERSION,
     EPISODE_RECORD_VERSION,
     LEGACY_METRICS_PROTOCOL_VERSION,
     METRICS_PROTOCOL_VERSION,
@@ -73,7 +74,10 @@ def _required_tags(schema: Mapping[str, object]) -> List[str]:
             f"action/agent_{agent_id}/{name}_rate"
             for name in ACTION_RATE_NAMES
         )
-        if schema.get("metrics_protocol_version") == METRICS_PROTOCOL_VERSION:
+        if schema.get("metrics_protocol_version") in {
+            ACTION_METRICS_PROTOCOL_VERSION,
+            METRICS_PROTOCOL_VERSION,
+        }:
             tags.extend(
                 f"action/agent_{agent_id}/{name}/mean"
                 for name in ("policy_signed_longitudinal", "policy_steer")
@@ -91,6 +95,16 @@ def _ppo_required_tags(schema: Mapping[str, object]) -> List[str]:
         "critic/grad_norm_critic",
         "model/critic/update_norm",
     ]
+    if schema.get("metrics_protocol_version") == METRICS_PROTOCOL_VERSION:
+        tags.extend(
+            [
+                "critic/explained_variance",
+                "critic/normalized_return_target_std",
+                "critic/value_normalizer_mean",
+                "critic/value_normalizer_std",
+                "critic/value_normalizer_update_count",
+            ]
+        )
     for agent_id in [int(value) for value in schema["agent_ids"]]:
         prefix = f"policy/agent_{agent_id}"
         tags.extend(
@@ -208,6 +222,7 @@ def validate_metrics_run(
     schema_protocol = str(schema.get("metrics_protocol_version", ""))
     if schema_protocol not in {
         LEGACY_METRICS_PROTOCOL_VERSION,
+        ACTION_METRICS_PROTOCOL_VERSION,
         METRICS_PROTOCOL_VERSION,
     }:
         raise MetricsProtocolError("metrics schema protocol mismatch")
@@ -297,7 +312,10 @@ def validate_metrics_run(
                     f"update {record['update']} agent {agent_id} violates "
                     "mutually exclusive longitudinal control"
                 )
-            if schema_protocol == METRICS_PROTOCOL_VERSION:
+            if schema_protocol in {
+                ACTION_METRICS_PROTOCOL_VERSION,
+                METRICS_PROTOCOL_VERSION,
+            }:
                 for name in POLICY_ACTION_RATE_NAMES:
                     action_rate(name)
         if expected_episodes_per_update is not None and int(

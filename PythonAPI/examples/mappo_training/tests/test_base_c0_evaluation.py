@@ -7,6 +7,7 @@ import numpy as np
 
 from models.actor_critic import Actor
 from evaluation.base_c0_protocol import (
+    C0_PROTOCOL_VERSION,
     C0_EPISODE_RECORD_VERSION,
     C0_MANIFEST_VERSION,
     C0_RESOLVED_CONFIG_VERSION,
@@ -26,6 +27,8 @@ from evaluation.base_c0_protocol import (
 from evaluation.validate_base_c0_run import validate_c0_run
 from evaluation.evaluate_base_policy_c0 import _run_case
 from training.checkpoint_protocol import (
+    ACTION_CHECKPOINT_SCHEMA_VERSION,
+    ACTION_TRAINING_PROTOCOL_VERSION,
     ACTION_PROTOCOL_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
     LIFECYCLE_PROTOCOL_VERSION,
@@ -37,6 +40,7 @@ from training.checkpoint_protocol import (
     sha256_file,
 )
 from training.metrics_protocol import (
+    ACTION_METRICS_PROTOCOL_VERSION,
     ACTION_RATE_NAMES,
     METRICS_PROTOCOL_VERSION,
     POLICY_ACTION_RATE_NAMES,
@@ -48,10 +52,15 @@ from training.action_protocol import (
     action_protocol_spec,
     policy_action_diagnostics,
 )
+from training.value_normalization import (
+    VALUE_LOSS_PROTOCOL_VERSION,
+    VALUE_NORMALIZATION_PROTOCOL_VERSION,
+    ValueNormalizer,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-CONTRACT_PATH = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v3.json"
+CONTRACT_PATH = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v4.json"
 R1_CONTRACT_PATH = (
     PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v2.json"
 )
@@ -59,15 +68,23 @@ R1_CONTRACT_PATH = (
 
 def _checkpoint_payload(contract, *, formal=True):
     run_id = "P0_BASE_MAPPO_Town02_s42_20260804_210000"
-    return {
-        "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
-        "training_protocol_version": TRAINING_PROTOCOL_VERSION,
+    current = contract["protocol_version"] == C0_PROTOCOL_VERSION
+    metrics_protocol = (
+        METRICS_PROTOCOL_VERSION if current else ACTION_METRICS_PROTOCOL_VERSION
+    )
+    payload = {
+        "checkpoint_schema_version": (
+            CHECKPOINT_SCHEMA_VERSION if current else ACTION_CHECKPOINT_SCHEMA_VERSION
+        ),
+        "training_protocol_version": (
+            TRAINING_PROTOCOL_VERSION if current else ACTION_TRAINING_PROTOCOL_VERSION
+        ),
         "protocol_versions": {
             "observation": OBSERVATION_PROTOCOL_VERSION,
             "action": ACTION_PROTOCOL_VERSION,
             "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
             "reward": contract["environment"]["reward_version"],
-            "metrics": METRICS_PROTOCOL_VERSION,
+            "metrics": metrics_protocol,
         },
         "checkpoint_kind": "periodic" if formal else "latest",
         "update": 5,
@@ -84,6 +101,7 @@ def _checkpoint_payload(contract, *, formal=True):
             "agent_ids": [0, 1],
             "hidden_dim": 128,
             "critic_type": "AgentConditionedCritic",
+            **({"critic_output_semantics": "normalized_value"} if current else {}),
         },
         "run_metadata": {
             "run_id": run_id,
@@ -103,11 +121,22 @@ def _checkpoint_payload(contract, *, formal=True):
         "rng_state": capture_rng_state(),
         "last_metrics": {
             "update": 5,
-            "metrics_protocol_version": METRICS_PROTOCOL_VERSION,
+            "metrics_protocol_version": metrics_protocol,
             "run_id": run_id,
             "scalars": {"loss": 0.1},
         },
     }
+    if current:
+        normalizer = ValueNormalizer()
+        payload["value_normalizer"] = normalizer.state_dict()
+        payload["critic_spec"] = normalizer.spec()
+        payload["protocol_versions"].update(
+            {
+                "value_normalization": VALUE_NORMALIZATION_PROTOCOL_VERSION,
+                "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
+            }
+        )
+    return payload
 
 
 def _stats(value=0.0):

@@ -126,9 +126,13 @@
 | **configs/base_mappo/p0_base_pilot_v1.json** | seed 42 基础 MAPPO pilot 的机器可读正式参数真值与登记停点 |
 | **configs/evaluation/p0_base_c0_eval_v1.json** | 基础 C0 的环境、checkpoint 资格、smoke/gate/validation cases、终局和输出机器真值 |
 | **configs/base_mappo/p0_base_action_v2.json** | R1 二维动作 + 历史 reward-v2 的 fresh 对照契约；已由 R2 reward-v3 契约取代，仅保留因果追溯 |
-| **configs/evaluation/p0_base_c0_eval_v2.json** | R1 action-v2/reward-v2 checkpoint 的历史 C0 v2 真值；新执行默认使用 v3 |
-| **configs/base_mappo/p0_base_reward_v3.json** | R2 二维动作 + 有界路线完成度 reward v3 的 fresh 对照契约；R3–R5 完成前不授权正式 pilot |
-| **configs/evaluation/p0_base_c0_eval_v3.json** | R2 reward-v3 checkpoint、奖励分量和双层 action 证据的当前 C0 v3 真值 |
+| **configs/evaluation/p0_base_c0_eval_v2.json** | R1 action-v2/reward-v2 checkpoint 的历史 C0 v2 真值；新执行默认使用 v4 |
+| **configs/base_mappo/p0_base_reward_v3.json** | R2 二维动作 + 有界路线完成度 reward v3 的历史 fresh 对照契约 |
+| **configs/evaluation/p0_base_c0_eval_v3.json** | R2 reward-v3 checkpoint、奖励分量和双层 action 证据的只读 C0 v3 真值 |
+| **configs/base_mappo/p0_base_critic_v4.json** | R3 冻结的 ValueNorm + normalized-Huber fresh 训练契约 |
+| **configs/evaluation/p0_base_c0_eval_v4.json** | R3 schema-v4 checkpoint 与 Critic provenance 的当前 C0 真值；v1–v3 只读历史 |
+| **evaluation/diagnose_r2_reward_r3_critic.py** | 固定 Town02 脚本的 R2 奖励信号链与同批真实状态 Critic A/B 诊断入口；不用于模型选择 |
+| **diagnostics/r2_r3_real_carla/20260810_200111/report.json** | CARLA 0.9.16 实跑的 10 项机制验收、536-transition Critic A/B 与环境清理证据 |
 | **configs/evaluation/p0_base_go_hold_v1.json** | P0-BASE-04 证据、数值健康、分段能力、批量放行和 held-out 接受门槛的机器真值 |
 | **data/evaluation_scenarios/base_c0_validation_v1/** | 与训练场景按内容 SHA 隔离的 8 个 Town02 held-out 基础策略验证场景 |
 | **experiments/base_mappo_registry.csv** | 每个正式基础 Run 一行的跨 Run 机器可读索引 |
@@ -150,6 +154,7 @@
 | **docs/MAPPO_车辆动作空间与边界指标协议.md** | 基础 MAPPO 油门/刹车互斥映射、PPO 语义、已知限制及 zero/saturation/mode/conflict 指标口径 |
 | **docs/R1_二维纵向动作协议_论文正文与实验设计.md** | R1 动作数学、PPO 概率、文献依据、风险与验收 |
 | **docs/R2_奖励预算校准_论文正文与实验设计.md** | R2 reward-v3 理论、预算、五类轨迹排序、敏感性与局限 |
+| **docs/R3_Critic价值归一化_论文正文与真实CARLA验证.md** | R3 问题、ValueNorm/Huber 方法、真实 CARLA 奖励与 Critic A/B 结果 |
 | **docs/P0-00G_真实CARLA_smoke运行规范.md** | P0-00G 环境门槛、冻结命令、受控中断、预期产物与 PASS/HOLD 标准 |
 | **docs/P0-00G_真实CARLA_smoke测试记录.md** | P0-00G 每次环境、fresh、中断、resume、validator、失败根因、修复证据与 Judge 裁决 |
 | **docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md** | 无基础 checkpoint 的 success/reward/lifecycle 两层真实 CARLA 测试、PASS 门槛、命令和逐次结果 |

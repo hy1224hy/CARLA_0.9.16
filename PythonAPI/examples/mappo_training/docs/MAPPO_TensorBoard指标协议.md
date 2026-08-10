@@ -103,4 +103,4 @@ P0-00G 验证器必须返回 `"status": "PASS"`。它检查协议、update 顺�
 
 无 CARLA 测试只能证明指标协议、聚合逻辑与 reward-v3 数学正确。LiDAR、TTC、碰撞 sensor、真实 episode 终局和真实 PPO 数值是否符合预期，仍必须在 R5 CARLA smoke 中通过 validator、TensorBoard 和场景原始记录共同确认。
 
-v4 随 R1 将当前基础 Actor 改为二维，但 CARLA 环境 action 仍为三维；指标同时审计这两个空间。R2 保持 metrics protocol v4 不变，由 `reward_version=v3` 和嵌入的 `reward_v3_spec` 精确区分奖励 schema/参数。由于 checkpoint 同时绑定动作、奖励、指标和训练契约，R0/WTA 与 R1/reward-v2 checkpoint 不得作为 R2 正式 Run 的 strict resume/pretrained 来源，但其历史 JSONL/TensorBoard schema 仍可由 validator 读取。
+v4 随 R1 将当前基础 Actor 改为二维，但 CARLA 环境 action 仍为三维；指标同时审计这两个空间。R2 由 `reward_version=v3` 和嵌入的 `reward_v3_spec` 精确区分奖励 schema/参数。R3 将当前 metrics protocol 升至 `mappo_metrics_valuenorm_p0_00g_v5`，新增 `critic_protocol`，同时记录原始奖励单位的 prediction/target/MAE/explained variance 与归一化 prediction/target、ValueNorm mean/std/debias/update-count。validator 对非 skipped PPO update 强制要求这些字段。v3/v4 历史 JSONL/TensorBoard schema 仍可只读验证，但不能混入 R3 正式 Run。

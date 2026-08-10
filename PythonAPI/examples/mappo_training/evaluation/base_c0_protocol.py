@@ -27,6 +27,8 @@ from training.action_protocol import (
     action_protocol_spec,
 )
 from training.checkpoint_protocol import (
+    ACTION_CHECKPOINT_SCHEMA_VERSION,
+    ACTION_TRAINING_PROTOCOL_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
     LEGACY_CHECKPOINT_SCHEMA_VERSION,
     LEGACY_TRAINING_PROTOCOL_VERSION,
@@ -40,6 +42,7 @@ from training.checkpoint_protocol import (
     validate_checkpoint_header,
 )
 from training.metrics_protocol import (
+    ACTION_METRICS_PROTOCOL_VERSION,
     ACTION_RATE_NAMES,
     LEGACY_METRICS_PROTOCOL_VERSION,
     METRICS_PROTOCOL_VERSION,
@@ -47,14 +50,20 @@ from training.metrics_protocol import (
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
 )
+from training.value_normalization import (
+    VALUE_LOSS_PROTOCOL_VERSION,
+    VALUE_NORMALIZATION_PROTOCOL_VERSION,
+)
 
 
 LEGACY_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v1"
 ACTION_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v2"
-C0_PROTOCOL_VERSION = "p0_base_c0_eval_v3"
+REWARD_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v3"
+C0_PROTOCOL_VERSION = "p0_base_c0_eval_v4"
 LEGACY_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v2"
 ACTION_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v3"
-C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v4"
+REWARD_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v4"
+C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v5"
 C0_SUMMARY_VERSION = "p0_base_c0_summary_v1"
 C0_MANIFEST_VERSION = "p0_base_c0_manifest_v1"
 C0_RESOLVED_CONFIG_VERSION = "p0_base_c0_resolved_v1"
@@ -219,15 +228,20 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     if protocol_version not in {
         LEGACY_C0_PROTOCOL_VERSION,
         ACTION_C0_PROTOCOL_VERSION,
+        REWARD_C0_PROTOCOL_VERSION,
         C0_PROTOCOL_VERSION,
     }:
         raise C0ProtocolError("C0 protocol version mismatch")
     legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
-    action_v2 = protocol_version == ACTION_C0_PROTOCOL_VERSION
+    reward_v2 = protocol_version in {
+        LEGACY_C0_PROTOCOL_VERSION,
+        ACTION_C0_PROTOCOL_VERSION,
+    }
     expected_contract_id = {
         LEGACY_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_V1",
         ACTION_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_V2",
-        C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_REWARD_V3",
+        REWARD_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_REWARD_V3",
+        C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_CRITIC_V4",
     }[protocol_version]
     if payload["contract_id"] != expected_contract_id:
         raise C0ProtocolError("C0 contract_id mismatch")
@@ -255,7 +269,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         env["carla_version"] != "0.9.16"
         or env["town"] != "Town02"
         or env["num_agents"] != 2
-        or env["reward_version"] != ("v2" if legacy or action_v2 else "v3")
+        or env["reward_version"] != ("v2" if reward_v2 else "v3")
         or env["adversarial_agent_ids"] != []
         or env["allow_extra_traffic"] is not False
     ):
@@ -304,17 +318,21 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         },
         context="checkpoint",
     )
-    expected_checkpoint_schema = (
-        LEGACY_CHECKPOINT_SCHEMA_VERSION if legacy else CHECKPOINT_SCHEMA_VERSION
-    )
-    expected_training_protocol = (
-        LEGACY_TRAINING_PROTOCOL_VERSION if legacy else TRAINING_PROTOCOL_VERSION
-    )
+    if legacy:
+        expected_checkpoint_schema = LEGACY_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = LEGACY_TRAINING_PROTOCOL_VERSION
+    elif protocol_version in {ACTION_C0_PROTOCOL_VERSION, REWARD_C0_PROTOCOL_VERSION}:
+        expected_checkpoint_schema = ACTION_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = ACTION_TRAINING_PROTOCOL_VERSION
+    else:
+        expected_checkpoint_schema = CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = TRAINING_PROTOCOL_VERSION
     expected_action_dim = 3 if legacy else 2
     expected_training_contract_id = {
         LEGACY_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_PILOT_V1",
         ACTION_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_ACTION_V2",
-        C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_REWARD_V3",
+        REWARD_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_REWARD_V3",
+        C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_CRITIC_V4",
     }[protocol_version]
     if (
         checkpoint["schema_version"] != expected_checkpoint_schema
@@ -519,8 +537,10 @@ def load_and_validate_c0_checkpoint(
     map_location: Any = "cpu",
 ) -> Dict[str, Any]:
     checkpoint, digest = load_checkpoint_file(path, map_location=map_location)
-    legacy = contract["protocol_version"] == LEGACY_C0_PROTOCOL_VERSION
-    validate_checkpoint_header(checkpoint, allow_legacy=legacy)
+    protocol_version = contract["protocol_version"]
+    legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
+    historical = protocol_version != C0_PROTOCOL_VERSION
+    validate_checkpoint_header(checkpoint, allow_legacy=historical)
     policy = contract["checkpoint"]
     mismatches: list[str] = []
     if checkpoint.get("checkpoint_schema_version") != policy["schema_version"]:
@@ -539,9 +559,20 @@ def load_and_validate_c0_checkpoint(
         "metrics": (
             LEGACY_METRICS_PROTOCOL_VERSION
             if legacy
-            else METRICS_PROTOCOL_VERSION
+            else (
+                ACTION_METRICS_PROTOCOL_VERSION
+                if historical
+                else METRICS_PROTOCOL_VERSION
+            )
         ),
     }
+    if not historical:
+        expected_protocols.update(
+            {
+                "value_normalization": VALUE_NORMALIZATION_PROTOCOL_VERSION,
+                "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
+            }
+        )
     if checkpoint.get("protocol_versions") != expected_protocols:
         mismatches.append("protocol_versions")
     if not legacy and checkpoint.get("action_spec") != action_protocol_spec():
@@ -555,6 +586,8 @@ def load_and_validate_c0_checkpoint(
         "hidden_dim": policy["hidden_dim"],
         "critic_type": "AgentConditionedCritic",
     }
+    if not historical:
+        expected_model["critic_output_semantics"] = "normalized_value"
     if not isinstance(model_spec, Mapping) or any(model_spec.get(key) != value for key, value in expected_model.items()):
         mismatches.append("model_spec")
     actors = checkpoint.get("actors")
@@ -710,12 +743,18 @@ def validate_episode_record(
     if record_version not in {
         LEGACY_C0_EPISODE_RECORD_VERSION,
         ACTION_C0_EPISODE_RECORD_VERSION,
+        REWARD_C0_EPISODE_RECORD_VERSION,
         C0_EPISODE_RECORD_VERSION,
     }:
         raise C0ProtocolError("episode record version mismatch")
     current_action = record_version != LEGACY_C0_EPISODE_RECORD_VERSION
     reward_version = (
-        "v3" if record_version == C0_EPISODE_RECORD_VERSION else "v2"
+        "v3"
+        if record_version in {
+            REWARD_C0_EPISODE_RECORD_VERSION,
+            C0_EPISODE_RECORD_VERSION,
+        }
+        else "v2"
     )
     if record["eval_id"] != eval_id or record["profile"] != profile:
         raise C0ProtocolError("episode record evaluation identity mismatch")
@@ -975,6 +1014,9 @@ def build_summary(
     elif record_version == ACTION_C0_EPISODE_RECORD_VERSION:
         eval_protocol_version = ACTION_C0_PROTOCOL_VERSION
         reward_version = "v2"
+    elif record_version == REWARD_C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = REWARD_C0_PROTOCOL_VERSION
+        reward_version = "v3"
     elif record_version == C0_EPISODE_RECORD_VERSION:
         eval_protocol_version = C0_PROTOCOL_VERSION
         reward_version = "v3"

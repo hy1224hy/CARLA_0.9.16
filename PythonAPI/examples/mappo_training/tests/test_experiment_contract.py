@@ -35,6 +35,9 @@ R1_CONTRACT_PATH = (
 R2_CONTRACT_PATH = (
     PROJECT_DIR / "configs" / "base_mappo" / "p0_base_reward_v3.json"
 )
+R3_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "base_mappo" / "p0_base_critic_v4.json"
+)
 
 
 def _formal_args(save_dir: Path, *, updates: int = 5):
@@ -117,6 +120,27 @@ class ExperimentContractValidationTests(unittest.TestCase):
         self.assertIn(
             "environment/base_reward_v3.py",
             r2["critical_source_paths"],
+        )
+
+    def test_r3_contract_changes_only_critic_target_mechanism(self):
+        r2 = load_experiment_contract(R2_CONTRACT_PATH, project_dir=PROJECT_DIR)[
+            "payload"
+        ]
+        r3 = load_experiment_contract(R3_CONTRACT_PATH, project_dir=PROJECT_DIR)[
+            "payload"
+        ]
+        self.assertEqual(r3["contract_version"], "p0_base_experiment_contract_v2")
+        self.assertEqual(r3["contract_id"], "P0_BASE_MAPPO_TOWN02_CRITIC_V4")
+        r3_args = dict(r3["trainer_args"])
+        self.assertEqual(r3_args.pop("value_norm_beta"), 0.99999)
+        self.assertEqual(r3_args.pop("value_norm_epsilon"), 1e-5)
+        self.assertEqual(r3_args.pop("value_norm_variance_floor"), 1e-2)
+        self.assertEqual(r3_args.pop("huber_delta"), 10.0)
+        self.assertEqual(r3_args, r2["trainer_args"])
+        self.assertIn("training/value_normalization.py", r3["critical_source_paths"])
+        self.assertEqual(
+            r3["evaluation_contract"]["protocol_version"],
+            "p0_base_c0_eval_v4",
         )
 
     def test_unknown_fields_are_rejected(self):
