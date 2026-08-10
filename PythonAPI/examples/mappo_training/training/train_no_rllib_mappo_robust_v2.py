@@ -2382,6 +2382,9 @@ def train(args):
     fingerprint_paths = [
         Path(__file__).resolve(),
         Path(__file__).resolve().with_name("action_protocol.py"),
+        Path(__file__).resolve().parents[1]
+        / "environment"
+        / "base_reward_v3.py",
         Path(__file__).resolve().with_name("experiment_contract.py"),
         Path(__file__).resolve().with_name("checkpoint_protocol.py"),
         Path(__file__).resolve().with_name("lifecycle_semantics.py"),
@@ -3472,25 +3475,38 @@ def train(args):
                         return 0.0
                     return metrics_recorder.reward_component_mean(name)
 
-                comp_progress = _mean_comp("progress")
-                comp_approach = _mean_comp("approach")
-                comp_lane = _mean_comp("lane_invasion")
-                comp_collision = _mean_comp("collision")
-                comp_ttc = _mean_comp("safety_lidar") + _mean_comp("ttc")
-                comp_success = _mean_comp("success") + _mean_comp("time_bonus")
-                comp_alive = _mean_comp("alive")
-                comp_step = _mean_comp("step")
-                comp_speed = _mean_comp("speed")
                 print(f"更新 {update}: avg_return={avg_r:.2f}, "
                       f"success={win_succ:.2%}, collision={win_coll:.2%}, timeout={win_to:.2%}, "
                       f"cum_success={total_successes/max(total_episodes,1):.2%}, "
                       f"avg_ep_len={float(np.mean(window_episode_lengths)):.0f}, "
                       f"n_trans={n_transitions_per_agent} (total={n_transitions}), "
                       f"lr_a={cur_lr_a:.2e}")
-                print(f"   reward分量(均值/步): progress={comp_progress:.3f}, "
-                      f"approach={comp_approach:.3f}, speed={comp_speed:.3f}, alive={comp_alive:.3f}, "
-                      f"safety+ttc={comp_ttc:.3f}, lane={comp_lane:.3f}, collision={comp_collision:.3f}, "
-                      f"step={comp_step:.3f}, success+bonus={comp_success:.3f}")
+                if args.reward_version == "v3":
+                    print(
+                        "   reward-v3分量(均值/有效步): "
+                        f"progress={_mean_comp('progress'):.4f}, "
+                        f"overspeed={_mean_comp('overspeed'):.4f}, "
+                        f"long_rate={_mean_comp('longitudinal_rate'):.4f}, "
+                        f"steer_rate={_mean_comp('steer_rate'):.4f}, "
+                        f"safety+ttc={(_mean_comp('safety_lidar') + _mean_comp('ttc')):.4f}, "
+                        f"lane={(_mean_comp('lane_deviation') + _mean_comp('lane_invasion')):.4f}, "
+                        f"collision={_mean_comp('collision'):.4f}, "
+                        f"success={_mean_comp('success'):.4f}"
+                    )
+                else:
+                    print(
+                        "   reward-v2分量(均值/有效步): "
+                        f"progress={_mean_comp('progress'):.3f}, "
+                        f"approach={_mean_comp('approach'):.3f}, "
+                        f"speed={_mean_comp('speed'):.3f}, "
+                        f"overspeed={_mean_comp('overspeed'):.3f}, "
+                        f"alive={_mean_comp('alive'):.3f}, "
+                        f"safety+ttc={(_mean_comp('safety_lidar') + _mean_comp('ttc')):.3f}, "
+                        f"lane={_mean_comp('lane_invasion'):.3f}, "
+                        f"collision={_mean_comp('collision'):.3f}, "
+                        f"step={_mean_comp('step'):.3f}, "
+                        f"success+bonus={(_mean_comp('success') + _mean_comp('time_bonus')):.3f}"
+                    )
 
             # 先冻结本 update 指标并写入 checkpoint，再写 TensorBoard/JSONL。
             # 若在两个动作之间中断，resume 会从 checkpoint 重放同一指标 payload。
@@ -3592,8 +3608,8 @@ def build_parser():
     parser.add_argument("--lr-actor", type=float, default=3e-4)
     parser.add_argument("--lr-critic", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.997,
-                        help="折扣因子（远距收敛修复：0.99→0.997，有效视野 ~100→~330 步，"
-                             "让终点 +100 能反传到远 spawn 车的早期动作）")
+                        help="折扣因子（0.997 的有效视野约 330 步；reward v3 的路线势能"
+                             "必须使用与 PPO 相同的 gamma 才能保持望远镜性质）")
     parser.add_argument("--gae-lambda", type=float, default=0.95)
     parser.add_argument("--clip-eps", type=float, default=0.15,
                         help="PPO clip 系数（v2 修复：0.2→0.15，小批量训练更稳）")
@@ -3700,8 +3716,13 @@ def build_parser():
         default=10,
         help="参数直方图写入间隔；0 表示关闭，标量仍每个 update 记录",
     )
-    parser.add_argument("--reward-version", type=str, default="v2",
-                        choices=["v1", "v2"], help="奖励函数版本 (v1=原始, v2=优化)")
+    parser.add_argument(
+        "--reward-version",
+        type=str,
+        default="v3",
+        choices=["v1", "v2", "v3"],
+        help="奖励函数版本；当前基础策略使用 v3 路线完成度预算",
+    )
 
     return parser
 

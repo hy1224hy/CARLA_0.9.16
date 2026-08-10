@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：正式 Run `P0_BASE_MAPPO_Town02_s42_20260809_204729` 的冻结 judge 在 update 10 给出 `CONTINUE_WITH_WARNING`，但新增行为诊断确认确定性 Actor 已塌缩为全程刹车。研究者已在 update 11 仅收集 2/16 episode、尚未进行 PPO 更新时停止续训；安全边界仍为 update 10。旧裁决不篡改，当前 Run 作为诊断样本封存，不再恢复；下一步先冻结动作/奖励/Critic 修复协议，再用新契约和新 RunID fresh 训练。
+> 当前状态：正式 Run `P0_BASE_MAPPO_Town02_s42_20260809_204729` 的冻结 judge 在 update 10 给出 `CONTINUE_WITH_WARNING`，但新增行为诊断确认确定性 Actor 已塌缩为全程刹车。研究者已在 update 11 仅收集 2/16 episode、尚未进行 PPO 更新时停止续训；安全边界仍为 update 10。旧裁决不篡改，当前 Run 作为诊断样本封存，不再恢复；R1 动作与 R2 奖励修复协议已冻结，下一步完成 R3 Critic、R4 门槛和 R5 真实 smoke 后，再用新契约和新 RunID fresh 训练。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
@@ -57,6 +57,7 @@
 - Critic 的连续裁剪、explained variance 近 0 与近常数 value output 会增加优势噪声，是必须修复的学习质量问题；但 ratio/KL/clip/finite 与生产算法测试均未显示 GAE/PPO 概率或梯度方向实现错误，因此不把 Critic warning 单独定为全程刹车的直接原因。
 - 研究决策：不再消耗算力延长 v1 Run。冻结 judge 的历史结论继续保留为 `CONTINUE_WITH_WARNING`，人工研究结论记录为 `DIAGNOSTIC HOLD`；所有会改变 action dimension、奖励规模、value normalization 或早期门槛的修复必须形成新协议、新 Git 提交、新 RunID，并从随机初始化 fresh 训练，禁止继续利用 u10 权重作正式基线。
 - R1 处置（2026-08-10）：动作协议已独立升级为二维 `[signed_longitudinal, steer]`，采用 `d=0.05` 连续死区映射 CARLA 三通道控制；同步升级 checkpoint schema、训练/metrics/C0 协议和只读 legacy validator。全量 140 项无 CARLA 回归通过，奖励与 Critic 未修改，也未启动 CARLA。该提交只关闭 R1 工程/理论验收，不恢复或改写本 Run 的任何训练、C0、judge、registry 或 checkpoint 证据；R2 奖励预算校准前仍禁止新正式 pilot。论文推导与测试计划见 [R1 二维有符号纵向动作协议](./R1_二维纵向动作协议_论文正文与实验设计.md)。
+- R2 处置（2026-08-10）：基础奖励升级为 reward v3，以 gamma 一致路线完成度势能为唯一正稠密任务信号，冻结成功 `+10`、碰撞 `-20` 与有界超速/控制变化/风险/车道成本；油门和刹车按实际 signed-longitudinal command 对称计费。五类轨迹排序、预算边界和核心权重 ±25% 敏感性均通过，训练/环境/metrics/checkpoint/C0 v3 协议同步；全量 160 项无 CARLA 回归通过。该处置同样不改写旧 Run 证据、不声称真实性能提升，R3–R5 前仍禁止 pilot。方法、文献依据和局限见 [R2 奖励预算校准](./R2_奖励预算校准_论文正文与实验设计.md)。
 
 ### `P0_BASE_MAPPO_Town02_s42_20260809_173321`
 

@@ -32,6 +32,9 @@ CONTRACT_PATH = (
 R1_CONTRACT_PATH = (
     PROJECT_DIR / "configs" / "base_mappo" / "p0_base_action_v2.json"
 )
+R2_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "base_mappo" / "p0_base_reward_v3.json"
+)
 
 
 def _formal_args(save_dir: Path, *, updates: int = 5):
@@ -92,6 +95,29 @@ class ExperimentContractValidationTests(unittest.TestCase):
             "p0_base_c0_eval_v2",
         )
         self.assertIn("training/action_protocol.py", payload["critical_source_paths"])
+
+    def test_r2_contract_changes_only_reward_and_freezes_reward_source(self):
+        r1 = load_experiment_contract(R1_CONTRACT_PATH, project_dir=PROJECT_DIR)[
+            "payload"
+        ]
+        r2 = load_experiment_contract(R2_CONTRACT_PATH, project_dir=PROJECT_DIR)[
+            "payload"
+        ]
+        self.assertEqual(r2["contract_id"], "P0_BASE_MAPPO_TOWN02_REWARD_V3")
+        self.assertEqual(r2["source_mode"], "fresh")
+        r1_args = dict(r1["trainer_args"])
+        r2_args = dict(r2["trainer_args"])
+        self.assertEqual(r1_args.pop("reward_version"), "v2")
+        self.assertEqual(r2_args.pop("reward_version"), "v3")
+        self.assertEqual(r1_args, r2_args)
+        self.assertEqual(
+            r2["evaluation_contract"]["protocol_version"],
+            "p0_base_c0_eval_v3",
+        )
+        self.assertIn(
+            "environment/base_reward_v3.py",
+            r2["critical_source_paths"],
+        )
 
     def test_unknown_fields_are_rejected(self):
         payload = copy.deepcopy(self.payload)

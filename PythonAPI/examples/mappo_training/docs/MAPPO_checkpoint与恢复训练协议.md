@@ -1,6 +1,6 @@
 # MAPPO 基础策略 checkpoint 与恢复训练协议
 
-> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。当前 checkpoint schema：v3；训练协议：`mappo_robust_v2_action_v2_p0_00g_v3`；动作协议：`tanh_gaussian_signed_longitudinal_2d_pre_tanh_z_v2`；指标协议：`mappo_metrics_action_v2_p0_00g_v4`。schema v2/WTA checkpoint 只作历史诊断，不适用当前正式 resume/pretrained。
+> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。当前 checkpoint schema：v3；训练协议：`mappo_robust_v2_action_v2_p0_00g_v3`；动作协议：`tanh_gaussian_signed_longitudinal_2d_pre_tanh_z_v2`；奖励协议：`base_route_completion_reward_v3`；指标协议：`mappo_metrics_action_v2_p0_00g_v4`。R0/WTA 与 R1/reward-v2 checkpoint 只作历史诊断，不适用 R2 正式 resume/pretrained。
 
 ## 1. 三种操作必须区分
 
@@ -10,7 +10,7 @@
 
 ### Pretrained weights
 
-从已有且动作协议 v2 结构完全兼容的 Actor（以及结构兼容时的 Critic）权重开始一个新实验。它不会继承 optimizer、update、课程历史、累计统计或 RNG。来源路径和 SHA256 会记录在新 Run 中。R1 正式契约要求 fresh，禁止 pretrained；该入口只服务显式诊断/后续另行注册的实验。
+从已有且动作协议 v2 结构完全兼容的 Actor（以及结构兼容时的 Critic）权重开始一个新实验。它不会继承 optimizer、update、课程历史、累计统计或 RNG。来源路径和 SHA256 会记录在新 Run 中。R2 正式契约要求 fresh，禁止 pretrained；该入口只服务显式诊断/后续另行注册的实验。
 
 ### Resume
 
@@ -76,6 +76,8 @@
 P0-00F-TB 起，resume 还要求 checkpoint 的 `last_metrics.update`、RunID 和指标协议与 checkpoint 边界一致。若 checkpoint 已保存但 TensorBoard/JSONL 尚未写入，恢复时会重放该 payload；日志领先 checkpoint、出现 update gap 或 schema 改变时直接失败。详细口径见 [MAPPO TensorBoard 指标协议](./MAPPO_TensorBoard指标协议.md)。
 
 R1 起，resume/pretrained 还必须精确匹配 `action_spec` 与 `model_spec.action_dim=2`，Actor 使用严格 `state_dict` 加载。旧三维输出头、三维 `log_std` 和 optimizer state 不能部分加载，也不能使用 `strict=False` 绕过。旧 checkpoint 仍可由显式 legacy C0 v1 路径离线验证原证据。
+
+R2 不改变 Actor/Critic 张量形状，因此 checkpoint schema 仍为 v3；但 reward version、训练契约 ID/SHA、metrics reward schema 和关键源码指纹都必须精确匹配。R1/action-v2/reward-v2 checkpoint 可以通过显式 C0 v2 历史路径读取，却不能 resume 或 pretrained 到 `P0_BASE_MAPPO_TOWN02_REWARD_V3`。正式 R2 只允许随机初始化 fresh，以隔离奖励改变的因果效应。
 
 Git SHA 和关键源码指纹默认都必须一致。`--allow-resume-code-drift` 仅用于明确知道风险的诊断续训；每次漂移的前后 Git SHA 与源码指纹都会在元数据中永久累积，不能作为正式可复现实验的默认做法。
 

@@ -15,6 +15,22 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 from datetime import datetime
 
+from environment.base_reward_v3 import (
+    DEFAULT_REWARD_V3_CONFIG,
+    REWARD_COMPONENTS as REWARD_V3_COMPONENTS,
+    REWARD_DIAGNOSTICS as REWARD_V3_DIAGNOSTICS,
+    control_rate_penalties,
+    lane_deviation_penalty as v3_lane_deviation_penalty,
+    lane_invasion_penalty as v3_lane_invasion_penalty,
+    lidar_risk_penalty,
+    overspeed_penalty,
+    route_completion,
+    route_potential_reward,
+    terminal_rewards,
+    ttc_risk_penalty,
+    validate_gamma,
+)
+
 
 # Cold map loading on the packaged Windows server can legitimately take longer
 # than the old 10 s RPC timeout.  This is an operational startup timeout only;
@@ -62,7 +78,7 @@ class CarlaMultiAgentEnv:
             timestep: 时间步长（秒）
             max_steps: 最大步数
             adversarial_agent_ids: 对抗智能体ID列表，None表示无对抗智能体
-            reward_version: 奖励函数版本 'v1'（原始二元阶梯）或 'v2'（全连续梯度，默认）
+            reward_version: 奖励函数版本；基础策略修复版使用 'v3'
             disable_tensorboard: 禁用环境内部TB writer（训练脚本自行管理TB时设为True）
         """
         self.host = host
@@ -73,6 +89,12 @@ class CarlaMultiAgentEnv:
         self.timestep = timestep
         self.max_steps = max_steps
         self.adversarial_agent_ids = adversarial_agent_ids if adversarial_agent_ids is not None else []
+        if reward_version not in {"v1", "v2", "v3"}:
+            raise ValueError(f"unsupported reward_version: {reward_version!r}")
+        if reward_version == "v3" and self.adversarial_agent_ids:
+            raise ValueError(
+                "reward v3 is frozen for the non-adversarial base policy only"
+            )
         self.reward_version = reward_version
         # 修改1：对抗车(蓝)自撞是否结束整个回合。
         #   True（默认，旧行为）= 任一 agent 碰撞即全局终止；
@@ -81,7 +103,7 @@ class CarlaMultiAgentEnv:
         self.adversary_collision_ends_episode = adversary_collision_ends_episode
         self.seed = seed
         # R-1 修复：approach 势能塑形用的折扣因子，应与训练 gamma 一致（默认 0.99）
-        self.reward_gamma = reward_gamma
+        self.reward_gamma = validate_gamma(reward_gamma)
 
         # ─── P2：观测归一化常量集中化 ───
         # 观测本就归一化到约 [-1,1]（base 8 维 + lidar 11 维），此处把魔法数集中
@@ -1361,8 +1383,11 @@ class CarlaMultiAgentEnv:
         """奖励函数调度器"""
         if self.reward_version == 'v1':
             return self._compute_rewards_v1()
-        else:
+        if self.reward_version == 'v2':
             return self._compute_rewards_v2()
+        if self.reward_version == 'v3':
+            return self._compute_rewards_v3()
+        raise RuntimeError(f"unsupported reward_version: {self.reward_version!r}")
 
     def _compute_rewards_v1(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
         """原始二元阶梯奖励（v1，用于 A/B 对比）"""
@@ -1941,6 +1966,284 @@ class CarlaMultiAgentEnv:
 
         self.last_reward_diagnostics = reward_diagnostics
         return rewards, reward_details
+
+    def _compute_rewards_v3(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
+        """Base-policy reward v3: bounded route task plus bounded costs.
+
+        This version intentionally does not reuse the v2 weighted sum.  Its
+        positive dense signal is a route-completion potential; speed can only
+        incur an overspeed cost, while comfort/risk costs are normalized before
+        applying small frozen weights.  See ``environment/base_reward_v3.py``
+        for the CARLA-independent mathematics and anti-hacking invariants.
+        """
+        if self.adversarial_agent_ids:
+            raise RuntimeError(
+                "reward v3 is base-policy only and cannot score adversarial agents"
+            )
+
+        config = DEFAULT_REWARD_V3_CONFIG
+        rewards: Dict[int, float] = {}
+        reward_details: Dict[int, Dict[str, float]] = {}
+        reward_diagnostics: Dict[int, Dict[str, float]] = {}
+
+        def _empty_details(**overrides) -> Dict[str, float]:
+            values = {name: 0.0 for name in REWARD_V3_COMPONENTS}
+            values.update({key: float(value) for key, value in overrides.items()})
+            return values
+
+        def _empty_diagnostics(**overrides) -> Dict[str, float]:
+            values = {name: 0.0 for name in REWARD_V3_DIAGNOSTICS}
+            values.update(
+                {
+                    "lidar_min_normalized": 1.0,
+                    "ttc_min_seconds_capped": config.ttc_threshold_s,
+                }
+            )
+            values.update({key: float(value) for key, value in overrides.items()})
+            return values
+
+        for i, vehicle in enumerate(self.vehicles):
+            if self.reached_target.get(i, False):
+                rewards[i] = 0.0
+                reward_details[i] = _empty_details()
+                reward_diagnostics[i] = _empty_diagnostics(success_event=1.0)
+                continue
+
+            if not vehicle.is_alive:
+                collision_reward, _ = terminal_rewards(
+                    success=False,
+                    collision=True,
+                    config=config,
+                )
+                rewards[i] = collision_reward
+                reward_details[i] = _empty_details(collision=collision_reward)
+                reward_diagnostics[i] = _empty_diagnostics(collision_event=1.0)
+                continue
+
+            transform = vehicle.get_transform()
+            velocity = vehicle.get_velocity()
+            target_loc = self._get_target_location(i)
+            speed = math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2)
+
+            goal_dx = target_loc.x - transform.location.x
+            goal_dy = target_loc.y - transform.location.y
+            goal_norm = math.hypot(goal_dx, goal_dy)
+            if goal_norm > 1e-6:
+                closing_speed = max(
+                    0.0,
+                    (velocity.x * goal_dx + velocity.y * goal_dy) / goal_norm,
+                )
+            else:
+                closing_speed = speed
+
+            current_dist = transform.location.distance(target_loc)
+            previous_dist = self.prev_distances.get(i, current_dist)
+            initial_dist = self.initial_distances.get(
+                i, max(previous_dist, current_dist, 1.0)
+            )
+            previous_completion = route_completion(initial_dist, previous_dist)
+            current_completion = route_completion(initial_dist, current_dist)
+            progress_m = previous_dist - current_dist
+            progress_reward = route_potential_reward(
+                previous_completion,
+                current_completion,
+                gamma=self.reward_gamma,
+                config=config,
+            )
+            self.prev_distances[i] = current_dist
+
+            overspeed_cost, overspeed_risk = overspeed_penalty(
+                closing_speed,
+                config=config,
+            )
+
+            control = vehicle.get_control()
+            longitudinal_command = float(control.throttle - control.brake)
+            longitudinal_rate_penalty = 0.0
+            steer_rate_penalty = 0.0
+            longitudinal_rate_normalized = 0.0
+            steer_rate_normalized = 0.0
+            previous_control = self.prev_controls.get(i)
+            if previous_control is not None:
+                previous_longitudinal = float(
+                    previous_control["throttle"] - previous_control["brake"]
+                )
+                (
+                    longitudinal_rate_penalty,
+                    steer_rate_penalty,
+                    longitudinal_rate_normalized,
+                    steer_rate_normalized,
+                ) = control_rate_penalties(
+                    current_longitudinal=longitudinal_command,
+                    previous_longitudinal=previous_longitudinal,
+                    current_steer=control.steer,
+                    previous_steer=previous_control["steer"],
+                    timestep_s=self.timestep,
+                    config=config,
+                )
+
+            lidar_distances = self._get_ray_detection(
+                vehicle,
+                ray_length=4.0,
+                num_rays=11,
+            )
+            lidar_penalty, lidar_risk, lidar_minimum = lidar_risk_penalty(
+                lidar_distances,
+                config=config,
+            )
+            lidar_trigger_count = sum(
+                float(distance) < config.lidar_threshold_normalized
+                for distance in lidar_distances
+            )
+
+            ttc_candidate_count = 0
+            ttc_trigger_count = 0
+            minimum_ttc: Optional[float] = None
+            relative_positions = self._get_relative_position_to_agents(i)
+            for other_id, relative in relative_positions.items():
+                if (
+                    abs(relative["lateral_dist"]) >= 2.0
+                    or relative["longitudinal_dist"] <= 0.0
+                    or relative["longitudinal_dist"] >= 10.0
+                ):
+                    continue
+                other_vehicle = self.vehicles[other_id]
+                if not other_vehicle.is_alive:
+                    continue
+                ttc_candidate_count += 1
+                other_velocity = other_vehicle.get_velocity()
+                other_speed = math.sqrt(
+                    other_velocity.x**2
+                    + other_velocity.y**2
+                    + other_velocity.z**2
+                )
+                relative_speed = speed - other_speed
+                if relative_speed <= 0.0:
+                    continue
+                ttc = relative["longitudinal_dist"] / relative_speed
+                minimum_ttc = ttc if minimum_ttc is None else min(minimum_ttc, ttc)
+                if ttc < config.ttc_threshold_s:
+                    ttc_trigger_count += 1
+            ttc_penalty, ttc_risk = ttc_risk_penalty(
+                minimum_ttc,
+                config=config,
+            )
+            ttc_min_capped = (
+                config.ttc_threshold_s
+                if minimum_ttc is None
+                else min(config.ttc_threshold_s, minimum_ttc)
+            )
+
+            current_waypoint = self.map.get_waypoint(transform.location)
+            lateral_distance = 0.0
+            if current_waypoint:
+                waypoint_location = current_waypoint.transform.location
+                waypoint_to_vehicle = carla.Vector3D(
+                    transform.location.x - waypoint_location.x,
+                    transform.location.y - waypoint_location.y,
+                    0.0,
+                )
+                right_vector = current_waypoint.transform.get_right_vector()
+                lateral_distance = abs(
+                    waypoint_to_vehicle.x * right_vector.x
+                    + waypoint_to_vehicle.y * right_vector.y
+                )
+            lane_deviation_cost, lane_deviation_risk = v3_lane_deviation_penalty(
+                lateral_distance,
+                config=config,
+            )
+
+            crosswalk = self.crosswalk_invasion_events.get(i, False)
+            collision_event = bool(self.collision_events.get(i, False) or crosswalk)
+            lane_sensor_event = bool(
+                self.lane_invasion_events.get(i, False) and not crosswalk
+            )
+            lane_event_penalty = 0.0
+            if lane_sensor_event:
+                invasion_details = getattr(
+                    self, "lane_invasion_details", {}
+                ).get(i, {})
+                lane_event_penalty = v3_lane_invasion_penalty(
+                    invasion_details.get("marking_types", []),
+                    config=config,
+                )
+
+            if self.goal_zone is not None:
+                in_goal_region = self._is_in_goal_zone(transform.location)
+            else:
+                target_waypoint = self.target_waypoints[i]
+                forward_vector = target_waypoint.transform.get_forward_vector()
+                right_vector = target_waypoint.transform.get_right_vector()
+                relative = carla.Vector3D(
+                    transform.location.x - target_loc.x,
+                    transform.location.y - target_loc.y,
+                    0.0,
+                )
+                along = (
+                    relative.x * forward_vector.x
+                    + relative.y * forward_vector.y
+                )
+                lateral = relative.x * right_vector.x + relative.y * right_vector.y
+                in_goal_region = abs(along) <= 3.0 and abs(lateral) <= 1.75
+
+            # Collision has priority over success when both sensors fire on the
+            # same simulator tick; a crash at the goal cannot collect both.
+            success_event = bool(in_goal_region and not collision_event)
+            collision_reward, success_reward = terminal_rewards(
+                success=success_event,
+                collision=collision_event,
+                config=config,
+            )
+
+            target_yaw = math.atan2(goal_dy, goal_dx)
+            vehicle_yaw = math.radians(transform.rotation.yaw)
+            yaw_error = abs(target_yaw - vehicle_yaw)
+            if yaw_error > math.pi:
+                yaw_error = 2 * math.pi - yaw_error
+
+            details = {
+                "progress": progress_reward,
+                "overspeed": overspeed_cost,
+                "longitudinal_rate": longitudinal_rate_penalty,
+                "steer_rate": steer_rate_penalty,
+                "safety_lidar": lidar_penalty,
+                "ttc": ttc_penalty,
+                "lane_deviation": lane_deviation_cost,
+                "lane_invasion": lane_event_penalty,
+                "collision": collision_reward,
+                "success": success_reward,
+            }
+            reward = math.fsum(details.values())
+            rewards[i] = reward
+            reward_details[i] = details
+            reward_diagnostics[i] = _empty_diagnostics(
+                progress_m=progress_m,
+                route_completion_prev=previous_completion,
+                route_completion=current_completion,
+                distance_to_goal_m=current_dist,
+                speed_mps=speed,
+                closing_speed_mps=closing_speed,
+                overspeed_risk=overspeed_risk,
+                longitudinal_command=longitudinal_command,
+                longitudinal_rate_normalized=longitudinal_rate_normalized,
+                steer_rate_normalized=steer_rate_normalized,
+                lidar_min_normalized=lidar_minimum,
+                lidar_trigger_ray_count=lidar_trigger_count,
+                lidar_risk=lidar_risk,
+                ttc_candidate_count=ttc_candidate_count,
+                ttc_trigger_count=ttc_trigger_count,
+                ttc_min_seconds_capped=ttc_min_capped,
+                ttc_risk=ttc_risk,
+                lateral_distance_m=lateral_distance,
+                lane_deviation_risk=lane_deviation_risk,
+                yaw_error_rad=yaw_error,
+                collision_event=float(collision_event),
+                lane_invasion_sensor_event=float(lane_sensor_event),
+                success_event=float(success_event),
+            )
+
+        self.last_reward_diagnostics = reward_diagnostics
+        return rewards, reward_details
     
     def _check_dones(self) -> Dict[int, bool]:
         """检查是否完成。
@@ -1989,7 +2292,18 @@ class CarlaMultiAgentEnv:
             # 下一帧 in_goal_region=False、无碰撞、未超时 → dones[i] 又变 False，
             # train 脚本因 all(dones) != True 而不 break，造成"到点了但回合不停"
             already_reached = self.reached_target.get(i, False)
-            if in_goal_region or already_reached:
+            # Reward v3 registers collision as the higher-priority terminal
+            # outcome when goal and collision occur on the same simulator tick.
+            # Keep legacy v1/v2 evidence semantics unchanged.
+            collision_has_priority = bool(
+                getattr(self, "reward_version", "v2") == "v3"
+                and is_collided
+                and not already_reached
+            )
+            if collision_has_priority:
+                dones[i] = True
+                terminated[i] = True
+            elif in_goal_region or already_reached:
                 if not already_reached:
                     # disappear-at-target（MAPF）：到达即从场景移除该车，避免它停在终点
                     # 物理阻挡后到的车，导致"会车被判碰撞"。原 ignore_vehicles_percentage

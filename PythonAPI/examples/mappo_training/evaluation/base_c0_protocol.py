@@ -50,9 +50,11 @@ from training.metrics_protocol import (
 
 
 LEGACY_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v1"
-C0_PROTOCOL_VERSION = "p0_base_c0_eval_v2"
+ACTION_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v2"
+C0_PROTOCOL_VERSION = "p0_base_c0_eval_v3"
 LEGACY_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v2"
-C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v3"
+ACTION_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v3"
+C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v4"
 C0_SUMMARY_VERSION = "p0_base_c0_summary_v1"
 C0_MANIFEST_VERSION = "p0_base_c0_manifest_v1"
 C0_RESOLVED_CONFIG_VERSION = "p0_base_c0_resolved_v1"
@@ -216,13 +218,17 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     protocol_version = payload["protocol_version"]
     if protocol_version not in {
         LEGACY_C0_PROTOCOL_VERSION,
+        ACTION_C0_PROTOCOL_VERSION,
         C0_PROTOCOL_VERSION,
     }:
         raise C0ProtocolError("C0 protocol version mismatch")
     legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
-    expected_contract_id = (
-        "P0_BASE_C0_TOWN02_V1" if legacy else "P0_BASE_C0_TOWN02_V2"
-    )
+    action_v2 = protocol_version == ACTION_C0_PROTOCOL_VERSION
+    expected_contract_id = {
+        LEGACY_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_V1",
+        ACTION_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_V2",
+        C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_REWARD_V3",
+    }[protocol_version]
     if payload["contract_id"] != expected_contract_id:
         raise C0ProtocolError("C0 contract_id mismatch")
     if payload["status"] != "frozen" or payload["run_id_prefix"] != "P0_BASE_C0_":
@@ -249,7 +255,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         env["carla_version"] != "0.9.16"
         or env["town"] != "Town02"
         or env["num_agents"] != 2
-        or env["reward_version"] != "v2"
+        or env["reward_version"] != ("v2" if legacy or action_v2 else "v3")
         or env["adversarial_agent_ids"] != []
         or env["allow_extra_traffic"] is not False
     ):
@@ -305,11 +311,11 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         LEGACY_TRAINING_PROTOCOL_VERSION if legacy else TRAINING_PROTOCOL_VERSION
     )
     expected_action_dim = 3 if legacy else 2
-    expected_training_contract_id = (
-        "P0_BASE_MAPPO_TOWN02_PILOT_V1"
-        if legacy
-        else "P0_BASE_MAPPO_TOWN02_ACTION_V2"
-    )
+    expected_training_contract_id = {
+        LEGACY_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_PILOT_V1",
+        ACTION_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_ACTION_V2",
+        C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_REWARD_V3",
+    }[protocol_version]
     if (
         checkpoint["schema_version"] != expected_checkpoint_schema
         or checkpoint["training_protocol_version"] != expected_training_protocol
@@ -703,10 +709,14 @@ def validate_episode_record(
     record_version = record["record_version"]
     if record_version not in {
         LEGACY_C0_EPISODE_RECORD_VERSION,
+        ACTION_C0_EPISODE_RECORD_VERSION,
         C0_EPISODE_RECORD_VERSION,
     }:
         raise C0ProtocolError("episode record version mismatch")
-    current_action = record_version == C0_EPISODE_RECORD_VERSION
+    current_action = record_version != LEGACY_C0_EPISODE_RECORD_VERSION
+    reward_version = (
+        "v3" if record_version == C0_EPISODE_RECORD_VERSION else "v2"
+    )
     if record["eval_id"] != eval_id or record["profile"] != profile:
         raise C0ProtocolError("episode record evaluation identity mismatch")
     if record["checkpoint_sha256"] != checkpoint_sha256:
@@ -766,13 +776,17 @@ def validate_episode_record(
         if residual > 1e-5:
             raise C0ProtocolError(f"agent {agent_id} reward residual exceeds tolerance")
         components = agent["reward_component_sums"]
-        if not isinstance(components, Mapping) or set(components) != set(REWARD_COMPONENTS["v2"]):
+        if not isinstance(components, Mapping) or set(components) != set(
+            REWARD_COMPONENTS[reward_version]
+        ):
             raise C0ProtocolError(f"agent {agent_id} reward component schema mismatch")
         component_sum = sum(_finite(value, context=f"agent {agent_id}.reward") for value in components.values())
         if not math.isclose(component_sum, episode_return, rel_tol=0.0, abs_tol=1e-5):
             raise C0ProtocolError(f"agent {agent_id} component sums do not conserve episode return")
         diagnostics = agent["diagnostics"]
-        if not isinstance(diagnostics, Mapping) or set(diagnostics) != set(REWARD_DIAGNOSTICS["v2"]):
+        if not isinstance(diagnostics, Mapping) or set(diagnostics) != set(
+            REWARD_DIAGNOSTICS[reward_version]
+        ):
             raise C0ProtocolError(f"agent {agent_id} diagnostic schema mismatch")
         for name, stats in diagnostics.items():
             _validate_stats(stats, expected_count=active_steps, context=f"agent {agent_id}.diagnostics.{name}")
@@ -957,8 +971,13 @@ def build_summary(
     record_version = next(iter(record_versions))
     if record_version == LEGACY_C0_EPISODE_RECORD_VERSION:
         eval_protocol_version = LEGACY_C0_PROTOCOL_VERSION
+        reward_version = "v2"
+    elif record_version == ACTION_C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = ACTION_C0_PROTOCOL_VERSION
+        reward_version = "v2"
     elif record_version == C0_EPISODE_RECORD_VERSION:
         eval_protocol_version = C0_PROTOCOL_VERSION
+        reward_version = "v3"
     else:
         raise C0ProtocolError("cannot summarize an unknown C0 episode version")
     overall = _aggregate_group(records)
@@ -980,7 +999,7 @@ def build_summary(
             "mean_active_decision_steps": sum(record["agents"][agent_id]["active_decision_steps"] for record in records) / len(records),
             "mean_reward_component_sum": {
                 component: sum(record["agents"][agent_id]["reward_component_sums"][component] for record in records) / len(records)
-                for component in REWARD_COMPONENTS["v2"]
+                for component in REWARD_COMPONENTS[reward_version]
             },
         }
     return {

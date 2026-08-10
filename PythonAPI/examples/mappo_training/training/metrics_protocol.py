@@ -10,6 +10,11 @@ from __future__ import annotations
 import math
 from typing import Dict, Iterable, Mapping, Sequence, Tuple
 
+from environment.base_reward_v3 import (
+    REWARD_COMPONENTS as REWARD_V3_COMPONENTS,
+    REWARD_DIAGNOSTICS as REWARD_V3_DIAGNOSTICS,
+    reward_v3_spec,
+)
 from training.action_protocol import action_protocol_spec
 
 LEGACY_METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v3"
@@ -65,6 +70,7 @@ REWARD_COMPONENTS: Dict[str, Tuple[str, ...]] = {
         "success",
         "time_bonus",
     ),
+    "v3": REWARD_V3_COMPONENTS,
 }
 
 REWARD_DIAGNOSTICS: Dict[str, Tuple[str, ...]] = {
@@ -95,6 +101,7 @@ REWARD_DIAGNOSTICS: Dict[str, Tuple[str, ...]] = {
         "lane_deviation_penalty",
         "success_event",
     ),
+    "v3": REWARD_V3_DIAGNOSTICS,
 }
 
 DISABLED_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
@@ -102,6 +109,7 @@ DISABLED_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
     # These fields remain in the payload for backward-compatible dashboards,
     # but the current v2 reward deliberately gives them no contribution.
     "v2": frozenset({"progress", "alive"}),
+    "v3": frozenset(),
 }
 
 SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
@@ -113,6 +121,15 @@ SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
             "collision",
             "success",
             "time_bonus",
+        }
+    ),
+    "v3": frozenset(
+        {
+            "safety_lidar",
+            "ttc",
+            "lane_invasion",
+            "collision",
+            "success",
         }
     ),
 }
@@ -413,7 +430,7 @@ def reward_schema_document(reward_version: str) -> Dict[str, object]:
     diagnostics = reward_diagnostics(reward_version)
     disabled = DISABLED_REWARD_COMPONENTS[reward_version]
     sparse = SPARSE_REWARD_COMPONENTS[reward_version]
-    return {
+    document = {
         "metrics_protocol_version": METRICS_PROTOCOL_VERSION,
         "action_protocol": action_protocol_spec(),
         "reward_version": reward_version,
@@ -439,6 +456,9 @@ def reward_schema_document(reward_version: str) -> Dict[str, object]:
         },
         "reward_audit_atol": REWARD_AUDIT_ATOL,
     }
+    if reward_version == "v3":
+        document["reward_protocol"] = reward_v3_spec()
+    return document
 
 
 def _finite_float(value: object, *, field: str, context: str) -> float:

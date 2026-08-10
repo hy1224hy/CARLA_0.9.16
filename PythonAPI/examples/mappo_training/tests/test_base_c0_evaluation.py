@@ -51,7 +51,10 @@ from training.action_protocol import (
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-CONTRACT_PATH = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v2.json"
+CONTRACT_PATH = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v3.json"
+R1_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v2.json"
+)
 
 
 def _checkpoint_payload(contract, *, formal=True):
@@ -63,7 +66,7 @@ def _checkpoint_payload(contract, *, formal=True):
             "observation": OBSERVATION_PROTOCOL_VERSION,
             "action": ACTION_PROTOCOL_VERSION,
             "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
-            "reward": "v2",
+            "reward": contract["environment"]["reward_version"],
             "metrics": METRICS_PROTOCOL_VERSION,
         },
         "checkpoint_kind": "periodic" if formal else "latest",
@@ -111,9 +114,9 @@ def _stats(value=0.0):
     return {"count": 1, "min": value, "max": value, "mean": value, "last": value}
 
 
-def _agent_record(*, return_value=-0.05):
-    components = {name: 0.0 for name in REWARD_COMPONENTS["v2"]}
-    components["step"] = return_value
+def _agent_record(*, return_value=0.0):
+    components = {name: 0.0 for name in REWARD_COMPONENTS["v3"]}
+    components["progress"] = return_value
     action_rates = env_action_diagnostics([0.5, 0.0, 0.0], context="fixture")
     policy_action = [0.525, 0.0]
     policy_rates = policy_action_diagnostics(policy_action)
@@ -127,7 +130,7 @@ def _agent_record(*, return_value=-0.05):
         "final_truncated": True,
         "reward_component_sums": components,
         "reward_residual_max_abs": 0.0,
-        "diagnostics": {name: _stats() for name in REWARD_DIAGNOSTICS["v2"]},
+        "diagnostics": {name: _stats() for name in REWARD_DIAGNOSTICS["v3"]},
         "actions": {
             "count": 1,
             "throttle_mean": 0.5,
@@ -164,7 +167,7 @@ def _episode_record(case, *, eval_id, checkpoint_sha):
         "episode_end_reason": "max_steps",
         "outcome": "timeout",
         "agents": agents,
-        "team": {"mean_episode_return": -0.05, "total_active_decision_steps": 2},
+        "team": {"mean_episode_return": 0.0, "total_active_decision_steps": 2},
     }
 
 
@@ -197,11 +200,10 @@ class _OneStepTimeoutEnv:
         diagnostics = {}
         rewards = {}
         for agent_id in (0, 1):
-            components = {name: 0.0 for name in REWARD_COMPONENTS["v2"]}
-            components["step"] = -0.05
+            components = {name: 0.0 for name in REWARD_COMPONENTS["v3"]}
             details[agent_id] = components
-            diagnostics[agent_id] = {name: 0.0 for name in REWARD_DIAGNOSTICS["v2"]}
-            rewards[agent_id] = -0.05
+            diagnostics[agent_id] = {name: 0.0 for name in REWARD_DIAGNOSTICS["v3"]}
+            rewards[agent_id] = 0.0
         return (
             {0: np.zeros(19, dtype=np.float32), 1: np.zeros(19, dtype=np.float32)},
             rewards,
@@ -239,6 +241,11 @@ class C0ContractTests(unittest.TestCase):
         drifted["profiles"]["validation"]["scenario_pool_sha256"] = "0" * 64
         with self.assertRaisesRegex(C0ProtocolError, "fingerprint drift"):
             validate_c0_contract(drifted, project_dir=PROJECT_DIR)
+
+    def test_r1_action_v2_contract_remains_strictly_loadable_as_history(self):
+        historical = load_c0_contract(R1_CONTRACT_PATH, project_dir=PROJECT_DIR)
+        self.assertEqual(historical["payload"]["protocol_version"], "p0_base_c0_eval_v2")
+        self.assertEqual(historical["payload"]["environment"]["reward_version"], "v2")
 
     def test_resume_evidence_must_be_an_exact_case_prefix(self):
         cases = expand_profile_cases(self.record["payload"], "validation", project_dir=PROJECT_DIR)
@@ -278,6 +285,24 @@ class C0CheckpointTests(unittest.TestCase):
             with self.assertRaisesRegex(C0ProtocolError, "actor state"):
                 load_and_validate_c0_checkpoint(malformed_path, contract=self.contract)
 
+    def test_r1_reward_v2_checkpoint_remains_strictly_readable_as_history(self):
+        historical_contract = load_c0_contract(
+            R1_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )["payload"]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir) / "r1_ckpt_000005.pt"
+            save_checkpoint_file(
+                _checkpoint_payload(historical_contract),
+                checkpoint_path,
+            )
+            result = load_and_validate_c0_checkpoint(
+                checkpoint_path,
+                contract=historical_contract,
+            )
+            self.assertTrue(result["formal_eligible"])
+            self.assertEqual(result["update"], 5)
+
 
 class C0EvidenceTests(unittest.TestCase):
     def setUp(self):
@@ -295,7 +320,7 @@ class C0EvidenceTests(unittest.TestCase):
             expected_case=self.case,
         )
         broken = copy.deepcopy(record)
-        broken["agents"]["0"]["reward_component_sums"]["step"] = 0.0
+        broken["agents"]["0"]["reward_component_sums"]["progress"] = 1.0
         with self.assertRaisesRegex(C0ProtocolError, "conserve"):
             validate_episode_record(
                 broken,

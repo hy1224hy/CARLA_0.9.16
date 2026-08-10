@@ -21,7 +21,10 @@ import carla
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 from evaluation.base_c0_protocol import (
     AGENT_IDS,
+    ACTION_C0_EPISODE_RECORD_VERSION,
+    ACTION_C0_PROTOCOL_VERSION,
     C0_EPISODE_RECORD_VERSION,
+    C0_PROTOCOL_VERSION,
     C0_MANIFEST_VERSION,
     C0_RESOLVED_CONFIG_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
@@ -71,7 +74,7 @@ from training.action_protocol import (
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v2.json"
+DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v3.json"
 
 
 def _set_seed(seed: int, env: CarlaMultiAgentEnv | None = None) -> None:
@@ -106,13 +109,23 @@ def _observation(raw: Any, *, agent_id: int, context: str) -> np.ndarray:
 
 
 class AgentEpisodeAccumulator:
-    def __init__(self, *, legacy_action: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        reward_version: str,
+        legacy_action: bool = False,
+    ) -> None:
         self.legacy_action = bool(legacy_action)
+        self.reward_version = str(reward_version)
         self.episode_return = 0.0
         self.active_steps = 0
-        self.component_sums = {name: 0.0 for name in REWARD_COMPONENTS["v2"]}
+        self.component_sums = {
+            name: 0.0 for name in REWARD_COMPONENTS[self.reward_version]
+        }
         self.residual_max = 0.0
-        self.diagnostics = {name: ScalarStats() for name in REWARD_DIAGNOSTICS["v2"]}
+        self.diagnostics = {
+            name: ScalarStats() for name in REWARD_DIAGNOSTICS[self.reward_version]
+        }
         self.action_sums = np.zeros(3, dtype=np.float64)
         self.action_rate_counts = {name: 0 for name in ACTION_RATE_NAMES}
         self.policy_action_sums = np.zeros(2, dtype=np.float64)
@@ -263,9 +276,13 @@ def _run_case(
     if not all(active_mask.values()) or info.get("episode_end_reason") != "running":
         raise C0ProtocolError("C0 reset must start with both agents active and reason=running")
     legacy_action = contract["protocol_version"] == LEGACY_C0_PROTOCOL_VERSION
+    reward_version = str(contract["environment"]["reward_version"])
     policy_action_dim = 3 if legacy_action else 2
     accumulators = {
-        agent_id: AgentEpisodeAccumulator(legacy_action=legacy_action)
+        agent_id: AgentEpisodeAccumulator(
+            reward_version=reward_version,
+            legacy_action=legacy_action,
+        )
         for agent_id in AGENT_IDS
     }
     final_reason = "running"
@@ -302,7 +319,7 @@ def _run_case(
             rewards=raw_rewards,
             reward_details_by_agent=next_info.get("reward_details", {}),
             reward_diagnostics_by_agent=next_info.get("reward_diagnostics", {}),
-            reward_version="v2",
+            reward_version=reward_version,
             context=f"C0 case={case['case_id']} step={step_index}",
         )
         for agent_id in AGENT_IDS:
@@ -349,7 +366,11 @@ def _run_case(
         "record_version": (
             LEGACY_C0_EPISODE_RECORD_VERSION
             if legacy_action
-            else C0_EPISODE_RECORD_VERSION
+            else (
+                ACTION_C0_EPISODE_RECORD_VERSION
+                if contract["protocol_version"] == ACTION_C0_PROTOCOL_VERSION
+                else C0_EPISODE_RECORD_VERSION
+            )
         ),
         "eval_id": eval_id,
         "profile": profile,
@@ -565,12 +586,12 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     contract_record = load_c0_contract(args.eval_contract, project_dir=PROJECT_DIR)
     contract = contract_record["payload"]
     if (
-        contract["protocol_version"] == LEGACY_C0_PROTOCOL_VERSION
+        contract["protocol_version"] != C0_PROTOCOL_VERSION
         and not args.allow_diagnostic_checkpoint
     ):
         raise C0ProtocolError(
-            "legacy C0 v1 is read-only historical evidence; new executions require "
-            "the v2 contract, or an explicit diagnostic smoke invocation"
+            "historical C0 v1/v2 is read-only evidence; new executions require "
+            "the reward-v3 C0 contract, or an explicit diagnostic smoke invocation"
         )
     if args.allow_diagnostic_checkpoint and args.profile != "smoke":
         raise C0ProtocolError("diagnostic checkpoints are restricted to the smoke profile")

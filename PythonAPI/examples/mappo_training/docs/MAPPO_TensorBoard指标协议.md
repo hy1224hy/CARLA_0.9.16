@@ -1,6 +1,6 @@
 # MAPPO TensorBoard 指标与奖励审计协议
 
-> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。指标协议版本：`mappo_metrics_action_v2_p0_00g_v4`；逐 episode 协议：`mappo_episode_record_v1`。本协议不自动覆盖旧 RLlib、robust v1、旧对抗 PPO 或尚未迁移的 `train_2red_1blue_ppo.py`。历史 `mappo_metrics_p0_00g_v3` 仅保留离线验证兼容。
+> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。指标协议版本：`mappo_metrics_action_v2_p0_00g_v4`；当前奖励协议：`base_route_completion_reward_v3`；逐 episode 协议：`mappo_episode_record_v1`。本协议不自动覆盖旧 RLlib、robust v1、旧对抗 PPO 或尚未迁移的 `train_2red_1blue_ppo.py`。历史 metrics/reward schema 仅保留离线验证兼容。
 
 ## 1. 目的
 
@@ -42,13 +42,13 @@ CarlaMultiAgentEnv
 
 ## 4. 奖励字段语义
 
-| 类别 | v2 字段 | 正确的 0 如何解释 |
+| 类别 | 当前 v3 字段 | 正确的 0 如何解释 |
 |---|---|---|
-| 有意禁用 | `progress`、`alive` | 当前 v2 公式明确不计入总奖励；`reward_status/*/enabled=0`，不是日志故障 |
-| 稀疏/门控 | `safety_lidar`、`ttc`、`collision`、`success`、`time_bonus` | 只有满足事件或门控条件时非零；同时检查 `nonzero_rate`、事件计数和 raw diagnostics |
-| 连续/常规 | `approach`、`speed`、`centering`、`yaw`、`jerk`、`steer_rate`、`lane_invasion`、`step` | 长期全零需要结合原始状态检查；`lane_invasion` 同时含连续车道偏离惩罚，不是纯稀疏事件 |
+| 正任务信号 | `progress` | gamma 一致的路线完成度势能；停车为 0，后退可为负，往返闭环不能刷正回报 |
+| 连续有界成本 | `overspeed`、`longitudinal_rate`、`steer_rate`、`safety_lidar`、`ttc`、`lane_deviation` | 未进入风险区或实际控制未变化时为 0；每项都有冻结的单步幅值上界 |
+| 稀疏事件 | `lane_invasion`、`collision`、`success` | 仅在事件发生时非零；collision 与 success 同 tick 时 collision 优先，不能同时发放 |
 
-`progress_m` 仍作为原始诊断记录，用来解释禁用的 `progress` 奖励。LiDAR/TTC 同时记录最小距离、触发 ray 数、候选数、触发数和截断后的最小 TTC，因此可以区分“场景没有威胁”和“传感器/公式没有工作”。
+reward v3 显式移除 `alive`、`approach`、`centering`、`yaw`、`step` 和 `time_bonus`，速度本身不产生正奖励；历史 reward v2 记录仍按其原 schema 只读验证。`progress_m`、路线完成度、实际 signed-longitudinal command/rate、速度、横向偏移、LiDAR/TTC 候选与事件均作为 raw diagnostics。LiDAR 使用最近 ray、lane event 使用单次最严重 marking，因此 ray/marking 数量不会放大奖励预算。完整数学见 [R2 奖励预算校准](./R2_奖励预算校准_论文正文与实验设计.md)。
 
 每个 active transition 强制满足：
 
@@ -101,6 +101,6 @@ tensorboard --logdir logs/<RunID>/tb
 
 P0-00G 验证器必须返回 `"status": "PASS"`。它检查协议、update 顺序、必需标签、全部 scalar 有限、逐步奖励守恒、逐 episode/agent 生命周期与 transition 汇总，以及 TensorBoard 与 JSONL 在每个 update 的数值一致性。省略严格参数时只执行通用结构验证，不能替代 P0-00G 验收。
 
-P0-00F-TB 的无 CARLA 测试只能证明指标协议和聚合逻辑正确。LiDAR、TTC、碰撞 sensor、真实 episode 终局和真实 PPO 数值是否符合预期，仍必须在 P0-00G CARLA smoke 中通过 validator、TensorBoard 和场景原始记录共同确认。
+无 CARLA 测试只能证明指标协议、聚合逻辑与 reward-v3 数学正确。LiDAR、TTC、碰撞 sensor、真实 episode 终局和真实 PPO 数值是否符合预期，仍必须在 R5 CARLA smoke 中通过 validator、TensorBoard 和场景原始记录共同确认。
 
-v4 随 R1 将当前基础 Actor 改为二维，但 CARLA 环境 action 仍为三维；指标同时审计这两个空间。由于 checkpoint 绑定动作和指标协议版本，v3/WTA checkpoint 不得作为 v4 正式 Run 的 strict resume/pretrained 来源，但其历史 JSONL/TensorBoard schema 仍可由 validator 读取。
+v4 随 R1 将当前基础 Actor 改为二维，但 CARLA 环境 action 仍为三维；指标同时审计这两个空间。R2 保持 metrics protocol v4 不变，由 `reward_version=v3` 和嵌入的 `reward_v3_spec` 精确区分奖励 schema/参数。由于 checkpoint 同时绑定动作、奖励、指标和训练契约，R0/WTA 与 R1/reward-v2 checkpoint 不得作为 R2 正式 Run 的 strict resume/pretrained 来源，但其历史 JSONL/TensorBoard schema 仍可由 validator 读取。

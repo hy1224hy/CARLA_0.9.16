@@ -305,8 +305,10 @@ def validate_experiment_contract(
         raise ExperimentContractError("trainer_args.lr_decay must be boolean")
     for name in ("town", "scenario_dir", "scenario_sampling_mode", "curriculum_mode"):
         _require_nonempty_string(trainer_args[name], f"trainer_args.{name}")
-    if trainer_args["reward_version"] not in {"v1", "v2"}:
-        raise ExperimentContractError("trainer_args.reward_version must be v1 or v2")
+    if trainer_args["reward_version"] not in {"v1", "v2", "v3"}:
+        raise ExperimentContractError(
+            "trainer_args.reward_version must be v1, v2 or v3"
+        )
     if trainer_args["scenario_sampling_mode"] not in {
         "random",
         "stratified",

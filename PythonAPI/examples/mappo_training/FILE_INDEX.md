@@ -31,6 +31,7 @@
 | | - 正常智能体奖励函数 | `_compute_rewards()` |
 | | - 对抗智能体专用奖励 | `_compute_adversarial_reward()` |
 | | - 自定义起始位置 | `set_custom_start_positions()` |
+| **base_reward_v3.py** | **[CURRENT]** 无 CARLA 依赖的基础 reward v3 数学、参数校验、预算与轨迹回报工具 | `RewardV3Config`, `route_potential_reward()`, `terminal_rewards()`, `reward_v3_spec()` |
 | **carla_rllib_wrapper.py** | **[DEPRECATED]** 历史 RLlib 环境包装器 | `RLlibCarlaEnv` |
 | **speedup_env_wrapper.py** | 提速环境包装器（用于评估） | `SpeedupEnvWrapper`, `SpeedupActionWrapper`, `AdaptiveSpeedupWrapper` |
 | | - 固定油门放大模式 | `SpeedupActionWrapper` |
@@ -124,8 +125,10 @@
 | **logs/<RunID>/experiment_manifest.json** | P0-BASE Run 的 PREPARED/RUNNING/SEGMENT_COMPLETED/INTERRUPTED/ERROR 状态 |
 | **configs/base_mappo/p0_base_pilot_v1.json** | seed 42 基础 MAPPO pilot 的机器可读正式参数真值与登记停点 |
 | **configs/evaluation/p0_base_c0_eval_v1.json** | 基础 C0 的环境、checkpoint 资格、smoke/gate/validation cases、终局和输出机器真值 |
-| **configs/base_mappo/p0_base_action_v2.json** | R1 二维动作的 fresh 对照契约；冻结 reward/Critic 不漂移，但 R2–R4 完成前不授权正式 pilot |
-| **configs/evaluation/p0_base_c0_eval_v2.json** | R1 二维 checkpoint、确定性动作和策略/环境双层 action 证据的 C0 v2 真值 |
+| **configs/base_mappo/p0_base_action_v2.json** | R1 二维动作 + 历史 reward-v2 的 fresh 对照契约；已由 R2 reward-v3 契约取代，仅保留因果追溯 |
+| **configs/evaluation/p0_base_c0_eval_v2.json** | R1 action-v2/reward-v2 checkpoint 的历史 C0 v2 真值；新执行默认使用 v3 |
+| **configs/base_mappo/p0_base_reward_v3.json** | R2 二维动作 + 有界路线完成度 reward v3 的 fresh 对照契约；R3–R5 完成前不授权正式 pilot |
+| **configs/evaluation/p0_base_c0_eval_v3.json** | R2 reward-v3 checkpoint、奖励分量和双层 action 证据的当前 C0 v3 真值 |
 | **configs/evaluation/p0_base_go_hold_v1.json** | P0-BASE-04 证据、数值健康、分段能力、批量放行和 held-out 接受门槛的机器真值 |
 | **data/evaluation_scenarios/base_c0_validation_v1/** | 与训练场景按内容 SHA 隔离的 8 个 Town02 held-out 基础策略验证场景 |
 | **experiments/base_mappo_registry.csv** | 每个正式基础 Run 一行的跨 Run 机器可读索引 |
@@ -145,6 +148,8 @@
 | **docs/MAPPO_checkpoint与恢复训练协议.md** | P0-00F fresh/pretrained/resume 语义、目录结构、兼容规则和标准命令 |
 | **docs/MAPPO_TensorBoard指标协议.md** | P0-00F-TB 奖励 schema、聚合口径、PPO/模型指标、事务顺序和验证命令 |
 | **docs/MAPPO_车辆动作空间与边界指标协议.md** | 基础 MAPPO 油门/刹车互斥映射、PPO 语义、已知限制及 zero/saturation/mode/conflict 指标口径 |
+| **docs/R1_二维纵向动作协议_论文正文与实验设计.md** | R1 动作数学、PPO 概率、文献依据、风险与验收 |
+| **docs/R2_奖励预算校准_论文正文与实验设计.md** | R2 reward-v3 理论、预算、五类轨迹排序、敏感性与局限 |
 | **docs/P0-00G_真实CARLA_smoke运行规范.md** | P0-00G 环境门槛、冻结命令、受控中断、预期产物与 PASS/HOLD 标准 |
 | **docs/P0-00G_真实CARLA_smoke测试记录.md** | P0-00G 每次环境、fresh、中断、resume、validator、失败根因、修复证据与 Judge 裁决 |
 | **docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md** | 无基础 checkpoint 的 success/reward/lifecycle 两层真实 CARLA 测试、PASS 门槛、命令和逐次结果 |
@@ -157,6 +162,7 @@
 | **tests/test_success_logic_smoke.py** | 近终点场景几何与 success reward/terminated/truncated/active/global-reason 审计器回归测试 |
 | **tests/test_experiment_contract.py** | JSON schema、全批上界、CLI 覆盖拒绝、身份漂移和 registry/manifest 原子更新测试 |
 | **tests/test_base_c0_evaluation.py** | C0 场景隔离、checkpoint provenance、确定性 active-agent runner、奖励守恒、恢复顺序、summary 防篡改和重复性测试 |
+| **tests/test_base_reward_v3.py** | reward v3 势能望远镜、预算边界、防刷分、终局排序、对称性与 ±25% 敏感性测试 |
 | **tests/test_base_go_hold.py** | 阈值契约绑定、防漂移、逐 update 污染、数值临界值、里程碑和 held-out 判定回归测试 |
 
 ---

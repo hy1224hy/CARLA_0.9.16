@@ -93,6 +93,14 @@ class MetricsProtocolTests(unittest.TestCase):
         self.assertTrue(schema["reward_components"]["safety_lidar"]["sparse"])
         self.assertEqual(schema["metrics_protocol_version"], METRICS_PROTOCOL_VERSION)
 
+        v3_schema = reward_schema_document("v3")
+        self.assertTrue(v3_schema["reward_components"]["progress"]["enabled"])
+        self.assertFalse(v3_schema["reward_components"]["overspeed"]["sparse"])
+        self.assertEqual(
+            v3_schema["reward_protocol"]["reward_protocol_version"],
+            "base_route_completion_reward_v3",
+        )
+
     def test_reward_conservation_and_exact_schema_pass(self):
         details = _reward_details(speed=1.0, step=-0.1, collision=-2.0)
         rewards, normalized, diagnostics, residuals = validate_active_reward_payload(
@@ -106,6 +114,25 @@ class MetricsProtocolTests(unittest.TestCase):
         self.assertEqual(rewards[0], -1.1)
         self.assertEqual(normalized[0]["collision"], -2.0)
         self.assertEqual(diagnostics[0]["collision_event"], 1.0)
+        self.assertLess(abs(residuals[0]), 1e-12)
+
+    def test_reward_v3_payload_uses_exact_versioned_schema(self):
+        details = {name: 0.0 for name in reward_components("v3")}
+        details["progress"] = 0.25
+        diagnostics = {name: 0.0 for name in reward_diagnostics("v3")}
+        rewards, normalized, normalized_diagnostics, residuals = (
+            validate_active_reward_payload(
+                active_agent_ids=[0],
+                rewards={0: 0.25},
+                reward_details_by_agent={0: details},
+                reward_diagnostics_by_agent={0: diagnostics},
+                reward_version="v3",
+                context="reward-v3-unit",
+            )
+        )
+        self.assertEqual(rewards[0], 0.25)
+        self.assertEqual(normalized[0], details)
+        self.assertEqual(normalized_diagnostics[0], diagnostics)
         self.assertLess(abs(residuals[0]), 1e-12)
 
     def test_missing_unknown_nonfinite_and_bad_sum_fail_fast(self):
@@ -217,6 +244,162 @@ class EnvironmentRewardDiagnosticsTests(unittest.TestCase):
         self.assertEqual(diagnostics["lidar_trigger_ray_count"], 1.0)
         self.assertLess(details[0]["safety_lidar"], 0.0)
         self.assertEqual(set(diagnostics), set(reward_diagnostics("v2")))
+
+    def test_v3_environment_uses_bounded_progress_and_symmetric_brake_rate(self):
+        class FakeLocation:
+            def __init__(self, x, y, z=0.0):
+                self.x, self.y, self.z = x, y, z
+
+            def distance(self, other):
+                return math.sqrt(
+                    (self.x - other.x) ** 2
+                    + (self.y - other.y) ** 2
+                    + (self.z - other.z) ** 2
+                )
+
+        location = FakeLocation(9.0, 0.0)
+        transform = SimpleNamespace(
+            location=location,
+            rotation=SimpleNamespace(yaw=0.0),
+        )
+        velocity = SimpleNamespace(x=1.0, y=0.0, z=0.0)
+        control = SimpleNamespace(throttle=0.0, steer=0.0, brake=0.5)
+
+        class FakeVehicle:
+            is_alive = True
+
+            @staticmethod
+            def get_transform():
+                return transform
+
+            @staticmethod
+            def get_velocity():
+                return velocity
+
+            @staticmethod
+            def get_control():
+                return control
+
+        waypoint_transform = SimpleNamespace(
+            location=FakeLocation(9.0, 0.0),
+            get_right_vector=lambda: SimpleNamespace(x=0.0, y=1.0),
+        )
+        env = CarlaMultiAgentEnv.__new__(CarlaMultiAgentEnv)
+        env.reward_version = "v3"
+        env.vehicles = [FakeVehicle()]
+        env.reached_target = {0: False}
+        env.reward_gamma = 0.997
+        env.timestep = 0.1
+        env.max_steps = 1000
+        env.current_step = 10
+        env.prev_distances = {0: 2.0}
+        env.initial_distances = {0: 20.0}
+        env.prev_controls = {
+            0: {"throttle": 0.5, "steer": 0.0, "brake": 0.0}
+        }
+        env.collision_events = {0: False}
+        env.crosswalk_invasion_events = {0: False}
+        env.lane_invasion_events = {0: False}
+        env.lane_invasion_details = {}
+        env.goal_zone = {}
+        env.adversarial_agent_ids = []
+        env.map = SimpleNamespace(
+            get_waypoint=lambda _location: SimpleNamespace(
+                transform=waypoint_transform
+            )
+        )
+        env._get_target_location = lambda _agent_id: FakeLocation(10.0, 0.0)
+        env._is_in_goal_zone = lambda _location: False
+        env._get_ray_detection = lambda *_args, **_kwargs: np.asarray(
+            [0.25] + [1.0] * 10, dtype=np.float32
+        )
+        env._get_relative_position_to_agents = lambda _agent_id: {}
+
+        rewards, details = env._compute_rewards()
+        diagnostics = env.last_reward_diagnostics[0]
+
+        self.assertAlmostEqual(
+            rewards[0], math.fsum(details[0].values()), delta=1e-9
+        )
+        self.assertEqual(set(details[0]), set(reward_components("v3")))
+        self.assertEqual(set(diagnostics), set(reward_diagnostics("v3")))
+        self.assertGreater(details[0]["progress"], 0.0)
+        self.assertEqual(details[0]["longitudinal_rate"], -0.005)
+        self.assertEqual(diagnostics["longitudinal_command"], -0.5)
+        self.assertEqual(diagnostics["longitudinal_rate_normalized"], 1.0)
+        self.assertGreater(diagnostics["lidar_risk"], 0.0)
+        self.assertEqual(details[0]["overspeed"], 0.0)
+
+    def test_v3_collision_has_priority_over_goal_success(self):
+        class FakeLocation:
+            x = 0.0
+            y = 0.0
+            z = 0.0
+
+            @staticmethod
+            def distance(_other):
+                return 0.0
+
+        transform = SimpleNamespace(
+            location=FakeLocation(),
+            rotation=SimpleNamespace(yaw=0.0),
+        )
+        velocity = SimpleNamespace(x=0.0, y=0.0, z=0.0)
+        control = SimpleNamespace(throttle=0.0, steer=0.0, brake=0.0)
+
+        class FakeVehicle:
+            is_alive = True
+
+            get_transform = staticmethod(lambda: transform)
+            get_velocity = staticmethod(lambda: velocity)
+            get_control = staticmethod(lambda: control)
+
+        waypoint_transform = SimpleNamespace(
+            location=FakeLocation(),
+            get_right_vector=lambda: SimpleNamespace(x=0.0, y=1.0),
+        )
+        env = CarlaMultiAgentEnv.__new__(CarlaMultiAgentEnv)
+        env.reward_version = "v3"
+        env.vehicles = [FakeVehicle()]
+        env.reached_target = {0: False}
+        env.reward_gamma = 0.997
+        env.timestep = 0.1
+        env.prev_distances = {0: 1.0}
+        env.initial_distances = {0: 10.0}
+        env.prev_controls = {}
+        env.collision_events = {0: True}
+        env.crosswalk_invasion_events = {0: False}
+        env.lane_invasion_events = {0: False}
+        env.lane_invasion_details = {}
+        env.goal_zone = {}
+        env.adversarial_agent_ids = []
+        env.map = SimpleNamespace(
+            get_waypoint=lambda _location: SimpleNamespace(
+                transform=waypoint_transform
+            )
+        )
+        env._get_target_location = lambda _agent_id: FakeLocation()
+        env._is_in_goal_zone = lambda _location: True
+        env._get_ray_detection = lambda *_args, **_kwargs: np.ones(11)
+        env._get_relative_position_to_agents = lambda _agent_id: {}
+
+        _, details = env._compute_rewards_v3()
+        self.assertEqual(details[0]["collision"], -20.0)
+        self.assertEqual(details[0]["success"], 0.0)
+
+        env.num_agents = 1
+        env.adversary_collision_ends_episode = True
+        env.current_step = 1
+        env.max_steps = 100
+        env._despawn_reached_vehicle = lambda _agent_id: self.fail(
+            "collision-priority outcome must not despawn as success"
+        )
+        dones = env._check_dones()
+        self.assertEqual(dones, {0: True})
+        self.assertEqual(env.episode_end_reason, "cooperative_collision")
+        self.assertEqual(env.reached_target, {0: False})
+        self.assertEqual(env.last_terminated, {0: True})
+        self.assertEqual(env.last_truncated, {0: False})
 
 
 class TrainingMetricsRecorderTests(unittest.TestCase):
