@@ -1,0 +1,129 @@
+{
+  "protocol_version": "p0_base_c0_eval_v2",
+  "contract_id": "P0_BASE_C0_TOWN02_V2",
+  "status": "frozen",
+  "purpose": "Deterministic no-blue, no-traffic evaluation for two-agent MAPPO signed-longitudinal action-v2 checkpoints.",
+  "environment": {
+    "carla_version": "0.9.16",
+    "town": "Town02",
+    "num_agents": 2,
+    "straight_road_length": 100.0,
+    "timestep": 0.1,
+    "max_steps": 1000,
+    "reward_version": "v2",
+    "reward_gamma": 0.997,
+    "adversarial_agent_ids": [],
+    "allow_extra_traffic": false
+  },
+  "action": {
+    "mode": "deterministic_actor_mean_tanh",
+    "observation_protocol_version": "carla_obs_19_v1",
+    "action_protocol_version": "tanh_gaussian_signed_longitudinal_2d_pre_tanh_z_v2",
+    "mapping_version": "signed_longitudinal_deadzone_v2",
+    "policy_action_dim": 2,
+    "environment_action_dim": 3,
+    "longitudinal_deadzone": 0.05
+  },
+  "checkpoint": {
+    "schema_version": 3,
+    "training_protocol_version": "mappo_robust_v2_action_v2_p0_00g_v3",
+    "required_training_contract_id": "P0_BASE_MAPPO_TOWN02_ACTION_V2",
+    "required_training_contract_sha256": "6f90d8490497cb6846c42147b64949ecdf52d06fa05dc240b48b01fd3060a4e8",
+    "allowed_checkpoint_kinds": ["periodic"],
+    "allowed_checkpoint_updates": [5, 10, 20, 30, 40, 60, 80, 100],
+    "required_agent_ids": [0, 1],
+    "obs_dim": 19,
+    "action_dim": 2,
+    "hidden_dim": 128
+  },
+  "profiles": {
+    "smoke": {
+      "purpose": "Protocol-only real-CARLA smoke; never used for model selection.",
+      "scenario_dir": "data/evaluation_scenarios/base_c0_validation_v1",
+      "scenario_pool_sha256": "745df48e2ebe26438cc7ca7046e7f64f7f8e5eb1cc5bd97109523856153d0b63",
+      "scenario_names": ["c0v_01_east_basic_a1_rear.json"],
+      "episode_seeds": [61001],
+      "formal_use": "diagnostic_only"
+    },
+    "gate": {
+      "purpose": "In-distribution health and capability gate at every registered training milestone.",
+      "scenario_dir": "data/training_scenarios_town02_v2",
+      "scenario_pool_sha256": "ade2fb8a6a96697fc714ce1127e82ca8f91964c5f3e8df2262a7e6096d76b518",
+      "scenario_names": [
+        "scenario_01_east_basic_launch_a0_rear.json",
+        "scenario_02_west_basic_launch_a1_rear.json",
+        "scenario_03_north_basic_launch_a0_rear.json",
+        "scenario_04_south_basic_launch_a1_rear.json",
+        "scenario_05_east_offset_rolling_a1_rear.json",
+        "scenario_06_west_offset_rolling_a0_rear.json",
+        "scenario_07_north_offset_rolling_a1_rear.json",
+        "scenario_08_south_offset_rolling_a0_rear.json",
+        "scenario_09_east_close_rolling_a0_rear.json",
+        "scenario_10_west_close_rolling_a1_rear.json",
+        "scenario_11_north_close_rolling_a0_rear.json",
+        "scenario_12_south_close_rolling_a1_rear.json",
+        "scenario_13_east_rear_closing_a1_rear.json",
+        "scenario_14_west_rear_closing_a0_rear.json",
+        "scenario_15_north_rear_closing_a1_rear.json",
+        "scenario_16_south_rear_closing_a0_rear.json"
+      ],
+      "episode_seeds": [42001],
+      "formal_use": "milestone_health_gate"
+    },
+    "validation": {
+      "purpose": "Held-out checkpoint-selection validation; scenarios are never sampled by training.",
+      "scenario_dir": "data/evaluation_scenarios/base_c0_validation_v1",
+      "scenario_pool_sha256": "745df48e2ebe26438cc7ca7046e7f64f7f8e5eb1cc5bd97109523856153d0b63",
+      "scenario_names": [
+        "c0v_01_east_basic_a1_rear.json",
+        "c0v_02_west_basic_a0_rear.json",
+        "c0v_03_north_offset_a0_rear.json",
+        "c0v_04_south_offset_a1_rear.json",
+        "c0v_05_east_close_a1_rear.json",
+        "c0v_06_west_close_a0_rear.json",
+        "c0v_07_north_rear_closing_a0_rear.json",
+        "c0v_08_south_rear_closing_a1_rear.json"
+      ],
+      "episode_seeds": [51001, 51002, 51003],
+      "formal_use": "checkpoint_selection_validation"
+    }
+  },
+  "outcomes": {
+    "success_reasons": ["cooperative_success", "all_agents_reached"],
+    "collision_reasons": ["cooperative_collision", "adversary_collision"],
+    "timeout_reasons": ["max_steps"],
+    "other_reasons": ["all_agents_terminated"],
+    "require_mutual_exclusivity": true,
+    "allow_other_for_go": false
+  },
+  "outputs": {
+    "evaluation_root": "evaluations",
+    "manifest": "evaluation_manifest.json",
+    "resolved_config": "resolved_eval_config.json",
+    "episodes_jsonl": "episodes.jsonl",
+    "summary_json": "summary.json",
+    "summary_csv": "summary.csv",
+    "validator_report": "validator_report.json"
+  },
+  "repeatability": {
+    "required_repeats": 2,
+    "discrete_fields": ["case_id", "outcome", "episode_end_reason", "episode_length", "agent_0_reached", "agent_1_reached"]
+  },
+  "run_id_prefix": "P0_BASE_C0_",
+  "critical_source_paths": [
+    "evaluation/base_c0_protocol.py",
+    "evaluation/evaluate_base_policy_c0.py",
+    "evaluation/validate_base_c0_run.py",
+    "training/train_no_rllib_mappo_robust_v2.py",
+    "training/action_protocol.py",
+    "training/checkpoint_protocol.py",
+    "training/lifecycle_semantics.py",
+    "training/metrics_protocol.py",
+    "models/actor_critic.py",
+    "environment/carla_multi_agent_env.py",
+    "configs/evaluation/p0_base_c0_eval_v2.json",
+    "configs/base_mappo/p0_base_action_v2.json",
+    "data/training_scenarios_town02_v2",
+    "data/evaluation_scenarios/base_c0_validation_v1"
+  ]
+}

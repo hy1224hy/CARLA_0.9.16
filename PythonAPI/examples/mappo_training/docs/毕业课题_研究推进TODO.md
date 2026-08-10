@@ -1,6 +1,6 @@
 # 基于对抗学习的多车协作驾驶算法研究：研究推进 TODO
 
-> 本文档是本课题的主任务清单、代码修改记录表和实验登记表。执行任务时以本文档的阶段门槛为准；理论设计细节参考 [对抗指标、奖励设计与阶段计划](./adversarial_metrics_reward_design_and_plan_20260705.md)、[MAPPO 多智能体样本处理与 active-mask 原理](./MAPPO多智能体样本处理与active-mask原理.md)、[MAPPO GAE、优势标准化与 PPO 更新原理](./MAPPO_GAE优势标准化与PPO更新原理.md)、[MAPPO checkpoint 与恢复训练协议](./MAPPO_checkpoint与恢复训练协议.md) 和 [MAPPO TensorBoard 指标协议](./MAPPO_TensorBoard指标协议.md)。
+> 本文档是本课题的主任务清单、代码修改记录表和实验登记表。执行任务时以本文档的阶段门槛为准；理论设计细节参考 [对抗指标、奖励设计与阶段计划](./adversarial_metrics_reward_design_and_plan_20260705.md)、[MAPPO 多智能体样本处理与 active-mask 原理](./MAPPO多智能体样本处理与active-mask原理.md)、[MAPPO GAE、优势标准化与 PPO 更新原理](./MAPPO_GAE优势标准化与PPO更新原理.md)、[MAPPO checkpoint 与恢复训练协议](./MAPPO_checkpoint与恢复训练协议.md)、[MAPPO TensorBoard 指标协议](./MAPPO_TensorBoard指标协议.md) 和 [R1 二维有符号纵向动作协议论文正文](./R1_二维纵向动作协议_论文正文与实验设计.md)。
 
 ## 0. 项目总览
 
@@ -10,10 +10,10 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                      |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                  |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                             |
-| 当前工程基线    | `P0-BASE-03R-DIAGNOSTIC-HOLD`：u10 冻结 judge 保留 `CONTINUE_WITH_WARNING`，但确定性两车 100% brake mode、16/16 timeout 已定位未注册的策略塌缩；旧 Run 封存，不再 resume |
+| 当前工程基线    | `P0-BASE-03R-R1-COMPLETE`：R0/WTA v1 Run 只读封存；二维 signed-longitudinal 动作、checkpoint/metrics/C0 v2 与论文正文已完成，下一步只推进 R2 奖励预算校准 |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                          |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                   |
-| 当前有效自动化测试 | 共 132 项通过（2026-08-09）：新增 resolved training config 完整参数/seed 与 judge seed 绑定集成回归；其余覆盖算法、生命周期、checkpoint、场景、指标、success、正式训练、C0 与 GO/HOLD 契约 |
+| 当前有效自动化测试 | 共 140 项通过（2026-08-10）：新增动作协议数学不变量、二维 pre-tanh PPO 密度、策略/环境动作对账、R1 checkpoint/契约/C0 v2 回归；历史生命周期、奖励、Critic、场景、C0 v1 与 GO/HOLD v1 均未退化 |
 | 最近训练产物    | `P0_BASE_MAPPO_Town02_s42_20260809_204729` update 10 checkpoint SHA `4917f225...7436`；只作诊断/回归参考，不得作为修复版正式 pretrained/resume               |
 | 本文档创建日期   | 2026-07-20                                                                                                                                |
 | 最后更新日期    | 2026-08-10                                                                                                                                |
@@ -23,7 +23,7 @@
 | 阶段 | 状态 | 结论 |
 |---|---|---|
 | 基础 CARLA 多车环境与 MAPPO | REAL SMOKE + SUCCESS VERIFIED | P0-00G 自动链路、用户人工视觉及固定场景 success 两层真实测试通过；不代表 MAPPO 性能/收敛已验证 |
-| 基础 MAPPO 策略训练与选择 | DIAGNOSTIC HOLD / REPAIR NEXT | v1 judge 历史裁决不变；研究者因动作/奖励未覆盖的制动塌缩停止续训。下一步先修动作协议、奖励预算、Critic 稳定性和 v2 早停门槛，再 fresh pilot；多 seed 仍未放行 |
+| 基础 MAPPO 策略训练与选择 | DIAGNOSTIC HOLD / R2 NEXT | v1 judge 历史裁决不变；R1 二维动作协议已完成且未运行 CARLA。下一步校准奖励预算，再推进 Critic 稳定性和 v2 早停门槛；fresh pilot 与多 seed 仍未放行 |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -90,7 +90,7 @@
 - [x] GO **P0-BASE-01 冻结正式实验契约**：机器真值为版本控制 JSON；固定 Git/源码/场景指纹、seed 42 pilot、100-update LR horizon、课程、单全批 PPO、停点、证据链和 HOLD 规则；12 项专项与全量 105 项回归通过。
 - [x] GO **P0-BASE-02 建立基础策略专用 C0 evaluator**：冻结无蓝车/无额外交通的 smoke/gate/validation 三套 case，确定性 Actor mean、训练/验证集内容 SHA 隔离、逐 episode JSONL、互斥结局、逐车奖励与安全诊断、checkpoint provenance、严格恢复/离线重算和双 Run 离散重复性比较均已实现；历史 evaluator 继续只作诊断。
 - [x] **P0-BASE-04 预注册 GO/HOLD 数值门槛**：机器 JSON 已冻结证据硬失败、KL/clip/梯度/critic/探索/真实动作饱和健康线、8 个停点能力线及 P0-BASE-06 held-out 下界；离线 judge 绑定 Run origin Git 中的阈值/代码 blob，输出不可覆盖裁决，累计回报不参与 GO。
-- [ ] NEXT **P0-BASE-03R 基础策略制动塌缩修复**：旧 Run 在安全边界 update 10 封存，不再 resume。依次完成 signed-longitudinal 动作协议、奖励预算校准、Critic 稳定化、GO/HOLD v2 和完整回归；全部冻结并提交后才允许新 RunID fresh pilot。
+- [ ] NEXT **P0-BASE-03R 基础策略制动塌缩修复（R2）**：旧 Run 在安全边界 update 10 封存，不再 resume；R1 signed-longitudinal 动作协议已完成。下一步仅推进奖励预算校准，之后才是 Critic 稳定化、GO/HOLD v2 和真实 smoke；全部冻结并提交后才允许新 RunID fresh pilot。
 - [ ] BLOCKED **P0-BASE-05 扩展多 seed 正式训练**：仅在 P0-BASE-04 GO 后，以同一 commit/config 运行 seeds `42,123,2024`；不得依据中间结果修改预算、奖励或场景，失败 Run 同样登记。
 - [ ] BLOCKED **P0-BASE-06 独立评估并选择 checkpoint**：用冻结 C0 协议评估全部 periodic checkpoint，先安全门槛、再任务成功与稳定性；生成 `best_base_valid.pt`，登记 SHA256、来源 Run/commit/config，禁止按训练 rollout 选模。
 - [ ] BLOCKED **P0-01 精确记录碰撞对象**：基础策略试训不依赖对抗 impact 归因；取得可用基础 checkpoint 后进入本项，从 CARLA collision event 保存对方 actor id/type，并区分 `red-blue`、`blue-blue`、`static/world`，禁止继续用“最近红车”猜测 impact 对象。
@@ -382,10 +382,10 @@
 
 #### P0-BASE-03R 基础策略制动塌缩修复
 
-> **执行状态：R0 COMPLETED / R1 NEXT（2026-08-10）。** 本阶段先逐项实现和测试，禁止直接改几个权重后长训。action/reward/value/门槛任一变化都会使旧 checkpoint 失去正式 resume/pretrained 资格；修复版必须使用新契约版本、新 Git 提交、新 RunID 和随机初始化。
+> **执行状态：R0/R1 COMPLETED / R2 NEXT（2026-08-10）。** 本阶段先逐项实现和测试，禁止直接改几个权重后长训。action/reward/value/门槛任一变化都会使旧 checkpoint 失去正式 resume/pretrained 资格；修复版必须使用新契约版本、新 Git 提交、新 RunID 和随机初始化。
 
 - [x] **R0 诊断封存与基线提交**：u5/u10 双 C0 与重复性已离线复验 PASS；judge、registry、实验记录和本修复清单由本次证据提交冻结。checkpoint/TensorBoard/过程日志以及用户 `Pipfile`、Obsidian 状态均排除；本次提交后的 HEAD 是 R1 唯一父基线。
-- [ ] **R1 动作协议 v2**：基础 Actor 从三维 `[throttle, steer, brake]` 改为二维 `[signed_longitudinal, steer]`；正值映射 throttle、负值映射 brake、中心死区映射 coast，保证互斥、连续和可审计。同步 Actor/action dim、采样与 log-prob、环境适配、checkpoint protocol、训练/C0 指标和全部动作测试；旧 WTA v1 只保留历史读取/诊断，不用于新训练。
+- [x] **R1 动作协议 v2**：基础 Actor 从三维 `[throttle, steer, brake]` 改为二维 `[signed_longitudinal, steer]`；`d=0.05` 连续死区使正值映射 throttle、负值映射 brake、中心映射 coast。训练采样/buffer/PPO log-prob 均使用二维 pre-tanh `z`，CARLA 仍接收三维环境动作；checkpoint schema v3 保存完整 `action_spec`，metrics v4 与 C0 v2 同时审计策略/环境动作。旧 WTA/C0/metrics 只保留显式历史读取，新 resume/pretrained 严格拒绝；正式 R1 契约要求 fresh。专项与全量 140 项无 CARLA 回归通过，reward/Critic 未修改，论文推导、参考文献和测试计划见 [R1 文档](./R1_二维纵向动作协议_论文正文与实验设计.md)。
 - [ ] **R2 奖励预算校准**：在确定权重前建立 `stopped / smooth-forward / oscillatory / collision / success` 五类 scripted rollout 或轨迹级奖励测试；平滑项基于实际执行的 signed longitudinal 与 steer 变化，必须同时覆盖油门和刹车，不再只罚 throttle。恢复有界且量级可见的向终点进展信号，并预先要求 `success > smooth-forward > stopped > collision`、同进度下 `smooth-forward > oscillatory`；任何单一稠密惩罚不得长期压过合理速度/进展收益。
 - [ ] **R3 Critic 稳定化**：先用真实形状 batch 验证当前近常数输出和连续裁剪，再比较带状态可恢复的 value/return normalization（或经测试证实更合适的稳健 value loss）；GAE 必须继续使用反归一化 value，checkpoint 保存 normalization 状态，resume 下一步严格一致。禁止通过单纯放大 `max_grad_norm` 隐藏尺度问题。
 - [ ] **R4 协议与算法回归**：新增 GO/HOLD v2 早期塌缩门槛，至少覆盖确定性 brake/throttle/coast mode、平均速度、向目标 progress、全长 timeout 和 Critic 拟合；在查看新 pilot 前冻结阈值。扩充 action mapping、奖励排序、GAE/value normalization、checkpoint/C0/judge 集成测试，并运行全量无 CARLA 回归与真实 success smoke。
@@ -774,6 +774,7 @@ git rev-parse HEAD
 | 2026-08-04 | `P0-BASE-04` | GO/HOLD JSON 契约、纯判定协议、离线 judge、13 项边界测试、门槛协议与入口/TODO 文档 | 冻结证据/数值/里程碑/held-out 门槛；只用主 C0 计性能、repeat C0 查重复性；origin Git blob 防事后改阈值；报告不可覆盖 | 契约 preflight、judge `--help`、13 项专项及全量 129 项、训练/C0 contract preflight、场景 validator、diff check | 不改网络、环境、奖励、训练更新、动作映射或 checkpoint schema；只新增判定层；当前无性能 GO | P0-BASE-04 |
 | 2026-08-09 | `P0-BASE-03-PREP` | `carla_multi_agent_env.py`、lifecycle tests、研究 TODO/实验记录 | 冷启动/地图加载 RPC timeout 从硬编码 10 秒提升为 60 秒并抽取可测试 helper；CARLA 改为用户手动维护，超时只通知不自动重启 | 连接专项 1 项及全量 130 项通过；Town02/训练参数/仿真时间语义不变 | 网络、reward/lifecycle、动作、checkpoint schema 和训练契约参数不变；源码指纹变化，正式 Run 必须 fresh | P0-BASE-03-PREP |
 | 2026-08-09 | `P0-BASE-03-EVIDENCE` | `experiment_contract.py`、experiment/GO-HOLD tests、registry、研究 TODO/实验记录 | 正式 resolved evidence 记录全部 contract trainer args（含 seed），并在 resume 逐项校验；保留 checkpoint 最小恢复配置，不篡改失败 Run | 27 项契约/裁决专项及全量 132 项通过；首次 Run strict/C0/repeat PASS，但 judge seed 来源预检 HOLD | 不改训练算法、模型、奖励、动作、场景、科学参数或阈值；旧 Run 只作失败诊断，新 commit 后必须 fresh | P0-BASE-03 |
+| 2026-08-10 | `P0-BASE-03R-R1` | `action_protocol.py`、基础 `robust_v2`、checkpoint/metrics/C0 v2、R1 训练/C0 契约、动作/算法/恢复/指标/C0 tests、论文与协议文档 | 基础策略改为二维 signed-longitudinal/steer；连续死区映射三维 CARLA command；二维 pre-tanh PPO 概率、策略/执行动作双层审计和 v1 只读兼容 | 动作协议专项、生产 PPO、active-mask、checkpoint、metrics、C0 v1/v2 与全量 140 项无 CARLA测试通过；compileall、契约加载和 diff check 纳入提交前复核 | Actor 输出层与 optimizer 形状不兼容旧权重；checkpoint/metrics/C0 协议升级。reward、Critic、环境动力学和 CARLA 均未改；R2 前禁止启动正式 pilot | P0-BASE-03R-R1 |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志
@@ -798,6 +799,7 @@ git rev-parse HEAD
 | 2026-08-04 | 保留基础 MAPPO 三维 `winner_take_all_v1` 油门/刹车互斥映射；GO/HOLD 只使用拆分后的上界饱和率，踏板零值只解释控制模式 | 互斥符合车辆纵向控制；映射是 PPO latent policy 的确定性环境适配，不破坏 ratio；combined boundary 将正常零踏板误报为饱和 | 用 combined throttle/brake boundary 直接 HOLD；训练中途改二维 action；允许油刹同时生效 | P0-BASE-04、基础训练/C0；二维 signed-longitudinal 只能作为新协议 fresh Run |
 | 2026-08-04 | P0-BASE-04 的 GO/HOLD 不使用累计回报；update 5–40 健康优先，60 设最低学习信号，80 只作候选，只有 update 100 的成功/安全/场景族门槛可放行多 seed | return 易受 shaping 与刷分影响；早期硬设高成功率会误杀学习，允许在 80/100 间择优又会引入 checkpoint cherry-picking；0 collision/lane invasion 防止以危险行为换成功 | 按最高回报选模；update 5 即要求 success；update 80 达标就批量训练；看完曲线再调门槛 | P0-BASE-03 至 P0-BASE-06、基础策略实验结论 |
 | 2026-08-10 | **SUPERSEDE FOR NEW RUNS**：WTA v1 与原 GO/HOLD v1 保留为历史协议，但修复版改用二维 signed-longitudinal 并在新 pilot 前增加确定性制动塌缩/速度/progress 早期门槛 | u1→u10 brake mode 持续上升、速度下降；两次 u10 C0 均为两车 100% brake 和 16/16 timeout，而 v1 judge 因未注册该行为仍 `CONTINUE_WITH_WARNING`。这证明协议数学可用不等于当前探索/奖励组合适配 | 继续把 u10 当正常早期探索跑到 u20；事后篡改 v1 judge；只调一个权重后 resume 旧权重 | P0-BASE-03R 及所有后续基础策略新 Run；v1 历史证据不变 |
+| 2026-08-10 | **IMPLEMENTED R1**：二维策略动作冻结为 `[signed_longitudinal, steer]`，死区 `d=0.05`；PPO 概率只定义在二维 tanh-squashed Gaussian 上，三维 CARLA command 是确定性后适配 | 车辆平面控制可按纵向需求与转向分解；该参数化有自动驾驶 DRL 文献先例。相较 WTA，它消除纵向维度冗余、切换跳变和零 latent 半油门；R1 离线测试证明数学/协议不变量，但不越界声称性能已提升 | 在三维物理动作上计算伪 log-prob；继续加载 WTA Actor/optimizer；把 `d=0.05` 伪装成文献给定常数；在 R1 直接运行 CARLA | 基础 robust_v2、checkpoint/metrics、C0 v2、论文方法章节；R2/R3 仍分别负责奖励与 Critic |
 | 2026-07-20 | 通信放在无通信双蓝基线之后 | 否则无法把多车数量收益与消息通信收益分离 | 直接在现有双蓝脚本加入 attention | P3-P5 |
 | 2026-07-20 | 先固定红池 PSRO，再做双边演进 | 降低非平稳性，先验证 pool 和 meta-solver 的科学有效性 | 一开始同时训练红蓝双方 | P4-P6 |
 | YYYY-MM-DD | `<decision>` | `<evidence>` | `<alternatives>` | `<scope>` |

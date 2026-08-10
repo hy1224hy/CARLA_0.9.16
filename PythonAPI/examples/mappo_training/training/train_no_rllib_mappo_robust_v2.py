@@ -34,6 +34,12 @@ from training.lifecycle_semantics import (
     bootstrap_state_for_boundary,
     validate_lifecycle_flags,
 )
+from training.action_protocol import (
+    ACTION_PROTOCOL_VERSION,
+    POLICY_ACTION_DIM,
+    action_protocol_spec,
+    action_tanh_to_env,
+)
 from training.metrics_protocol import METRICS_PROTOCOL_VERSION
 from training.experiment_contract import (
     ExperimentContractError,
@@ -46,7 +52,6 @@ from training.experiment_contract import (
 )
 from utils.training_metrics_recorder import TrainingMetricsRecorder
 from training.checkpoint_protocol import (
-    ACTION_PROTOCOL_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
     INTERRUPTED_CHECKPOINT_NAME,
     LATEST_CHECKPOINT_NAME,
@@ -93,7 +98,7 @@ BASE_COLLISION_END_REASONS = frozenset(
 )
 
 OBS_DIM = 19
-ACTION_DIM = 3
+ACTION_DIM = POLICY_ACTION_DIM
 
 
 def classify_base_episode_outcome(
@@ -236,7 +241,23 @@ def _load_pretrained_weights(
     actors: Dict[int, Actor],
     critic: AgentConditionedCritic,
 ) -> Dict[str, object]:
-    """Load weights only; optimizer/progress/RNG deliberately remain fresh."""
+    """Load current-v2 weights only; progress/RNG deliberately remain fresh."""
+    validate_checkpoint_header(checkpoint)
+    if checkpoint.get("action_spec") != action_protocol_spec():
+        raise CheckpointProtocolError(
+            "pretrained checkpoint action_spec is not signed-longitudinal v2; "
+            "legacy WTA weights are historical-diagnostic only"
+        )
+    model_spec = checkpoint.get("model_spec")
+    if (
+        not isinstance(model_spec, dict)
+        or model_spec.get("action_dim") != ACTION_DIM
+        or model_spec.get("agent_ids") != sorted(actors)
+    ):
+        raise CheckpointProtocolError(
+            "pretrained checkpoint model_spec is incompatible with the "
+            "current two-dimensional base Actor"
+        )
     actor_states = checkpoint.get("actors")
     if not isinstance(actor_states, dict):
         raise CheckpointProtocolError(
@@ -348,22 +369,6 @@ class RolloutBuffer:
 # 工具函数
 # ============================================================
 
-def action_tanh_to_env(action_tanh: np.ndarray) -> np.ndarray:
-    """Convert tanh action [-1,1] to env action format [throttle, steer, brake]."""
-    throttle_raw = (action_tanh[0] + 1.0) * 0.5
-    steer = action_tanh[1]
-    brake_raw = (action_tanh[2] + 1.0) * 0.5
-
-    if throttle_raw >= brake_raw:
-        throttle = throttle_raw
-        brake = 0.0
-    else:
-        throttle = 0.0
-        brake = brake_raw
-
-    return np.array([throttle, steer, brake], dtype=np.float32)
-
-
 def validate_active_mask(
     raw_active_mask: Dict[int, bool],
     agent_ids: List[int],
@@ -443,6 +448,7 @@ def build_active_step_cache(
             step_cache[aid] = {
                 "obs": obs.copy(),
                 "global_state": global_state_np.copy(),
+                "action_tanh": action_tanh.copy(),
                 "action_z": action_z.copy(),
                 "logp": float(logp_t.item()),
                 "value": value,
@@ -2375,6 +2381,7 @@ def train(args):
     current_git = get_git_metadata(repository_root)
     fingerprint_paths = [
         Path(__file__).resolve(),
+        Path(__file__).resolve().with_name("action_protocol.py"),
         Path(__file__).resolve().with_name("experiment_contract.py"),
         Path(__file__).resolve().with_name("checkpoint_protocol.py"),
         Path(__file__).resolve().with_name("lifecycle_semantics.py"),
@@ -2607,6 +2614,7 @@ def train(args):
     start_update = 1
 
     protocol_versions = checkpoint_protocol_versions(args.reward_version)
+    current_action_spec = action_protocol_spec()
     model_spec = checkpoint_model_spec(
         agent_ids, state_dim, args.hidden_dim
     )
@@ -2659,6 +2667,7 @@ def train(args):
         validate_checkpoint_payload(
             resume_checkpoint,
             expected_protocol_versions=protocol_versions,
+            expected_action_spec=current_action_spec,
             expected_model_spec=model_spec,
             expected_training_config=training_config,
         )
@@ -2931,6 +2940,7 @@ def train(args):
             "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
             "training_protocol_version": TRAINING_PROTOCOL_VERSION,
             "protocol_versions": protocol_versions,
+            "action_spec": current_action_spec,
             "checkpoint_kind": kind,
             "update": int(completed_update),
             "actors": {
@@ -3215,7 +3225,11 @@ def train(args):
                         reward_diagnostics_by_agent=(
                             info.get('reward_diagnostics', {}) or {}
                         ),
-                        actions=action_dict,
+                        policy_actions={
+                            aid: step_cache[aid]["action_tanh"]
+                            for aid in step_cache
+                        },
+                        environment_actions=action_dict,
                         context=(
                             f"robust_v2 update={update} "
                             f"episode={rollout_episode} step={step}"
@@ -3362,7 +3376,7 @@ def train(args):
                     gae_lambda=args.gae_lambda,
                     obs_dim=19,
                     state_dim=state_dim,
-                    action_dim=3,
+                    action_dim=ACTION_DIM,
                     context=f"robust_v2 update={update}",
                 )
                 advantage_stats = prepared_batch.advantage_stats
@@ -3376,7 +3390,7 @@ def train(args):
                     agent_ids=agent_ids,
                     obs_dim=19,
                     state_dim=state_dim,
-                    action_dim=3,
+                    action_dim=ACTION_DIM,
                     ppo_epochs=args.ppo_epochs,
                     minibatch_size=args.minibatch_size,
                     clip_eps=args.clip_eps,

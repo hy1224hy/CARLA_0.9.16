@@ -22,11 +22,16 @@ from typing import Any, Dict, Iterable, Mapping, Optional, Tuple
 import numpy as np
 import torch
 
+from training.action_protocol import (
+    ACTION_PROTOCOL_VERSION,
+    LEGACY_ACTION_PROTOCOL_VERSION,
+)
 
-CHECKPOINT_SCHEMA_VERSION = 2
-TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00g_v2"
+LEGACY_CHECKPOINT_SCHEMA_VERSION = 2
+CHECKPOINT_SCHEMA_VERSION = 3
+LEGACY_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00g_v2"
+TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_action_v2_p0_00g_v3"
 OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_v1"
-ACTION_PROTOCOL_VERSION = "tanh_gaussian_pre_tanh_z_v1"
 LIFECYCLE_PROTOCOL_VERSION = "agent_centric_terminated_truncated_v1"
 
 LATEST_CHECKPOINT_NAME = "latest.pt"
@@ -333,6 +338,7 @@ def validate_checkpoint_payload(
     checkpoint: Mapping[str, Any],
     *,
     expected_protocol_versions: Mapping[str, Any],
+    expected_action_spec: Mapping[str, Any],
     expected_model_spec: Mapping[str, Any],
     expected_training_config: Mapping[str, Any],
 ) -> None:
@@ -346,6 +352,7 @@ def validate_checkpoint_payload(
         "actor_optims",
         "critic_optim",
         "args",
+        "action_spec",
         "model_spec",
         "training_config",
         "lr_schedule",
@@ -365,11 +372,15 @@ def validate_checkpoint_payload(
         )
     comparisons = (
         ("protocol_versions", checkpoint["protocol_versions"], expected_protocol_versions),
+        ("action_spec", checkpoint["action_spec"], expected_action_spec),
         ("model_spec", checkpoint["model_spec"], expected_model_spec),
         ("training_config", checkpoint["training_config"], expected_training_config),
     )
     mismatches = []
     for group_name, saved, expected in comparisons:
+        if not isinstance(saved, Mapping):
+            mismatches.append(f"{group_name}: saved value is not a mapping")
+            continue
         for key, expected_value in expected.items():
             saved_value = saved.get(key, "<missing>")
             if saved_value != expected_value:
@@ -396,7 +407,11 @@ def validate_checkpoint_payload(
         raise CheckpointProtocolError("curriculum_state must be a mapping")
 
 
-def validate_checkpoint_header(checkpoint: Mapping[str, Any]) -> None:
+def validate_checkpoint_header(
+    checkpoint: Mapping[str, Any],
+    *,
+    allow_legacy: bool = False,
+) -> None:
     required = {
         "checkpoint_schema_version",
         "training_protocol_version",
@@ -413,17 +428,41 @@ def validate_checkpoint_header(checkpoint: Mapping[str, Any]) -> None:
         raise CheckpointProtocolError(
             f"checkpoint header missing required fields: {sorted(missing)}"
         )
-    if checkpoint["checkpoint_schema_version"] != CHECKPOINT_SCHEMA_VERSION:
+    protocol_versions = checkpoint["protocol_versions"]
+    if not isinstance(protocol_versions, Mapping):
+        raise CheckpointProtocolError("protocol_versions must be a mapping")
+    is_legacy = (
+        checkpoint["checkpoint_schema_version"]
+        == LEGACY_CHECKPOINT_SCHEMA_VERSION
+        and checkpoint["training_protocol_version"]
+        == LEGACY_TRAINING_PROTOCOL_VERSION
+        and protocol_versions.get("action") == LEGACY_ACTION_PROTOCOL_VERSION
+    )
+    expected_schema = (
+        LEGACY_CHECKPOINT_SCHEMA_VERSION
+        if allow_legacy and is_legacy
+        else CHECKPOINT_SCHEMA_VERSION
+    )
+    expected_training_protocol = (
+        LEGACY_TRAINING_PROTOCOL_VERSION
+        if allow_legacy and is_legacy
+        else TRAINING_PROTOCOL_VERSION
+    )
+    if checkpoint["checkpoint_schema_version"] != expected_schema:
         raise CheckpointProtocolError(
             "checkpoint schema mismatch: "
             f"saved={checkpoint['checkpoint_schema_version']}, "
-            f"expected={CHECKPOINT_SCHEMA_VERSION}"
+            f"expected={expected_schema}"
         )
-    if checkpoint["training_protocol_version"] != TRAINING_PROTOCOL_VERSION:
+    if checkpoint["training_protocol_version"] != expected_training_protocol:
         raise CheckpointProtocolError(
             "training protocol mismatch: "
             f"saved={checkpoint['training_protocol_version']}, "
-            f"expected={TRAINING_PROTOCOL_VERSION}"
+            f"expected={expected_training_protocol}"
+        )
+    if not is_legacy and "action_spec" not in checkpoint:
+        raise CheckpointProtocolError(
+            "current checkpoint header missing required field: action_spec"
         )
     run_metadata = checkpoint["run_metadata"]
     if not isinstance(run_metadata, Mapping):
@@ -448,9 +487,6 @@ def validate_checkpoint_header(checkpoint: Mapping[str, Any]) -> None:
     if update < 0:
         raise CheckpointProtocolError("checkpoint update cannot be negative")
 
-    protocol_versions = checkpoint["protocol_versions"]
-    if not isinstance(protocol_versions, Mapping):
-        raise CheckpointProtocolError("protocol_versions must be a mapping")
     metrics_protocol = str(protocol_versions.get("metrics", ""))
     if not metrics_protocol:
         raise CheckpointProtocolError(

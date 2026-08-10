@@ -13,7 +13,9 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 from training.metrics_protocol import (
     ACTION_RATE_NAMES,
     EPISODE_RECORD_VERSION,
+    LEGACY_METRICS_PROTOCOL_VERSION,
     METRICS_PROTOCOL_VERSION,
+    POLICY_ACTION_RATE_NAMES,
     MetricsProtocolError,
     validate_episode_record,
 )
@@ -71,6 +73,15 @@ def _required_tags(schema: Mapping[str, object]) -> List[str]:
             f"action/agent_{agent_id}/{name}_rate"
             for name in ACTION_RATE_NAMES
         )
+        if schema.get("metrics_protocol_version") == METRICS_PROTOCOL_VERSION:
+            tags.extend(
+                f"action/agent_{agent_id}/{name}/mean"
+                for name in ("policy_signed_longitudinal", "policy_steer")
+            )
+            tags.extend(
+                f"action/agent_{agent_id}/{name}_rate"
+                for name in POLICY_ACTION_RATE_NAMES
+            )
     return sorted(set(tags))
 
 
@@ -99,7 +110,11 @@ def _ppo_required_tags(schema: Mapping[str, object]) -> List[str]:
     return sorted(set(tags))
 
 
-def _load_jsonl(path: Path) -> List[Dict[str, object]]:
+def _load_jsonl(
+    path: Path,
+    *,
+    expected_protocol_version: str,
+) -> List[Dict[str, object]]:
     if not path.is_file():
         raise FileNotFoundError(f"metrics JSONL not found: {path}")
     records = []
@@ -114,7 +129,7 @@ def _load_jsonl(path: Path) -> List[Dict[str, object]]:
             raise MetricsProtocolError(
                 f"metrics.jsonl line {line_number} is corrupt"
             ) from error
-        if record.get("metrics_protocol_version") != METRICS_PROTOCOL_VERSION:
+        if record.get("metrics_protocol_version") != expected_protocol_version:
             raise MetricsProtocolError(
                 f"metrics.jsonl line {line_number} protocol mismatch"
             )
@@ -190,9 +205,16 @@ def validate_metrics_run(
     if not schema_path.is_file():
         raise FileNotFoundError(f"metrics schema not found: {schema_path}")
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
-    if schema.get("metrics_protocol_version") != METRICS_PROTOCOL_VERSION:
+    schema_protocol = str(schema.get("metrics_protocol_version", ""))
+    if schema_protocol not in {
+        LEGACY_METRICS_PROTOCOL_VERSION,
+        METRICS_PROTOCOL_VERSION,
+    }:
         raise MetricsProtocolError("metrics schema protocol mismatch")
-    records = _load_jsonl(run_dir / "metrics.jsonl")
+    records = _load_jsonl(
+        run_dir / "metrics.jsonl",
+        expected_protocol_version=schema_protocol,
+    )
     if any(str(record.get("run_id", "")) != str(schema["run_id"]) for record in records):
         raise MetricsProtocolError("metrics.jsonl run_id differs from schema")
     actual_updates = [int(record["update"]) for record in records]
@@ -273,8 +295,11 @@ def validate_metrics_run(
             if action_rate("longitudinal_conflict") != 0.0:
                 raise MetricsProtocolError(
                     f"update {record['update']} agent {agent_id} violates "
-                    "winner-take-all longitudinal control"
+                    "mutually exclusive longitudinal control"
                 )
+            if schema_protocol == METRICS_PROTOCOL_VERSION:
+                for name in POLICY_ACTION_RATE_NAMES:
+                    action_rate(name)
         if expected_episodes_per_update is not None and int(
             scalars["episode/count"]
         ) != int(expected_episodes_per_update):

@@ -24,6 +24,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from training.metrics_protocol import (
     ACTION_RATE_NAMES,
+    POLICY_ACTION_RATE_NAMES,
     DISABLED_REWARD_COMPONENTS,
     EPISODE_RECORD_VERSION,
     METRICS_PROTOCOL_VERSION,
@@ -36,6 +37,11 @@ from training.metrics_protocol import (
     reward_schema_document,
     validate_active_reward_payload,
     validate_episode_record,
+)
+from training.action_protocol import (
+    POLICY_ACTION_DIM,
+    action_tanh_to_env,
+    policy_action_diagnostics,
 )
 
 
@@ -483,7 +489,15 @@ class TrainingMetricsRecorder:
         self.action_stats = {
             aid: {
                 name: RunningStats()
-                for name in ("throttle", "steer", "brake", *ACTION_RATE_NAMES)
+                for name in (
+                    "throttle",
+                    "steer",
+                    "brake",
+                    "policy_signed_longitudinal",
+                    "policy_steer",
+                    *ACTION_RATE_NAMES,
+                    *POLICY_ACTION_RATE_NAMES,
+                )
             }
             for aid in self.agent_ids
         }
@@ -509,7 +523,8 @@ class TrainingMetricsRecorder:
         rewards: Mapping[int, object],
         reward_details: Mapping[int, Mapping[str, object]],
         reward_diagnostics_by_agent: Mapping[int, Mapping[str, object]],
-        actions: Mapping[int, object],
+        policy_actions: Mapping[int, object],
+        environment_actions: Mapping[int, object],
         context: str,
     ) -> None:
         active_ids = tuple(int(agent_id) for agent_id in active_agent_ids)
@@ -528,18 +543,58 @@ class TrainingMetricsRecorder:
         )
         _, details_by_agent, diagnostics_by_agent, residuals = normalized
 
-        normalized_actions: Dict[int, np.ndarray] = {}
+        expected_action_ids = set(active_ids)
+        if set(policy_actions) != expected_action_ids:
+            raise MetricsProtocolError(
+                f"{context}: policy action ids differ from active agents"
+            )
+        if set(environment_actions) != expected_action_ids:
+            raise MetricsProtocolError(
+                f"{context}: environment action ids differ from active agents"
+            )
+        normalized_policy_actions: Dict[int, np.ndarray] = {}
+        normalized_environment_actions: Dict[int, np.ndarray] = {}
         for agent_id in active_ids:
-            if agent_id not in actions:
+            policy_action = np.asarray(
+                policy_actions[agent_id], dtype=np.float64
+            )
+            if (
+                policy_action.shape != (POLICY_ACTION_DIM,)
+                or not np.all(np.isfinite(policy_action))
+            ):
                 raise MetricsProtocolError(
-                    f"{context} agent={agent_id}: active action is missing"
+                    f"{context} agent={agent_id}: policy action must be finite "
+                    f"shape ({POLICY_ACTION_DIM},)"
                 )
-            action = np.asarray(actions[agent_id], dtype=np.float64)
-            if action.shape != (3,) or not np.all(np.isfinite(action)):
+            environment_action = np.asarray(
+                environment_actions[agent_id], dtype=np.float64
+            )
+            if (
+                environment_action.shape != (3,)
+                or not np.all(np.isfinite(environment_action))
+            ):
                 raise MetricsProtocolError(
-                    f"{context} agent={agent_id}: action must be finite shape (3,)"
+                    f"{context} agent={agent_id}: environment action must be "
+                    "finite shape (3,)"
                 )
-            normalized_actions[agent_id] = action
+            try:
+                expected_environment_action = action_tanh_to_env(policy_action)
+            except ValueError as error:
+                raise MetricsProtocolError(
+                    f"{context} agent={agent_id}: invalid policy action: {error}"
+                ) from error
+            if not np.allclose(
+                environment_action,
+                expected_environment_action,
+                rtol=0.0,
+                atol=1e-7,
+            ):
+                raise MetricsProtocolError(
+                    f"{context} agent={agent_id}: policy/environment action "
+                    "mapping mismatch"
+                )
+            normalized_policy_actions[agent_id] = policy_action
+            normalized_environment_actions[agent_id] = environment_action
 
         for agent_id in active_ids:
             self.active_transition_counts[agent_id] += 1
@@ -553,15 +608,19 @@ class TrainingMetricsRecorder:
             for name, value in diagnostics_by_agent[agent_id].items():
                 self.diagnostic_stats[agent_id][name].add(value)
 
-            throttle, steer, brake = normalized_actions[agent_id]
+            throttle, steer, brake = normalized_environment_actions[agent_id]
+            policy_action = normalized_policy_actions[agent_id]
             action_values = {
                 "throttle": throttle,
                 "steer": steer,
                 "brake": brake,
+                "policy_signed_longitudinal": policy_action[0],
+                "policy_steer": policy_action[1],
                 **env_action_diagnostics(
-                    normalized_actions[agent_id],
+                    normalized_environment_actions[agent_id],
                     context=f"{context} agent={agent_id}",
                 ),
+                **policy_action_diagnostics(policy_action),
             }
             for name, value in action_values.items():
                 self.action_stats[agent_id][name].add(value)
@@ -1029,7 +1088,7 @@ class TrainingMetricsRecorder:
                 put(f"{prefix}/nonzero_rate", stats.nonzero_rate)
             for name, stats in self.action_stats[agent_id].items():
                 prefix = f"action/agent_{agent_id}/{name}"
-                if name in ACTION_RATE_NAMES:
+                if name in (*ACTION_RATE_NAMES, *POLICY_ACTION_RATE_NAMES):
                     put(f"{prefix}_rate", stats.mean)
                 else:
                     put(f"{prefix}/mean", stats.mean)

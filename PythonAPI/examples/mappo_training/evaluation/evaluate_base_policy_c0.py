@@ -24,6 +24,8 @@ from evaluation.base_c0_protocol import (
     C0_EPISODE_RECORD_VERSION,
     C0_MANIFEST_VERSION,
     C0_RESOLVED_CONFIG_VERSION,
+    LEGACY_C0_EPISODE_RECORD_VERSION,
+    LEGACY_C0_PROTOCOL_VERSION,
     C0ProtocolError,
     ScalarStats,
     append_jsonl,
@@ -54,17 +56,22 @@ from training.experiment_contract import verify_critical_sources_clean
 from training.lifecycle_semantics import validate_lifecycle_flags
 from training.metrics_protocol import (
     ACTION_RATE_NAMES,
+    POLICY_ACTION_RATE_NAMES,
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
     env_action_diagnostics,
     validate_active_reward_payload,
 )
-from training.train_no_rllib_mappo_robust_v2 import action_tanh_to_env
+from training.action_protocol import (
+    action_tanh_to_env,
+    legacy_wta_action_tanh_to_env,
+    policy_action_diagnostics,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v1.json"
+DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v2.json"
 
 
 def _set_seed(seed: int, env: CarlaMultiAgentEnv | None = None) -> None:
@@ -99,7 +106,8 @@ def _observation(raw: Any, *, agent_id: int, context: str) -> np.ndarray:
 
 
 class AgentEpisodeAccumulator:
-    def __init__(self) -> None:
+    def __init__(self, *, legacy_action: bool = False) -> None:
+        self.legacy_action = bool(legacy_action)
         self.episode_return = 0.0
         self.active_steps = 0
         self.component_sums = {name: 0.0 for name in REWARD_COMPONENTS["v2"]}
@@ -107,6 +115,10 @@ class AgentEpisodeAccumulator:
         self.diagnostics = {name: ScalarStats() for name in REWARD_DIAGNOSTICS["v2"]}
         self.action_sums = np.zeros(3, dtype=np.float64)
         self.action_rate_counts = {name: 0 for name in ACTION_RATE_NAMES}
+        self.policy_action_sums = np.zeros(2, dtype=np.float64)
+        self.policy_action_rate_counts = {
+            name: 0 for name in POLICY_ACTION_RATE_NAMES
+        }
         self.final_done = False
         self.final_terminated = False
         self.final_truncated = False
@@ -118,6 +130,7 @@ class AgentEpisodeAccumulator:
         components: Mapping[str, float],
         diagnostics: Mapping[str, float],
         residual: float,
+        policy_action: np.ndarray,
         action: np.ndarray,
         context: str,
     ) -> None:
@@ -135,6 +148,15 @@ class AgentEpisodeAccumulator:
         )
         for name, value in action_rates.items():
             self.action_rate_counts[name] += int(value)
+        if not self.legacy_action:
+            policy_array = np.asarray(policy_action, dtype=np.float64)
+            if policy_array.shape != (2,) or not np.all(np.isfinite(policy_array)):
+                raise C0ProtocolError(
+                    f"{context}: current policy action must be finite shape (2,)"
+                )
+            self.policy_action_sums += policy_array
+            for name, value in policy_action_diagnostics(policy_array).items():
+                self.policy_action_rate_counts[name] += int(value)
 
     def set_lifecycle(self, *, done: bool, terminated: bool, truncated: bool) -> None:
         self.final_done = done
@@ -154,6 +176,18 @@ class AgentEpisodeAccumulator:
                     for name, count in self.action_rate_counts.items()
                 },
             }
+            if not self.legacy_action:
+                policy_means = self.policy_action_sums / self.active_steps
+                action_stats.update(
+                    {
+                        "policy_signed_longitudinal_mean": float(policy_means[0]),
+                        "policy_steer_mean": float(policy_means[1]),
+                        **{
+                            f"{name}_rate": float(count / self.active_steps)
+                            for name, count in self.policy_action_rate_counts.items()
+                        },
+                    }
+                )
         else:
             action_stats = {
                 "count": 0,
@@ -162,6 +196,17 @@ class AgentEpisodeAccumulator:
                 "brake_mean": None,
                 **{f"{name}_rate": None for name in ACTION_RATE_NAMES},
             }
+            if not self.legacy_action:
+                action_stats.update(
+                    {
+                        "policy_signed_longitudinal_mean": None,
+                        "policy_steer_mean": None,
+                        **{
+                            f"{name}_rate": None
+                            for name in POLICY_ACTION_RATE_NAMES
+                        },
+                    }
+                )
         diagnostic_payload = {name: stats.as_dict() for name, stats in self.diagnostics.items()}
         collision = (
             diagnostic_payload["collision_event"]["max"] is not None
@@ -217,7 +262,12 @@ def _run_case(
     active_mask = _strict_agent_bool_map(info.get("active_mask"), name="reset.active_mask")
     if not all(active_mask.values()) or info.get("episode_end_reason") != "running":
         raise C0ProtocolError("C0 reset must start with both agents active and reason=running")
-    accumulators = {agent_id: AgentEpisodeAccumulator() for agent_id in AGENT_IDS}
+    legacy_action = contract["protocol_version"] == LEGACY_C0_PROTOCOL_VERSION
+    policy_action_dim = 3 if legacy_action else 2
+    accumulators = {
+        agent_id: AgentEpisodeAccumulator(legacy_action=legacy_action)
+        for agent_id in AGENT_IDS
+    }
     final_reason = "running"
     episode_length = 0
 
@@ -226,15 +276,21 @@ def _run_case(
         active_ids = [agent_id for agent_id in AGENT_IDS if pre_active[agent_id]]
         if not active_ids:
             raise C0ProtocolError("no active agent while episode_end_reason is running")
+        policy_actions: Dict[int, np.ndarray] = {}
         actions: Dict[int, np.ndarray] = {}
         with torch.no_grad():
             for agent_id in active_ids:
                 obs = _observation(observations[agent_id], agent_id=agent_id, context=f"step={step_index}")
                 tensor = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
                 action_tanh = actors[agent_id].get_deterministic_action(tensor).squeeze(0).cpu().numpy()
-                if action_tanh.shape != (3,) or not np.isfinite(action_tanh).all():
+                if action_tanh.shape != (policy_action_dim,) or not np.isfinite(action_tanh).all():
                     raise C0ProtocolError(f"non-finite policy action for agent={agent_id}")
-                actions[agent_id] = action_tanh_to_env(action_tanh)
+                policy_actions[agent_id] = action_tanh.copy()
+                actions[agent_id] = (
+                    legacy_wta_action_tanh_to_env(action_tanh)
+                    if legacy_action
+                    else action_tanh_to_env(action_tanh)
+                )
 
         next_observations, raw_rewards, raw_dones, next_info = env.step(actions)
         dones = _strict_agent_bool_map(raw_dones, name=f"step={step_index}.dones")
@@ -267,6 +323,7 @@ def _run_case(
                     components=details[agent_id],
                     diagnostics=diagnostics[agent_id],
                     residual=residuals[agent_id],
+                    policy_action=policy_actions[agent_id],
                     action=actions[agent_id],
                     context=f"case={case['case_id']} step={step_index} agent={agent_id}",
                 )
@@ -289,7 +346,11 @@ def _run_case(
         for agent_id in AGENT_IDS
     }
     record = {
-        "record_version": C0_EPISODE_RECORD_VERSION,
+        "record_version": (
+            LEGACY_C0_EPISODE_RECORD_VERSION
+            if legacy_action
+            else C0_EPISODE_RECORD_VERSION
+        ),
         "eval_id": eval_id,
         "profile": profile,
         "case_id": case["case_id"],
@@ -503,6 +564,14 @@ def _record_carla_runtime(
 def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     contract_record = load_c0_contract(args.eval_contract, project_dir=PROJECT_DIR)
     contract = contract_record["payload"]
+    if (
+        contract["protocol_version"] == LEGACY_C0_PROTOCOL_VERSION
+        and not args.allow_diagnostic_checkpoint
+    ):
+        raise C0ProtocolError(
+            "legacy C0 v1 is read-only historical evidence; new executions require "
+            "the v2 contract, or an explicit diagnostic smoke invocation"
+        )
     if args.allow_diagnostic_checkpoint and args.profile != "smoke":
         raise C0ProtocolError("diagnostic checkpoints are restricted to the smoke profile")
     checkpoint_record = load_and_validate_c0_checkpoint(

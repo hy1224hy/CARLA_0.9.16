@@ -1,6 +1,6 @@
 # MAPPO 基础策略 checkpoint 与恢复训练协议
 
-> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。checkpoint schema：v2；训练协议：`mappo_robust_v2_p0_00g_v2`；指标协议：`mappo_metrics_p0_00g_v3`。旧 RLlib、robust v1、旧独立 MAPPO 以及旧指标协议 checkpoint 不适用正式 resume。
+> 适用入口：`training/train_no_rllib_mappo_robust_v2.py`。当前 checkpoint schema：v3；训练协议：`mappo_robust_v2_action_v2_p0_00g_v3`；动作协议：`tanh_gaussian_signed_longitudinal_2d_pre_tanh_z_v2`；指标协议：`mappo_metrics_action_v2_p0_00g_v4`。schema v2/WTA checkpoint 只作历史诊断，不适用当前正式 resume/pretrained。
 
 ## 1. 三种操作必须区分
 
@@ -10,7 +10,7 @@
 
 ### Pretrained weights
 
-从已有 Actor（以及结构兼容时的 Critic）权重开始一个新实验。它不会继承 optimizer、update、课程历史、累计统计或 RNG。来源路径和 SHA256 会记录在新 Run 中。
+从已有且动作协议 v2 结构完全兼容的 Actor（以及结构兼容时的 Critic）权重开始一个新实验。它不会继承 optimizer、update、课程历史、累计统计或 RNG。来源路径和 SHA256 会记录在新 Run 中。R1 正式契约要求 fresh，禁止 pretrained；该入口只服务显式诊断/后续另行注册的实验。
 
 ### Resume
 
@@ -53,6 +53,7 @@
 - 课程参数、阶段列表、场景成功率历史和场景池文件指纹；
 - Python、NumPy、Torch CPU、全部 CUDA RNG；
 - 冻结的 LR decay horizon、初始/当前学习率；
+- 完整 `action_spec`（协议、映射、策略/环境通道、维度和死区）；
 - observation/action/state 维度、agent 数量、hidden dim、Critic 类型；
 - schema、训练、观测、动作、reward 和 terminated/truncated 协议版本；
 - 指标协议版本和最近完整 update 的 `last_metrics` payload；
@@ -73,6 +74,8 @@
 允许改变：本次停止 update、CARLA host/port、render 和输出操作参数。保存/日志/histogram 间隔属于同一 Run 的证据协议，不再允许 resume 时隐式回到默认值。LR decay horizon 在 fresh run 时冻结；resume 延长 `--updates` 不会改变既有 LR 曲线。
 
 P0-00F-TB 起，resume 还要求 checkpoint 的 `last_metrics.update`、RunID 和指标协议与 checkpoint 边界一致。若 checkpoint 已保存但 TensorBoard/JSONL 尚未写入，恢复时会重放该 payload；日志领先 checkpoint、出现 update gap 或 schema 改变时直接失败。详细口径见 [MAPPO TensorBoard 指标协议](./MAPPO_TensorBoard指标协议.md)。
+
+R1 起，resume/pretrained 还必须精确匹配 `action_spec` 与 `model_spec.action_dim=2`，Actor 使用严格 `state_dict` 加载。旧三维输出头、三维 `log_std` 和 optimizer state 不能部分加载，也不能使用 `strict=False` 绕过。旧 checkpoint 仍可由显式 legacy C0 v1 路径离线验证原证据。
 
 Git SHA 和关键源码指纹默认都必须一致。`--allow-resume-code-drift` 仅用于明确知道风险的诊断续训；每次漂移的前后 Git SHA 与源码指纹都会在元数据中永久累积，不能作为正式可复现实验的默认做法。
 

@@ -21,23 +21,30 @@ from training.train_no_rllib_mappo_robust_v2 import (
 
 OBS_DIM = 19
 STATE_DIM = 38
-ACTION_DIM = 3
+ACTION_DIM = 2
 AGENT_IDS = [0, 1]
 
 
 class ActionMappingRegressionTests(unittest.TestCase):
-    def test_winner_take_all_mapping_is_bounded_and_mutually_exclusive(self):
+    def test_signed_longitudinal_mapping_is_continuous_and_mutually_exclusive(self):
         cases = (
-            ([-1.0, 0.0, -1.0], [0.0, 0.0, 0.0]),
-            ([0.0, 0.25, 0.0], [0.5, 0.25, 0.0]),
-            ([-0.5, -0.25, 0.5], [0.0, -0.25, 0.75]),
-            ([1.0, 1.0, -1.0], [1.0, 1.0, 0.0]),
+            ([-1.0, 0.0], [0.0, 0.0, 1.0]),
+            ([-0.05, -0.25], [0.0, -0.25, 0.0]),
+            ([0.0, 0.25], [0.0, 0.25, 0.0]),
+            ([0.05, 0.0], [0.0, 0.0, 0.0]),
+            ([0.525, 0.4], [0.5, 0.4, 0.0]),
+            ([1.0, 1.0], [1.0, 1.0, 0.0]),
         )
         for latent, expected in cases:
             with self.subTest(latent=latent):
                 action = action_tanh_to_env(np.asarray(latent, dtype=np.float32))
                 np.testing.assert_allclose(action, expected, atol=1e-7)
                 self.assertFalse(action[0] > 0.0 and action[2] > 0.0)
+
+        epsilon = 1e-6
+        left = action_tanh_to_env(np.asarray([0.05 - epsilon, 0.0]))
+        right = action_tanh_to_env(np.asarray([0.05 + epsilon, 0.0]))
+        self.assertLess(np.linalg.norm(right - left), 2.0 * epsilon)
 
 
 def _make_models():

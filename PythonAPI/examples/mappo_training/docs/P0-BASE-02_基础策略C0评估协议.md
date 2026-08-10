@@ -1,13 +1,15 @@
 # P0-BASE-02 基础策略 C0 评估协议
 
-> 协议 ID：`P0_BASE_C0_TOWN02_V1`
+> 当前协议 ID：`P0_BASE_C0_TOWN02_V2`（R1 动作协议 v2）
 >
-> 机器真值：[`configs/evaluation/p0_base_c0_eval_v1.json`](../configs/evaluation/p0_base_c0_eval_v1.json)
+> 机器真值：[`configs/evaluation/p0_base_c0_eval_v2.json`](../configs/evaluation/p0_base_c0_eval_v2.json)
 >
-> 契约 SHA256：文件 `0314f53a15c0095a3f1c6d7e9022054bbfc20403efbde052881096ae7f3f2832`；canonical JSON `ea08bb93711aa0a0c3ca2ee865c0f2727832ec9d16380734609eff3481ca2753`
+> 契约 SHA256：文件 `b4042f98251d47e3e5fa6c3099ba12945da6c63dafa4097d52e44807670049b5`；canonical JSON `86e3847f6a79bc8ae2bb50164218d7283970bdecad888b0c30caa9fa8149fbd7`
 >
-> 当前状态：实现与离线验收完成并由本阶段 Git 提交冻结；等待正式 checkpoint 评估
+> 当前状态：v2 实现与离线验收完成；等待 R2—R4 完成后再产生正式 checkpoint，R1 不运行 CARLA
 > 边界：本阶段冻结“如何评估”，不声称已有合格基础策略，也不预先宣称训练性能通过。
+
+v1 契约与既有证据保持只读，仍可离线复验原裁决；新执行默认使用 v2。v1 新执行只允许显式的 diagnostic smoke，不能作为 R1 正式 gate/validation。动作升级的完整原理见 [R1 二维有符号纵向动作协议](./R1_二维纵向动作协议_论文正文与实验设计.md)。
 
 ## 1. 目的
 
@@ -32,15 +34,15 @@ C0 只包含两辆合作红车：
 - 不生成蓝车，不生成额外自然交通；
 - observation、action、lifecycle、reward 和 metrics 版本必须与当前 `robust_v2` 训练协议完全一致；
 - Actor 使用 `tanh(mu)`，不从高斯分布采样；
-- `tanh` 动作通过生产训练入口的 `winner_take_all_v1` 油门/刹车映射转成环境动作；
+- `tanh` 动作为二维 `[signed_longitudinal, steer]`，通过生产入口的连续死区映射转换为 CARLA 三通道动作；
 - 环境步长 0.1 秒，最长 1000 步，奖励版本 v2，`reward_gamma=0.997`。
 
 正式 checkpoint 必须同时满足：
 
-- checkpoint schema 为 v2，并有可验证的 `.sha256` sidecar；
-- 训练协议为 `mappo_robust_v2_p0_00g_v2`；
-- Actor 恰好为 0、1，结构为 `obs=19/action=3/hidden=128`；
-- 来源训练契约为 `P0_BASE_MAPPO_TOWN02_PILOT_V1` 且 SHA256 与冻结契约一致；
+- checkpoint schema 为 v3，包含精确 `action_spec`，并有可验证的 `.sha256` sidecar；
+- 训练协议为 `mappo_robust_v2_action_v2_p0_00g_v3`；
+- Actor 恰好为 0、1，结构为 `obs=19/action=2/hidden=128`；
+- 来源训练契约为 `P0_BASE_MAPPO_TOWN02_ACTION_V2` 且 SHA256 与冻结契约一致；
 - `checkpoint_kind=periodic`；
 - update 属于 `5/10/20/30/40/60/80/100` 登记停点。
 
@@ -73,7 +75,7 @@ C0 只包含两辆合作红车：
 - 最终 done/terminated/truncated；
 - 15 个 v2 奖励分量累计和及最大奖励守恒残差；
 - 16 个原始安全/运动诊断的 count/min/max/mean/last；
-- 油门、转向、刹车均值；零值率、真正上界饱和率、油门/刹车/滑行模式率和油刹冲突率。逐回合 action 证据版本为 `p0_base_c0_episode_v2`；旧 combined boundary 只保留追溯用途。
+- 二维策略动作均值、纵向死区率/饱和率，以及映射后的油门、转向、刹车均值与控制模式率。逐回合 action 证据版本为 `p0_base_c0_episode_v3`；策略/环境映射不一致直接拒绝，旧 combined boundary 只保留追溯用途。
 
 评估器只为动作前 `active_mask=True` 的车辆计算和提交动作，也只审计这些车辆当步产生的奖励；网络维度保持固定，失活车辆不生成虚假 transition。每一步都要求：
 
@@ -110,7 +112,7 @@ $checkpoint = "logs/<RunID>/periodic/ckpt_update_000005.pt"
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $evalId = "P0_BASE_C0_gate_u000005_$stamp"
 ..\..\..\venv\Scripts\python.exe -m evaluation.evaluate_base_policy_c0 `
-  --eval-contract configs/evaluation/p0_base_c0_eval_v1.json `
+  --eval-contract configs/evaluation/p0_base_c0_eval_v2.json `
   --checkpoint $checkpoint `
   --profile gate `
   --eval-id $evalId `
@@ -137,7 +139,7 @@ $evalId = "P0_BASE_C0_validation_u000005_$stamp"
 ```powershell
 ..\..\..\venv\Scripts\python.exe -m evaluation.validate_base_c0_run `
   --output-dir "evaluations/<EvalID>" `
-  --expected-contract configs/evaluation/p0_base_c0_eval_v1.json `
+  --expected-contract configs/evaluation/p0_base_c0_eval_v2.json `
   --expected-checkpoint "logs/<RunID>/periodic/ckpt_update_000005.pt" `
   --expected-profile validation `
   --expected-eval-id "<EvalID>"
@@ -166,7 +168,7 @@ $evalId = "P0_BASE_C0_validation_u000005_$stamp"
 - 可以跳过 seed 42 pilot 直接批量训练；
 - validation 中的 24 episodes 足以替代最终论文多 seed 统计。
 
-性能 GO/HOLD 数值门槛已经由 P0-BASE-04 在任何正式 pilot 结果产生前冻结，机器真值为 [`p0_base_go_hold_v1.json`](../configs/evaluation/p0_base_go_hold_v1.json)，完整解释见 [P0-BASE-04 门槛协议](./P0-BASE-04_GO-HOLD数值门槛预注册.md)。C0 第二次重复执行只检查离散可复现性，性能计数只取第一套 case，避免把重复性运行伪装成额外样本量。
+历史性能 GO/HOLD v1 数值门槛及其裁决保持冻结，不因 R1 事后重写。动作 v2 对应的 GO/HOLD v2 将在 P0-BASE-03R/R4 中、查看新 pilot 前另行冻结；在此之前 C0 v2 只提供协议与证据接口，不放行正式训练。C0 第二次重复执行只检查离散可复现性，性能计数只取第一套 case，避免把重复性运行伪装成额外样本量。
 
 ## 8. 风险复盘
 

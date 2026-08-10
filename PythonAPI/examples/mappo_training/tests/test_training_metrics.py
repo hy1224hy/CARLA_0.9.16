@@ -20,6 +20,7 @@ from training.metrics_protocol import (
     reward_schema_document,
     validate_active_reward_payload,
 )
+from training.action_protocol import action_tanh_to_env
 from utils.training_metrics_recorder import TrainingMetricsRecorder
 from utils.validate_tensorboard_run import validate_metrics_run
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
@@ -243,7 +244,11 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
                 0: _reward_diagnostics(speed_mps=1.0),
                 1: _reward_diagnostics(speed_mps=2.0, collision_event=1.0),
             },
-            actions={0: [0.5, 0.0, 0.0], 1: [1.0, -1.0, 0.0]},
+            policy_actions={0: [0.525, 0.0], 1: [1.0, -1.0]},
+            environment_actions={
+                0: action_tanh_to_env([0.525, 0.0]),
+                1: action_tanh_to_env([1.0, -1.0]),
+            },
             context="episode step=0",
         )
         details_1_b = _reward_details(speed=3.0, step=-0.1)
@@ -252,7 +257,8 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
             rewards={1: _reward(details_1_b)},
             reward_details={1: details_1_b},
             reward_diagnostics_by_agent={1: _reward_diagnostics(speed_mps=3.0)},
-            actions={1: [0.4, 0.2, 0.0]},
+            policy_actions={1: [0.43, 0.2]},
+            environment_actions={1: action_tanh_to_env([0.43, 0.2])},
             context="episode step=1",
         )
         recorder.finish_episode(
@@ -296,6 +302,22 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
             skipped=True,
             max_grad_norm=0.5,
         )
+
+    def test_policy_and_environment_action_mapping_mismatch_fails_fast(self):
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            recorder = self._new_recorder(temporary_dir)
+            details = _reward_details(speed=1.0)
+            with self.assertRaisesRegex(MetricsProtocolError, "mapping mismatch"):
+                recorder.record_env_step(
+                    active_agent_ids=[0],
+                    rewards={0: _reward(details)},
+                    reward_details={0: details},
+                    reward_diagnostics_by_agent={0: _reward_diagnostics()},
+                    policy_actions={0: [0.5, 0.0]},
+                    environment_actions={0: [0.5, 0.0, 0.0]},
+                    context="mapping audit",
+                )
+            recorder.close()
 
     def test_agent_isolation_sparse_events_and_aggregation_are_exact(self):
         with tempfile.TemporaryDirectory() as temporary_dir:
@@ -425,7 +447,7 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(MetricsProtocolError, "winner-take-all"):
+            with self.assertRaisesRegex(MetricsProtocolError, "mutually exclusive"):
                 validate_metrics_run(temporary_dir)
 
     def test_checkpoint_payload_replays_missing_metrics_after_crash(self):
@@ -480,7 +502,11 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
                     0: _reward_diagnostics(),
                     1: _reward_diagnostics(),
                 },
-                actions={0: [0.0, 0.0, 0.0], 1: [0.0, 0.0, 0.0]},
+                policy_actions={0: [0.0, 0.0], 1: [0.0, 0.0]},
+                environment_actions={
+                    0: action_tanh_to_env([0.0, 0.0]),
+                    1: action_tanh_to_env([0.0, 0.0]),
+                },
                 context="step",
             )
             with self.assertRaisesRegex(MetricsProtocolError, "active-step count"):
@@ -516,7 +542,11 @@ class TrainingMetricsRecorderTests(unittest.TestCase):
                     0: _reward_diagnostics(),
                     1: _reward_diagnostics(),
                 },
-                actions={0: [0.0, 0.0, 0.0], 1: [0.0, 0.0, 0.0]},
+                policy_actions={0: [0.0, 0.0], 1: [0.0, 0.0]},
+                environment_actions={
+                    0: action_tanh_to_env([0.0, 0.0]),
+                    1: action_tanh_to_env([0.0, 0.0]),
+                },
                 context="step",
             )
             with self.assertRaisesRegex(

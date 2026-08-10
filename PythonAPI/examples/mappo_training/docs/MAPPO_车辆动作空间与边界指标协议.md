@@ -1,27 +1,55 @@
 # MAPPO 车辆动作空间与边界指标协议
 
 > 适用入口：`training/train_no_rllib_mappo_robust_v2.py` 与基础策略 C0 评估器。
->
-> 当前决定：保留三维 Actor action 和 `winner_take_all_v1` 环境映射；指标协议升级为 `mappo_metrics_p0_00g_v3`，C0 逐回合证据升级为 `p0_base_c0_episode_v2`。
+> 当前决定：R1 使用二维 `[signed_longitudinal, steer]` 策略动作与 `signed_longitudinal_deadzone_v2` 环境映射；指标协议为 `mappo_metrics_action_v2_p0_00g_v4`，C0 逐回合证据为 `p0_base_c0_episode_v3`。三维 `winner_take_all_v1` 仅作历史读取与诊断。
 
-## 1. 结论
+完整理论推导、论文正文、文献与测试计划见 [R1 二维有符号纵向动作协议](./R1_二维纵向动作协议_论文正文与实验设计.md)。本文只保留工程协议真值和指标解释。
 
-油门与刹车互斥是合理的车辆控制约束。CARLA 的 `VehicleControl` 分别接受 `[0,1]` 油门、`[-1,1]` 转向和 `[0,1]` 刹车；CARLA 自带 navigation controller 也是先计算一个有符号纵向控制量，非负时施加油门、负值时施加刹车，不同时下发二者。参考：[CARLA Python API](https://carla.readthedocs.io/en/latest/python_api/#carla.VehicleControl) 与仓库内 [`controller.py`](../../../carla/agents/navigation/controller.py)。
+## 1. 当前动作真值
 
-自动驾驶强化学习中常见两种参数化：
+Actor 输出
 
-1. 策略直接输出 `throttle/steer/brake`，再施加范围与互斥约束；
-2. 策略输出一个有符号 longitudinal acceleration 和 steer，再将正负纵向量拆成油门/刹车。后者维度更低、语义更直接，也见于直接学习 acceleration/steering 的研究设计（[Maramotti et al., 2022](https://arxiv.org/abs/2207.02162)）。
+```text
+policy_action = [signed_longitudinal, steer] ∈ [-1,1]^2
+deadzone d = 0.05
+```
 
-当前基础 MAPPO 属于第一种。它不是 PPO 概率错误：rollout 保存和 PPO ratio 使用的是映射前同一个三维 latent action，环境映射是固定且不依赖参数的确定性函数。因此策略梯度仍对应“采样 latent action 后执行其环境映射”的策略。
+纵向重缩放为
 
-## 2. 当前映射及保留原因
+```text
+if longitudinal > d:
+    command = (longitudinal - d) / (1 - d)
+elif longitudinal < -d:
+    command = (longitudinal + d) / (1 - d)
+else:
+    command = 0
 
-令 Actor 的 tanh action 为 `(a_t, a_s, a_b)`：
+throttle = max(command, 0)
+brake    = max(-command, 0)
+steer    = policy_steer
+```
+
+因此输出满足：
+
+- `throttle ∈ [0,1]`、`brake ∈ [0,1]`、`steer ∈ [-1,1]`；
+- `throttle * brake = 0`；
+- `abs(signed_longitudinal) <= 0.05` 时为 coast；
+- 在 `±0.05` 处连续，且 `±1` 保留满幅控制。
+
+实现的唯一真值位于 `training/action_protocol.py`。训练、指标 recorder 和 C0 不允许各自复制另一份映射。
+
+## 2. PPO 概率口径
+
+Actor 在二维 pre-tanh 空间采样 `z`，令 `action_tanh=tanh(z)`；rollout 保存同一个二维 `z` 和经变量变换修正的标量 log-prob。PPO 更新继续用保存的 `z` 重算新 log-prob，策略参数未变化时 ratio 必须为 1。
+
+二维动作映射成三维 CARLA command 是采样后的确定性环境适配，不在三维物理动作上重新计算概率。C0 使用 `tanh(actor_mean)`，再调用完全相同的当前映射。
+
+## 3. WTA v1 历史协议
+
+旧 Actor 输出 `(a_t,a_s,a_b)`，映射为
 
 ```text
 throttle_raw = (a_t + 1) / 2
-steer        = a_s
 brake_raw    = (a_b + 1) / 2
 
 if throttle_raw >= brake_raw:
@@ -30,39 +58,29 @@ else:
     throttle = 0, brake = brake_raw
 ```
 
-它保证输出范围正确且 `throttle × brake = 0`。目前不把 Actor 改成二维 signed-longitudinal，原因是：
+该协议能保证油刹互斥，且旧 PPO 的 latent 概率口径在数学上并非无效；但它有两个纵向隐变量竞争一个物理自由度、切换边界不连续、零 latent 映射半油门等限制。R0 的制动塌缩证据触发了 R1 升级。
 
-- 当前 MAPPO、checkpoint model spec、C0 契约均已冻结为 action dimension 3；
-- 映射不破坏 PPO ratio、GAE 或 centralized critic 的正确性；
-- 在正式 pilot 前临时改变动作维度会同时改变探索分布、网络参数量和 checkpoint 协议，属于新的实验变量，不是边界日志 bug 的最小修复。
+`legacy_wta_action_tanh_to_env()` 只服务历史 C0/证据读取。旧 Actor、optimizer 和 checkpoint 不得用于 R1 strict resume 或正式 pretrained。
 
-该映射也有已知限制：两个纵向 latent 维度冗余；在两者接近时环境动作会切换；两者同为零时映射为半油门而不是滑行。P0-BASE pilot 必须通过 jerk、模式占比、真实 C0 轨迹和安全结局监控这些风险。若出现持续油刹切换或控制不平滑，应另建 action protocol v2，使用二维 signed-longitudinal，从 fresh Run 重新训练；不得在同一个正式 Run 中途更换映射。
+## 4. 当前动作指标
 
-## 3. 旧边界指标为什么会误报
-
-旧指标把 `pedal <= 0.01` 和 `pedal >= 0.99` 合并为一个 boundary。互斥映射每步至少令一个踏板为零，因此某个 throttle/brake combined boundary rate 长期接近 1 完全可能是正常驾驶模式，不能据此判断策略饱和。
-
-v3 保留以下旧标签用于历史追溯，但禁止将 throttle/brake combined boundary 直接用于 GO/HOLD：
-
-- `throttle_boundary_rate = throttle_zero_rate + throttle_saturation_rate`
-- `brake_boundary_rate = brake_zero_rate + brake_saturation_rate`
-- `steer_boundary_rate = steer_saturation_rate`
-
-## 4. v3 可用于判定的动作指标
-
-每个 agent 新增：
+每个 active agent 必须同时记录二维策略动作和三维环境动作；recorder 逐步重算映射，任何不一致立即失败。
 
 | TensorBoard/JSONL 标签后缀 | 含义 |
 |---|---|
-| `throttle_zero_rate`、`brake_zero_rate` | 踏板处于零值的比例；主要解释互斥模式，不是饱和 |
-| `throttle_saturation_rate`、`brake_saturation_rate` | 踏板达到上边界 `>=0.99` 的比例 |
+| `policy_signed_longitudinal/mean` | 二维策略纵向输出均值 |
+| `policy_steer/mean` | 二维策略转向输出均值 |
+| `signed_longitudinal_deadzone_rate` | 策略纵向输出落入 `[-0.05,0.05]` 的比例 |
+| `signed_longitudinal_saturation_rate` | `abs(signed_longitudinal)>=0.99` 的比例 |
+| `throttle_zero_rate`、`brake_zero_rate` | CARLA 踏板处于零值的比例；主要解释互斥模式，不表示上界饱和 |
+| `throttle_saturation_rate`、`brake_saturation_rate` | CARLA 踏板达到上边界 `>=0.99` 的比例 |
 | `steer_saturation_rate` | `abs(steer)>=0.99` 的比例 |
 | `throttle_mode_rate` | 仅油门有效的比例 |
-| `brake_mode_rate` | 仅刹车有效的比例 |
-| `coast_mode_rate` | 油门和刹车都不生效的比例 |
-| `longitudinal_conflict_rate` | 油门与刹车同时生效的比例；当前映射下必须为 0 |
+| `brake_mode_rate` | 仅制动有效的比例 |
+| `coast_mode_rate` | 油门与制动均不生效的比例 |
+| `longitudinal_conflict_rate` | 油门与制动同时生效的比例；必须为 0 |
 
-以下守恒关系由 C0 validator 强制检查：
+以下守恒关系由 metrics/C0 validator 强制检查：
 
 ```text
 throttle_mode_rate + brake_mode_rate
@@ -71,11 +89,28 @@ throttle_mode_rate + brake_mode_rate
 longitudinal_conflict_rate = 0
 ```
 
-P0-BASE-04 应使用真正的 `*_saturation_rate` 制定数值门槛。零值率只解释控制模式；最终是否存在静止刷分或激进控制，还必须联合 success/timeout、speed、closing speed、jerk、lane invasion、collision 和视频判断。
+历史 combined boundary 标签仍保留，但只满足：
 
-## 5. 兼容性
+```text
+throttle_boundary_rate = throttle_zero_rate + throttle_saturation_rate
+brake_boundary_rate    = brake_zero_rate + brake_saturation_rate
+steer_boundary_rate    = steer_saturation_rate
+```
 
-- Actor、Critic、环境三维 action 和 `winner_take_all_v1` 行为均未改变。
-- 指标协议由 v2 升为 v3；旧指标 checkpoint 不允许作为新正式 Run 的 strict resume 来源。
-- C0 核心 case、seed、确定性动作和 summary 口径未改变；逐回合 action 证据增加拆分字段并升为 `p0_base_c0_episode_v2`。
-- 仓库中的历史 checkpoint 仍只能用于历史诊断，不能绕过当前正式契约。
+combined boundary 包含互斥造成的正常零踏板，禁止将其直接解释为策略饱和。动作健康必须联合策略死区/饱和、物理模式、speed、progress、jerk、success/timeout、lane invasion 和 collision 判断。
+
+## 5. 协议版本与兼容性
+
+| 层 | 历史 v1 | 当前 v2 |
+|---|---|---|
+| 策略动作 | 3 维 throttle/steer/brake latent | 2 维 signed-longitudinal/steer |
+| 映射 | `winner_take_all_v1` | `signed_longitudinal_deadzone_v2` |
+| checkpoint schema | 2 | 3，含完整 `action_spec` |
+| training protocol | `mappo_robust_v2_p0_00g_v2` | `mappo_robust_v2_action_v2_p0_00g_v3` |
+| metrics | `mappo_metrics_p0_00g_v3` | `mappo_metrics_action_v2_p0_00g_v4` |
+| C0 | `p0_base_c0_eval_v1` / episode v2 | `p0_base_c0_eval_v2` / episode v3 |
+
+- v1 checkpoint 和证据保持只读，不覆盖原 judge 或实验记录。
+- 当前 resume/pretrained/C0 必须同时匹配 schema、protocol versions、`action_spec`、`model_spec.action_dim=2` 和严格 Actor state。
+- R1 不修改奖励版本、Critic 类型/维度、观测协议、场景和生命周期协议。
+- 当前动作适配器逐车独立，对更多车辆可复用；但本轮训练/C0 契约仍固定两车，多车 Critic 与评估协议必须另行升级。

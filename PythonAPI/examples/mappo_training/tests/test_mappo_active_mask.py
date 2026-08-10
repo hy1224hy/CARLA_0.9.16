@@ -23,7 +23,7 @@ class _SpyActor:
         self.calls += 1
         self.obs_shapes.append(tuple(obs.shape))
         batch = obs.shape[0]
-        zeros = torch.zeros((batch, 3), dtype=torch.float32, device=obs.device)
+        zeros = torch.zeros((batch, 2), dtype=torch.float32, device=obs.device)
         logp = torch.zeros(batch, dtype=torch.float32, device=obs.device)
         return zeros, logp, zeros.clone()
 
@@ -198,7 +198,7 @@ class ActiveMaskRolloutTests(unittest.TestCase):
         self.assertEqual(len(all_transitions), 5)
         self.assertTrue(all(t.obs.shape == (19,) for t in all_transitions))
         self.assertTrue(all(t.global_state.shape == (38,) for t in all_transitions))
-        self.assertTrue(all(t.action_z.shape == (3,) for t in all_transitions))
+        self.assertTrue(all(t.action_z.shape == (2,) for t in all_transitions))
         self.assertTrue(all(shape == (1, 19) for shape in actors[0].obs_shapes))
         self.assertTrue(all(shape == (1, 19) for shape in actors[1].obs_shapes))
         self.assertTrue(all(shape == (1, 38) for _aid, shape in critic.calls))

@@ -9,7 +9,7 @@
 
 | 用途 | 唯一有效入口 | 当前许可 |
 |---|---|---|
-| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | P0-BASE-00/01/02/04 已完成；当前只允许 seed 42 从 update 5 开始分段试训；update 100 `PILOT_GO` 后才允许多 seed |
+| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | R0 Run 已诊断封存，R1 二维动作协议已完成；当前被 R2 奖励预算、R3 Critic 与 R4 门槛阻塞，禁止启动/恢复 CARLA 正式训练 |
 | Phase 1 单蓝车 | `python -m training.train_2red_1blue_ppo` | P0-06 通过前禁止启动 |
 
 以下入口均为 **DEPRECATED/历史参考**：`train_rllib.py`、`carla_rllib_wrapper.py`、`train_no_rlib_sharedpolicy.py`、`train_no_rllib_mappo.py`、`train_no_rllib_mappo_robust.py`、`train_adversarial_ppo.py`、`run_adversarial_training_with_viz.py` 以及旧 multi v1/v2。它们不得用于新训练、恢复修复后的训练、生成正式 checkpoint 或论文结果；未来确需使用时，必须先迁移当前生命周期、GAE、指标和 checkpoint 协议并重新验收。
@@ -29,7 +29,8 @@
 | **[docs/P0-BASE-04_GO-HOLD数值门槛预注册.md](docs/P0-BASE-04_GO-HOLD数值门槛预注册.md)** | 训练健康、各停点能力、held-out 下界、Git 预注册证据和唯一离线裁决命令 |
 | **[docs/P0-BASE_基础策略实验记录.md](docs/P0-BASE_基础策略实验记录.md)** | 基础策略 fresh/resume/C0/GO-HOLD 人工实验台账 |
 | **[docs/MAPPO_TensorBoard指标协议.md](docs/MAPPO_TensorBoard指标协议.md)** | 当前基础 MAPPO 的奖励审计、聚合口径、训练健康指标和离线验证 |
-| **[docs/MAPPO_车辆动作空间与边界指标协议.md](docs/MAPPO_车辆动作空间与边界指标协议.md)** | 油门/刹车互斥映射的算法语义、保留理由、限制及 v3 动作诊断口径 |
+| **[docs/MAPPO_车辆动作空间与边界指标协议.md](docs/MAPPO_车辆动作空间与边界指标协议.md)** | 二维 signed-longitudinal 动作、连续死区、二维策略/三维环境审计及 v1 只读兼容 |
+| **[docs/R1_二维纵向动作协议_论文正文与实验设计.md](docs/R1_二维纵向动作协议_论文正文与实验设计.md)** | 可直接用于论文的车辆动力学、动作映射、PPO 概率推导、文献、风险与测试计划 |
 | **[docs/P0-00G_真实CARLA_smoke运行规范.md](docs/P0-00G_真实CARLA_smoke运行规范.md)** | P0-00G 环境门槛、冻结命令、受控中断、产物和 PASS/HOLD 标准 |
 | **[docs/P0-00G_真实CARLA_smoke测试记录.md](docs/P0-00G_真实CARLA_smoke测试记录.md)** | P0-00G 逐次结果、失败根因、修复验证与最终 Judge 裁决 |
 | **[docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md](docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md)** | 无 checkpoint 的固定场景 success/reward/lifecycle 隔离测试、命令与逐次记录 |
@@ -94,7 +95,7 @@ mappo_training/
 - 支持 Town02 地图中的直道场景
 - 2-3 个智能体同时训练
 - 19维观察空间（8维基础状态 + 11维雷达感知）
-- 3维动作空间（throttle, steer, brake）
+- 当前基础策略为 2 维策略动作（signed-longitudinal, steer），经连续死区映射为 CARLA 3 维控制（throttle, steer, brake）
 - 碰撞检测、车道偏离检测
 - 自定义车辆起始位置
 
@@ -141,7 +142,7 @@ python -m utils.record_manual_control --agent-id 0
 
 不要从 `training/` 子目录直接执行文件，也不要从本文档历史段落复制 deprecated 命令。
 
-P0-BASE 正式训练必须带 `--experiment-contract configs/base_mappo/p0_base_pilot_v1.json`，且只在登记停点运行；科学参数不再允许从 CLI 覆盖。P0-BASE-01/02/04 已完成，当前下一步是 seed 42 的 update 5 fresh 分段，完成 strict validator、两次 C0 gate 和唯一 GO/HOLD judge 后才可决定是否 resume。训练命令见 [P0-BASE-01 正式实验契约](docs/P0-BASE-01_基础策略正式实验契约.md)，评估命令见 [P0-BASE-02 C0 评估协议](docs/P0-BASE-02_基础策略C0评估协议.md)，数值裁决见 [P0-BASE-04 门槛协议](docs/P0-BASE-04_GO-HOLD数值门槛预注册.md)。
+`p0_base_pilot_v1.json`、WTA checkpoint 和 GO/HOLD v1 已全部封存为历史证据，不得继续 resume/pretrained。R1 已建立 action-v2 训练/C0 协议接口，但它不构成开训许可；必须按 TODO 先完成 R2 奖励预算、R3 Critic、R4 GO/HOLD v2 与真实 smoke，之后才允许用最终新契约、新 RunID 和随机初始化 fresh pilot。评估协议见 [P0-BASE-02 C0 协议](docs/P0-BASE-02_基础策略C0评估协议.md)，动作理论见 [R1 论文正文](docs/R1_二维纵向动作协议_论文正文与实验设计.md)。
 
 依赖包括：
 - torch &gt;= 1.9.0

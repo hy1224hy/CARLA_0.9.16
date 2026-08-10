@@ -56,6 +56,7 @@
 - 新增诊断结论：训练中 brake mode 从 u1 的约 `46%/55%` 增至 u10 的约 `69%/68%`，agent 0 平均速度从约 `0.692` 降到 `0.054 m/s`；同时 collision 下降而 timeout 上升。u10 的 agent 0 每回合 `steer_rate=-272.23`、`jerk=-123.14`、`step=-80.47`，远大于 `speed=+26.79`，说明当前奖励规模使带噪移动比保持制动更差。三维 WTA 的独立 throttle/brake 隐变量、`init_log_std=0` 和只惩罚 throttle 变化而不惩罚 brake 变化共同放大该局部最优。
 - Critic 的连续裁剪、explained variance 近 0 与近常数 value output 会增加优势噪声，是必须修复的学习质量问题；但 ratio/KL/clip/finite 与生产算法测试均未显示 GAE/PPO 概率或梯度方向实现错误，因此不把 Critic warning 单独定为全程刹车的直接原因。
 - 研究决策：不再消耗算力延长 v1 Run。冻结 judge 的历史结论继续保留为 `CONTINUE_WITH_WARNING`，人工研究结论记录为 `DIAGNOSTIC HOLD`；所有会改变 action dimension、奖励规模、value normalization 或早期门槛的修复必须形成新协议、新 Git 提交、新 RunID，并从随机初始化 fresh 训练，禁止继续利用 u10 权重作正式基线。
+- R1 处置（2026-08-10）：动作协议已独立升级为二维 `[signed_longitudinal, steer]`，采用 `d=0.05` 连续死区映射 CARLA 三通道控制；同步升级 checkpoint schema、训练/metrics/C0 协议和只读 legacy validator。全量 140 项无 CARLA 回归通过，奖励与 Critic 未修改，也未启动 CARLA。该提交只关闭 R1 工程/理论验收，不恢复或改写本 Run 的任何训练、C0、judge、registry 或 checkpoint 证据；R2 奖励预算校准前仍禁止新正式 pilot。论文推导与测试计划见 [R1 二维有符号纵向动作协议](./R1_二维纵向动作协议_论文正文与实验设计.md)。
 
 ### `P0_BASE_MAPPO_Town02_s42_20260809_173321`
 

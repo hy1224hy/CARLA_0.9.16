@@ -41,6 +41,7 @@ from training.train_no_rllib_mappo_robust_v2 import (
     validate_p0_smoke_interrupt_configuration,
 )
 from training.metrics_protocol import METRICS_PROTOCOL_VERSION
+from training.action_protocol import action_protocol_spec, legacy_action_protocol_spec
 
 
 class P0SmokeInterruptConfigurationTests(unittest.TestCase):
@@ -114,7 +115,7 @@ def _protocol_versions():
 def _model_spec():
     return {
         "obs_dim": 19,
-        "action_dim": 3,
+        "action_dim": 2,
         "state_dim": 38,
         "num_agents": 2,
         "agent_ids": [0, 1],
@@ -144,6 +145,7 @@ def _checkpoint_payload():
         "actor_optims": {0: {"state": {}}, 1: {"state": {}}},
         "critic_optim": {"state": {}},
         "args": {"gamma": 0.997},
+        "action_spec": action_protocol_spec(),
         "model_spec": _model_spec(),
         "training_config": _training_config(),
         "lr_schedule": {"decay_horizon": 100},
@@ -300,7 +302,7 @@ class RngAndOptimizerContinuityTests(unittest.TestCase):
 
     def test_all_mappo_models_and_optimizers_round_trip(self):
         torch.manual_seed(20260727)
-        actors = {aid: Actor(19, 3, hidden=16) for aid in (0, 1)}
+        actors = {aid: Actor(19, 2, hidden=16) for aid in (0, 1)}
         critic = AgentConditionedCritic(38, 2, hidden=16)
         actor_optims = {
             aid: optim.Adam(actor.parameters(), lr=3e-4)
@@ -336,7 +338,7 @@ class RngAndOptimizerContinuityTests(unittest.TestCase):
             save_checkpoint_file(payload, path)
             loaded, _ = load_checkpoint_file(path)
 
-        resumed_actors = {aid: Actor(19, 3, hidden=16) for aid in (0, 1)}
+        resumed_actors = {aid: Actor(19, 2, hidden=16) for aid in (0, 1)}
         resumed_critic = AgentConditionedCritic(38, 2, hidden=16)
         resumed_actor_optims = {
             aid: optim.Adam(actor.parameters(), lr=3e-4)
@@ -374,9 +376,21 @@ class ResumeProtocolValidationTests(unittest.TestCase):
         validate_checkpoint_payload(
             payload,
             expected_protocol_versions=_protocol_versions(),
+            expected_action_spec=action_protocol_spec(),
             expected_model_spec=_model_spec(),
             expected_training_config=_training_config(),
         )
+
+        legacy_action = copy.deepcopy(payload)
+        legacy_action["action_spec"] = legacy_action_protocol_spec()
+        with self.assertRaisesRegex(CheckpointProtocolError, "action_spec"):
+            validate_checkpoint_payload(
+                legacy_action,
+                expected_protocol_versions=_protocol_versions(),
+                expected_action_spec=action_protocol_spec(),
+                expected_model_spec=_model_spec(),
+                expected_training_config=_training_config(),
+            )
 
         incompatible = dict(_training_config())
         incompatible["gamma"] = 0.9
@@ -384,6 +398,7 @@ class ResumeProtocolValidationTests(unittest.TestCase):
             validate_checkpoint_payload(
                 payload,
                 expected_protocol_versions=_protocol_versions(),
+                expected_action_spec=action_protocol_spec(),
                 expected_model_spec=_model_spec(),
                 expected_training_config=incompatible,
             )
@@ -394,6 +409,7 @@ class ResumeProtocolValidationTests(unittest.TestCase):
             validate_checkpoint_payload(
                 payload,
                 expected_protocol_versions=_protocol_versions(),
+                expected_action_spec=action_protocol_spec(),
                 expected_model_spec=incompatible_spec,
                 expected_training_config=_training_config(),
             )
@@ -406,6 +422,7 @@ class ResumeProtocolValidationTests(unittest.TestCase):
             validate_checkpoint_payload(
                 payload,
                 expected_protocol_versions=incompatible_protocol,
+                expected_action_spec=action_protocol_spec(),
                 expected_model_spec=_model_spec(),
                 expected_training_config=_training_config(),
             )
@@ -416,6 +433,7 @@ class ResumeProtocolValidationTests(unittest.TestCase):
             validate_checkpoint_payload(
                 invalid_metrics,
                 expected_protocol_versions=_protocol_versions(),
+                expected_action_spec=action_protocol_spec(),
                 expected_model_spec=_model_spec(),
                 expected_training_config=_training_config(),
             )
@@ -427,6 +445,7 @@ class ResumeProtocolValidationTests(unittest.TestCase):
             validate_checkpoint_payload(
                 payload,
                 expected_protocol_versions=_protocol_versions(),
+                expected_action_spec=action_protocol_spec(),
                 expected_model_spec=_model_spec(),
                 expected_training_config=_training_config(),
             )
@@ -437,6 +456,7 @@ class ResumeProtocolValidationTests(unittest.TestCase):
             validate_checkpoint_payload(
                 payload,
                 expected_protocol_versions=_protocol_versions(),
+                expected_action_spec=action_protocol_spec(),
                 expected_model_spec=_model_spec(),
                 expected_training_config=_training_config(),
             )

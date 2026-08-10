@@ -16,14 +16,14 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Mapping, Sequence
 
 from evaluation.base_c0_protocol import (
-    C0_EPISODE_RECORD_VERSION,
+    LEGACY_C0_EPISODE_RECORD_VERSION,
     load_c0_contract,
 )
 from training.experiment_contract import (
     load_experiment_contract,
     verify_critical_sources_clean,
 )
-from training.metrics_protocol import METRICS_PROTOCOL_VERSION
+from training.metrics_protocol import LEGACY_METRICS_PROTOCOL_VERSION
 from training.checkpoint_protocol import sha256_file
 
 
@@ -147,10 +147,10 @@ def validate_go_hold_contract(payload: Any, *, project_dir: Path) -> None:
         },
         context="bindings",
     )
-    if bindings["metrics_protocol_version"] != METRICS_PROTOCOL_VERSION:
-        raise GoHoldProtocolError("bound metrics protocol is not current")
-    if bindings["c0_episode_record_version"] != C0_EPISODE_RECORD_VERSION:
-        raise GoHoldProtocolError("bound C0 episode protocol is not current")
+    if bindings["metrics_protocol_version"] != LEGACY_METRICS_PROTOCOL_VERSION:
+        raise GoHoldProtocolError("bound historical metrics protocol differs")
+    if bindings["c0_episode_record_version"] != LEGACY_C0_EPISODE_RECORD_VERSION:
+        raise GoHoldProtocolError("bound historical C0 episode protocol differs")
     if bindings["pilot_seed"] != 42 or bindings["agent_ids"] != [0, 1]:
         raise GoHoldProtocolError("pilot seed/agent IDs differ from P0-BASE-01")
     if bindings["milestone_profile"] != "gate" or bindings["validation_profile"] != "validation":

@@ -18,9 +18,18 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Sequence
 
 from models.actor_critic import Actor
-from training.checkpoint_protocol import (
+from training.action_protocol import (
+    ACTION_MAPPING_VERSION,
     ACTION_PROTOCOL_VERSION,
+    LEGACY_ACTION_MAPPING_VERSION,
+    LEGACY_ACTION_PROTOCOL_VERSION,
+    LONGITUDINAL_DEADZONE,
+    action_protocol_spec,
+)
+from training.checkpoint_protocol import (
     CHECKPOINT_SCHEMA_VERSION,
+    LEGACY_CHECKPOINT_SCHEMA_VERSION,
+    LEGACY_TRAINING_PROTOCOL_VERSION,
     LIFECYCLE_PROTOCOL_VERSION,
     OBSERVATION_PROTOCOL_VERSION,
     TRAINING_PROTOCOL_VERSION,
@@ -32,19 +41,22 @@ from training.checkpoint_protocol import (
 )
 from training.metrics_protocol import (
     ACTION_RATE_NAMES,
+    LEGACY_METRICS_PROTOCOL_VERSION,
     METRICS_PROTOCOL_VERSION,
+    POLICY_ACTION_RATE_NAMES,
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
 )
 
 
-C0_PROTOCOL_VERSION = "p0_base_c0_eval_v1"
-C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v2"
+LEGACY_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v1"
+C0_PROTOCOL_VERSION = "p0_base_c0_eval_v2"
+LEGACY_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v2"
+C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v3"
 C0_SUMMARY_VERSION = "p0_base_c0_summary_v1"
 C0_MANIFEST_VERSION = "p0_base_c0_manifest_v1"
 C0_RESOLVED_CONFIG_VERSION = "p0_base_c0_resolved_v1"
 C0_VALIDATOR_REPORT_VERSION = "p0_base_c0_validator_v1"
-ACTION_MAPPING_VERSION = "winner_take_all_v1"
 AGENT_IDS = (0, 1)
 OUTCOMES = ("success", "collision", "timeout", "other")
 REPEATABILITY_FIELDS = (
@@ -201,9 +213,17 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         "critical_source_paths",
     }
     _require_exact_fields(payload, top_fields, context="C0 contract")
-    if payload["protocol_version"] != C0_PROTOCOL_VERSION:
+    protocol_version = payload["protocol_version"]
+    if protocol_version not in {
+        LEGACY_C0_PROTOCOL_VERSION,
+        C0_PROTOCOL_VERSION,
+    }:
         raise C0ProtocolError("C0 protocol version mismatch")
-    if payload["contract_id"] != "P0_BASE_C0_TOWN02_V1":
+    legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
+    expected_contract_id = (
+        "P0_BASE_C0_TOWN02_V1" if legacy else "P0_BASE_C0_TOWN02_V2"
+    )
+    if payload["contract_id"] != expected_contract_id:
         raise C0ProtocolError("C0 contract_id mismatch")
     if payload["status"] != "frozen" or payload["run_id_prefix"] != "P0_BASE_C0_":
         raise C0ProtocolError("C0 contract must be frozen with the registered prefix")
@@ -240,17 +260,24 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
             raise C0ProtocolError(f"environment.{name} must be positive")
 
     action = payload["action"]
-    _require_exact_fields(
-        action,
-        {"mode", "observation_protocol_version", "action_protocol_version", "throttle_brake_mapping"},
-        context="action",
-    )
-    expected_action = {
-        "mode": "deterministic_actor_mean_tanh",
-        "observation_protocol_version": OBSERVATION_PROTOCOL_VERSION,
-        "action_protocol_version": ACTION_PROTOCOL_VERSION,
-        "throttle_brake_mapping": ACTION_MAPPING_VERSION,
-    }
+    if legacy:
+        expected_action = {
+            "mode": "deterministic_actor_mean_tanh",
+            "observation_protocol_version": OBSERVATION_PROTOCOL_VERSION,
+            "action_protocol_version": LEGACY_ACTION_PROTOCOL_VERSION,
+            "throttle_brake_mapping": LEGACY_ACTION_MAPPING_VERSION,
+        }
+    else:
+        expected_action = {
+            "mode": "deterministic_actor_mean_tanh",
+            "observation_protocol_version": OBSERVATION_PROTOCOL_VERSION,
+            "action_protocol_version": ACTION_PROTOCOL_VERSION,
+            "mapping_version": ACTION_MAPPING_VERSION,
+            "policy_action_dim": 2,
+            "environment_action_dim": 3,
+            "longitudinal_deadzone": LONGITUDINAL_DEADZONE,
+        }
+    _require_exact_fields(action, set(expected_action), context="action")
     if dict(action) != expected_action:
         raise C0ProtocolError("C0 action policy differs from the frozen deterministic protocol")
 
@@ -271,15 +298,29 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         },
         context="checkpoint",
     )
+    expected_checkpoint_schema = (
+        LEGACY_CHECKPOINT_SCHEMA_VERSION if legacy else CHECKPOINT_SCHEMA_VERSION
+    )
+    expected_training_protocol = (
+        LEGACY_TRAINING_PROTOCOL_VERSION if legacy else TRAINING_PROTOCOL_VERSION
+    )
+    expected_action_dim = 3 if legacy else 2
+    expected_training_contract_id = (
+        "P0_BASE_MAPPO_TOWN02_PILOT_V1"
+        if legacy
+        else "P0_BASE_MAPPO_TOWN02_ACTION_V2"
+    )
     if (
-        checkpoint["schema_version"] != CHECKPOINT_SCHEMA_VERSION
-        or checkpoint["training_protocol_version"] != TRAINING_PROTOCOL_VERSION
+        checkpoint["schema_version"] != expected_checkpoint_schema
+        or checkpoint["training_protocol_version"] != expected_training_protocol
         or checkpoint["allowed_checkpoint_kinds"] != ["periodic"]
         or checkpoint["allowed_checkpoint_updates"] != [5, 10, 20, 30, 40, 60, 80, 100]
         or checkpoint["required_agent_ids"] != [0, 1]
         or checkpoint["obs_dim"] != 19
-        or checkpoint["action_dim"] != 3
+        or checkpoint["action_dim"] != expected_action_dim
         or checkpoint["hidden_dim"] != 128
+        or checkpoint["required_training_contract_id"]
+        != expected_training_contract_id
         or not SHA256_RE.fullmatch(str(checkpoint["required_training_contract_sha256"]))
     ):
         raise C0ProtocolError("checkpoint compatibility policy differs from the frozen baseline")
@@ -472,7 +513,8 @@ def load_and_validate_c0_checkpoint(
     map_location: Any = "cpu",
 ) -> Dict[str, Any]:
     checkpoint, digest = load_checkpoint_file(path, map_location=map_location)
-    validate_checkpoint_header(checkpoint)
+    legacy = contract["protocol_version"] == LEGACY_C0_PROTOCOL_VERSION
+    validate_checkpoint_header(checkpoint, allow_legacy=legacy)
     policy = contract["checkpoint"]
     mismatches: list[str] = []
     if checkpoint.get("checkpoint_schema_version") != policy["schema_version"]:
@@ -481,13 +523,23 @@ def load_and_validate_c0_checkpoint(
         mismatches.append("training protocol")
     expected_protocols = {
         "observation": OBSERVATION_PROTOCOL_VERSION,
-        "action": ACTION_PROTOCOL_VERSION,
+        "action": (
+            LEGACY_ACTION_PROTOCOL_VERSION
+            if legacy
+            else ACTION_PROTOCOL_VERSION
+        ),
         "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
         "reward": contract["environment"]["reward_version"],
-        "metrics": METRICS_PROTOCOL_VERSION,
+        "metrics": (
+            LEGACY_METRICS_PROTOCOL_VERSION
+            if legacy
+            else METRICS_PROTOCOL_VERSION
+        ),
     }
     if checkpoint.get("protocol_versions") != expected_protocols:
         mismatches.append("protocol_versions")
+    if not legacy and checkpoint.get("action_spec") != action_protocol_spec():
+        mismatches.append("action_spec")
     model_spec = checkpoint.get("model_spec")
     expected_model = {
         "obs_dim": policy["obs_dim"],
@@ -648,8 +700,13 @@ def validate_episode_record(
         "team",
     }
     _require_exact_fields(record, top, context="episode record")
-    if record["record_version"] != C0_EPISODE_RECORD_VERSION:
+    record_version = record["record_version"]
+    if record_version not in {
+        LEGACY_C0_EPISODE_RECORD_VERSION,
+        C0_EPISODE_RECORD_VERSION,
+    }:
         raise C0ProtocolError("episode record version mismatch")
+    current_action = record_version == C0_EPISODE_RECORD_VERSION
     if record["eval_id"] != eval_id or record["profile"] != profile:
         raise C0ProtocolError("episode record evaluation identity mismatch")
     if record["checkpoint_sha256"] != checkpoint_sha256:
@@ -743,6 +800,16 @@ def validate_episode_record(
             raise C0ProtocolError(f"agent {agent_id} reached flag differs from success diagnostics")
         actions = agent["actions"]
         action_rate_fields = {f"{name}_rate" for name in ACTION_RATE_NAMES}
+        policy_action_rate_fields = (
+            {f"{name}_rate" for name in POLICY_ACTION_RATE_NAMES}
+            if current_action
+            else set()
+        )
+        policy_action_mean_fields = (
+            {"policy_signed_longitudinal_mean", "policy_steer_mean"}
+            if current_action
+            else set()
+        )
         _require_exact_fields(
             actions,
             {
@@ -751,6 +818,8 @@ def validate_episode_record(
                 "steer_mean",
                 "brake_mean",
                 *action_rate_fields,
+                *policy_action_rate_fields,
+                *policy_action_mean_fields,
             },
             context=f"agent {agent_id}.actions",
         )
@@ -761,15 +830,30 @@ def validate_episode_record(
             "steer_mean",
             "brake_mean",
             *sorted(action_rate_fields),
+            *sorted(policy_action_rate_fields),
+            *sorted(policy_action_mean_fields),
         ):
             value = actions[name]
             if active_steps == 0:
                 if value is not None:
                     raise C0ProtocolError(f"agent {agent_id} empty action stats must be null")
-            elif not 0.0 <= _finite(value, context=f"agent {agent_id}.actions.{name}") <= 1.0 and name != "steer_mean":
+            elif (
+                name not in {"steer_mean", *policy_action_mean_fields}
+                and not 0.0
+                <= _finite(value, context=f"agent {agent_id}.actions.{name}")
+                <= 1.0
+            ):
                 raise C0ProtocolError(f"agent {agent_id} action statistic outside [0,1]")
-            elif active_steps and name == "steer_mean" and not -1.0 <= float(value) <= 1.0:
-                raise C0ProtocolError(f"agent {agent_id} steer mean outside [-1,1]")
+            elif (
+                active_steps
+                and name in {"steer_mean", *policy_action_mean_fields}
+                and not -1.0
+                <= _finite(value, context=f"agent {agent_id}.actions.{name}")
+                <= 1.0
+            ):
+                raise C0ProtocolError(
+                    f"agent {agent_id} signed action mean outside [-1,1]"
+                )
         if active_steps:
             def rate(name: str) -> float:
                 return float(actions[f"{name}_rate"])
@@ -816,7 +900,7 @@ def validate_episode_record(
                 )
             if rate("longitudinal_conflict") != 0.0:
                 raise C0ProtocolError(
-                    f"agent {agent_id} violates winner-take-all longitudinal control"
+                    f"agent {agent_id} violates mutually exclusive longitudinal control"
                 )
         returns.append(episode_return)
         active_total += active_steps
@@ -867,6 +951,16 @@ def build_summary(
 ) -> Dict[str, Any]:
     if not records:
         raise C0ProtocolError("cannot summarize an empty C0 evaluation")
+    record_versions = {record.get("record_version") for record in records}
+    if len(record_versions) != 1:
+        raise C0ProtocolError("cannot mix legacy and current C0 episode records")
+    record_version = next(iter(record_versions))
+    if record_version == LEGACY_C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = LEGACY_C0_PROTOCOL_VERSION
+    elif record_version == C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = C0_PROTOCOL_VERSION
+    else:
+        raise C0ProtocolError("cannot summarize an unknown C0 episode version")
     overall = _aggregate_group(records)
     by_family: Dict[str, Any] = {}
     for family in sorted({str(record["scenario_family"]) for record in records}):
@@ -891,7 +985,7 @@ def build_summary(
         }
     return {
         "summary_version": C0_SUMMARY_VERSION,
-        "eval_protocol_version": C0_PROTOCOL_VERSION,
+        "eval_protocol_version": eval_protocol_version,
         "eval_id": eval_id,
         "profile": profile,
         "checkpoint_sha256": checkpoint_sha256,

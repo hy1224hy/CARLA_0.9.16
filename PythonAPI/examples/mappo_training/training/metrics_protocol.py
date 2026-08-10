@@ -10,8 +10,10 @@ from __future__ import annotations
 import math
 from typing import Dict, Iterable, Mapping, Sequence, Tuple
 
+from training.action_protocol import action_protocol_spec
 
-METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v3"
+LEGACY_METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v3"
+METRICS_PROTOCOL_VERSION = "mappo_metrics_action_v2_p0_00g_v4"
 EPISODE_RECORD_VERSION = "mappo_episode_record_v1"
 REWARD_AUDIT_ATOL = 1e-6
 ACTION_ZERO_THRESHOLD = 0.01
@@ -29,6 +31,10 @@ ACTION_RATE_NAMES = (
     "brake_mode",
     "coast_mode",
     "longitudinal_conflict",
+)
+POLICY_ACTION_RATE_NAMES = (
+    "signed_longitudinal_deadzone",
+    "signed_longitudinal_saturation",
 )
 
 REWARD_COMPONENTS: Dict[str, Tuple[str, ...]] = {
@@ -409,6 +415,7 @@ def reward_schema_document(reward_version: str) -> Dict[str, object]:
     sparse = SPARSE_REWARD_COMPONENTS[reward_version]
     return {
         "metrics_protocol_version": METRICS_PROTOCOL_VERSION,
+        "action_protocol": action_protocol_spec(),
         "reward_version": reward_version,
         "reward_components": {
             name: {

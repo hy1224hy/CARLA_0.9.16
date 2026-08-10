@@ -29,6 +29,9 @@ PROJECT_DIR = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = (
     PROJECT_DIR / "configs" / "base_mappo" / "p0_base_pilot_v1.json"
 )
+R1_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "base_mappo" / "p0_base_action_v2.json"
+)
 
 
 def _formal_args(save_dir: Path, *, updates: int = 5):
@@ -77,6 +80,18 @@ class ExperimentContractValidationTests(unittest.TestCase):
             payload["evaluation_contract"]["milestone_updates"],
             payload["segment_stop_updates"],
         )
+
+    def test_r1_contract_is_fresh_and_freezes_action_v2_without_reward_drift(self):
+        record = load_experiment_contract(R1_CONTRACT_PATH, project_dir=PROJECT_DIR)
+        payload = record["payload"]
+        self.assertEqual(payload["contract_id"], "P0_BASE_MAPPO_TOWN02_ACTION_V2")
+        self.assertEqual(payload["source_mode"], "fresh")
+        self.assertEqual(payload["trainer_args"], self.payload["trainer_args"])
+        self.assertEqual(
+            payload["evaluation_contract"]["protocol_version"],
+            "p0_base_c0_eval_v2",
+        )
+        self.assertIn("training/action_protocol.py", payload["critical_source_paths"])
 
     def test_unknown_fields_are_rejected(self):
         payload = copy.deepcopy(self.payload)

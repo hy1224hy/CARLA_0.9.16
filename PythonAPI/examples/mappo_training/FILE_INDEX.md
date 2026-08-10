@@ -124,6 +124,8 @@
 | **logs/<RunID>/experiment_manifest.json** | P0-BASE Run 的 PREPARED/RUNNING/SEGMENT_COMPLETED/INTERRUPTED/ERROR 状态 |
 | **configs/base_mappo/p0_base_pilot_v1.json** | seed 42 基础 MAPPO pilot 的机器可读正式参数真值与登记停点 |
 | **configs/evaluation/p0_base_c0_eval_v1.json** | 基础 C0 的环境、checkpoint 资格、smoke/gate/validation cases、终局和输出机器真值 |
+| **configs/base_mappo/p0_base_action_v2.json** | R1 二维动作的 fresh 对照契约；冻结 reward/Critic 不漂移，但 R2–R4 完成前不授权正式 pilot |
+| **configs/evaluation/p0_base_c0_eval_v2.json** | R1 二维 checkpoint、确定性动作和策略/环境双层 action 证据的 C0 v2 真值 |
 | **configs/evaluation/p0_base_go_hold_v1.json** | P0-BASE-04 证据、数值健康、分段能力、批量放行和 held-out 接受门槛的机器真值 |
 | **data/evaluation_scenarios/base_c0_validation_v1/** | 与训练场景按内容 SHA 隔离的 8 个 Town02 held-out 基础策略验证场景 |
 | **experiments/base_mappo_registry.csv** | 每个正式基础 Run 一行的跨 Run 机器可读索引 |

@@ -39,14 +39,19 @@ from training.checkpoint_protocol import (
 from training.metrics_protocol import (
     ACTION_RATE_NAMES,
     METRICS_PROTOCOL_VERSION,
+    POLICY_ACTION_RATE_NAMES,
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
     env_action_diagnostics,
 )
+from training.action_protocol import (
+    action_protocol_spec,
+    policy_action_diagnostics,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-CONTRACT_PATH = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v1.json"
+CONTRACT_PATH = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v2.json"
 
 
 def _checkpoint_payload(contract, *, formal=True):
@@ -63,10 +68,14 @@ def _checkpoint_payload(contract, *, formal=True):
         },
         "checkpoint_kind": "periodic" if formal else "latest",
         "update": 5,
-        "actors": {0: Actor().state_dict(), 1: Actor().state_dict()},
+        "actors": {
+            0: Actor(act_dim=2).state_dict(),
+            1: Actor(act_dim=2).state_dict(),
+        },
+        "action_spec": action_protocol_spec(),
         "model_spec": {
             "obs_dim": 19,
-            "action_dim": 3,
+            "action_dim": 2,
             "state_dim": 38,
             "num_agents": 2,
             "agent_ids": [0, 1],
@@ -106,6 +115,8 @@ def _agent_record(*, return_value=-0.05):
     components = {name: 0.0 for name in REWARD_COMPONENTS["v2"]}
     components["step"] = return_value
     action_rates = env_action_diagnostics([0.5, 0.0, 0.0], context="fixture")
+    policy_action = [0.525, 0.0]
+    policy_rates = policy_action_diagnostics(policy_action)
     return {
         "episode_return": return_value,
         "active_decision_steps": 1,
@@ -123,6 +134,12 @@ def _agent_record(*, return_value=-0.05):
             "steer_mean": 0.0,
             "brake_mean": 0.0,
             **{f"{name}_rate": action_rates[name] for name in ACTION_RATE_NAMES},
+            "policy_signed_longitudinal_mean": policy_action[0],
+            "policy_steer_mean": policy_action[1],
+            **{
+                f"{name}_rate": policy_rates[name]
+                for name in POLICY_ACTION_RATE_NAMES
+            },
         },
     }
 
@@ -288,7 +305,7 @@ class C0EvidenceTests(unittest.TestCase):
                 expected_case=self.case,
             )
 
-    def test_action_rate_evidence_enforces_decomposition_and_wta(self):
+    def test_action_rate_evidence_enforces_decomposition_and_exclusivity(self):
         record = _episode_record(self.case, eval_id="eval", checkpoint_sha="c" * 64)
 
         broken_boundary = copy.deepcopy(record)
@@ -306,7 +323,7 @@ class C0EvidenceTests(unittest.TestCase):
         action_stats = conflict["agents"]["0"]["actions"]
         action_stats["throttle_mode_rate"] = 0.0
         action_stats["longitudinal_conflict_rate"] = 1.0
-        with self.assertRaisesRegex(C0ProtocolError, "winner-take-all"):
+        with self.assertRaisesRegex(C0ProtocolError, "mutually exclusive"):
             validate_episode_record(
                 conflict,
                 eval_id="eval",
@@ -327,7 +344,7 @@ class C0EvidenceTests(unittest.TestCase):
         self.assertEqual(result["mismatches"][0]["case_id"], self.case["case_id"])
 
     def test_simulator_runner_uses_active_agents_and_deterministic_actor_mean(self):
-        actors = {0: Actor(), 1: Actor()}
+        actors = {0: Actor(act_dim=2), 1: Actor(act_dim=2)}
         first = _run_case(
             env=_OneStepTimeoutEnv(),
             actors=actors,

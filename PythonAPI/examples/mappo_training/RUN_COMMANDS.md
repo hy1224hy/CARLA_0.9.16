@@ -490,44 +490,24 @@ CarlaUE4.exe
 
 # 3. 运行 P0-00G smoke（命令见“当前有效入口”）
 
-# 4. 已完成 P0-BASE-00/01/02/04：冻结源码、训练契约、C0 evaluator 和 GO/HOLD 数值裁决
+# 4. R0/WTA v1 已在 update 10 诊断封存，禁止继续 resume/pretrained
 
-# 5. 只用冻结契约运行 seed 42 的第一个 5-update 分段
-$stamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$runId = "P0_BASE_MAPPO_Town02_s42_$stamp"
-..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
-  --experiment-contract configs/base_mappo/p0_base_pilot_v1.json `
-  --updates 5 `
-  --run-id $runId `
-  --save-dir "logs/$runId"
+# 5. R1 二维 signed-longitudinal 动作协议已完成，但当前仍为 HOLD：
+#    必须依次完成 R2 奖励预算、R3 Critic 稳定化、R4 GO/HOLD v2 和真实 smoke。
+#    在 TODO 明确解除 HOLD 前，不启动 CARLA 训练，不执行下方历史正式命令。
 
-# 6. 执行 strict validator、两次独立 C0 gate 和 P0-BASE-04 judge；只有裁决允许才 resume 到下一停点
-# 7. 只有 update 100 PILOT_GO 后才进入多 seed；P0-BASE-06 再从 held-out validation 生成 best_base_valid.pt
+# 6. 最终修复版将使用新的最终契约、新 RunID 和随机初始化 fresh pilot；
+#    configs/base_mappo/p0_base_action_v2.json 只冻结 R1 动作对照，不代表 R2-R4 已验收。
 ```
 
-#### 基础策略正式契约 checkpoint/resume（P0-00F + P0-BASE-01）
+#### 历史 v1 checkpoint/resume（封存，不得执行）
 
 ```powershell
-# 同一正式 Run 严格恢复到下一个登记停点；契约 SHA、配置、seed、LR horizon 均校验
-..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
-  --experiment-contract configs/base_mappo/p0_base_pilot_v1.json `
-  --updates 10 `
-  --run-id $runId `
-  --save-dir "logs/$runId" `
-  --resume latest
-
-# 以下 pretrained 语义只供新契约设计或历史诊断；P0_BASE_MAPPO_TOWN02_PILOT_V1 明确禁止 pretrained
-
-# 从已有权重开启新 Run；不会继承 optimizer/update/课程/RNG
-..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
-  --pretrained-checkpoint logs/<source-run>/periodic/ckpt_update_000050.pt `
-  --run-id <new-run-id> `
-  --save-dir logs/<new-run-id> `
-  --updates 100 `
-  --seed 43
+# 不提供可复制执行的 resume/pretrained 命令，防止误续 R0。
+# 当前代码会以 schema/action_spec/model_spec 严格拒绝 WTA v1 权重。
 ```
 
-`--resume latest` 不存在、哈希损坏、Git/协议/训练配置/实验契约不一致时会直接失败，不会从零启动或部分加载。正式 CLI 只允许 endpoint/device/登记停点/RunID/目录/resume，科学参数覆盖会 fail-fast。训练期不再产生 `best.pt`；后续仅由独立 C0/C1 验证从 immutable periodic checkpoint 生成 `best_base_valid.pt`。正式参数和证据链见 `docs/P0-BASE-01_基础策略正式实验契约.md`，checkpoint 文件结构见 `docs/MAPPO_checkpoint与恢复训练协议.md`。
+当前 schema v3 checkpoint 会绑定二维 `action_spec`；`--resume latest` 不存在、哈希损坏、Git/动作/指标/训练配置/实验契约不一致时直接失败，不会从零启动或部分加载。训练期不产生 `best.pt`；未来仅由独立验证从 immutable periodic checkpoint 生成 `best_base_valid.pt`。R1 原理见 `docs/R1_二维纵向动作协议_论文正文与实验设计.md`，checkpoint 文件结构见 `docs/MAPPO_checkpoint与恢复训练协议.md`。
 
 ### 当前流程 2：单蓝车对抗
 
