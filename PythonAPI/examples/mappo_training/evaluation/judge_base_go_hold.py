@@ -21,6 +21,7 @@ from evaluation.base_go_hold_protocol import (
     evaluate_milestone_decision,
     evaluate_training_health,
     evaluate_validation_decision,
+    go_hold_report_version,
     load_go_hold_contract,
     summarize_c0_gate,
 )
@@ -220,6 +221,63 @@ def _decision_id(output_dir: Path, *, mode: str, expected_update: int) -> str:
     return output_dir.name
 
 
+def _load_previous_milestone_evidence(
+    path: Path | None,
+    *,
+    contract_record: Mapping[str, Any],
+    contract: Mapping[str, Any],
+    run_id: str,
+    current_update: int,
+) -> Dict[str, Any] | None:
+    if path is None:
+        return None
+    milestones = [int(rule["update"]) for rule in contract["milestone_rules"]]
+    try:
+        current_index = milestones.index(current_update)
+    except ValueError as error:
+        raise GoHoldProtocolError("current update is not a registered milestone") from error
+    if current_index == 0:
+        raise GoHoldProtocolError("the first milestone cannot have previous evidence")
+    expected_previous = milestones[current_index - 1]
+    resolved = path.expanduser().resolve()
+    report = load_strict_json(resolved)
+    if not isinstance(report, Mapping):
+        raise GoHoldProtocolError("previous decision report must be an object")
+    if report.get("report_version") != go_hold_report_version(contract):
+        raise GoHoldProtocolError("previous decision report protocol mismatch")
+    if report.get("mode") != "milestone" or report.get("expected_update") != expected_previous:
+        raise GoHoldProtocolError(
+            f"previous decision must be the adjacent update {expected_previous} milestone"
+        )
+    report_contract = report.get("contract")
+    if (
+        not isinstance(report_contract, Mapping)
+        or report_contract.get("id") != contract["contract_id"]
+        or report_contract.get("sha256") != contract_record["sha256"]
+    ):
+        raise GoHoldProtocolError("previous decision contract binding mismatch")
+    training = report.get("training")
+    if not isinstance(training, Mapping) or training.get("run_id") != run_id:
+        raise GoHoldProtocolError("previous decision belongs to a different training run")
+    c0 = report.get("c0")
+    result = report.get("result")
+    if (
+        not isinstance(c0, Mapping)
+        or not isinstance(c0.get("summary"), Mapping)
+        or not isinstance(result, Mapping)
+        or not isinstance(result.get("behavior_assessment"), Mapping)
+    ):
+        raise GoHoldProtocolError("previous decision lacks R4 behavior evidence")
+    return {
+        "path": str(resolved),
+        "sha256": sha256_file(resolved),
+        "decision_id": report.get("decision_id"),
+        "expected_update": expected_previous,
+        "decision": result.get("decision"),
+        "c0_summary": c0["summary"],
+    }
+
+
 def judge(
     *,
     mode: str,
@@ -230,6 +288,7 @@ def judge(
     c0_repeat_output_dir: Path,
     output_dir: Path,
     expected_update: int,
+    previous_decision_report: Path | None = None,
 ) -> Dict[str, Any]:
     if mode not in {"milestone", "validation"}:
         raise GoHoldProtocolError(f"unsupported decision mode={mode!r}")
@@ -283,6 +342,17 @@ def judge(
     )
     metric_records = read_jsonl(run_dir / "metrics.jsonl")
     training_health = evaluate_training_health(metric_records, contract=contract)
+    previous_evidence = (
+        _load_previous_milestone_evidence(
+            previous_decision_report,
+            contract_record=contract_record,
+            contract=contract,
+            run_id=training["run_id"],
+            current_update=expected_update,
+        )
+        if mode == "milestone"
+        else None
+    )
 
     profile = (
         contract["bindings"]["milestone_profile"]
@@ -320,6 +390,9 @@ def judge(
             c0_summary=c0_summary,
             repeatability_pass=repeatability_pass,
             contract=contract,
+            previous_c0_summary=(
+                previous_evidence["c0_summary"] if previous_evidence else None
+            ),
         )
     else:
         if expected_update != 100:
@@ -332,7 +405,7 @@ def judge(
         )
 
     report = {
-        "report_version": GO_HOLD_REPORT_VERSION,
+        "report_version": go_hold_report_version(contract),
         "created_at": utc_now_iso(),
         "decision_id": decision_id,
         "mode": mode,
@@ -368,6 +441,15 @@ def judge(
             "summary": c0_summary,
         },
         "preregistration": preregistration,
+        "previous_milestone_evidence": (
+            {
+                key: value
+                for key, value in previous_evidence.items()
+                if key != "c0_summary"
+            }
+            if previous_evidence
+            else None
+        ),
         "result": result,
     }
     output_dir.mkdir(parents=True, exist_ok=False)
@@ -387,6 +469,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--c0-repeat-output-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--expected-update", type=int, required=True)
+    parser.add_argument(
+        "--previous-decision-report",
+        type=Path,
+        help="Adjacent prior milestone GO/HOLD v2 report used for persistence",
+    )
     return parser
 
 
@@ -402,6 +489,7 @@ def main() -> None:
             c0_repeat_output_dir=args.c0_repeat_output_dir,
             output_dir=args.output_dir,
             expected_update=args.expected_update,
+            previous_decision_report=args.previous_decision_report,
         )
     except Exception as error:
         print(

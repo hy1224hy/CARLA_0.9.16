@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Mapping, Sequence
 
 from evaluation.base_c0_protocol import (
+    C0_EPISODE_RECORD_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
     load_c0_contract,
 )
@@ -23,14 +24,22 @@ from training.experiment_contract import (
     load_experiment_contract,
     verify_critical_sources_clean,
 )
-from training.metrics_protocol import LEGACY_METRICS_PROTOCOL_VERSION
+from training.metrics_protocol import (
+    LEGACY_METRICS_PROTOCOL_VERSION,
+    METRICS_PROTOCOL_VERSION,
+)
 from training.checkpoint_protocol import sha256_file
 
 
-GO_HOLD_PROTOCOL_VERSION = "p0_base_go_hold_v1"
-GO_HOLD_CONTRACT_ID = "P0_BASE_GO_HOLD_TOWN02_V1"
-GO_HOLD_REPORT_VERSION = "p0_base_go_hold_decision_v1"
-GO_HOLD_CONTRACT_RELATIVE_PATH = "configs/evaluation/p0_base_go_hold_v1.json"
+LEGACY_GO_HOLD_PROTOCOL_VERSION = "p0_base_go_hold_v1"
+LEGACY_GO_HOLD_CONTRACT_ID = "P0_BASE_GO_HOLD_TOWN02_V1"
+LEGACY_GO_HOLD_REPORT_VERSION = "p0_base_go_hold_decision_v1"
+LEGACY_GO_HOLD_CONTRACT_RELATIVE_PATH = "configs/evaluation/p0_base_go_hold_v1.json"
+
+GO_HOLD_PROTOCOL_VERSION = "p0_base_go_hold_v2"
+GO_HOLD_CONTRACT_ID = "P0_BASE_GO_HOLD_TOWN02_R4_V2"
+GO_HOLD_REPORT_VERSION = "p0_base_go_hold_decision_v2"
+GO_HOLD_CONTRACT_RELATIVE_PATH = "configs/evaluation/p0_base_go_hold_v2.json"
 MILESTONE_DECISIONS = {
     "CONTINUE",
     "CONTINUE_WITH_WARNING",
@@ -104,7 +113,7 @@ def _inside(project_dir: Path, relative: Any, *, context: str) -> Path:
     return candidate
 
 
-def validate_go_hold_contract(payload: Any, *, project_dir: Path) -> None:
+def _validate_go_hold_contract_v1(payload: Any, *, project_dir: Path) -> None:
     top = {
         "protocol_version",
         "contract_id",
@@ -121,9 +130,9 @@ def validate_go_hold_contract(payload: Any, *, project_dir: Path) -> None:
         "limitations",
     }
     _exact(payload, top, context="GO/HOLD contract")
-    if payload["protocol_version"] != GO_HOLD_PROTOCOL_VERSION:
+    if payload["protocol_version"] != LEGACY_GO_HOLD_PROTOCOL_VERSION:
         raise GoHoldProtocolError("GO/HOLD protocol_version mismatch")
-    if payload["contract_id"] != GO_HOLD_CONTRACT_ID or payload["status"] != "frozen":
+    if payload["contract_id"] != LEGACY_GO_HOLD_CONTRACT_ID or payload["status"] != "frozen":
         raise GoHoldProtocolError("GO/HOLD contract identity/status mismatch")
     if not isinstance(payload["purpose"], str) or not payload["purpose"].strip():
         raise GoHoldProtocolError("purpose must be non-empty")
@@ -377,7 +386,7 @@ def validate_go_hold_contract(payload: Any, *, project_dir: Path) -> None:
     expected_paths = [
         "evaluation/base_go_hold_protocol.py",
         "evaluation/judge_base_go_hold.py",
-        GO_HOLD_CONTRACT_RELATIVE_PATH,
+        LEGACY_GO_HOLD_CONTRACT_RELATIVE_PATH,
     ]
     if paths != expected_paths:
         raise GoHoldProtocolError("critical_source_paths have drifted")
@@ -387,6 +396,414 @@ def validate_go_hold_contract(payload: Any, *, project_dir: Path) -> None:
             raise GoHoldProtocolError(f"critical source file not found: {path}")
     if not isinstance(payload["limitations"], list) or len(payload["limitations"]) < 4:
         raise GoHoldProtocolError("limitations must state the registered inference boundaries")
+
+
+def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
+    """Validate the frozen R4 contract without accepting silent defaults."""
+    top = {
+        "protocol_version",
+        "contract_id",
+        "status",
+        "purpose",
+        "bindings",
+        "evidence_rules",
+        "training_health",
+        "behavioral_health",
+        "milestone_rules",
+        "validation_acceptance",
+        "decision_policy",
+        "outputs",
+        "critical_source_paths",
+        "limitations",
+    }
+    _exact(payload, top, context="GO/HOLD v2 contract")
+    if (
+        payload["protocol_version"] != GO_HOLD_PROTOCOL_VERSION
+        or payload["contract_id"] != GO_HOLD_CONTRACT_ID
+        or payload["status"] != "frozen"
+    ):
+        raise GoHoldProtocolError("GO/HOLD v2 identity/status mismatch")
+    if not isinstance(payload["purpose"], str) or not payload["purpose"].strip():
+        raise GoHoldProtocolError("purpose must be non-empty")
+
+    bindings = _exact(
+        payload["bindings"],
+        {
+            "training_contract_path",
+            "training_contract_id",
+            "training_contract_sha256",
+            "c0_contract_path",
+            "c0_contract_id",
+            "c0_contract_sha256",
+            "metrics_protocol_version",
+            "c0_episode_record_version",
+            "checkpoint_schema_version",
+            "pilot_seed",
+            "milestone_profile",
+            "validation_profile",
+            "required_repeats",
+            "agent_ids",
+        },
+        context="bindings",
+    )
+    if bindings["metrics_protocol_version"] != METRICS_PROTOCOL_VERSION:
+        raise GoHoldProtocolError("GO/HOLD v2 must bind the active metrics protocol")
+    if bindings["c0_episode_record_version"] != C0_EPISODE_RECORD_VERSION:
+        raise GoHoldProtocolError("GO/HOLD v2 must bind the active C0 episode protocol")
+    if bindings["checkpoint_schema_version"] != 4:
+        raise GoHoldProtocolError("GO/HOLD v2 requires checkpoint schema v4")
+    if bindings["pilot_seed"] != 42 or bindings["agent_ids"] != [0, 1]:
+        raise GoHoldProtocolError("pilot seed/agent IDs differ from the R3 contract")
+    if (
+        bindings["milestone_profile"] != "gate"
+        or bindings["validation_profile"] != "validation"
+        or bindings["required_repeats"] != 2
+    ):
+        raise GoHoldProtocolError("C0 v2 profile/repeat bindings are invalid")
+
+    training_path = _inside(
+        project_dir, bindings["training_contract_path"], context="training contract path"
+    )
+    c0_path = _inside(project_dir, bindings["c0_contract_path"], context="C0 contract path")
+    training = load_experiment_contract(training_path, project_dir=project_dir)
+    c0 = load_c0_contract(c0_path, project_dir=project_dir)
+    if (
+        training["payload"]["contract_id"] != bindings["training_contract_id"]
+        or training["sha256"] != bindings["training_contract_sha256"]
+    ):
+        raise GoHoldProtocolError("bound R3 training contract ID/SHA256 mismatch")
+    if (
+        c0["payload"]["contract_id"] != bindings["c0_contract_id"]
+        or c0["sha256"] != bindings["c0_contract_sha256"]
+    ):
+        raise GoHoldProtocolError("bound C0 v4 contract ID/SHA256 mismatch")
+
+    evidence = _exact(
+        payload["evidence_rules"],
+        {
+            "expected_episodes_per_update",
+            "reward_conservation_abs_error_max",
+            "preupdate_ratio_abs_error_max_exclusive",
+            "missing_required_metric_count_max",
+            "nonfinite_metric_count_max",
+            "longitudinal_conflict_rate_max",
+            "allow_skipped_ppo_updates",
+            "require_segment_completed",
+            "require_formal_periodic_checkpoint",
+            "require_c0_validator_pass",
+            "require_repeatability_pass",
+            "max_other_outcome_count",
+        },
+        context="evidence_rules",
+    )
+    if evidence["expected_episodes_per_update"] != 16:
+        raise GoHoldProtocolError("formal pilot requires 16 episodes per update")
+    for name in (
+        "reward_conservation_abs_error_max",
+        "preupdate_ratio_abs_error_max_exclusive",
+    ):
+        if _finite(evidence[name], context=f"evidence_rules.{name}") != 1e-6:
+            raise GoHoldProtocolError(f"{name} must remain frozen at 1e-6")
+    for name in (
+        "missing_required_metric_count_max",
+        "nonfinite_metric_count_max",
+        "max_other_outcome_count",
+    ):
+        if evidence[name] != 0:
+            raise GoHoldProtocolError(f"evidence_rules.{name} must be zero")
+    if _finite(evidence["longitudinal_conflict_rate_max"], context="conflict max") != 0.0:
+        raise GoHoldProtocolError("longitudinal conflict must remain zero")
+    required_flags = {
+        "allow_skipped_ppo_updates": False,
+        "require_segment_completed": True,
+        "require_formal_periodic_checkpoint": True,
+        "require_c0_validator_pass": True,
+        "require_repeatability_pass": True,
+    }
+    for name, expected in required_flags.items():
+        if evidence[name] is not expected:
+            raise GoHoldProtocolError(f"evidence_rules.{name} must be {expected}")
+
+    health = _exact(
+        payload["training_health"],
+        {
+            "approx_kl",
+            "clip_fraction",
+            "gradient_clip_activation",
+            "critic_explained_variance",
+            "action_saturation",
+            "actor_log_std",
+            "critic_degeneracy",
+            "value_normalizer",
+        },
+        context="training_health",
+    )
+    legacy_health_fields = {
+        "approx_kl": {
+            "warning_above",
+            "hold_once_above",
+            "hold_consecutive_above",
+            "hold_consecutive_updates",
+        },
+        "clip_fraction": {
+            "warning_above",
+            "hold_consecutive_above",
+            "hold_consecutive_updates",
+        },
+        "gradient_clip_activation": {"warning_above", "warning_consecutive_updates"},
+        "critic_explained_variance": {"warning_below", "warning_consecutive_updates"},
+        "action_saturation": {"warning_above", "warning_consecutive_updates", "channels"},
+        "actor_log_std": {
+            "warning_at_or_below",
+            "warning_above",
+            "warning_consecutive_updates",
+        },
+    }
+    for name, fields in legacy_health_fields.items():
+        section = _exact(health[name], fields, context=f"training_health.{name}")
+        for key, value in section.items():
+            if key == "channels":
+                if value != ["throttle", "steer", "brake"]:
+                    raise GoHoldProtocolError("action saturation channels changed")
+            elif key.endswith("updates"):
+                _positive_int(value, context=f"training_health.{name}.{key}")
+            else:
+                _finite(value, context=f"training_health.{name}.{key}")
+    critic = _exact(
+        health["critic_degeneracy"],
+        {
+            "assessment_start_update",
+            "hold_start_update",
+            "hold_consecutive_updates",
+            "explained_variance_at_or_below",
+            "prediction_target_std_ratio_at_or_below",
+            "relative_mae_at_or_above",
+            "grad_clip_activation_at_or_above",
+            "target_std_floor",
+            "warning_signal_count_at_least",
+            "hold_requires_all_signals",
+        },
+        context="training_health.critic_degeneracy",
+    )
+    for name in (
+        "assessment_start_update",
+        "hold_start_update",
+        "hold_consecutive_updates",
+        "warning_signal_count_at_least",
+    ):
+        _positive_int(critic[name], context=f"critic_degeneracy.{name}")
+    for name in (
+        "explained_variance_at_or_below",
+        "prediction_target_std_ratio_at_or_below",
+        "relative_mae_at_or_above",
+        "grad_clip_activation_at_or_above",
+        "target_std_floor",
+    ):
+        _finite(critic[name], context=f"critic_degeneracy.{name}")
+    if critic["assessment_start_update"] != 5 or critic["hold_start_update"] != 10:
+        raise GoHoldProtocolError("critic assessment/HOLD start updates drifted")
+    if critic["hold_consecutive_updates"] != 5 or critic["hold_requires_all_signals"] is not True:
+        raise GoHoldProtocolError("critic degeneration must use a five-update conjunction")
+    if critic["warning_signal_count_at_least"] != 2:
+        raise GoHoldProtocolError("critic warning signal count drifted")
+    normalizer = _exact(
+        health["value_normalizer"],
+        {
+            "update_count_must_equal_training_update",
+            "std_at_or_above",
+            "normalized_target_std_warning_below",
+            "normalized_target_std_warning_above",
+        },
+        context="training_health.value_normalizer",
+    )
+    if normalizer["update_count_must_equal_training_update"] is not True:
+        raise GoHoldProtocolError("ValueNorm update count invariant cannot be disabled")
+    for name in (
+        "std_at_or_above",
+        "normalized_target_std_warning_below",
+        "normalized_target_std_warning_above",
+    ):
+        _finite(normalizer[name], context=f"value_normalizer.{name}")
+    if normalizer["normalized_target_std_warning_below"] >= normalizer["normalized_target_std_warning_above"]:
+        raise GoHoldProtocolError("ValueNorm target-std warning bounds are invalid")
+
+    behavior = _exact(
+        payload["behavioral_health"],
+        {
+            "assessment_milestones",
+            "warning_from_update",
+            "hold_from_update",
+            "required_consecutive_milestones",
+            "all_agents_required",
+            "zero_success_required",
+            "deterministic_brake_mode_rate_at_or_above",
+            "mean_speed_mps_at_or_below",
+            "mean_progress_m_per_episode_at_or_below",
+            "timeout_rate_at_or_above",
+            "previous_milestone_report_required_for_hold",
+        },
+        context="behavioral_health",
+    )
+    expected_updates = training["payload"]["segment_stop_updates"]
+    if behavior["assessment_milestones"] != expected_updates:
+        raise GoHoldProtocolError("behavior assessment milestones differ from training")
+    if (
+        behavior["warning_from_update"] != 5
+        or behavior["hold_from_update"] != 10
+        or behavior["required_consecutive_milestones"] != 2
+    ):
+        raise GoHoldProtocolError("early-collapse grace/persistence rules drifted")
+    for name in (
+        "all_agents_required",
+        "zero_success_required",
+        "previous_milestone_report_required_for_hold",
+    ):
+        if behavior[name] is not True:
+            raise GoHoldProtocolError(f"behavioral_health.{name} cannot be disabled")
+    for name in (
+        "deterministic_brake_mode_rate_at_or_above",
+        "mean_speed_mps_at_or_below",
+        "mean_progress_m_per_episode_at_or_below",
+        "timeout_rate_at_or_above",
+    ):
+        _finite(behavior[name], context=f"behavioral_health.{name}")
+
+    milestones = payload["milestone_rules"]
+    if not isinstance(milestones, list) or len(milestones) != len(expected_updates):
+        raise GoHoldProtocolError("exactly eight milestone rules are required")
+    if [rule.get("update") for rule in milestones if isinstance(rule, Mapping)] != expected_updates:
+        raise GoHoldProtocolError("milestone updates differ from the R3 training contract")
+    common = {"update", "rule_type", "pass_decision", "fail_decision"}
+    extras_by_type = {
+        "health_only": {"warn_if_zero_success"},
+        "minimum_capability": {"min_success_count", "max_collision_count"},
+        "provisional_candidate": {"min_success_count", "max_collision_count", "max_timeout_count"},
+        "pilot_go": {
+            "min_success_count",
+            "max_collision_count",
+            "max_timeout_count",
+            "min_success_per_family",
+            "max_lane_invasion_episode_count",
+        },
+    }
+    for rule in milestones:
+        rule_type = rule.get("rule_type") if isinstance(rule, Mapping) else None
+        extras = extras_by_type.get(str(rule_type))
+        if extras is None:
+            raise GoHoldProtocolError(f"unknown milestone rule_type={rule_type!r}")
+        _exact(rule, common | extras, context=f"milestone update {rule.get('update')}")
+        if rule["pass_decision"] not in MILESTONE_DECISIONS or rule["fail_decision"] not in MILESTONE_DECISIONS:
+            raise GoHoldProtocolError("invalid milestone decision name")
+        for name in extras:
+            value = rule[name]
+            if name == "warn_if_zero_success":
+                if not isinstance(value, bool):
+                    raise GoHoldProtocolError("warn_if_zero_success must be boolean")
+            elif isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise GoHoldProtocolError(f"milestone {rule['update']} {name} is invalid")
+
+    validation = _exact(
+        payload["validation_acceptance"],
+        {
+            "release_stage",
+            "case_count",
+            "min_success_count",
+            "max_collision_count",
+            "max_timeout_count",
+            "max_other_count",
+            "min_success_per_family",
+            "min_success_per_scenario",
+            "max_lane_invasion_episode_count",
+            "pass_decision",
+            "fail_decision",
+        },
+        context="validation_acceptance",
+    )
+    if validation["release_stage"] != "P0-BASE-06":
+        raise GoHoldProtocolError("held-out acceptance release stage drifted")
+    for name in (
+        "case_count",
+        "min_success_count",
+        "max_collision_count",
+        "max_timeout_count",
+        "max_other_count",
+        "min_success_per_family",
+        "min_success_per_scenario",
+        "max_lane_invasion_episode_count",
+    ):
+        if isinstance(validation[name], bool) or not isinstance(validation[name], int) or validation[name] < 0:
+            raise GoHoldProtocolError(f"validation_acceptance.{name} is invalid")
+    if validation["pass_decision"] != "VALIDATION_ACCEPT" or validation["fail_decision"] != "VALIDATION_REJECT":
+        raise GoHoldProtocolError("validation decision names drifted")
+
+    policy = _exact(
+        payload["decision_policy"],
+        {
+            "returns_are_selection_criteria",
+            "gate_repeat_is_additional_sample",
+            "warnings_block_pilot_go",
+            "update_80_can_release_multiseed",
+            "only_update_100_pilot_go_releases_multiseed",
+            "threshold_override_allowed",
+            "threshold_commit_must_be_ancestor_of_run_origin",
+            "single_early_zero_success_can_hold",
+            "hold_preserves_checkpoint_for_diagnosis",
+        },
+        context="decision_policy",
+    )
+    expected_policy = {
+        "returns_are_selection_criteria": False,
+        "gate_repeat_is_additional_sample": False,
+        "warnings_block_pilot_go": False,
+        "update_80_can_release_multiseed": False,
+        "only_update_100_pilot_go_releases_multiseed": True,
+        "threshold_override_allowed": False,
+        "threshold_commit_must_be_ancestor_of_run_origin": True,
+        "single_early_zero_success_can_hold": False,
+        "hold_preserves_checkpoint_for_diagnosis": True,
+    }
+    if dict(policy) != expected_policy:
+        raise GoHoldProtocolError("GO/HOLD v2 decision policy has drifted")
+    outputs = _exact(payload["outputs"], {"decision_root", "decision_report"}, context="outputs")
+    if dict(outputs) != {
+        "decision_root": "decisions/base_mappo",
+        "decision_report": "go_hold_decision.json",
+    }:
+        raise GoHoldProtocolError("decision output paths have drifted")
+    _inside(project_dir, outputs["decision_root"], context="decision root")
+    expected_paths = [
+        "evaluation/base_go_hold_protocol.py",
+        "evaluation/judge_base_go_hold.py",
+        GO_HOLD_CONTRACT_RELATIVE_PATH,
+    ]
+    if payload["critical_source_paths"] != expected_paths:
+        raise GoHoldProtocolError("GO/HOLD v2 critical_source_paths have drifted")
+    for index, relative in enumerate(expected_paths):
+        if not _inside(project_dir, relative, context=f"critical_source_paths[{index}]").is_file():
+            raise GoHoldProtocolError(f"critical source file not found: {relative}")
+    if not isinstance(payload["limitations"], list) or len(payload["limitations"]) < 5:
+        raise GoHoldProtocolError("v2 limitations must state the inference boundaries")
+
+
+def validate_go_hold_contract(payload: Any, *, project_dir: Path) -> None:
+    if not isinstance(payload, Mapping):
+        raise GoHoldProtocolError("GO/HOLD contract must be an object")
+    version = payload.get("protocol_version")
+    if version == LEGACY_GO_HOLD_PROTOCOL_VERSION:
+        _validate_go_hold_contract_v1(payload, project_dir=project_dir)
+        return
+    if version == GO_HOLD_PROTOCOL_VERSION:
+        _validate_go_hold_contract_v2(payload, project_dir=project_dir)
+        return
+    raise GoHoldProtocolError(f"unsupported GO/HOLD protocol_version={version!r}")
+
+
+def go_hold_report_version(contract: Mapping[str, Any]) -> str:
+    return (
+        LEGACY_GO_HOLD_REPORT_VERSION
+        if contract.get("protocol_version") == LEGACY_GO_HOLD_PROTOCOL_VERSION
+        else GO_HOLD_REPORT_VERSION
+    )
 
 
 def load_go_hold_contract(path: str | Path, *, project_dir: Path) -> Dict[str, Any]:
@@ -405,9 +822,14 @@ def load_go_hold_contract(path: str | Path, *, project_dir: Path) -> Dict[str, A
         raise GoHoldProtocolError(f"invalid GO/HOLD contract JSON: {error}") from error
     validate_go_hold_contract(payload, project_dir=project_dir)
     relative = resolved.relative_to(project_dir.resolve()).as_posix()
-    if relative != GO_HOLD_CONTRACT_RELATIVE_PATH:
+    registered_path = (
+        LEGACY_GO_HOLD_CONTRACT_RELATIVE_PATH
+        if payload["protocol_version"] == LEGACY_GO_HOLD_PROTOCOL_VERSION
+        else GO_HOLD_CONTRACT_RELATIVE_PATH
+    )
+    if relative != registered_path:
         raise GoHoldProtocolError(
-            f"GO/HOLD contract must use the registered path {GO_HOLD_CONTRACT_RELATIVE_PATH}"
+            f"GO/HOLD contract must use the registered path {registered_path}"
         )
     if relative not in payload["critical_source_paths"]:
         raise GoHoldProtocolError("active GO/HOLD contract must be a critical source")
@@ -639,12 +1061,114 @@ def evaluate_training_health(
             f"for {explained_streak} consecutive updates"
         )
 
+    reason_codes: list[str] = []
+    if hard_failures:
+        reason_codes.append("NUMERICAL_OR_EVIDENCE_HEALTH")
+    if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION:
+        critic_rule = health["critic_degeneracy"]
+        normalizer_rule = health["value_normalizer"]
+        prediction_std = series("critic/value_prediction_std")
+        target_std = series("critic/return_target_std")
+        value_mae = series("critic/value_error_abs_mean")
+        normalized_target_std = series("critic/normalized_return_target_std")
+        normalizer_std = series("critic/value_normalizer_std")
+        normalizer_update_count = series("critic/value_normalizer_update_count")
+
+        std_ratios: list[float] = []
+        relative_mae: list[float] = []
+        signal_counts: list[int] = []
+        degenerate_flags: list[bool] = []
+        for update, ev, pred_std, ret_std, mae, grad in zip(
+            updates,
+            explained,
+            prediction_std,
+            target_std,
+            value_mae,
+            critic_grad,
+        ):
+            denominator = max(ret_std, critic_rule["target_std_floor"])
+            ratio = pred_std / denominator
+            relative_error = mae / denominator
+            std_ratios.append(ratio)
+            relative_mae.append(relative_error)
+            signals = (
+                ev <= critic_rule["explained_variance_at_or_below"],
+                ratio <= critic_rule["prediction_target_std_ratio_at_or_below"],
+                relative_error >= critic_rule["relative_mae_at_or_above"],
+                grad >= critic_rule["grad_clip_activation_at_or_above"],
+            )
+            signal_counts.append(sum(signals))
+            degenerate_flags.append(
+                update >= critic_rule["assessment_start_update"] and all(signals)
+            )
+
+        degenerate_streak = _max_streak(degenerate_flags, bool)
+        observed["critic/degeneracy"] = {
+            "prediction_target_std_ratio_min": min(std_ratios),
+            "relative_mae_max": max(relative_mae),
+            "max_joint_signal_count": max(signal_counts),
+            "all_signal_streak": degenerate_streak,
+        }
+        latest_signals = signal_counts[-1]
+        if latest_signals >= critic_rule["warning_signal_count_at_least"]:
+            warnings.append(
+                f"critic degeneration warning: {latest_signals}/4 signals at update {updates[-1]}"
+            )
+        if (
+            updates[-1] >= critic_rule["hold_start_update"]
+            and degenerate_streak >= critic_rule["hold_consecutive_updates"]
+        ):
+            hard_failures.append(
+                "critic joint degeneration persisted: low explained variance, "
+                "near-constant predictions, high relative MAE, and near-continuous "
+                f"gradient clipping for {degenerate_streak} updates"
+            )
+            reason_codes.append("CRITIC_DEGENERACY")
+
+        normalizer_failures = 0
+        if normalizer_rule["update_count_must_equal_training_update"]:
+            for update, count in zip(updates, normalizer_update_count):
+                if count != float(update):
+                    hard_failures.append(
+                        f"ValueNorm update_count {count:g} != training update {update}"
+                    )
+                    normalizer_failures += 1
+        for update, std in zip(updates, normalizer_std):
+            if std < normalizer_rule["std_at_or_above"]:
+                hard_failures.append(
+                    f"ValueNorm std {std:.6g} < {normalizer_rule['std_at_or_above']} "
+                    f"at update {update}"
+                )
+                normalizer_failures += 1
+        low_target_std_streak = _max_streak(
+            normalized_target_std,
+            lambda value: value < normalizer_rule["normalized_target_std_warning_below"],
+        )
+        high_target_std_streak = _max_streak(
+            normalized_target_std,
+            lambda value: value > normalizer_rule["normalized_target_std_warning_above"],
+        )
+        if low_target_std_streak >= 3 or high_target_std_streak >= 3:
+            warnings.append(
+                "normalized critic target std remained outside the registered "
+                f"range for {max(low_target_std_streak, high_target_std_streak)} updates"
+            )
+        observed["critic/value_normalizer"] = {
+            "std_min": min(normalizer_std),
+            "update_count_last": normalizer_update_count[-1],
+            "normalized_target_std_min": min(normalized_target_std),
+            "normalized_target_std_max": max(normalized_target_std),
+        }
+        if normalizer_failures:
+            reason_codes.append("VALUENORM_STATE_INVALID")
+
     return {
         "status": "HOLD" if hard_failures else "PASS",
         "updates": updates,
         "hard_failures": hard_failures,
         "warnings": warnings,
         "observed": observed,
+        **({"reason_codes": list(dict.fromkeys(reason_codes))} if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION else {}),
     }
 
 
@@ -657,6 +1181,18 @@ def summarize_c0_gate(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     family_counts: Dict[str, Counter] = {}
     scenario_counts: Dict[str, Counter] = {}
     lane_invasion_count = 0
+    behavior_available = True
+    behavior_totals: Dict[str, Dict[str, float]] = {
+        agent_id: {
+            "active_steps": 0.0,
+            "brake_mode_steps": 0.0,
+            "throttle_mode_steps": 0.0,
+            "coast_mode_steps": 0.0,
+            "speed_sum": 0.0,
+            "progress_sum": 0.0,
+        }
+        for agent_id in ("0", "1")
+    }
     for index, record in enumerate(records):
         family = str(record.get("scenario_family", "")).strip()
         scenario = str(record.get("scenario_name", "")).strip()
@@ -670,14 +1206,69 @@ def summarize_c0_gate(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         event = False
         for agent_id in ("0", "1"):
             try:
-                maximum = agents[agent_id]["diagnostics"]["lane_invasion_sensor_event"]["max"]
+                agent = agents[agent_id]
+                maximum = agent["diagnostics"]["lane_invasion_sensor_event"]["max"]
             except (KeyError, TypeError) as error:
                 raise GoHoldProtocolError(
                     f"C0 record {index} lacks lane-invasion diagnostics"
                 ) from error
+            try:
+                active_steps = agent["active_decision_steps"]
+                actions = agent["actions"]
+                diagnostics = agent["diagnostics"]
+                mode_rates = {
+                    mode: actions[f"{mode}_mode_rate"]
+                    for mode in ("brake", "throttle", "coast")
+                }
+                speed_stat = diagnostics["speed_mps"]["mean"]
+                progress_stat = diagnostics["progress_m"]["mean"]
+            except (KeyError, TypeError):
+                behavior_available = False
+                event = event or maximum not in (None, 0, 0.0)
+                continue
+            if (
+                isinstance(active_steps, bool)
+                or not isinstance(active_steps, int)
+                or active_steps < 0
+            ):
+                raise GoHoldProtocolError(
+                    f"C0 record {index} agent {agent_id} active steps are invalid"
+                )
+            totals = behavior_totals[agent_id]
+            totals["active_steps"] += active_steps
+            for mode in ("brake", "throttle", "coast"):
+                rate = _finite(
+                    mode_rates[mode],
+                    context=f"C0 record {index} agent {agent_id} {mode}_mode_rate",
+                )
+                totals[f"{mode}_mode_steps"] += rate * active_steps
+            speed_mean = _finite(
+                speed_stat,
+                context=f"C0 record {index} agent {agent_id} speed mean",
+            )
+            progress_mean = _finite(
+                progress_stat,
+                context=f"C0 record {index} agent {agent_id} progress mean",
+            )
+            totals["speed_sum"] += speed_mean * active_steps
+            totals["progress_sum"] += progress_mean * active_steps
             event = event or maximum not in (None, 0, 0.0)
         lane_invasion_count += int(event)
-    return {
+    behavior_agents: Dict[str, Dict[str, float]] = {}
+    if behavior_available:
+        for agent_id, totals in behavior_totals.items():
+            active_steps = totals["active_steps"]
+            if active_steps <= 0:
+                raise GoHoldProtocolError(f"C0 agent {agent_id} has no active decisions")
+            behavior_agents[agent_id] = {
+                "active_decision_steps": int(active_steps),
+                "brake_mode_rate": totals["brake_mode_steps"] / active_steps,
+                "throttle_mode_rate": totals["throttle_mode_steps"] / active_steps,
+                "coast_mode_rate": totals["coast_mode_steps"] / active_steps,
+                "mean_speed_mps": totals["speed_sum"] / active_steps,
+                "mean_progress_m_per_episode": totals["progress_sum"] / len(records),
+            }
+    summary = {
         "case_count": len(records),
         "outcome_counts": {
             name: int(outcomes.get(name, 0))
@@ -697,6 +1288,12 @@ def summarize_c0_gate(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         },
         "lane_invasion_episode_count": lane_invasion_count,
     }
+    if behavior_available:
+        summary["behavior"] = {
+            "timeout_rate": float(outcomes.get("timeout", 0)) / len(records),
+            "agents": behavior_agents,
+        }
+    return summary
 
 
 def _capability_failures(summary: Mapping[str, Any], rule: Mapping[str, Any]) -> list[str]:
@@ -732,6 +1329,142 @@ def _capability_failures(summary: Mapping[str, Any], rule: Mapping[str, Any]) ->
     return failures
 
 
+def evaluate_behavioral_health(
+    *,
+    update: int,
+    c0_summary: Mapping[str, Any],
+    contract: Mapping[str, Any],
+    previous_c0_summary: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Detect persistent deterministic stopping without equating it to zero success.
+
+    The first collapsed checkpoint is a warning.  A behavioral HOLD requires the
+    same frozen conjunction at two adjacent milestone checkpoints.  This grace
+    period is what prevents a short, still-exploring policy from being rejected
+    merely because it has not completed a route yet.
+    """
+    if contract.get("protocol_version") != GO_HOLD_PROTOCOL_VERSION:
+        return {
+            "status": "NOT_APPLICABLE",
+            "collapsed_now": False,
+            "collapsed_previous": False,
+            "persistent_collapse": False,
+            "reason_codes": [],
+            "failures": [],
+            "warnings": [],
+            "observed": {},
+        }
+    rule = contract["behavioral_health"]
+    milestones = list(rule["assessment_milestones"])
+    if update not in milestones:
+        raise GoHoldProtocolError(f"update {update} is not a behavior milestone")
+
+    def assess(summary: Mapping[str, Any], *, label: str) -> Dict[str, Any]:
+        try:
+            counts = summary["outcome_counts"]
+            behavior = summary["behavior"]
+            agents = behavior["agents"]
+        except (KeyError, TypeError) as error:
+            raise GoHoldProtocolError(f"{label} C0 summary lacks behavior evidence") from error
+        expected_agents = {str(value) for value in contract["bindings"]["agent_ids"]}
+        if not isinstance(agents, Mapping) or set(agents) != expected_agents:
+            raise GoHoldProtocolError(f"{label} behavior agent IDs differ from contract")
+        agent_results: Dict[str, Any] = {}
+        collapsed_agents: list[bool] = []
+        for agent_id in sorted(expected_agents):
+            data = agents[agent_id]
+            observed = {
+                "brake_mode_rate": _finite(
+                    data["brake_mode_rate"], context=f"{label} agent {agent_id} brake rate"
+                ),
+                "mean_speed_mps": _finite(
+                    data["mean_speed_mps"], context=f"{label} agent {agent_id} speed"
+                ),
+                "mean_progress_m_per_episode": _finite(
+                    data["mean_progress_m_per_episode"],
+                    context=f"{label} agent {agent_id} progress",
+                ),
+            }
+            signals = {
+                "brake_dominant": observed["brake_mode_rate"]
+                >= rule["deterministic_brake_mode_rate_at_or_above"],
+                "near_stationary": observed["mean_speed_mps"]
+                <= rule["mean_speed_mps_at_or_below"],
+                "no_route_progress": observed["mean_progress_m_per_episode"]
+                <= rule["mean_progress_m_per_episode_at_or_below"],
+            }
+            collapsed = all(signals.values())
+            collapsed_agents.append(collapsed)
+            agent_results[agent_id] = {
+                "collapsed": collapsed,
+                "signals": signals,
+                "observed": observed,
+            }
+        timeout_rate = _finite(behavior["timeout_rate"], context=f"{label} timeout rate")
+        episode_signals = {
+            "zero_success": int(counts["success"]) == 0,
+            "timeout_dominant": timeout_rate >= rule["timeout_rate_at_or_above"],
+        }
+        agent_collapse = (
+            all(collapsed_agents)
+            if rule["all_agents_required"]
+            else any(collapsed_agents)
+        )
+        collapsed = agent_collapse and episode_signals["timeout_dominant"]
+        if rule["zero_success_required"]:
+            collapsed = collapsed and episode_signals["zero_success"]
+        return {
+            "collapsed": collapsed,
+            "agents": agent_results,
+            "episode_signals": episode_signals,
+            "timeout_rate": timeout_rate,
+        }
+
+    current = assess(c0_summary, label="current")
+    previous = (
+        assess(previous_c0_summary, label="previous")
+        if previous_c0_summary is not None
+        else None
+    )
+    collapsed_previous = bool(previous and previous["collapsed"])
+    persistent = bool(current["collapsed"] and collapsed_previous)
+    failures: list[str] = []
+    warnings: list[str] = []
+    reason_codes: list[str] = []
+    if current["collapsed"]:
+        warnings.append(
+            "deterministic C0 shows joint stopping pattern: brake-dominant, "
+            "near-stationary, no route progress, and timeout-dominant"
+        )
+        if update >= rule["hold_from_update"]:
+            if previous is None and rule["previous_milestone_report_required_for_hold"]:
+                failures.append(
+                    "current collapse cannot be adjudicated without the previous "
+                    "milestone behavior report"
+                )
+                reason_codes.append("BEHAVIOR_HISTORY_MISSING")
+            elif persistent:
+                failures.append(
+                    "joint deterministic stopping pattern persisted across two "
+                    "adjacent milestone checkpoints"
+                )
+                reason_codes.append("BEHAVIORAL_COLLAPSE")
+    return {
+        "status": "HOLD" if failures else ("WARNING" if warnings else "PASS"),
+        "collapsed_now": bool(current["collapsed"]),
+        "collapsed_previous": collapsed_previous,
+        "persistent_collapse": persistent,
+        "reason_codes": reason_codes,
+        "failures": failures,
+        "warnings": warnings,
+        "observed": {
+            "current": current,
+            "previous": previous,
+            "thresholds": dict(rule),
+        },
+    }
+
+
 def evaluate_milestone_decision(
     *,
     update: int,
@@ -740,6 +1473,7 @@ def evaluate_milestone_decision(
     repeatability_pass: bool,
     contract: Mapping[str, Any],
     evidence_errors: Sequence[str] = (),
+    previous_c0_summary: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     rules = {int(rule["update"]): rule for rule in contract["milestone_rules"]}
     if update not in rules:
@@ -763,6 +1497,13 @@ def evaluate_milestone_decision(
     if contract["evidence_rules"]["require_repeatability_pass"] and not repeatability_pass:
         structural_failures.append("C0 discrete repeatability did not PASS")
     warnings = list(training_health.get("warnings", []))
+    behavior = evaluate_behavioral_health(
+        update=update,
+        c0_summary=c0_summary,
+        contract=contract,
+        previous_c0_summary=previous_c0_summary,
+    )
+    warnings.extend(behavior["warnings"])
     if c0_summary["lane_invasion_episode_count"] > 0 and update < 100:
         warnings.append(
             f"lane invasion occurred in {c0_summary['lane_invasion_episode_count']} gate episodes"
@@ -774,6 +1515,32 @@ def evaluate_milestone_decision(
             "hard_failures": structural_failures,
             "capability_failures": [],
             "warnings": warnings,
+            **(
+                {
+                    "reason_codes": list(
+                        dict.fromkeys(
+                            [
+                                "EVIDENCE_OR_NUMERICAL_HOLD",
+                                *training_health.get("reason_codes", []),
+                            ]
+                        )
+                    ),
+                    "behavior_assessment": behavior,
+                }
+                if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION
+                else {}
+            ),
+        }
+
+    if behavior["status"] == "HOLD":
+        return {
+            "decision": "HOLD",
+            "multiseed_released": False,
+            "hard_failures": list(behavior["failures"]),
+            "capability_failures": [],
+            "warnings": warnings,
+            "reason_codes": list(behavior["reason_codes"]),
+            "behavior_assessment": behavior,
         }
 
     rule = rules[update]
@@ -787,13 +1554,19 @@ def evaluate_milestone_decision(
         decision = str(rule["pass_decision"])
         if decision == "CONTINUE" and warnings:
             decision = "CONTINUE_WITH_WARNING"
-    return {
+    result = {
         "decision": decision,
         "multiseed_released": decision == "PILOT_GO" and update == 100,
         "hard_failures": [],
         "capability_failures": capability_failures,
         "warnings": warnings,
     }
+    if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION:
+        result["reason_codes"] = (
+            ["CAPABILITY_NOT_MET"] if capability_failures else []
+        )
+        result["behavior_assessment"] = behavior
+    return result
 
 
 def evaluate_validation_decision(
@@ -820,19 +1593,34 @@ def evaluate_validation_decision(
     if contract["evidence_rules"]["require_repeatability_pass"] and not repeatability_pass:
         structural_failures.append("C0 discrete repeatability did not PASS")
     if structural_failures:
-        return {
+        result = {
             "decision": "HOLD",
             "hard_failures": structural_failures,
             "capability_failures": [],
             "warnings": list(training_health.get("warnings", [])),
         }
+        if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION:
+            result["reason_codes"] = list(
+                dict.fromkeys(
+                    [
+                        "EVIDENCE_OR_NUMERICAL_HOLD",
+                        *training_health.get("reason_codes", []),
+                    ]
+                )
+            )
+        return result
     capability_failures = _capability_failures(c0_summary, rule)
-    return {
+    result = {
         "decision": rule["pass_decision"] if not capability_failures else rule["fail_decision"],
         "hard_failures": [],
         "capability_failures": capability_failures,
         "warnings": list(training_health.get("warnings", [])),
     }
+    if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION:
+        result["reason_codes"] = (
+            ["CAPABILITY_NOT_MET"] if capability_failures else []
+        )
+    return result
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
