@@ -134,6 +134,7 @@
 | **evaluation/diagnose_r2_reward_r3_critic.py** | 固定 Town02 脚本的 R2 奖励信号链与同批真实状态 Critic A/B 诊断入口；不用于模型选择 |
 | **diagnostics/r2_r3_real_carla/20260810_200111/report.json** | CARLA 0.9.16 实跑的 10 项机制验收、536-transition Critic A/B 与环境清理证据 |
 | **configs/evaluation/p0_base_go_hold_v1.json** | P0-BASE-04 证据、数值健康、分段能力、批量放行和 held-out 接受门槛的机器真值 |
+| **configs/evaluation/p0_base_go_hold_v2.json** | R4 冻结的持续行为塌缩与 Critic 联合退化门槛；绑定 R3 训练合同、C0 v4、metrics v5 与 checkpoint v4 |
 | **data/evaluation_scenarios/base_c0_validation_v1/** | 与训练场景按内容 SHA 隔离的 8 个 Town02 held-out 基础策略验证场景 |
 | **experiments/base_mappo_registry.csv** | 每个正式基础 Run 一行的跨 Run 机器可读索引 |
 | **evaluations/<EvalID>/** | C0 resolved config、manifest、逐 episode JSONL、summary JSON/CSV 与 validator report |
@@ -155,6 +156,8 @@
 | **docs/R1_二维纵向动作协议_论文正文与实验设计.md** | R1 动作数学、PPO 概率、文献依据、风险与验收 |
 | **docs/R2_奖励预算校准_论文正文与实验设计.md** | R2 reward-v3 理论、预算、五类轨迹排序、敏感性与局限 |
 | **docs/R3_Critic价值归一化_论文正文与真实CARLA验证.md** | R3 问题、ValueNorm/Huber 方法、真实 CARLA 奖励与 Critic A/B 结果 |
+| **docs/R4_GO-HOLD-v2早期塌缩门槛与回归验证.md** | R4 防短训误判的行为/Critic 持续门槛、旧 Run 反事实回放、双版本兼容与真实 lifecycle 验收 |
+| **docs/R5_最终训练入口真实CARLA_smoke验证.md** | R5 最终生产入口 3-update、受控中断/严格恢复、checkpoint/metrics、机制复验与 CARLA 清理记录 |
 | **docs/P0-00G_真实CARLA_smoke运行规范.md** | P0-00G 环境门槛、冻结命令、受控中断、预期产物与 PASS/HOLD 标准 |
 | **docs/P0-00G_真实CARLA_smoke测试记录.md** | P0-00G 每次环境、fresh、中断、resume、validator、失败根因、修复证据与 Judge 裁决 |
 | **docs/P0-00G-SUCCESS_真实success逻辑测试规范与记录.md** | 无基础 checkpoint 的 success/reward/lifecycle 两层真实 CARLA 测试、PASS 门槛、命令和逐次结果 |

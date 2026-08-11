@@ -8,7 +8,7 @@
 > - 基础策略唯一入口：`training.train_no_rllib_mappo_robust_v2`。
 > - Phase 1 单蓝车唯一入口：`training.train_2red_1blue_ppo`。
 > - RLlib、shared-policy、minimal/robust v1、旧 adversarial PPO 和旧 multi 入口全部是 **DEPRECATED**，不得用于新训练、resume、正式 checkpoint 或论文结果。
-> - P0-00G 和 P0-BASE-00/01/02/04 已通过；当前只允许 seed 42 从 update 5 开始分段试训，每段必须执行 strict validator、两次 C0 gate 和冻结 judge；只有 update 100 `PILOT_GO` 后才允许多 seed 长训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
+> - R1–R5 已完成；当前只允许使用冻结的 R3 训练合同、C0 v4、GO/HOLD v2，以新 RunID、随机初始化运行 seed 42 fresh pilot 到 update 5。u5 必须停止并执行 strict validator、两次 C0 gate 和唯一冻结 judge；其结论允许后才能决定是否到 u10，只有 update 100 `PILOT_GO` 后才允许多 seed 长训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
 
 ---
 
@@ -116,6 +116,20 @@ CarlaUE4.exe
 ```
 
 正式训练参数必须固化到版本控制配置中并登记 RunID；不要直接把 smoke 命令扩成上百 updates。
+
+R5 已验收后，下一次获准执行的正式命令只到 update 5。`<timestamp>` 必须替换为新的时间戳，RunID 与保存目录必须一致；不得加入 `--resume` 或加载 R5 smoke checkpoint：
+
+```powershell
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --host 127.0.0.1 `
+  --port 2000 `
+  --experiment-contract configs/base_mappo/p0_base_critic_v4.json `
+  --run-id P0_BASE_MAPPO_R3_Town02_s42_<timestamp> `
+  --updates 5 `
+  --save-dir logs/P0_BASE_MAPPO_R3_Town02_s42_<timestamp>
+```
+
+该段完成后先运行 strict validator，再按 C0 v4 执行主/重复 gate，最后使用 GO/HOLD v2 唯一裁决；不要在看到训练 rollout 后临时修改奖励、参数、门槛或继续到 u10。
 
 ### 1. [DEPRECATED] train_no_rllib_mappo.py - 早期独立 MAPPO
 
@@ -492,12 +506,12 @@ CarlaUE4.exe
 
 # 4. R0/WTA v1 已在 update 10 诊断封存，禁止继续 resume/pretrained
 
-# 5. R1 二维动作与 R2 有界 reward-v3 协议已完成，但当前仍为 HOLD：
-#    R3 Critic 稳定化与真实机制诊断已完成；仍必须完成 R4 GO/HOLD v2 和 R5 最终入口 smoke。
-#    在 TODO 明确解除 HOLD 前，不启动 CARLA 训练，不执行下方历史正式命令。
+# 5. R1–R5 已完成，最终生产入口、严格恢复、checkpoint/metrics 与 CARLA 清理验收 PASS。
+#    R5 诊断 Run/权重永久禁止作为 resume/pretrained/选模来源。
 
-# 6. 最终修复版将使用新的最终契约、新 RunID 和随机初始化 fresh pilot；
-#    configs/base_mappo/p0_base_critic_v4.json 冻结 R3 对照，不代表 R4-R5 已验收。
+# 6. 下一步只按“当前有效入口”中的正式命令，使用 p0_base_critic_v4.json、
+#    新 RunID 和随机初始化运行 seed 42 到 u5；随后必须双 C0 v4 + GO/HOLD v2。
+#    未得到该停点裁决前不得运行 u6–u10，也不得放行多 seed。
 ```
 
 #### 历史 v1 checkpoint/resume（封存，不得执行）
@@ -507,7 +521,7 @@ CarlaUE4.exe
 # 当前代码会以 schema/action_spec/model_spec 严格拒绝 WTA v1 权重。
 ```
 
-当前 schema v4 checkpoint 会绑定二维 `action_spec`、reward v3、ValueNorm 状态和 critic spec；`--resume latest` 不存在、哈希损坏、Git/动作/奖励/Critic/指标/训练配置/实验契约不一致时直接失败，不会从零启动或部分加载。训练期不产生 `best.pt`；未来仅由独立验证从 immutable periodic checkpoint 生成 `best_base_valid.pt`。R1/R2/R3 原理分别见对应论文正文，checkpoint 文件结构见 `docs/MAPPO_checkpoint与恢复训练协议.md`。
+当前 schema v4 checkpoint 会绑定二维 `action_spec`、reward v3、ValueNorm 状态和 critic spec；`--resume latest` 不存在、哈希损坏、Git/动作/奖励/Critic/指标/训练配置/实验契约不一致时直接失败，不会从零启动或部分加载。训练期不产生 `best.pt`；未来仅由独立验证从 immutable periodic checkpoint 生成 `best_base_valid.pt`。R1/R2/R3 原理分别见对应论文正文，R4/R5 阶段证据见相应记录，checkpoint 文件结构见 `docs/MAPPO_checkpoint与恢复训练协议.md`。
 
 ### 当前流程 2：单蓝车对抗
 
