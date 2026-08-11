@@ -10,11 +10,11 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                      |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                  |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                             |
-| 当前工程基线    | `P0-BASE-03R-PREFLIGHT-PASS`：R1–R5、三合同绑定、场景、179 项回归、R5 证据和正式 u5 命令均复核通过；下一步只允许 seed 42 fresh pilot 到 update 5 |
+| 当前工程基线    | `P0-BASE-03R-U5-CONTINUE-WARNING`：修复版 seed 42 fresh Run 已完成 u1–u5、strict validator、双 C0 v4 和 GO/HOLD v2；下一步仅允许同 Run 严格恢复到 u10 |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                          |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                   |
 | 当前有效自动化测试 | 共 179 项通过（2026-08-11）：R5 未改代码或科学参数；R4 GO/HOLD v2、R1/R2/R3 及既有训练、C0、checkpoint、生命周期和场景回归均未退化；另有真实 CARLA 3-update 生产入口、受控中断/恢复与 10 项机制诊断证据 |
-| 最近训练产物    | `P0_BASE_MAPPO_Town02_s42_20260809_204729` update 10 checkpoint SHA `4917f225...7436`；只作诊断/回归参考，不得作为修复版正式 pretrained/resume               |
+| 最近训练产物    | `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` update 5 periodic checkpoint SHA `4652aa59...e815e72`；当前正式安全边界，可在条件满足后按同 Run strict resume |
 | 本文档创建日期   | 2026-07-20                                                                                                                                |
 | 最后更新日期    | 2026-08-11                                                                                                                                |
 
@@ -23,7 +23,7 @@
 | 阶段 | 状态 | 结论 |
 |---|---|---|
 | 基础 CARLA 多车环境与 MAPPO | REAL SMOKE + SUCCESS VERIFIED | P0-00G 自动链路、用户人工视觉及固定场景 success 两层真实测试通过；不代表 MAPPO 性能/收敛已验证 |
-| 基础 MAPPO 策略训练与选择 | READY FOR FORMAL U5 PILOT | v1 judge 历史裁决不变；R1–R5 与开训前全链路检查完成。只放行新 RunID、随机初始化、seed 42 到 update 5；多 seed 仍被阻塞 |
+| 基础 MAPPO 策略训练与选择 | U5 CONTINUE_WITH_WARNING / U10 HOST-BLOCKED | 修复版 u5 训练健康、双 C0 和裁决闭环；仅 lane invasion warning。允许同 Run 严格续到 u10，但 C 盘当前为 0，释放稳定空间前不得启动；多 seed 仍被阻塞 |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -74,7 +74,7 @@
 
 ## 3. 下一步唯一主线
 
-以下任务严格按顺序执行。P0-00G 已完成；完成 `P0-BASE-00/01/02` 后才允许单 seed 分段基础策略试训，`P0-BASE-04` 判定 GO 前禁止多 seed 批量训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M 完成。
+以下任务严格按顺序执行。修复版 seed 42 已完成首个 u5 里程碑并得到 `CONTINUE_WITH_WARNING`；下一步只能在主机系统盘空间恢复后，以同一 RunID 严格续到 u10。u10 前不得调参、fresh 重跑、多 seed 批量训练或启动对抗长训练。
 
 - [x] **P0-00A 冻结训练入口**：基础策略只维护 `train_no_rllib_mappo_robust_v2.py`，Phase 1 单蓝车只维护 `train_2red_1blue_ppo.py`；README、运行命令和文件索引已标记 RLlib 和其他旧入口停止使用。
 - [x] **P0-00B 冻结并适配 terminated/truncated 语义**：采用 agent-centric 回报边界；同伴红车碰撞时未碰撞红车按 truncation bootstrap，红车成功/碰撞时蓝车按对抗任务结局 termination；环境、两个当前入口和 15 项测试已同步。
@@ -93,7 +93,8 @@
 - [x] **P0-BASE-03R 基础策略制动塌缩修复（R4）**：GO/HOLD v2 已冻结双 Agent 确定性 brake、低速、低 progress、timeout、零成功的联合行为门槛，并要求相邻两个里程碑持续成立；Critic HOLD 要求四项退化信号连续五个 update。旧 Run 真实 C0 回放在 u5 仅 warning、u10 `BEHAVIORAL_COLLAPSE` HOLD；零成功但仍行进的早期策略不被误杀。v1 历史裁决不变，179 项回归通过。
 - [x] **P0-BASE-03R 修复版最终入口 smoke（R5）**：真实 CARLA 10 项 R2/R3 机制诊断全部通过；生产入口 fresh u1、u2 受控中断/严格恢复、u3 完成，共 12 episodes。strict validator 对 `[1,2,3]`、197 个必需标签和 575 个 TB scalar 标签 PASS；schema-v4 checkpoint、ValueNorm/RNG/optimizer、前缀裁剪与 async/actor 清理均通过，未发生服务卡死。详见 [R5 记录](./R5_最终训练入口真实CARLA_smoke验证.md)。
 - [x] **P0-BASE-03R 正式训练前全链路检查**：R1/R2/R3/R4 专项 38/38、全量 179/179 PASS；训练/C0/GO-HOLD 三合同 SHA 互绑、16 个训练场景、8 个 held-out 场景、R5 strict/checkpoint/真实机制报告和 CARLA 空闲状态均复核通过。正式命令 dry preflight 强制解析为 fresh、seed 42、u5、LR horizon 100、16 episodes/update、reward v3，并显式使用与历史正式 Run/R5 一致的 `--cpu`，避免和 CARLA 争用 GPU；修复了主动操作文档残留 C0/GO-HOLD v1/v3 的问题。详见 [开训前记录](./R1-R5_正式训练前全链路检查记录.md)。
-- [ ] NEXT **P0-BASE-03 修复版 seed 42 正式 pilot 到 update 5**：使用 R3 训练合同、C0 v4、GO/HOLD v2、新 RunID、随机初始化和正式 LR horizon；u5 停止后依次运行主 C0、重复 C0 与唯一 judge。禁止复用 R5 smoke checkpoint，也不得提前延长到 u10 或放行多 seed。
+- [x] **P0-BASE-03 修复版 seed 42 正式 pilot 到 update 5**：Run `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` 已按 R3 训练合同从随机初始化完成 5 updates/80 episodes，strict validator、schema-v4 u5 periodic checkpoint、主/重复 C0 v4 与唯一 GO/HOLD v2 全部闭环。裁决为 `CONTINUE_WITH_WARNING`，仅有 9/16 gate lane-invasion warning；未启动 u6。详见 [u5 正式记录](./P0-BASE-R3_seed42_u5正式训练与GO-HOLD记录.md)。
+- [ ] BLOCKED **P0-BASE-03 同 Run 严格恢复到 update 10**：机器裁决允许使用同一 RunID、合同和 u5 完整边界 strict resume；不得改科学参数或换 checkpoint。当前 `C:` 可用空间再次为 0，必须由用户先稳定释放系统盘空间并处理占盘后台程序；u10 后立即停止，运行双 C0，并向 v2 judge 提供 u5 `go_hold_decision.json` 作为前序里程碑报告。
 - [ ] BLOCKED **P0-BASE-05 扩展多 seed 正式训练**：仅在 P0-BASE-04 GO 后，以同一 commit/config 运行 seeds `42,123,2024`；不得依据中间结果修改预算、奖励或场景，失败 Run 同样登记。
 - [ ] BLOCKED **P0-BASE-06 独立评估并选择 checkpoint**：用冻结 C0 协议评估全部 periodic checkpoint，先安全门槛、再任务成功与稳定性；生成 `best_base_valid.pt`，登记 SHA256、来源 Run/commit/config，禁止按训练 rollout 选模。
 - [ ] BLOCKED **P0-01 精确记录碰撞对象**：基础策略试训不依赖对抗 impact 归因；取得可用基础 checkpoint 后进入本项，从 CARLA collision event 保存对方 actor id/type，并区分 `red-blue`、`blue-blue`、`static/world`，禁止继续用“最近红车”猜测 impact 对象。
@@ -405,7 +406,8 @@
 #### P0-BASE-03 至 P0-BASE-06 运行与选模
 
 - [x] **预注册判定**：C0 输出口径冻结后、启动 pilot 前已写明 GO/HOLD 数值门槛；累计回报不参与 GO，最终用自主 success、0 collision/lane invasion、终局/奖励/transition 守恒、场景覆盖和训练数值稳定联合判定。每个停点只应用同一契约，不得重写门槛。
-- [ ] **分段试训**：v1 Run 已在 u10 诊断封存，不再续至 u20；R1–R5 已完成，下一步以 R3 训练合同/C0 v4/GO-HOLD v2、新 RunID 和随机初始化运行 seed 42 到 u5，禁止混用旧 checkpoint 或 R5 smoke 权重。
+- [x] **修复版首段 u1–u5**：新 RunID、R3 训练合同、随机初始化、双 C0 v4 和 GO/HOLD v2 已完成；裁决 `CONTINUE_WITH_WARNING`，安全边界 u5，未混用旧 checkpoint 或 R5 smoke 权重。
+- [ ] **修复版分段 u6–u10**：仅在 C 盘空间稳定恢复后按同 Run strict resume；u10 后重复主/复跑 C0 和带 u5 前序报告的裁决。当前因主机空间阻塞，不得启动。
 - [ ] **多 seed 扩展**：P0-BASE-04 GO 后，才使用完全相同 commit/config 扩展 seeds `42,123,2024`；先完成开发级 3 seed，论文最终是否扩为 5 seed 另行冻结。
 - [ ] **独立选模**：对 periodic checkpoints 使用同一冻结 C0 验证集；安全门槛优先，其次比较 success、collision/timeout 和跨 seed 稳定性，输出 `best_base_valid.pt` 及 manifest。
 - [ ] **产物登记**：每个成功或失败 Run 都更新实验登记表；登记 checkpoint SHA、配置、C0 结果、停止原因和下一动作。
@@ -753,6 +755,7 @@ git rev-parse HEAD
 | 2026-06-24 | `HIST_PSRO_20260624` | P4 历史 | 验证 PSRO 工程链路 | `6a332da` 前后版本 | `training.psro.*` | 历史红池 | 历史配置 | 非当前统一协议 | 碰撞攻击明显 | runner/pool/payoff 可运行，但科学结果退化，不能作主结论 | `logs/psro*`、`training/psro/` | 奖励和评估统一后重跑 |
 | 2026-07-05 | `HIST_P1_20260705_s42` | P1 历史 | 2 红 1 蓝训练 | `6a332da` | `training.train_2red_1blue_ppo` | 见旧 run | 42 | 未完成正式 C012 | 旧生命周期口径 | 目标 120 updates，约 update 4 中断；不可恢复为新协议实验 | `logs/train_2red_1blue_ppo/` | 新 RunID 重新训练 |
 | 2026-07-14 | `FIX_LIFECYCLE_20260714` | P0 | 统一 episode 生命周期 | `9cc4cb6` | 环境/训练/PSRO/tests | N/A | N/A | N/A | N/A | 7 个单元测试通过；尚无修复后 CARLA 实验 | `tests/test_episode_lifecycle.py` | 完成 P0-01 至 P0-06 |
+| 2026-08-11 | `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` | P0-BASE-03R u5 | 验证 R1–R4 修复版在正式 seed 42 首里程碑的训练健康、确定性行为与裁决 | `ff5ddeb` | `train_no_rllib_mappo_robust_v2.py` / `p0_base_critic_v4.json` | fresh | 42 | C0 主/重复均 0 success、5 collision、11 timeout；逐病例重复性 PASS | N/A | `CONTINUE_WITH_WARNING`；仅 9/16 lane invasion warning，联合行为塌缩和 Critic HOLD 未触发 | `logs/P0_BASE_MAPPO_R3_Town02_s42_20260811_112458`；`evaluations/P0_BASE_C0_gate_u000005_20260811_115047`；`decisions/base_mappo/P0_BASE_GO_HOLD_u000005_20260811_120658` | 先释放 C 盘空间，再同 Run strict resume 到 u10 |
 | YYYY-MM-DD | `<RunID>` | `<P?>` | `<一句话可证伪假设>` | `<sha>` | `<config path>` | `<sha256/path>` | `<seeds>` | `<rates/deltas>` | `<rates>` | `<pass/fail>` | `<run path>` | `<action>` |
 
 ## 15. 代码修改记录
@@ -809,6 +812,7 @@ git rev-parse HEAD
 | 2026-08-10 | **SUPERSEDE FOR NEW RUNS**：WTA v1 与原 GO/HOLD v1 保留为历史协议，但修复版改用二维 signed-longitudinal 并在新 pilot 前增加确定性制动塌缩/速度/progress 早期门槛 | u1→u10 brake mode 持续上升、速度下降；两次 u10 C0 均为两车 100% brake 和 16/16 timeout，而 v1 judge 因未注册该行为仍 `CONTINUE_WITH_WARNING`。这证明协议数学可用不等于当前探索/奖励组合适配 | 继续把 u10 当正常早期探索跑到 u20；事后篡改 v1 judge；只调一个权重后 resume 旧权重 | P0-BASE-03R 及所有后续基础策略新 Run；v1 历史证据不变 |
 | 2026-08-10 | **IMPLEMENTED R1**：二维策略动作冻结为 `[signed_longitudinal, steer]`，死区 `d=0.05`；PPO 概率只定义在二维 tanh-squashed Gaussian 上，三维 CARLA command 是确定性后适配 | 车辆平面控制可按纵向需求与转向分解；该参数化有自动驾驶 DRL 文献先例。相较 WTA，它消除纵向维度冗余、切换跳变和零 latent 半油门；R1 离线测试证明数学/协议不变量，但不越界声称性能已提升 | 在三维物理动作上计算伪 log-prob；继续加载 WTA Actor/optimizer；把 `d=0.05` 伪装成文献给定常数；在 R1 直接运行 CARLA | 基础 robust_v2、checkpoint/metrics、C0 v2、论文方法章节；R2/R3 仍分别负责奖励与 Critic |
 | 2026-08-10 | **IMPLEMENTED R2**：基础 reward v3 冻结为路线完成度势能 + 互斥终局 + 有界风险/控制成本；取消正 speed/alive/centering/yaw 和固定 step/time bonus | PBRS 的 gamma-consistent 形式保证 progress 折扣和望远镜化；自动驾驶 reward 文献支持 route completion 主任务和安全/舒适分离。具体权重不照搬论文，而由本项目 0.1 s、1000-step 与五类轨迹预算预注册，并通过 ±25% 敏感性 | 只减小旧负权重；按 ray/marking 数求和；把控制变化称为物理 jerk；观察 pilot 后追调权重；声称离线排序等于策略性能提升 | 基础 robust_v2、环境 reward、metrics/checkpoint/C0 v3、R2 论文正文；R3 继续负责 Critic，R4/R5 负责门槛和真实行为 |
+| 2026-08-11 | 修复版 seed 42 在 u5 执行 v2 机器裁决后保留 `CONTINUE_WITH_WARNING`，不因 0 success 或两车 brake mode=1 人工改判 HOLD | 训练健康、来源、checkpoint、双 C0 和重复性全部 PASS；agent1 progress `4.713 m > 3 m`、整体 timeout `68.75% < 95%`，不满足 R4 all-agent 联合塌缩；唯一 warning 为 9/16 lane invasion | 因短训练观感直接 HOLD；忽略行为证据直接宣称模型可用；跳过 u10 或提前多 seed | 当前 Run 允许同身份 strict resume 到 u10；不等于 `PILOT_GO`，多 seed/选模/对抗训练仍阻塞；C 盘空间是启动 u10 前的主机硬前置 |
 | 2026-07-20 | 通信放在无通信双蓝基线之后 | 否则无法把多车数量收益与消息通信收益分离 | 直接在现有双蓝脚本加入 attention | P3-P5 |
 | 2026-07-20 | 先固定红池 PSRO，再做双边演进 | 降低非平稳性，先验证 pool 和 meta-solver 的科学有效性 | 一开始同时训练红蓝双方 | P4-P6 |
 | YYYY-MM-DD | `<decision>` | `<evidence>` | `<alternatives>` | `<scope>` |
@@ -845,7 +849,8 @@ git rev-parse HEAD
 
 ### 第 2 周：决定基础策略批量放行，再进入对抗可信化
 
-- [ ] 第 1 天：继续按已经预注册的 P0-BASE-04 门槛复核单 seed 各停点；不得看到结果后放宽阈值。
+- [x] 第 1 天前半：修复版 seed 42 u5 正式训练、双 C0 v4 与 GO/HOLD v2 已完成，结果 `CONTINUE_WITH_WARNING`；未事后放宽阈值。
+- [ ] 第 1 天后半：稳定释放 C 盘空间后，同 Run strict resume 到 u10并完成双 C0/前序链裁决；当前 HOST-BLOCKED。
 - [ ] 第 2-4 天：仅在 GO 后以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
 - [ ] 第 5 天：用冻结 C0 验证全部 periodic checkpoints，生成带 SHA/manifest 的 `best_base_valid.pt`。
 - [ ] 第 6 天：开始 P0-01/P0-02，修复对抗碰撞对象和 steer/control 解析，并补相应测试。
@@ -880,4 +885,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B 至 P0-00G-SUCCESS 已闭合基础 MAPPO 的终止/bootstrap、active-mask、GAE/PPO、生产更新、checkpoint/resume、指标审计、真实 CARLA 工程 smoke 和固定场景 success 链路；P0-BASE-00/01/02/04 已分别冻结合格源码、正式训练契约、独立 C0 评估协议和 v1 数值裁决。seed 42 正式 Run 的 u10 训练、双 C0、重复性、来源和 judge 均闭环，机器裁决历史值为 `CONTINUE_WITH_WARNING`；但两次确定性 C0 均显示两车 100% brake、16/16 timeout，训练趋势也呈 brake mode 上升和速度下降，因此研究者已在未产生 u11 PPO/checkpoint 时停止并将 v1 Run 诊断封存。R1 已完成二维 signed-longitudinal 动作协议，R2 已完成有界 route-completion reward v3，R3 已完成 ValueNorm+Huber、严格 checkpoint 恢复和真实 CARLA 机制 A/B，R4 已冻结防早期误杀的 GO/HOLD v2，R5 已在真实 CARLA 上完成唯一生产入口、受控中断/严格恢复、checkpoint/metrics 与清理验收；开训前全链路检查又复核了三合同、场景、179 项回归、R5 证据和正式命令，并修正当前操作文档的历史协议残留。当前 NEXT 不是继续旧 u20、复用 smoke 权重或启动长训，而是使用冻结的 R3 训练合同、C0 v4、GO/HOLD v2、新 RunID 和随机初始化只运行 seed 42 到 u5，再执行双 C0 与唯一 judge。当前仍没有训练好的正式基础 checkpoint，任何 u10 自动续训、多 seed 或对抗长训练都不得开始。
+本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。历史 v1 Run 及其裁决继续封存，不作修复版 resume 基线。R1 二维 signed-longitudinal、R2 有界 reward v3、R3 ValueNorm+Huber、R4 GO/HOLD v2、R5 生产入口 smoke 和开训前全链路检查均已闭环；修复版正式 Run `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` 现已完成 seed 42 fresh u1–u5、80 episodes、strict validator、schema-v4 checkpoint、双 C0 v4 和唯一 v2 judge。机器裁决是 `CONTINUE_WITH_WARNING`：无 hard/Critic/联合行为塌缩失败，唯一 warning 为 9/16 gate episode lane invasion；两车确定性 brake mode=1、0 success 说明策略仍未形成到达能力，但 agent1 progress 和总体 timeout 未达到预注册的持续塌缩联合条件，因此不能人工误杀。当前安全边界为 u5，未启动 u6；唯一 NEXT 是先解决 C 盘 0 空间问题，再以同一 RunID/合同/checkpoint 严格恢复到 u10，随后停止并执行双 C0 与带 u5 前序报告的 v2 judge。当前仍没有可用于多 seed、独立选模或对抗训练的合格基础 checkpoint。

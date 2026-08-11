@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：正式 Run `P0_BASE_MAPPO_Town02_s42_20260809_204729` 的冻结 v1 judge 在 update 10 给出 `CONTINUE_WITH_WARNING`，但新增行为诊断确认确定性 Actor 已塌缩为全程刹车。研究者已在 update 11 仅收集 2/16 episode、尚未进行 PPO 更新时停止续训；安全边界仍为 update 10。旧裁决不篡改，当前 Run 作为诊断样本封存，不再恢复；R1 动作、R2 奖励、R3 Critic 稳定化、R4 GO/HOLD v2、R5 最终生产入口 smoke 和正式训练前全链路检查均已完成。v2 反事实回放在 u5 只警告、u10 判 `HOLD/BEHAVIORAL_COLLAPSE`；当前状态为 `READY FOR FORMAL U5 PILOT`，下一步使用冻结组合和新 RunID，只运行 seed 42 fresh pilot 到 u5。
+> 当前状态：修复版正式 Run `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` 已从随机初始化完成 seed 42 u1–u5、strict validator、双 C0 v4 和 GO/HOLD v2，机器结论为 `CONTINUE_WITH_WARNING`。训练健康、checkpoint、来源和双 C0 重复性全部 PASS；唯一 warning 为主 C0 的 9/16 lane-invasion episode。R4 联合行为塌缩未成立，当前安全边界为 u5，未启动 u6。下一步只允许在系统盘空间稳定恢复后，以同一 RunID 严格 resume 到 u10，再执行双 C0 与带 u5 前序报告的唯一 judge；不得自动续训、多 seed 或调参。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
@@ -26,11 +26,22 @@
 
 | 日期 | RunID | Git SHA | 契约 SHA256 | 当前 update | 训练状态 | strict validator | C0 | GO/HOLD | 下一动作 |
 |---|---|---|---|---:|---|---|---|---|---|
+| 2026-08-11 | `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` | `ff5ddeb` | `1cab6f44...ac2c1` | 5 | `SEGMENT_COMPLETED`；fresh seed 42；未启动 u6 | PASS：5 updates / 80 episodes / 197 required tags / 575 scalar tags；PPO、ratio、reward audit、ValueNorm/checkpoint 全过 | 主/重复均 0/16 success、5/16 collision、11/16 timeout；离散重复性 PASS；两车 brake mode 1.0，progress `2.496/4.713 m` | `CONTINUE_WITH_WARNING`；仅 9/16 lane invasion warning；联合塌缩与 Critic HOLD 均未触发 | 先稳定释放 C 盘空间；之后同 Run 严格 resume 到 u10，停止并重跑双 C0 + 带 u5 前序报告的 v2 judge |
 | 2026-08-11 | `P0_R5_MAPPO_smoke_s42_20260811_104100` | `00e16f3` | N/A：诊断 smoke，不冒充正式合同 Run | 3 | `R5 PASS / DIAGNOSTIC ONLY` | PASS：3 updates / 12 episodes / 197 required tags / 575 scalar tags；u2 受控中断后严格恢复 | 未运行：u1–u3 不是登记停点，禁止伪造 C0 | 未裁决：不满足正式 update 5/10 入口 | 永久禁止 resume/pretrained/选模；新 RunID、随机初始化运行正式 seed 42 到 u5 |
 | 2026-08-09 | `P0_BASE_MAPPO_Town02_s42_20260809_204729` | `8c6d582` | `342a1f...f6f` | 10 | `INTERRUPTED / DIAGNOSTIC HOLD`；安全 checkpoint 仍为 u10 | PASS：10 updates / 160 episodes / 583 scalar tags；u11 的 2 条临时 episode 不计入 | 两次 gate 均 0/16 success、0/16 collision、16/16 timeout；离散重复性 PASS；确定性两车 100% brake mode | 冻结 judge 保留 `CONTINUE_WITH_WARNING`；研究者因未注册的制动塌缩失败模式停止 | 禁止 resume；设计 v2 动作/奖励/Critic 与早期门槛，fresh 新 Run |
 | 2026-08-09 | `P0_BASE_MAPPO_Town02_s42_20260809_173321` | `8a0bd9d` | `342a1f...f6f` | 5 | `EVIDENCE_HOLD`；模型仅诊断 | PASS：5 updates / 80 episodes / 570 scalar tags | 两次 gate 均 0/16 success、0/16 collision、16/16 timeout；离散重复性 PASS | 来源预检 HOLD：resolved config 漏记 seed，未进入性能裁决 | 提交证据修复后新 RunID fresh 重跑 update 5；禁止 resume 本 Run |
 
 ## 4. 已运行记录
+
+### `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458`
+
+- 输入：R3 训练合同 `P0_BASE_MAPPO_TOWN02_CRITIC_V4`、seed 42、fresh 随机初始化、Git `ff5ddebbea7e36a2d6d080e827d1930c245ff586`，显式 `--cpu`，只访问用户维护的 CARLA `127.0.0.1:2000`。
+- 训练：自然结束于 u5，未启动 u6；5 updates、80 episodes，success 始终为 0，collision 从 100% 降至 37.5%，timeout 升至 62.5%，u5 平均长度 865.81。5 次 PPO 均执行，ratio/reward/finite/schema 检查和 ValueNorm count `1..5` 均通过。
+- checkpoint：`logs/P0_BASE_MAPPO_R3_Town02_s42_20260811_112458/periodic/ckpt_update_000005.pt`，SHA256 `4652aa5979575db0799bc70ba3fc9838efaf0c28476f35f87ecb38337e815e72`；schema-v4、checksum、模型/optimizer/RNG/ValueNorm 与合同身份审计 PASS。
+- C0：主 `P0_BASE_C0_gate_u000005_20260811_115047`、重复 `P0_BASE_C0_gate_u000005_20260811_120044`；两轮均为 0 success、5 collision、11 timeout，逐病例离散字段无 mismatch，validator/summary/reward/cleanup 全部 PASS。主 C0 两车 brake mode 均为 1.0、平均速度 `0.0350/0.0714 m/s`、平均 progress `2.4963/4.7130 m`，9/16 episode 有 lane invasion。
+- judge：`decisions/base_mappo/P0_BASE_GO_HOLD_u000005_20260811_120658/go_hold_decision.json`，结论 `CONTINUE_WITH_WARNING`。唯一 warning 为 9 个 gate episode 出现 lane invasion；agent1 progress 高于 3 m、整体 timeout 低于 95%，故 R4 的 all-agent 联合塌缩不成立，Critic 联合退化也未成立。
+- 环境：训练、双 C0 和 judge 无 CARLA 断连/卡死，结束后 async/None、vehicle/sensor `0/0`。第一轮 C0 后 C 盘被后台程序占满；经授权删除约 449 MB 百度自动更新临时缓存后完成余下验证，但 C 盘随后再次为 0。该主机风险不污染已完成证据，却要求 u10 前先稳定释放系统盘空间。
+- 完整数值、身份、哈希和解释见 [u5 正式训练与 GO/HOLD 记录](./P0-BASE-R3_seed42_u5正式训练与GO-HOLD记录.md)。当前不得调参、fresh 重跑或多 seed；只允许在磁盘条件恢复后按同一身份严格续至 u10，并在 u10 judge 中链接本次 u5 决策报告。
 
 ### `P0_BASE_MAPPO_Town02_s42_20260809_204729`
 
