@@ -126,10 +126,20 @@ R5 已验收后，下一次获准执行的正式命令只到 update 5。`<timest
   --experiment-contract configs/base_mappo/p0_base_critic_v4.json `
   --run-id P0_BASE_MAPPO_R3_Town02_s42_<timestamp> `
   --updates 5 `
+  --cpu `
   --save-dir logs/P0_BASE_MAPPO_R3_Town02_s42_<timestamp>
 ```
 
 该段完成后先运行 strict validator，再按 C0 v4 执行主/重复 gate，最后使用 GO/HOLD v2 唯一裁决；不要在看到训练 rollout 后临时修改奖励、参数、门槛或继续到 u10。
+
+```powershell
+..\..\..\venv\Scripts\python.exe -m utils.validate_tensorboard_run `
+  --run-dir logs/P0_BASE_MAPPO_R3_Town02_s42_<same-timestamp> `
+  --expected-updates 1 2 3 4 5 `
+  --expected-episodes-per-update 16 `
+  --require-ppo-updates `
+  --max-preupdate-ratio-error 1e-6
+```
 
 ### 1. [DEPRECATED] train_no_rllib_mappo.py - 早期独立 MAPPO
 
@@ -321,20 +331,45 @@ python -m training.pretrain_with_manual_data \
 
 ### 1. evaluate_base_policy_c0.py - 当前基础策略 C0 evaluator
 
-**功能：** 按冻结 `p0_base_c0_eval_v1` 契约对 periodic checkpoint 执行无蓝车/无额外交通的 gate 或 held-out validation，输出逐 episode 证据、汇总和清理审计。
+**功能：** 按冻结 `p0_base_c0_eval_v4` 契约对 schema-v4 periodic checkpoint 执行无蓝车/无额外交通的 gate 或 held-out validation，输出逐 episode 证据、汇总和清理审计。以下是正式 u5 的主/重复 gate 完整顺序；两个 EvalID 必须不同，但 checkpoint、合同和 profile 必须相同。
 
 ```powershell
-$stamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$evalId = "P0_BASE_C0_gate_u000005_$stamp"
+$runId = "<P0_BASE_MAPPO_R3_Town02_s42_YYYYMMDD_HHMMSS>"
+$checkpoint = "logs/$runId/periodic/ckpt_update_000005.pt"
+$c0Contract = "configs/evaluation/p0_base_c0_eval_v4.json"
+
+# 主 C0
+$evalA = "P0_BASE_C0_gate_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 ..\..\..\venv\Scripts\python.exe -m evaluation.evaluate_base_policy_c0 `
-  --checkpoint logs/<RunID>/periodic/ckpt_update_000005.pt `
+  --eval-contract $c0Contract `
+  --checkpoint $checkpoint `
   --profile gate `
-  --eval-id $evalId `
-  --output-dir "evaluations/$evalId"
+  --eval-id $evalA `
+  --output-dir "evaluations/$evalA"
 
 ..\..\..\venv\Scripts\python.exe -m evaluation.validate_base_c0_run `
-  --output-dir "evaluations/$evalId" `
-  --expected-checkpoint logs/<RunID>/periodic/ckpt_update_000005.pt
+  --output-dir "evaluations/$evalA" `
+  --expected-contract $c0Contract `
+  --expected-checkpoint $checkpoint `
+  --expected-profile gate `
+  --expected-eval-id $evalA
+
+# 重复 C0；性能只计主 C0，第二次只用于离散重复性审计
+$evalB = "P0_BASE_C0_gate_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+..\..\..\venv\Scripts\python.exe -m evaluation.evaluate_base_policy_c0 `
+  --eval-contract $c0Contract `
+  --checkpoint $checkpoint `
+  --profile gate `
+  --eval-id $evalB `
+  --output-dir "evaluations/$evalB"
+
+..\..\..\venv\Scripts\python.exe -m evaluation.validate_base_c0_run `
+  --output-dir "evaluations/$evalA" `
+  --expected-contract $c0Contract `
+  --expected-checkpoint $checkpoint `
+  --expected-profile gate `
+  --expected-eval-id $evalA `
+  --repeat-output-dir "evaluations/$evalB"
 ```
 
 完整 profile、恢复、重复性和 HOLD 规则见 `docs/P0-BASE-02_基础策略C0评估协议.md`。
@@ -348,22 +383,22 @@ $evalId = "P0_BASE_C0_gate_u000005_$stamp"
 ```powershell
 # 无 CARLA 契约预检
 ..\..\..\venv\Scripts\python.exe -m evaluation.base_go_hold_protocol `
-  --contract configs/evaluation/p0_base_go_hold_v1.json
+  --contract configs/evaluation/p0_base_go_hold_v2.json
 
 # 当前示例是 update 5；EvalA/EvalB 必须是同 checkpoint 的两次独立 gate
 $decisionId = "P0_BASE_GO_HOLD_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 ..\..\..\venv\Scripts\python.exe -m evaluation.judge_base_go_hold `
   --mode milestone `
-  --go-hold-contract configs/evaluation/p0_base_go_hold_v1.json `
-  --run-dir logs/<RunID> `
-  --checkpoint logs/<RunID>/periodic/ckpt_update_000005.pt `
-  --c0-output-dir evaluations/<EvalA> `
-  --c0-repeat-output-dir evaluations/<EvalB> `
+  --go-hold-contract configs/evaluation/p0_base_go_hold_v2.json `
+  --run-dir "logs/$runId" `
+  --checkpoint $checkpoint `
+  --c0-output-dir "evaluations/$evalA" `
+  --c0-repeat-output-dir "evaluations/$evalB" `
   --output-dir "decisions/base_mappo/$decisionId" `
   --expected-update 5
 ```
 
-`HOLD`、`PILOT_NO_GO`、`VALIDATION_REJECT` 返回非 0。完整门槛、比较符和 update 60/80/100 状态含义见 `docs/P0-BASE-04_GO-HOLD数值门槛预注册.md`。
+u5 是 v2 的第一个里程碑，不提供 `--previous-decision-report`；从 u10 开始必须用该参数绑定同一 Run 的相邻上一里程碑报告。`HOLD`、`PILOT_NO_GO`、`VALIDATION_REJECT` 返回非 0。v1 文档只解释历史裁决；当前行为/Critic 持续门槛见 `docs/R4_GO-HOLD-v2早期塌缩门槛与回归验证.md`。
 
 ---
 

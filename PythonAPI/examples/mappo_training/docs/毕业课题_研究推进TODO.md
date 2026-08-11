@@ -10,7 +10,7 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                      |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                  |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                             |
-| 当前工程基线    | `P0-BASE-03R-R5-COMPLETE`：R0/WTA v1 Run 只读封存；R1–R4 已冻结，R5 真实 CARLA 最终入口 smoke、严格恢复与证据链验收通过；下一步只允许 seed 42 fresh pilot 到 update 5 |
+| 当前工程基线    | `P0-BASE-03R-PREFLIGHT-PASS`：R1–R5、三合同绑定、场景、179 项回归、R5 证据和正式 u5 命令均复核通过；下一步只允许 seed 42 fresh pilot 到 update 5 |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                          |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                   |
 | 当前有效自动化测试 | 共 179 项通过（2026-08-11）：R5 未改代码或科学参数；R4 GO/HOLD v2、R1/R2/R3 及既有训练、C0、checkpoint、生命周期和场景回归均未退化；另有真实 CARLA 3-update 生产入口、受控中断/恢复与 10 项机制诊断证据 |
@@ -23,7 +23,7 @@
 | 阶段 | 状态 | 结论 |
 |---|---|---|
 | 基础 CARLA 多车环境与 MAPPO | REAL SMOKE + SUCCESS VERIFIED | P0-00G 自动链路、用户人工视觉及固定场景 success 两层真实测试通过；不代表 MAPPO 性能/收敛已验证 |
-| 基础 MAPPO 策略训练与选择 | R5 PASS / FORMAL U5 PILOT NEXT | v1 judge 历史裁决不变；R1–R5 修复与最终入口工程验收完成。只放行新 RunID、随机初始化、seed 42 到 update 5；多 seed 仍被阻塞 |
+| 基础 MAPPO 策略训练与选择 | READY FOR FORMAL U5 PILOT | v1 judge 历史裁决不变；R1–R5 与开训前全链路检查完成。只放行新 RunID、随机初始化、seed 42 到 update 5；多 seed 仍被阻塞 |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -92,6 +92,7 @@
 - [x] **P0-BASE-04 预注册 GO/HOLD 数值门槛**：机器 JSON 已冻结证据硬失败、KL/clip/梯度/critic/探索/真实动作饱和健康线、8 个停点能力线及 P0-BASE-06 held-out 下界；离线 judge 绑定 Run origin Git 中的阈值/代码 blob，输出不可覆盖裁决，累计回报不参与 GO。
 - [x] **P0-BASE-03R 基础策略制动塌缩修复（R4）**：GO/HOLD v2 已冻结双 Agent 确定性 brake、低速、低 progress、timeout、零成功的联合行为门槛，并要求相邻两个里程碑持续成立；Critic HOLD 要求四项退化信号连续五个 update。旧 Run 真实 C0 回放在 u5 仅 warning、u10 `BEHAVIORAL_COLLAPSE` HOLD；零成功但仍行进的早期策略不被误杀。v1 历史裁决不变，179 项回归通过。
 - [x] **P0-BASE-03R 修复版最终入口 smoke（R5）**：真实 CARLA 10 项 R2/R3 机制诊断全部通过；生产入口 fresh u1、u2 受控中断/严格恢复、u3 完成，共 12 episodes。strict validator 对 `[1,2,3]`、197 个必需标签和 575 个 TB scalar 标签 PASS；schema-v4 checkpoint、ValueNorm/RNG/optimizer、前缀裁剪与 async/actor 清理均通过，未发生服务卡死。详见 [R5 记录](./R5_最终训练入口真实CARLA_smoke验证.md)。
+- [x] **P0-BASE-03R 正式训练前全链路检查**：R1/R2/R3/R4 专项 38/38、全量 179/179 PASS；训练/C0/GO-HOLD 三合同 SHA 互绑、16 个训练场景、8 个 held-out 场景、R5 strict/checkpoint/真实机制报告和 CARLA 空闲状态均复核通过。正式命令 dry preflight 强制解析为 fresh、seed 42、u5、LR horizon 100、16 episodes/update、reward v3，并显式使用与历史正式 Run/R5 一致的 `--cpu`，避免和 CARLA 争用 GPU；修复了主动操作文档残留 C0/GO-HOLD v1/v3 的问题。详见 [开训前记录](./R1-R5_正式训练前全链路检查记录.md)。
 - [ ] NEXT **P0-BASE-03 修复版 seed 42 正式 pilot 到 update 5**：使用 R3 训练合同、C0 v4、GO/HOLD v2、新 RunID、随机初始化和正式 LR horizon；u5 停止后依次运行主 C0、重复 C0 与唯一 judge。禁止复用 R5 smoke checkpoint，也不得提前延长到 u10 或放行多 seed。
 - [ ] BLOCKED **P0-BASE-05 扩展多 seed 正式训练**：仅在 P0-BASE-04 GO 后，以同一 commit/config 运行 seeds `42,123,2024`；不得依据中间结果修改预算、奖励或场景，失败 Run 同样登记。
 - [ ] BLOCKED **P0-BASE-06 独立评估并选择 checkpoint**：用冻结 C0 协议评估全部 periodic checkpoint，先安全门槛、再任务成功与稳定性；生成 `best_base_valid.pt`，登记 SHA256、来源 Run/commit/config，禁止按训练 rollout 选模。
@@ -384,7 +385,7 @@
 
 #### P0-BASE-03R 基础策略制动塌缩修复
 
-> **执行状态：R0/R1/R2/R3/R4/R5 COMPLETED / FORMAL U5 PILOT NEXT（2026-08-11）。** 本阶段已完成逐项实现、真实 CARLA 机制复验和最终生产入口 smoke。action/reward/value/门槛任一变化都会使旧 checkpoint 失去正式 resume/pretrained 资格；正式 pilot 必须使用冻结契约、新 RunID 和随机初始化。
+> **执行状态：R0/R1/R2/R3/R4/R5 COMPLETED / PREFLIGHT PASS / FORMAL U5 PILOT NEXT（2026-08-11）。** 本阶段已完成逐项实现、真实 CARLA 机制复验、最终生产入口 smoke 和开训前全链路检查。action/reward/value/门槛任一变化都会使旧 checkpoint 失去正式 resume/pretrained 资格；正式 pilot 必须使用冻结契约、新 RunID 和随机初始化。
 
 - [x] **R0 诊断封存与基线提交**：u5/u10 双 C0 与重复性已离线复验 PASS；judge、registry、实验记录和本修复清单由本次证据提交冻结。checkpoint/TensorBoard/过程日志以及用户 `Pipfile`、Obsidian 状态均排除；本次提交后的 HEAD 是 R1 唯一父基线。
 - [x] **R1 动作协议 v2**：基础 Actor 从三维 `[throttle, steer, brake]` 改为二维 `[signed_longitudinal, steer]`；`d=0.05` 连续死区使正值映射 throttle、负值映射 brake、中心映射 coast。训练采样/buffer/PPO log-prob 均使用二维 pre-tanh `z`，CARLA 仍接收三维环境动作；checkpoint schema v3 保存完整 `action_spec`，metrics v4 与 C0 v2 同时审计策略/环境动作。旧 WTA/C0/metrics 只保留显式历史读取，新 resume/pretrained 严格拒绝；正式 R1 契约要求 fresh。专项与全量 140 项无 CARLA 回归通过，reward/Critic 未修改，论文推导、参考文献和测试计划见 [R1 文档](./R1_二维纵向动作协议_论文正文与实验设计.md)。
@@ -781,6 +782,7 @@ git rev-parse HEAD
 | 2026-08-10 | `P0-BASE-03R-R3` | `value_normalization.py`、基础训练/checkpoint/metrics、R3 训练与 C0 v4 契约、真实诊断脚本/报告、value/checkpoint/metrics/C0 tests、R3 论文与项目协议文档 | Critic 输出归一化 value，rollout/GAE 反归一化；完整 return batch每 update 更新一次 ValueNorm；归一化 Huber 抑制稀疏大误差；normalizer 为强制 checkpoint 状态 | 真实 CARLA 536-transition A/B 的裁剪率 100%→0.33%、留出 MSE 63.8371→57.1734、EV 0.5309→0.5897；R2 实车轨迹 10 项机制验收全过 | 不修改 Actor、reward、场景、LR/PPO/GAE/grad clip；真实脚本不是性能 pilot；旧 schema v2/v3 仅历史读取，R4/R5 前仍禁止 pilot | P0-BASE-03R-R3 |
 | 2026-08-11 | `P0-BASE-03R-R4` | GO/HOLD v2 JSON、双版本 protocol/judge、C0 行为摘要、前序报告链、12 项 v2 tests、R4 说明与项目台账 | 行为 HOLD 使用双 Agent brake/低速/低 progress/timeout/零成功联合条件并要求相邻两里程碑持续；Critic HOLD 使用四信号连续五 update；报告输出机器原因码 | R4 专项 12 项、v1+v2 GO/HOLD 26 项、全量 179 项通过；旧真实 u5/u10 C0 回放分别为 warning 与 `BEHAVIORAL_COLLAPSE` HOLD；移动但零成功样本不 HOLD；真实 teleport/scripted success 与清理审计 PASS | 不改 Actor/Critic 网络、reward、PPO/GAE、场景或训练参数；旧 v1 裁决不改写；success smoke 旧奖励只验生命周期，不作为 reward-v3 数值证据；R4 不是性能 pilot | P0-BASE-03R-R4 |
 | 2026-08-11 | `P0-BASE-03R-R5` | 最终生产入口真实 CARLA 3-update smoke、R2/R3 机制复验、checkpoint/恢复/TB/JSONL 审计与 R5 记录 | 不改算法与科学参数；验证 action-v2、reward-v3、ValueNorm-Huber、metrics-v5、schema-v4 checkpoint 和 R4 所需字段在唯一入口端到端连通 | 10 项机制诊断 PASS；fresh u1、u2 受控中断/严格恢复、u3 完成；12 episodes、197 必需标签、575 TB scalar 标签、全部 checkpoint SHA/manifest/ValueNorm/RNG/optimizer 与清理审计 PASS；全量 179 项回归通过 | 诊断 LR horizon/episode 规模仅用于 smoke；不执行正式 C0/judge，不复用权重，不声称性能或收敛；未出现 CARLA 卡死，无需重启 | P0-BASE-03R-R5 |
+| 2026-08-11 | `P0-BASE-03R-PREFLIGHT` | R1–R5 端到端审计、三合同/场景/运行时预检、正式 u5 命令 dry preflight、C0/GO-HOLD 操作文档与独立检查记录 | 不改算法、配置或阈值；统一当前 C0 v4/GO-HOLD v2 操作入口，明确 u5 后双 C0 与唯一 judge 停止顺序 | R1–R4 专项 38 项、全量 179 项、训练/C0/GO-HOLD preflight、16 场景 validator、R5 strict validator、5 checkpoint 与 CARLA 0.9.16 空闲审计均 PASS | 只放行 seed 42 fresh 到 u5；尚无正式性能结果，不放行 u10、多 seed、选模或对抗训练 | P0-BASE-03R-PREFLIGHT |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志
@@ -878,4 +880,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B 至 P0-00G-SUCCESS 已闭合基础 MAPPO 的终止/bootstrap、active-mask、GAE/PPO、生产更新、checkpoint/resume、指标审计、真实 CARLA 工程 smoke 和固定场景 success 链路；P0-BASE-00/01/02/04 已分别冻结合格源码、正式训练契约、独立 C0 评估协议和 v1 数值裁决。seed 42 正式 Run 的 u10 训练、双 C0、重复性、来源和 judge 均闭环，机器裁决历史值为 `CONTINUE_WITH_WARNING`；但两次确定性 C0 均显示两车 100% brake、16/16 timeout，训练趋势也呈 brake mode 上升和速度下降，因此研究者已在未产生 u11 PPO/checkpoint 时停止并将 v1 Run 诊断封存。R1 已完成二维 signed-longitudinal 动作协议，R2 已完成有界 route-completion reward v3，R3 已完成 ValueNorm+Huber、严格 checkpoint 恢复和真实 CARLA 机制 A/B，R4 已冻结防早期误杀的 GO/HOLD v2，R5 已在真实 CARLA 上完成唯一生产入口、受控中断/严格恢复、checkpoint/metrics 与清理验收。当前 NEXT 不是继续旧 u20、复用 smoke 权重或启动长训，而是使用冻结的 R3 训练合同、C0 v4、GO/HOLD v2、新 RunID 和随机初始化只运行 seed 42 到 u5，再执行双 C0 与唯一 judge。当前仍没有训练好的正式基础 checkpoint，任何多 seed 或对抗长训练都不得开始。
+本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。P0-00B 至 P0-00G-SUCCESS 已闭合基础 MAPPO 的终止/bootstrap、active-mask、GAE/PPO、生产更新、checkpoint/resume、指标审计、真实 CARLA 工程 smoke 和固定场景 success 链路；P0-BASE-00/01/02/04 已分别冻结合格源码、正式训练契约、独立 C0 评估协议和 v1 数值裁决。seed 42 正式 Run 的 u10 训练、双 C0、重复性、来源和 judge 均闭环，机器裁决历史值为 `CONTINUE_WITH_WARNING`；但两次确定性 C0 均显示两车 100% brake、16/16 timeout，训练趋势也呈 brake mode 上升和速度下降，因此研究者已在未产生 u11 PPO/checkpoint 时停止并将 v1 Run 诊断封存。R1 已完成二维 signed-longitudinal 动作协议，R2 已完成有界 route-completion reward v3，R3 已完成 ValueNorm+Huber、严格 checkpoint 恢复和真实 CARLA 机制 A/B，R4 已冻结防早期误杀的 GO/HOLD v2，R5 已在真实 CARLA 上完成唯一生产入口、受控中断/严格恢复、checkpoint/metrics 与清理验收；开训前全链路检查又复核了三合同、场景、179 项回归、R5 证据和正式命令，并修正当前操作文档的历史协议残留。当前 NEXT 不是继续旧 u20、复用 smoke 权重或启动长训，而是使用冻结的 R3 训练合同、C0 v4、GO/HOLD v2、新 RunID 和随机初始化只运行 seed 42 到 u5，再执行双 C0 与唯一 judge。当前仍没有训练好的正式基础 checkpoint，任何 u10 自动续训、多 seed 或对抗长训练都不得开始。

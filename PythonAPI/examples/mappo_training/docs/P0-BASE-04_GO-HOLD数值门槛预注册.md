@@ -1,10 +1,12 @@
 # P0-BASE-04 GO/HOLD 数值门槛预注册
 
+> **历史 v1 协议说明（2026-08-11）：** 本文以下数值、状态和命令用于复现 R0/WTA v1 Run，不得复制到 R1–R5 修复版新训练。当前机器真值是 [`p0_base_go_hold_v2.json`](../configs/evaluation/p0_base_go_hold_v2.json)，方法和门槛见 [R4 GO/HOLD v2](./R4_GO-HOLD-v2早期塌缩门槛与回归验证.md)，可执行命令只以 [`RUN_COMMANDS.md`](../RUN_COMMANDS.md) 的 C0 v4/GO-HOLD v2 段落为准。
+>
 > 状态：`FROZEN / PRE-REGISTERED`（2026-08-04）
 > 机器真值：[`configs/evaluation/p0_base_go_hold_v1.json`](../configs/evaluation/p0_base_go_hold_v1.json)
 > 契约 ID：`P0_BASE_GO_HOLD_TOWN02_V1`
 > 文件 SHA256：`c529edf363cdbeaec93f481a8c70ead4a041bae4d4fc59fdb63cdfd9f8053dde`
-> 当前结论：门槛已经在任何正式 pilot 结果产生前冻结；可以进入 P0-BASE-03 seed 42 分段试训，但尚未获得策略性能 GO，多 seed 仍被阻塞。
+> 历史结论：v1 门槛在当时正式 pilot 前冻结；旧 Run 后续已因未注册的确定性制动塌缩被研究者诊断封存，机器裁决不改写。修复版当前仅放行 seed 42 fresh pilot 到 u5，多 seed 仍被阻塞。
 
 ## 1. 本阶段解决什么问题
 

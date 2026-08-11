@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：正式 Run `P0_BASE_MAPPO_Town02_s42_20260809_204729` 的冻结 v1 judge 在 update 10 给出 `CONTINUE_WITH_WARNING`，但新增行为诊断确认确定性 Actor 已塌缩为全程刹车。研究者已在 update 11 仅收集 2/16 episode、尚未进行 PPO 更新时停止续训；安全边界仍为 update 10。旧裁决不篡改，当前 Run 作为诊断样本封存，不再恢复；R1 动作、R2 奖励、R3 Critic 稳定化、R4 GO/HOLD v2 与 R5 最终生产入口 smoke 均已完成。v2 反事实回放在 u5 只警告、u10 判 `HOLD/BEHAVIORAL_COLLAPSE`；下一步使用冻结组合和新 RunID，只运行 seed 42 fresh pilot 到 u5。
+> 当前状态：正式 Run `P0_BASE_MAPPO_Town02_s42_20260809_204729` 的冻结 v1 judge 在 update 10 给出 `CONTINUE_WITH_WARNING`，但新增行为诊断确认确定性 Actor 已塌缩为全程刹车。研究者已在 update 11 仅收集 2/16 episode、尚未进行 PPO 更新时停止续训；安全边界仍为 update 10。旧裁决不篡改，当前 Run 作为诊断样本封存，不再恢复；R1 动作、R2 奖励、R3 Critic 稳定化、R4 GO/HOLD v2、R5 最终生产入口 smoke 和正式训练前全链路检查均已完成。v2 反事实回放在 u5 只警告、u10 判 `HOLD/BEHAVIORAL_COLLAPSE`；当前状态为 `READY FOR FORMAL U5 PILOT`，下一步使用冻结组合和新 RunID，只运行 seed 42 fresh pilot 到 u5。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
@@ -65,6 +65,7 @@
 - R3 处置（2026-08-10）：Critic 改为官方 MAPPO 风格的 ValueNorm target 与归一化 Huber，rollout/bootstrap/GAE 始终使用反归一化 value；normalizer 完整状态纳入 schema-v4 checkpoint，metrics-v5 同时审计原始与归一化尺度，C0 v4 绑定新契约。真实 CARLA 固定脚本确认 R2 守恒/静止/成功/碰撞信号链，并在 536 个真实 transition 的受控 A/B 中把梯度裁剪率从 100% 降至 0.33%、留出 MSE 从 63.8371 降至 57.1734。该诊断不是性能 pilot，不改写旧 Run，R4/R5 前仍禁止 fresh 长训。详见 [R3 文档](./R3_Critic价值归一化_论文正文与真实CARLA验证.md)。
 - R4 处置（2026-08-11）：新增 GO/HOLD v2，精确绑定 R3 训练合同、C0 v4、metrics v5 和 checkpoint v4。行为 HOLD 要求双 Agent 确定性 brake `>=0.95`、速度 `<=0.1 m/s`、每回合 progress `<=3 m`、timeout rate `>=0.95`、零成功同时成立，并在相邻两个里程碑持续；u5 只 warning。Critic HOLD 要求低 EV、近常数预测、高相对 MAE 和近连续裁剪四项连续五 update。旧真实 C0 JSONL 回放在 u5 warning、u10 `BEHAVIORAL_COLLAPSE`，移动但零成功样本不 HOLD；v1+v2 专项和全量 179 项回归通过。用户重启 2000 端口后，teleport 两车在 step 1/2、scripted 两车在 step 32/55 成功到达；两次终局、无碰撞、terminated/truncated 和清理审计 PASS。该旧 smoke 的 `success=100/time_bonus` 只验生命周期，不作为 reward-v3 数值证据。旧 v1 judge 不改写，R4 不构成性能 pilot；详见 [R4 文档](./R4_GO-HOLD-v2早期塌缩门槛与回归验证.md)。
 - R5 处置（2026-08-11）：在真实 CARLA 0.9.16/Town02 上复跑策略无关 R2/R3 诊断，10 项机制条件全部通过；随后以唯一生产入口完成 fresh u1、u2 episode 0 后受控中断、严格恢复完成 u2、再次恢复完成 u3。最终 12 条 episode、3 次 PPO、197 个必需标签、575 个 TB scalar 标签及全部 schema-v4 checkpoint/manifest/checksum/ValueNorm/RNG/optimizer 审计通过，未完成前缀被自动裁剪；最终 CARLA 为 async/None、vehicle/sensor `0/0`，无 RPC timeout 或卡死。该 Run 只验证工程链路，不执行正式 C0/judge、不用于 pretrained/选模，也不声称短训练已获得驾驶能力；详见 [R5 文档](./R5_最终训练入口真实CARLA_smoke验证.md)。
+- 开训前处置（2026-08-11）：从 Git 祖先、三份合同 SHA、16+8 场景身份、R1–R4 38 项专项、179 项全集成、R5 strict/checkpoint/真实机制报告、CARLA 0.9.16 空闲状态、GPU/磁盘和正式 u5 命令解析逐项复核，全部通过。发现当前操作文档的 C0/judge 示例仍残留 v1、C0 协议页路径/SHA 残留 v3，已统一到 C0 v4 与 GO/HOLD v2；算法、配置和阈值未改。只放行新 RunID、随机初始化的 seed 42 到 u5，详见 [全链路检查记录](./R1-R5_正式训练前全链路检查记录.md)。
 
 ### `P0_BASE_MAPPO_Town02_s42_20260809_173321`
 

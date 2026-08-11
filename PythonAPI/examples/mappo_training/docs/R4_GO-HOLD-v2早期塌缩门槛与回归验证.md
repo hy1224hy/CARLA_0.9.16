@@ -104,4 +104,4 @@ v1 配置和历史报告继续按 v1 reader 读取。旧 Run 的机器裁决仍�
 
 ## 8. 验收边界
 
-R4 完成只证明裁决器能区分证据错误、数值退化、持续停车塌缩和能力不足，不证明 R1—R3 修复后的策略一定收敛。下一步仍需 R5：用最终入口完成 action/reward success smoke、1—3 update 工程 smoke、checkpoint/resume 和证据链验证。全部通过后，才能用新 Git 祖先、新 RunID 和随机初始化启动 seed 42 fresh pilot；多 seed 与对抗训练仍未放行。
+R4 完成只证明裁决器能区分证据错误、数值退化、持续停车塌缩和能力不足，不证明 R1—R3 修复后的策略一定收敛。R5 随后已用最终入口完成真实 CARLA 机制复验、1—3 update 工程 smoke、checkpoint/resume、metrics 和清理验收；开训前全链路检查再次确认训练/C0/GO-HOLD 合同绑定、179 项回归和正式 u5 命令解析通过。因此当前只放行新 RunID、随机初始化的 seed 42 fresh pilot 到 u5；多 seed 与对抗训练仍未放行。

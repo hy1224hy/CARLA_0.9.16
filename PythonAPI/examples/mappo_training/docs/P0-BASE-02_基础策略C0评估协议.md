@@ -2,11 +2,11 @@
 
 > 当前协议 ID：`P0_BASE_C0_TOWN02_CRITIC_V4`（R1 动作 v2 + R2 奖励 v3 + R3 ValueNorm Critic）
 >
-> 机器真值：[`configs/evaluation/p0_base_c0_eval_v3.json`](../configs/evaluation/p0_base_c0_eval_v3.json)
+> 机器真值：[`configs/evaluation/p0_base_c0_eval_v4.json`](../configs/evaluation/p0_base_c0_eval_v4.json)
 >
-> 契约 SHA256：文件 `60ab62ae7e790e9bc9bc1c1d4acec3db20cfea241ae11868b29ee8ddb7b5c715`；canonical JSON `4da1ff08913492c8f443edde22da975637a225e77710ae7f03a9fa6f6119bc73`
+> 契约 SHA256：文件 `7fdb797b704b9ff53587a529c57e68eb9659b3043921dad9312aad60e66dcc68`；canonical JSON `7a0ee7c2f5fe54784e4a3a63f10eabd9092e9514805c2f32812bd118c0fdfa3e`
 >
-> 当前状态：v4 实现与离线验收完成；R3 已运行固定脚本机制诊断但未运行性能 pilot；等待 R4—R5 完成后再产生正式 checkpoint
+> 当前状态：v4 实现与离线验收完成；R1–R5 及开训前全链路检查均通过，等待 seed 42 fresh pilot 的正式 u5 periodic checkpoint
 > 边界：本阶段冻结“如何评估”，不声称已有合格基础策略，也不预先宣称训练性能通过。
 
 v1/WTA/reward-v2、v2/action-v2/reward-v2 与 v3/reward-v3 契约及既有证据保持只读，仍可离线复验原裁决；新执行默认使用 v4。v1/v2/v3 新执行只允许显式 diagnostic smoke，不能作为 R3 正式 gate/validation。动作、奖励与 Critic 升级原理见 [R1 动作](./R1_二维纵向动作协议_论文正文与实验设计.md)、[R2 奖励](./R2_奖励预算校准_论文正文与实验设计.md)和 [R3 Critic](./R3_Critic价值归一化_论文正文与真实CARLA验证.md)。
@@ -112,7 +112,7 @@ $checkpoint = "logs/<RunID>/periodic/ckpt_update_000005.pt"
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $evalId = "P0_BASE_C0_gate_u000005_$stamp"
 ..\..\..\venv\Scripts\python.exe -m evaluation.evaluate_base_policy_c0 `
-  --eval-contract configs/evaluation/p0_base_c0_eval_v3.json `
+  --eval-contract configs/evaluation/p0_base_c0_eval_v4.json `
   --checkpoint $checkpoint `
   --profile gate `
   --eval-id $evalId `
@@ -126,7 +126,7 @@ $checkpoint = "logs/<RunID>/periodic/ckpt_update_000005.pt"
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $evalId = "P0_BASE_C0_validation_u000005_$stamp"
 ..\..\..\venv\Scripts\python.exe -m evaluation.evaluate_base_policy_c0 `
-  --eval-contract configs/evaluation/p0_base_c0_eval_v3.json `
+  --eval-contract configs/evaluation/p0_base_c0_eval_v4.json `
   --checkpoint $checkpoint `
   --profile validation `
   --eval-id $evalId `
@@ -140,7 +140,7 @@ $evalId = "P0_BASE_C0_validation_u000005_$stamp"
 ```powershell
 ..\..\..\venv\Scripts\python.exe -m evaluation.validate_base_c0_run `
   --output-dir "evaluations/<EvalID>" `
-  --expected-contract configs/evaluation/p0_base_c0_eval_v3.json `
+  --expected-contract configs/evaluation/p0_base_c0_eval_v4.json `
   --expected-checkpoint "logs/<RunID>/periodic/ckpt_update_000005.pt" `
   --expected-profile validation `
   --expected-eval-id "<EvalID>"
@@ -169,7 +169,7 @@ $evalId = "P0_BASE_C0_validation_u000005_$stamp"
 - 可以跳过 seed 42 pilot 直接批量训练；
 - validation 中的 24 episodes 足以替代最终论文多 seed 统计。
 
-历史性能 GO/HOLD v1 数值门槛及其裁决保持冻结，不因 R1/R2/R3 事后重写。动作 v2 + 奖励 v3 + ValueNorm Critic 对应的 GO/HOLD v2 将在 P0-BASE-03R/R4 中、查看新 pilot 前另行冻结；在此之前 C0 v4 只提供协议与证据接口，不放行正式训练。C0 第二次重复执行只检查离散可复现性，性能计数只取第一套 case，避免把重复性运行伪装成额外样本量。
+历史性能 GO/HOLD v1 数值门槛及其裁决保持冻结，不因 R1/R2/R3 事后重写。动作 v2 + 奖励 v3 + ValueNorm Critic 对应的 GO/HOLD v2 已在 R4、查看新 pilot 前冻结，并在 R5 与开训前检查中通过合同绑定和入口验收；当前只放行 seed 42 fresh pilot 到 u5，不代表已有性能 GO。C0 第二次重复执行只检查离散可复现性，性能计数只取第一套 case，避免把重复性运行伪装成额外样本量。
 
 ## 8. 风险复盘
 
