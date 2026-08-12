@@ -8,7 +8,7 @@
 > - 基础策略唯一入口：`training.train_no_rllib_mappo_robust_v2`。
 > - Phase 1 单蓝车唯一入口：`training.train_2red_1blue_ppo`。
 > - RLlib、shared-policy、minimal/robust v1、旧 adversarial PPO 和旧 multi 入口全部是 **DEPRECATED**，不得用于新训练、resume、正式 checkpoint 或论文结果。
-> - 2026-08-12 起当前背景为 Town05：使用 `P0_BASE_MAPPO_TOWN05_V1`、Town05 C0 和 Town05 GO/HOLD。先在提交后的源码上重跑 1-update gamma 对齐 smoke；通过后才以新 RunID、随机初始化运行 seed 42 fresh pilot 到 update 5。Town02 u5 及其合同只作历史诊断，禁止 resume 到 Town05。u5 必须停止并执行 strict validator、两次 C0 gate 和唯一冻结 judge；对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
+> - 2026-08-12 起当前背景为 Town05：使用 `P0_BASE_MAPPO_TOWN05_V1`、Town05 C0 和 Town05 GO/HOLD。提交 `a11cf70` 已通过 16/16 和真实 1-update 门禁；当前只允许以新正式 RunID、随机初始化运行 seed 42 fresh pilot 到 update 5。Town02/诊断 smoke checkpoint 禁止 resume。u5 必须停止并执行 strict validator、两次 C0 gate 和唯一冻结 judge；对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
 
 Town05 正式坐标、16 场景问题定义和迁移验证见 [Town05 正式实验迁移与 16 场景设计](docs/Town05_正式实验迁移与16场景设计.md)。
 

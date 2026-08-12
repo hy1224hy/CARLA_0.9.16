@@ -9,7 +9,7 @@
 
 | 用途 | 唯一有效入口 | 当前许可 |
 |---|---|---|
-| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | Town05 迁移、gamma 修复与离线回归已通过；当前先重跑修复后的真实 1-update smoke，通过后才允许按 Town05 training/C0/GO-HOLD 合同 fresh 运行 seed 42 到 update 5。Town02/旧 smoke 权重禁止复用，多 seed 尚未放行 |
+| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | Town05 迁移、gamma 与初始化修复已在 `a11cf70` 上通过 16/16 和真实 1-update 门禁；当前仅允许按 Town05 training/C0/GO-HOLD 合同、正式新 RunID、随机初始化运行 seed 42 到 update 5，随后 strict/C0×2/judge。Town02/诊断 smoke 权重禁止复用，多 seed 尚未放行 |
 | Phase 1 单蓝车 | `python -m training.train_2red_1blue_ppo` | P0-06 通过前禁止启动 |
 
 以下入口均为 **DEPRECATED/历史参考**：`train_rllib.py`、`carla_rllib_wrapper.py`、`train_no_rlib_sharedpolicy.py`、`train_no_rllib_mappo.py`、`train_no_rllib_mappo_robust.py`、`train_adversarial_ppo.py`、`run_adversarial_training_with_viz.py` 以及旧 multi v1/v2。它们不得用于新训练、恢复修复后的训练、生成正式 checkpoint 或论文结果；未来确需使用时，必须先迁移当前生命周期、GAE、指标和 checkpoint 协议并重新验收。

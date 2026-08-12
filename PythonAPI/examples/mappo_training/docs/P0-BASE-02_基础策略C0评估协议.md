@@ -6,7 +6,7 @@
 >
 > 契约 SHA256：文件 `ea2e17f633e3b26eaedbbcf5f42cbaf9b14bc7077790e3dfcba438c0c276cab8`
 >
-> 当前状态：Town05 v1 实现、16+8 场景与旧 C0 smoke 链路已验收；等待 gamma 修复后 fresh 训练 smoke 与正式 u5 periodic checkpoint
+> 当前状态：Town05 v1 实现与 16+8 场景已验收；`a11cf70` 上 gamma/初始化修复后的 fresh 训练 smoke 已通过，当前等待正式 u5 periodic checkpoint
 > 边界：本阶段冻结“如何评估”，不声称已有合格基础策略，也不预先宣称训练性能通过。
 
 Town02 v1–v4 契约及既有证据保持只读，仍可离线复验原裁决；新执行默认使用 Town05 v1。动作、奖励与 Critic 升级原理见 [R1 动作](./R1_二维纵向动作协议_论文正文与实验设计.md)、[R2 奖励](./R2_奖励预算校准_论文正文与实验设计.md)和 [R3 Critic](./R3_Critic价值归一化_论文正文与真实CARLA验证.md)。
