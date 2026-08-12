@@ -10,11 +10,11 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                      |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                  |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                             |
-| 当前工程基线    | `P0-T05-REAL-SMOKE-PASS`：Town05 正式链路、gamma 单源传递和 CARLA 初始状态同步核验已提交；精确源码提交 `a11cf70` 上 training/C0/GO-HOLD clean preflight、16/16 live spawn、1-update smoke、checkpoint gamma 与清理全部通过 |
+| 当前工程基线    | `P0-T05-U5-EVIDENCE-HOLD`：Town05 seed-42 u5 的训练、checkpoint 和两次 C0 单次完整性均 PASS；双 C0 宏观结局相同，但 5/16 碰撞 case 的 episode length 相差 1–2 tick，正式 GO/HOLD 因离散重复性为 `HOLD` |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                          |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                   |
 | 当前有效自动化测试 | 184/184 全量通过（2026-08-12）；Town05 16/16 训练场景与 8/8 留出场景离线校验通过；真实 CARLA 在精确提交 `a11cf70` 上 16/16 初始状态核验及单更新训练通过 |
-| 最近训练产物    | clean-commit 诊断 Run `T05_parallel_smoke_s42_20260812_161632`：Git `a11cf70`，1 update/4 episodes/960 transitions；strict metrics PASS，训练/环境 gamma 均为 0.997，清理后 actor 0/0；仅作链路门禁，不用于性能/选模 |
+| 最近训练产物    | 正式 Run `P0_BASE_MAPPO_Town05_s42_20260812_164411`：Git `6c28a91`，u1–u5/80 episodes/65178 transitions；strict、checkpoint、gamma 和清理 PASS；双 C0 重复性 HOLD，禁止 u6、多 seed和选模 |
 | 本文档创建日期   | 2026-07-20                                                                                                                                |
 | 最后更新日期    | 2026-08-12                                                                                                                                |
 
@@ -23,7 +23,7 @@
 | 阶段 | 状态 | 结论 |
 |---|---|---|
 | 基础 CARLA 多车环境与 MAPPO | REAL SMOKE + SUCCESS VERIFIED | P0-00G 自动链路、用户人工视觉及固定场景 success 两层真实测试通过；不代表 MAPPO 性能/收敛已验证 |
-| 基础 MAPPO 策略训练与选择 | REAL SMOKE PASS / FORMAL TOWN05 U5 NEXT | Town02 u5 归档；Town05 合同、gamma 与初始化修复、真实链路门禁均通过。仅放行 seed 42 从随机初始化正式跑到 u5，随后必须停止并执行 strict/C0×2/GO-HOLD |
+| 基础 MAPPO 策略训练与选择 | TOWN05 U5 EVIDENCE HOLD | seed 42 已完成 u5 并停止；训练健康 PASS，但双 C0 有 5/16 个 case 的碰撞终止长度漂移 1–2 tick。先修复/解释重复性，不放行 u6、多 seed或选模 |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -81,7 +81,8 @@
 - [x] **P0-T05-02 完成迁移链路诊断**：离线训练池 16/16、留出池 8/8；真实 CARLA 出生位置/速度 16/16；旧诊断训练 1 update/4 episodes/960 transitions；Town05 C0 smoke 协议链路 PASS。该旧训练 smoke 后续发现 PBRS 实际 gamma 为 0.99，只证明链路可运行，不作为奖励协议一致性证据。
 - [x] **P0-T05-03A 修复并冻结 reward gamma 数据流**：`robust_v2` 现在把合同/PPO 的 `args.gamma` 显式传给环境 `reward_gamma`；环境创建后 mismatch 立即关闭并 fail-fast；checkpoint runtime 写入 `environment_reward_gamma`；Town05 C0 还会拒绝缺失/错误实际 gamma 的 checkpoint；新增连接级回归，连同当时全量 183/183 通过，并以 Git `2d18f68` 提交。Town02 正式 u5 和旧 Town05 smoke 因实际训练 gamma 0.99 降级为历史诊断证据，禁止续训/选模。验收中的首次 `numpy` import 失败由在项目目录误用 `.\venv`、选中内层空环境引起，改用规范根环境 `..\..\..\venv` 后全部通过，属于命令路径错误而非代码/算法失败。
 - [x] **P0-T05-03B 提交初始化修复并在精确 commit 上重跑 Town05 真实训练 smoke**：首次完整逐场预检为 14/16，场景 09 的 agent0 与场景 11 的 agent1 偶发停在 0.5 m 预偏移位置且速度为 0；隔离重复表明同一场景有时正常、有时丢失首次非零速度请求，故判定为 CARLA 异步 transform/target-velocity 状态提交瞬态，不是训练指令、Critic warning、梯度或策略移动缓慢。修复以 `a11cf70` 提交：全车先清零速度，再分同步帧提交预偏移 transform 和目标速度，按位置/速度容差核验，最多五次且失败关闭。提交后 training/C0/GO-HOLD 三合同 critical-source clean PASS；真实 16/16 初始状态通过。Run `T05_parallel_smoke_s42_20260812_161632` 完成 1 update、4 episodes、960 transitions，strict validator 核对 197 个必需指标和 582 个 TB scalar；两车 preupdate ratio 误差均 0、PPO 未跳过、reward 最大逐步残差 0、训练/环境 gamma 均 0.997，退出后 async/None、vehicle/sensor 0/0。随机一更新 4/4 timeout 只说明尚未训练，不作性能结论。checkpoint 记录正确 origin/last Git `a11cf70`；全仓 `git_dirty=true` 仅来自合同 critical paths 之外的用户既有 `AGENTS.md`、`Pipfile`、Obsidian 状态，三套正式预检均明确允许且未污染受控源码身份。
-- [ ] NEXT **P0-T05-04 运行 Town05 正式 seed-42 u5**：使用 `P0_BASE_MAPPO_TOWN05_V1`、新正式 RunID，从随机初始化跑到 update 5，立即停止并运行 strict validator、两次 Town05 C0 gate 与唯一 Town05 GO/HOLD。不得恢复任何 Town02/诊断 smoke、调参、启动多 seed、运行 u6 或 Phase 1。
+- [x] **P0-T05-04 运行 Town05 正式 seed-42 u5**：Run `P0_BASE_MAPPO_Town05_s42_20260812_164411` 从随机初始化完成 5 updates、80 episodes、65178 transitions，并自然停止，未启动 u6。strict validator、schema-v4 periodic checkpoint、训练/环境 gamma 0.997 和 CARLA 清理均 PASS。主/重复 C0 各自均为 0/16 success、12/16 collision、4/16 timeout 且完整性 PASS；两轮宏观结局一致，但场景 07/08/09/10/15 的 collision episode length 相差 1–2 tick，冻结离散重复性为 HOLD。唯一 Town05 GO/HOLD 因该证据硬失败裁决 `HOLD`；训练健康和 R4 行为塌缩评估 PASS，另有 8/16 lane invasion warning。完整记录见 [Town05 seed-42 u5 正式训练与 GO/HOLD](./P0-BASE-Town05_seed42_u5正式训练与GO-HOLD记录.md)。
+- [ ] NEXT **P0-T05-05 诊断并关闭 C0 逐 tick 重复性缺口**：只对上述 5 个 mismatch case 做最小重复回放，联合记录 collision callback、world frame、episode step、初始 transform/velocity 和终止提交顺序；先区分 CARLA 物理/事件回调的 1–2 tick 非确定性与 evaluator seed/同步/事件消费缺口。不得事后修改旧报告或直接放宽阈值；若需新容差/口径，必须在新模型评测前预注册并建立新协议身份。关闭后重新执行双 C0 与 GO/HOLD，PASS 前禁止 resume、调参、多 seed、选模或 Phase 1。
 
 - [x] **P0-00A 冻结训练入口**：基础策略只维护 `train_no_rllib_mappo_robust_v2.py`，Phase 1 单蓝车只维护 `train_2red_1blue_ppo.py`；README、运行命令和文件索引已标记 RLlib 和其他旧入口停止使用。
 - [x] **P0-00B 冻结并适配 terminated/truncated 语义**：采用 agent-centric 回报边界；同伴红车碰撞时未碰撞红车按 truncation bootstrap，红车成功/碰撞时蓝车按对抗任务结局 termination；环境、两个当前入口和 15 项测试已同步。
@@ -765,6 +766,7 @@ git rev-parse HEAD
 | 2026-08-11 | `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` | P0-BASE-03R u5 | 验证 R1–R4 修复版在 seed 42 首里程碑的训练健康、确定性行为与裁决 | `ff5ddeb` | `train_no_rllib_mappo_robust_v2.py` / `p0_base_critic_v4.json` | fresh | 42 | C0 主/重复均 0 success、5 collision、11 timeout；逐病例重复性 PASS | N/A | 历史机器输出 `CONTINUE_WITH_WARNING`；2026-08-12 发现训练 PBRS gamma 0.99 与合同/PPO/C0 0.997 不一致，降级为历史诊断 | `logs/P0_BASE_MAPPO_R3_Town02_s42_20260811_112458`；`evaluations/P0_BASE_C0_gate_u000005_20260811_115047`；`decisions/base_mappo/P0_BASE_GO_HOLD_u000005_20260811_120658` | 禁止 resume/选模；Town05 修复后 fresh 重做 |
 | 2026-08-12 | `T05_MIGRATION_SMOKE_20260812_121336` | P0-T05 migration | 证明 Town05 16 场景、当前 MAPPO 和 C0 链路能在现有主机运行 | uncommitted diagnostic | `p0_base_town05_v1.json` / 诊断覆盖 1 update、4 episodes、120 steps | fresh | 42 | C0 smoke 链路 PASS；随机一更新模型在 1 个 case 碰撞，不作性能结论 | N/A | 16/16 live spawn、960 transitions、PPO/checkpoint/metrics 均可运行；但训练 PBRS gamma 为 0.99，协议偏差使产物只具链路诊断价值 | `diagnostics/town05_migration_smoke/T05_MIGRATION_SMOKE_20260812_121336`；`evaluations/P0_BASE_C0_smoke_u000001_20260812_121700` | 提交 gamma 修复，fresh 重跑真实 1-update smoke |
 | 2026-08-12 | `T05_parallel_smoke_s42_20260812_161632` | P0-T05-03B | 验证提交后的 Town05 初始化、gamma、MAPPO 更新、指标/checkpoint 与清理链路 | `a11cf70` | `town05_parallel_pilot_smoke_v1.json` / 1 update、4 episodes、120 steps | fresh | 42 | N/A；随机策略训练内 0 success、0 collision、4 timeout，不作性能结论 | N/A | 16/16 live spawn；960 transitions；strict 197 required/582 TB scalar；gamma 0.997/0.997；PPO 执行；清理 0/0 | `diagnostics/town05_gamma_alignment_smoke_clean/T05_parallel_smoke_s42_20260812_161632` | P0-T05-04：正式 seed 42 fresh 到 u5，随后 strict/C0×2/GO-HOLD |
+| 2026-08-12 | `P0_BASE_MAPPO_Town05_s42_20260812_164411` | P0-T05-04 | 验证 Town05 正式 seed-42 u5 的训练健康、C0 行为与复现性 | `6c28a91` | `p0_base_town05_v1.json` / 5 updates、16 episodes/update、500 max steps | fresh | 42 | 主/重复 C0 均 0 success、12 collision、4 timeout；5/16 collision length 相差 1–2 tick | N/A | 训练/单次 C0 证据 PASS；GO/HOLD=`HOLD`，唯一 hard failure 为离散重复性；8/16 lane invasion warning | `logs/P0_BASE_MAPPO_Town05_s42_20260812_164411`；`evaluations/P0_BASE_C0_gate_u000005_20260812_170923`；`decisions/base_mappo/P0_BASE_GO_HOLD_u000005_20260812_171550` | P0-T05-05：诊断 collision callback/world frame/episode step 漂移；禁止 u6、多 seed和选模 |
 | YYYY-MM-DD | `<RunID>` | `<P?>` | `<一句话可证伪假设>` | `<sha>` | `<config path>` | `<sha256/path>` | `<seeds>` | `<rates/deltas>` | `<rates>` | `<pass/fail>` | `<run path>` | `<action>` |
 
 ## 15. 代码修改记录
@@ -860,7 +862,8 @@ git rev-parse HEAD
 ### 第 2 周：决定基础策略批量放行，再进入对抗可信化
 
 - [x] 第 1 天前半：修复版 seed 42 u5 正式训练、双 C0 v4 与 GO/HOLD v2 已完成，结果 `CONTINUE_WITH_WARNING`；未事后放宽阈值。
-- [ ] 第 1 天后半：Town05 迁移、gamma/初始化修复和 clean-commit smoke 已完成；现在按 `P0_BASE_MAPPO_TOWN05_V1` 用正式新 RunID fresh 运行 seed 42 到 u5，完成 strict validator、双 C0 和 Town05 GO/HOLD；Town02 u10 计划已取消。
+- [x] 第 1 天后半：Town05 正式 seed-42 u5、strict validator、双 C0 和唯一 GO/HOLD 已完成；机器裁决因 5/16 collision case 的 episode length 漂移 1–2 tick 为 `HOLD`，未启动 u6。
+- [ ] 第 2 天前半：完成 P0-T05-05 最小化重复性诊断；在旧裁决不改写、训练参数不变的前提下关闭 collision callback/world frame/episode step 证据缺口，再决定能否复测并续到 u10。
 - [ ] 第 2-4 天：仅在 GO 后以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
 - [ ] 第 5 天：用冻结 C0 验证全部 periodic checkpoints，生成带 SHA/manifest 的 `best_base_valid.pt`。
 - [ ] 第 6 天：开始 P0-01/P0-02，修复对抗碰撞对象和 steer/control 解析，并补相应测试。
@@ -895,4 +898,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。R1 二维 signed-longitudinal、R2 有界 reward v3、R3 ValueNorm+Huber、R4 早期塌缩门槛和 R5 生产入口均已闭环。2026-08-12 起正式实验背景迁移为 Town05：四方向 × 四任务家族的 16 个训练场景、8 个 Road 43/6 留出场景、fresh 训练/C0/GO-HOLD 合同，以及逐车当前车道中心和合法虚线并道语义均已实现。提交 `a11cf70` 上三合同 clean preflight、真实 16/16 初始状态和 1-update/960-transition MAPPO strict/checkpoint/cleanup 已闭环，说明现有电脑满足正式训练启动条件。Town02 u5 与 `CONTINUE_WITH_WARNING` 完整归档，不再续到 u10，也不能跨地图 resume。当前仍没有可用于多 seed、独立选模或对抗训练的合格 Town05 checkpoint；唯一 NEXT 是用冻结 Town05 合同、正式新 RunID 从随机初始化运行 seed 42 到 u5，并立即执行 strict validator、双 C0 与 Town05 GO/HOLD。
+本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。R1 二维 signed-longitudinal、R2 有界 reward v3、R3 ValueNorm+Huber、R4 早期塌缩门槛和 R5 生产入口均已闭环。Town05 正式 seed-42 Run 已完成 u1–u5，训练、checkpoint、gamma 和两次 C0 单次完整性均 PASS；两轮宏观结果均为 0/16 success、12/16 collision、4/16 timeout，但 5/16 collision case 的 episode length 相差 1–2 tick，因此冻结 GO/HOLD 正确输出 `HOLD`。这不是 u5 零成功导致的早期误杀：训练健康与 R4 行为评估均 PASS；真正的硬失败是证据逐 tick 不可重复。当前仍没有可用于 u10、多 seed、独立选模或对抗训练的合格 Town05 checkpoint；唯一 NEXT 是 P0-T05-05，最小化诊断碰撞回调/world frame/episode step 漂移，关闭重复性门禁后重新双 C0 与裁决。
