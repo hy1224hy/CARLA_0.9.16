@@ -13,7 +13,7 @@
 | 当前工程基线    | `P0-T05-REAL-SMOKE-PASS`：Town05 正式链路、gamma 单源传递和 CARLA 初始状态同步核验已提交；精确源码提交 `a11cf70` 上 training/C0/GO-HOLD clean preflight、16/16 live spawn、1-update smoke、checkpoint gamma 与清理全部通过 |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                          |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                   |
-| 当前有效自动化测试 | 184/184 全量通过（2026-08-12）；Town05 16/16 训练场景与 8/8 留出场景离线校验通过；真实 CARLA 修复工作树下 16/16 初始状态核验及单更新训练通过 |
+| 当前有效自动化测试 | 184/184 全量通过（2026-08-12）；Town05 16/16 训练场景与 8/8 留出场景离线校验通过；真实 CARLA 在精确提交 `a11cf70` 上 16/16 初始状态核验及单更新训练通过 |
 | 最近训练产物    | clean-commit 诊断 Run `T05_parallel_smoke_s42_20260812_161632`：Git `a11cf70`，1 update/4 episodes/960 transitions；strict metrics PASS，训练/环境 gamma 均为 0.997，清理后 actor 0/0；仅作链路门禁，不用于性能/选模 |
 | 本文档创建日期   | 2026-07-20                                                                                                                                |
 | 最后更新日期    | 2026-08-12                                                                                                                                |
