@@ -10,11 +10,11 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                      |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                  |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                             |
-| 当前工程基线    | `P0-T05-GAMMA-ALIGNMENT-OFFLINE-PASS`：Town05 正式 16 场景、8 个留出场景、fresh 合同/C0/GO-HOLD 和当前入口均已迁移；已修复训练环境 PBRS 与 PPO/GAE 的 gamma 串线，并增加启动断言和 checkpoint 实际值审计。待 clean commit 后重跑真实训练 smoke |
+| 当前工程基线    | `P0-T05-INITIAL-STATE-COMMIT-PRECOMMIT-PASS`：Town05 正式链路与 gamma 单源传递已提交；真实逐场预检发现 CARLA 偶发丢失异步初速度请求，已增加同步核验、有限重试和失败关闭。修复工作树下 16/16 live spawn、1-update smoke 与清理通过，待提交后按精确 commit 最终复验 |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                          |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                   |
-| 当前有效自动化测试 | 183/183 全量通过（2026-08-12）；Town05 16/16 训练场景与 8/8 留出场景离线校验通过；真实 CARLA 重验等待 clean commit |
-| 最近训练产物    | 诊断 Run `T05_MIGRATION_SMOKE_20260812_121336`：1 update/4 episodes/960 transitions；后续审计发现训练奖励实际 gamma 为环境默认 0.99，故只保留为旧链路诊断，不能证明 0.997 奖励协议一致性 |
+| 当前有效自动化测试 | 184/184 全量通过（2026-08-12）；Town05 16/16 训练场景与 8/8 留出场景离线校验通过；真实 CARLA 修复工作树下 16/16 初始状态核验及单更新训练通过 |
+| 最近训练产物    | 诊断 Run `T05_parallel_smoke_s42_20260812_160851`：1 update/4 episodes/954 transitions；strict metrics PASS，训练/环境 gamma 均为 0.997，清理后 actor 0/0；因含未提交的初始化修复，仅作提交前诊断，需在精确 commit 上最终复验 |
 | 本文档创建日期   | 2026-07-20                                                                                                                                |
 | 最后更新日期    | 2026-08-12                                                                                                                                |
 
@@ -23,7 +23,7 @@
 | 阶段 | 状态 | 结论 |
 |---|---|---|
 | 基础 CARLA 多车环境与 MAPPO | REAL SMOKE + SUCCESS VERIFIED | P0-00G 自动链路、用户人工视觉及固定场景 success 两层真实测试通过；不代表 MAPPO 性能/收敛已验证 |
-| 基础 MAPPO 策略训练与选择 | GAMMA FIX OFFLINE PASS / REAL SMOKE NEXT | Town02 u5 归档；Town05 合同与场景已冻结。先提交 gamma 对齐修复并用真实 CARLA 重验，再决定是否启动 seed 42 正式 u5 |
+| 基础 MAPPO 策略训练与选择 | INITIAL-STATE FIX PRECOMMIT PASS / CLEAN SMOKE NEXT | Town02 u5 归档；Town05 合同与 gamma 修复已提交。初始化命令偶发丢失已定位并在工作树修复，待提交后用真实 CARLA 最终复验，再放行 seed 42 正式 u5 |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -79,8 +79,8 @@
 - [x] **P0-T05-00 完成实验背景迁移**：新增四方向 × 四家族 16 个正式训练场景和 Road 43/6 的 8 个留出场景；训练、C0、GO/HOLD、当前 Phase 1 入口与常用工具默认改为 Town05。Town02 目录、合同、checkpoint 和裁决未删除且保持只读历史身份。
 - [x] **P0-T05-01 冻结车道/目标语义**：居中与偏离按每辆车当前 `Driving` lane 中心计算；D1–D3 逐车保持出生车道目标，D4 使用共享窄目标强制并道；Town05 Broken 虚线变道合法，实线/路缘/未知事件仍违规。
 - [x] **P0-T05-02 完成迁移链路诊断**：离线训练池 16/16、留出池 8/8；真实 CARLA 出生位置/速度 16/16；旧诊断训练 1 update/4 episodes/960 transitions；Town05 C0 smoke 协议链路 PASS。该旧训练 smoke 后续发现 PBRS 实际 gamma 为 0.99，只证明链路可运行，不作为奖励协议一致性证据。
-- [x] **P0-T05-03A 修复并冻结 reward gamma 数据流**：`robust_v2` 现在把合同/PPO 的 `args.gamma` 显式传给环境 `reward_gamma`；环境创建后 mismatch 立即关闭并 fail-fast；checkpoint runtime 写入 `environment_reward_gamma`；Town05 C0 还会拒绝缺失/错误实际 gamma 的 checkpoint；新增连接级回归，连同全量 183/183 通过。Town02 正式 u5 和旧 Town05 smoke 因实际训练 gamma 0.99 降级为历史诊断证据，禁止续训/选模。验收中的首次 `numpy` import 失败由在项目目录误用 `.\venv`、选中内层空环境引起，改用规范根环境 `..\..\..\venv` 后全部通过，属于命令路径错误而非代码/算法失败。
-- [ ] NEXT **P0-T05-03B 提交并重跑 Town05 真实训练 smoke**：提交全部 Town05 critical sources 后先要求 training/C0/GO-HOLD clean preflight PASS，再连接用户维护的 `127.0.0.1:2000` 重跑至少 1 update，核对 checkpoint 中 `environment_reward_gamma=training_config.gamma=0.997`、strict metrics、无 actor 泄漏和同步设置恢复。
+- [x] **P0-T05-03A 修复并冻结 reward gamma 数据流**：`robust_v2` 现在把合同/PPO 的 `args.gamma` 显式传给环境 `reward_gamma`；环境创建后 mismatch 立即关闭并 fail-fast；checkpoint runtime 写入 `environment_reward_gamma`；Town05 C0 还会拒绝缺失/错误实际 gamma 的 checkpoint；新增连接级回归，连同当时全量 183/183 通过，并以 Git `2d18f68` 提交。Town02 正式 u5 和旧 Town05 smoke 因实际训练 gamma 0.99 降级为历史诊断证据，禁止续训/选模。验收中的首次 `numpy` import 失败由在项目目录误用 `.\venv`、选中内层空环境引起，改用规范根环境 `..\..\..\venv` 后全部通过，属于命令路径错误而非代码/算法失败。
+- [ ] NEXT **P0-T05-03B 提交初始化修复并在精确 commit 上重跑 Town05 真实训练 smoke**：首次完整逐场预检为 14/16，场景 09 的 agent0 与场景 11 的 agent1 偶发停在 0.5 m 预偏移位置且速度为 0；隔离重复表明同一场景有时正常、有时丢失首次非零速度请求，故判定为 CARLA 异步 transform/target-velocity 状态提交瞬态，不是训练指令、Critic warning、梯度或策略移动缓慢。环境现对全车先清零速度，再分同步帧提交预偏移 transform 和目标速度，按位置/速度容差核验，最多五次且失败即关闭；新增丢请求回归后全量 184/184、真实 16/16 和未提交工作树单更新 `T05_parallel_smoke_s42_20260812_160851` 均 PASS。下一动作是提交该修复，要求 training/C0/GO-HOLD clean preflight PASS，并在该精确 commit 上最终核对 gamma、strict metrics、无 actor 泄漏和同步设置恢复。
 - [ ] BLOCKED **P0-T05-04 运行 Town05 正式 seed-42 u5**：只在 P0-T05-03B 全部通过后，使用 `P0_BASE_MAPPO_TOWN05_V1` 从随机初始化跑到 update 5，立即停止并运行 strict validator、两次 Town05 C0 gate 与唯一 Town05 GO/HOLD。不得恢复 Town02 u5、调参、启动多 seed 或 Phase 1。
 
 - [x] **P0-00A 冻结训练入口**：基础策略只维护 `train_no_rllib_mappo_robust_v2.py`，Phase 1 单蓝车只维护 `train_2red_1blue_ppo.py`；README、运行命令和文件索引已标记 RLlib 和其他旧入口停止使用。

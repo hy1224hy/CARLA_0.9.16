@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：实验背景已切换到 Town05。Town02 Run `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` 的 u1–u5、双 C0 和 GO/HOLD 产物仍完整保留，但 2026-08-12 追溯发现训练环境 PBRS 实际 gamma 为默认 0.99，而合同/PPO/GAE 与 C0 使用 0.997；该 Run 降级为历史诊断，禁止续训和选模。Town05 已修复 gamma 单源传递并通过离线回归，下一步是在 clean commit 上重跑真实 1-update smoke，通过后才允许 fresh seed 42 到 u5。
+> 当前状态：实验背景已切换到 Town05。Town02 Run `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` 的 u1–u5、双 C0 和 GO/HOLD 产物仍完整保留，但 2026-08-12 追溯发现训练环境 PBRS 实际 gamma 为默认 0.99，而合同/PPO/GAE 与 C0 使用 0.997；该 Run 降级为历史诊断，禁止续训和选模。Town05 gamma 单源传递已提交；真实重验又定位并修复 CARLA 偶发丢失异步初速度请求，工作树诊断通过，下一步是在精确提交上最终重跑 1-update smoke，通过后才允许 fresh seed 42 到 u5。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
@@ -21,7 +21,7 @@
 | `P0_BASE_MAPPO_TOWN02_CRITIC_V4` | `configs/base_mappo/p0_base_critic_v4.json` | R1–R3 修复版 seed 42 正式 fresh pilot | 42 | 5/10/20/30/40/60/80/100 | FROZEN；SHA256 `1cab6f44faf65daae2cca22fb806c425d81fe386cbc625d51e30339170dac2c1`；R5 已验证生产入口 |
 | `P0_BASE_C0_TOWN02_CRITIC_V4` | `configs/evaluation/p0_base_c0_eval_v4.json` | schema-v4 checkpoint 的 gate 与 held-out validation | gate/validation seeds 继承合同 | 对应训练 update 5/10/20/30/40/60/80/100 | FROZEN；SHA256 `7fdb797b704b9ff53587a529c57e68eb9659b3043921dad9312aad60e66dcc68` |
 | `P0_BASE_GO_HOLD_TOWN02_R4_V2` | `configs/evaluation/p0_base_go_hold_v2.json` | R3 修复版证据/数值/Critic/持续行为塌缩/能力裁决 | pilot seed 42；C0 v4 seeds 继承评估合同 | u5 首次行为塌缩仅 warning；u10 起连续两里程碑才可行为 HOLD；u100 才可 `PILOT_GO` | FROZEN；SHA256 `668799076a7e08bfd37457457929df3f1bbf40fbc8ce64ef068f97e839925140`；R4 提交与 R5 入口均已验收 |
-| `P0_BASE_MAPPO_TOWN05_V1` | `configs/base_mappo/p0_base_town05_v1.json` | 当前 Town05 四方向/四家族基础 MAPPO fresh pilot | 42 | 5/10/20/30/40/60/80/100 | FROZEN；SHA256 `eeb12304d9a262ac4297ede90bd651717d7d59cb31cb8ba0f384835e0ed84bde`；gamma 修复后真实 smoke 待执行 |
+| `P0_BASE_MAPPO_TOWN05_V1` | `configs/base_mappo/p0_base_town05_v1.json` | 当前 Town05 四方向/四家族基础 MAPPO fresh pilot | 42 | 5/10/20/30/40/60/80/100 | FROZEN；SHA256 `eeb12304d9a262ac4297ede90bd651717d7d59cb31cb8ba0f384835e0ed84bde`；gamma 修复已提交，初始化修复待提交后最终 smoke |
 | `P0_BASE_C0_TOWN05_V1` | `configs/evaluation/p0_base_c0_town05_v1.json` | 当前 Town05 gate 与 Road 43/6 held-out validation | gate 42001；validation 51001/51002/51003 | 对应 Town05 登记停点 | FROZEN；SHA256 `ea2e17f633e3b26eaedbbcf5f42cbaf9b14bc7077790e3dfcba438c0c276cab8` |
 | `P0_BASE_GO_HOLD_TOWN05_V1` | `configs/evaluation/p0_base_go_hold_town05_v1.json` | 当前 Town05 证据、健康、行为与能力裁决 | 继承 Town05 训练/C0 合同 | u5 首门；u100 才可 `PILOT_GO` | FROZEN；SHA256 `bbe6903c1ba9fb5932eafc0ba4dd250f0f6254d2e9f9066d0da4c5d940c7e9c4` |
 
@@ -29,6 +29,7 @@
 
 | 日期 | RunID | Git SHA | 契约 SHA256 | 当前 update | 训练状态 | strict validator | C0 | GO/HOLD | 下一动作 |
 |---|---|---|---|---:|---|---|---|---|---|
+| 2026-08-12 | `T05_parallel_smoke_s42_20260812_160851` | `2d18f68` + 未提交初始化修复 | N/A：诊断 smoke | 1 | `PRECOMMIT DIAGNOSTIC PASS`；4 episodes/954 transitions，1 collision/3 timeout | PASS：197 required tags / 583 scalar tags；训练与环境 gamma 均 0.997；清理 0/0 | 未运行：只验证训练入口 | 不裁决 | 提交初始化修复，在精确 commit 上重复完整 live spawn 与单更新 smoke |
 | 2026-08-12 | `T05_MIGRATION_SMOKE_20260812_121336` | 未提交 Town05 迁移工作树 | N/A：诊断 smoke | 1 | `DIAGNOSTIC ONLY / PROTOCOL DEVIATION`；4 episodes/960 transitions | 旧链路指标通过，但无法检查环境实际 gamma | C0 smoke 工具链 PASS；评估环境为 0.997 | 不裁决 | 旧产物封存；修复环境 gamma 注入、提交后 fresh 重跑 smoke |
 | 2026-08-11 | `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` | `ff5ddeb` | `1cab6f44...ac2c1` | 5 | `HISTORICAL DIAGNOSTIC`；当时完成 u5，后续审计发现 reward-gamma 协议偏差 | 旧 strict validator PASS，但未记录/核对环境实际 gamma | 主/重复均 0/16 success、5/16 collision、11/16 timeout；C0 gamma 0.997，与训练实际 0.99 不一致 | 原机器输出 `CONTINUE_WITH_WARNING` 保留，不再具有续训放行效力 | 禁止 resume/选模；Town05 修复提交后 fresh 重跑 smoke 与正式实验 |
 | 2026-08-11 | `P0_R5_MAPPO_smoke_s42_20260811_104100` | `00e16f3` | N/A：诊断 smoke，不冒充正式合同 Run | 3 | `R5 PASS / DIAGNOSTIC ONLY` | PASS：3 updates / 12 episodes / 197 required tags / 575 scalar tags；u2 受控中断后严格恢复 | 未运行：u1–u3 不是登记停点，禁止伪造 C0 | 未裁决：不满足正式 update 5/10 入口 | 永久禁止 resume/pretrained/选模；新 RunID、随机初始化运行正式 seed 42 到 u5 |
@@ -36,6 +37,13 @@
 | 2026-08-09 | `P0_BASE_MAPPO_Town02_s42_20260809_173321` | `8a0bd9d` | `342a1f...f6f` | 5 | `EVIDENCE_HOLD`；模型仅诊断 | PASS：5 updates / 80 episodes / 570 scalar tags | 两次 gate 均 0/16 success、0/16 collision、16/16 timeout；离散重复性 PASS | 来源预检 HOLD：resolved config 漏记 seed，未进入性能裁决 | 提交证据修复后新 RunID fresh 重跑 update 5；禁止 resume 本 Run |
 
 ## 4. 已运行记录
+
+### `T05_parallel_smoke_s42_20260812_160851`
+
+- 首次完整 live preflight 在训练前以 14/16 失败：场景 09 agent0 和场景 11 agent1 均停留在 0.5 m 预偏移位置且速度为 0，而隔离重复同一场景可正常达到约 4.89/5.00 m/s。故障在 rollout、Critic 与 PPO 之前，归因为 CARLA 异步 transform/target-velocity 初始状态提交瞬态，不是训练指令、梯度 warning、初始探索移动缓慢或训练时长不足。
+- 修复使用整组、有限的同步状态提交：清零线/角速度，分 tick 提交预偏移 transform 和目标速度，核对全部车辆位置/速度；最多 5 次，仍失败即拒绝 reset。修复后真实 Town05 16/16 初始状态通过，丢失首次速度请求的回归及全量 184/184 通过。
+- 工作树诊断训练完成 1 update、4 episodes、954 agent-transitions，平均 return -4.77，1 collision/3 timeout；这是随机初始策略的短烟测结果，不用于成功率或收敛判断。strict validator 验证 197 个必需标签和 583 个 TensorBoard scalar 标签，checkpoint 中 `training_config.gamma=run_metadata.runtime.environment_reward_gamma=0.997`，退出后恢复 async/None 且 vehicle/sensor 0/0。
+- 产物：`diagnostics/town05_gamma_alignment_smoke_precommit/T05_parallel_smoke_s42_20260812_160851`。它含未提交初始化修复，身份仅为 `PRECOMMIT DIAGNOSTIC`；不得 resume、比较或选模，最终门槛必须在修复提交后 fresh 重跑。
 
 ### `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458`
 

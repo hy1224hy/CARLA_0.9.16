@@ -783,13 +783,7 @@ class CarlaMultiAgentEnv:
         # reset 观察与 JSON 定义的初始状态一致。
         for _ in range(9):
             self.world.tick()
-        self._prepare_velocity_warm_start()
-        # set_transform 与 set_target_velocity 在 CARLA 服务端都是异步命令。
-        # 分两个同步帧提交，避免同帧中 transform 偶发地覆盖速度。
-        self.world.tick()
-        self._apply_initial_vehicle_speeds()
-        self.world.tick()
-        self._apply_initial_vehicle_speeds()
+        self._commit_initial_vehicle_states()
         time.sleep(0.5)
         if self.follow_spectator:
             self._update_overhead_spectator()
@@ -892,6 +886,84 @@ class CarlaMultiAgentEnv:
                     z=float(forward.z * speed_mps),
                 )
             )
+
+    def _clear_vehicle_velocities(self):
+        """Clear residual velocity before an initial-state commit retry."""
+        for vehicle in self.vehicles:
+            if vehicle is None or not vehicle.is_alive:
+                continue
+            vehicle.set_target_velocity(carla.Vector3D(0.0, 0.0, 0.0))
+            vehicle.set_target_angular_velocity(carla.Vector3D(0.0, 0.0, 0.0))
+
+    def _commit_initial_vehicle_states(
+        self,
+        *,
+        max_attempts: int = 5,
+        position_tolerance_m: float = 0.25,
+        speed_tolerance_mps: float = 0.25,
+    ):
+        """Synchronously verify the configured spawn pose and warm-start speed.
+
+        CARLA actor transform and target-velocity requests are asynchronous and
+        can occasionally lose one velocity request even across a world tick.
+        Each bounded retry starts again one physics step behind the configured
+        coordinate, commits the transform and velocity on separate ticks, then
+        verifies the resulting planar pose/speed.  An unresolved mismatch is a
+        scenario-initialization error, never a valid training transition.
+        """
+        if max_attempts <= 0:
+            raise ValueError("max_attempts must be positive")
+        if not self.custom_start_transforms:
+            return
+
+        last_failures = []
+        for attempt in range(1, max_attempts + 1):
+            # A previous attempt may have succeeded for only a subset of
+            # vehicles.  Stop all actors first so an already-moving vehicle
+            # cannot traverse the pre-offset twice during the group retry.
+            self._clear_vehicle_velocities()
+            self.world.tick()
+            self._prepare_velocity_warm_start()
+            self.world.tick()
+            self._apply_initial_vehicle_speeds()
+            self.world.tick()
+
+            last_failures = []
+            for agent_id, vehicle in enumerate(self.vehicles):
+                if (
+                    vehicle is None
+                    or not vehicle.is_alive
+                    or agent_id >= len(self.custom_start_transforms)
+                    or self.custom_start_transforms[agent_id] is None
+                ):
+                    continue
+                configured = self.custom_start_transforms[agent_id]
+                actual = vehicle.get_transform().location
+                position_error = math.hypot(
+                    actual.x - configured.location.x,
+                    actual.y - configured.location.y,
+                )
+                velocity = vehicle.get_velocity()
+                actual_speed = math.hypot(velocity.x, velocity.y)
+                expected_speed = float(
+                    self.custom_initial_speeds_mps.get(agent_id, 0.0)
+                )
+                speed_error = abs(actual_speed - expected_speed)
+                if (
+                    position_error > position_tolerance_m
+                    or speed_error > speed_tolerance_mps
+                ):
+                    last_failures.append(
+                        f"agent{agent_id}: position_error={position_error:.3f}m, "
+                        f"speed={actual_speed:.3f}/{expected_speed:.3f}m/s"
+                    )
+            if not last_failures:
+                return
+
+        raise RuntimeError(
+            "CARLA failed to commit configured initial vehicle states after "
+            f"{max_attempts} attempts: " + "; ".join(last_failures)
+        )
     
     def _attach_camera(self, agent_id: int, vehicle: carla.Actor):
         """

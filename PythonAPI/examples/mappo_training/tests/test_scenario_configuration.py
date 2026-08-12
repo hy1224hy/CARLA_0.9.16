@@ -127,6 +127,78 @@ class ScenarioInitialSpeedTests(unittest.TestCase):
         self.assertAlmostEqual(second.y, 39.7, places=5)
         self.assertAlmostEqual(second.z, 0.23, places=5)
 
+    def test_initial_state_commit_retries_a_dropped_velocity_request(self):
+        class FakeVehicle:
+            is_alive = True
+
+            def __init__(self):
+                self.transform = carla.Transform(
+                    carla.Location(x=10.0, y=20.0, z=0.22),
+                    carla.Rotation(yaw=0.0),
+                )
+                self.velocity = carla.Vector3D()
+                self.pending_velocity = None
+                self.velocity_requests = 0
+                self.angular_velocity = carla.Vector3D()
+
+            def get_transform(self):
+                return self.transform
+
+            def set_transform(self, transform):
+                self.transform = transform
+
+            def set_target_velocity(self, velocity):
+                if math.hypot(velocity.x, velocity.y) == 0.0:
+                    self.pending_velocity = velocity
+                    return
+                self.velocity_requests += 1
+                # Reproduce CARLA occasionally dropping the first request.
+                if self.velocity_requests >= 2:
+                    self.pending_velocity = velocity
+
+            def set_target_angular_velocity(self, velocity):
+                self.angular_velocity = velocity
+
+            def get_velocity(self):
+                return self.velocity
+
+        class FakeWorld:
+            def __init__(self, vehicle):
+                self.vehicle = vehicle
+
+            @staticmethod
+            def get_settings():
+                return SimpleNamespace(fixed_delta_seconds=0.1)
+
+            def tick(self):
+                if self.vehicle.pending_velocity is not None:
+                    self.vehicle.velocity = self.vehicle.pending_velocity
+                    self.vehicle.pending_velocity = None
+                self.vehicle.transform.location.x += (
+                    self.vehicle.velocity.x * 0.1
+                )
+                self.vehicle.transform.location.y += (
+                    self.vehicle.velocity.y * 0.1
+                )
+
+        env = self._make_env_without_server()
+        vehicle = FakeVehicle()
+        env.world = FakeWorld(vehicle)
+        env.vehicles = [vehicle]
+        env.custom_start_transforms = [
+            carla.Transform(
+                carla.Location(x=10.0, y=20.0, z=0.5),
+                carla.Rotation(yaw=0.0),
+            )
+        ]
+        env.custom_initial_speeds_mps = {0: 5.0}
+
+        env._commit_initial_vehicle_states(max_attempts=2)
+
+        self.assertEqual(vehicle.velocity_requests, 2)
+        self.assertAlmostEqual(vehicle.get_transform().location.x, 10.0)
+        self.assertAlmostEqual(vehicle.get_velocity().x, 5.0)
+
 
 if __name__ == "__main__":
     unittest.main()
