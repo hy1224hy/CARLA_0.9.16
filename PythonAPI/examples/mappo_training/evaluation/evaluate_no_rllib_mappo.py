@@ -156,7 +156,7 @@ def build_parser():
 
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=2000)
-    parser.add_argument("--town", type=str, default="Town02")
+    parser.add_argument("--town", type=str, default="Town05")
     parser.add_argument("--straight-road-length", type=float, default=100.0)
     parser.add_argument("--timestep", type=float, default=0.1)
     parser.add_argument("--max-steps", type=int, default=None, help="可选：覆盖 checkpoint 中 max_steps")

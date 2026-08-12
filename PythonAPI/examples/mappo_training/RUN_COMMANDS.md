@@ -8,7 +8,9 @@
 > - 基础策略唯一入口：`training.train_no_rllib_mappo_robust_v2`。
 > - Phase 1 单蓝车唯一入口：`training.train_2red_1blue_ppo`。
 > - RLlib、shared-policy、minimal/robust v1、旧 adversarial PPO 和旧 multi 入口全部是 **DEPRECATED**，不得用于新训练、resume、正式 checkpoint 或论文结果。
-> - R1–R5 已完成；当前只允许使用冻结的 R3 训练合同、C0 v4、GO/HOLD v2，以新 RunID、随机初始化运行 seed 42 fresh pilot 到 update 5。u5 必须停止并执行 strict validator、两次 C0 gate 和唯一冻结 judge；其结论允许后才能决定是否到 u10，只有 update 100 `PILOT_GO` 后才允许多 seed 长训练。对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
+> - 2026-08-12 起当前背景为 Town05：使用 `P0_BASE_MAPPO_TOWN05_V1`、Town05 C0 和 Town05 GO/HOLD。先在提交后的源码上重跑 1-update gamma 对齐 smoke；通过后才以新 RunID、随机初始化运行 seed 42 fresh pilot 到 update 5。Town02 u5 及其合同只作历史诊断，禁止 resume 到 Town05。u5 必须停止并执行 strict validator、两次 C0 gate 和唯一冻结 judge；对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
+
+Town05 正式坐标、16 场景问题定义和迁移验证见 [Town05 正式实验迁移与 16 场景设计](docs/Town05_正式实验迁移与16场景设计.md)。
 
 ---
 
@@ -55,14 +57,14 @@ CarlaUE4.exe
 # A. 必须先通过：纯终点逻辑；预计两车依次 success
 ..\..\..\venv\Scripts\python.exe -B -m evaluation.smoke_test_success_logic `
   --mode teleport `
-  --scenario data/training_scenarios/scenario_01_basic.json `
+  --scenario data/training_scenarios_town05_v1/scenario_01_north_parallel_stationary_a0_left.json `
   --seed 42 `
   --follow-spectator
 
 # B. A 通过后运行：近终点、低油门直行
 ..\..\..\venv\Scripts\python.exe -B -m evaluation.smoke_test_success_logic `
   --mode scripted `
-  --scenario data/training_scenarios/scenario_01_basic.json `
+  --scenario data/training_scenarios_town05_v1/scenario_01_north_parallel_stationary_a0_left.json `
   --lead-distance 5 `
   --following-gap 10 `
   --throttle 0.30 `
@@ -107,7 +109,8 @@ CarlaUE4.exe
 # 只允许在 P0-06 通过后执行
 ..\..\..\venv\Scripts\python.exe -m training.train_2red_1blue_ppo `
   --pretrained-ckpt <best_base_valid.pt> `
-  --scenario scenario_01_basic.json `
+  --scenario scenario_09_north_stagger_closing_a0_rear.json `
+  --scenario-dir data/training_scenarios_town05_v1 `
   --updates 3 `
   --rollout-episodes 4 `
   --no-viz `
@@ -117,24 +120,37 @@ CarlaUE4.exe
 
 正式训练参数必须固化到版本控制配置中并登记 RunID；不要直接把 smoke 命令扩成上百 updates。
 
-R5 已验收后，下一次获准执行的正式命令只到 update 5。`<timestamp>` 必须替换为新的时间戳，RunID 与保存目录必须一致；不得加入 `--resume` 或加载 R5 smoke checkpoint：
+Town05 迁移与 gamma 对齐修复提交后，先运行诊断 smoke。它使用显式诊断参数，不冒充正式合同 Run；完成后必须核对 checkpoint runtime 中环境实际 gamma 为 0.997：
+
+```powershell
+..\..\..\venv\Scripts\python.exe -B -m utils.run_town05_pilot `
+  --skip-live-smoke `
+  --rollout-episodes 4 `
+  --max-steps 120 `
+  --output-root diagnostics/town05_gamma_alignment_smoke
+```
+
+该 smoke、strict metrics、checkpoint gamma 和 CARLA 清理通过后，下一次获准执行的正式命令才是 update 5。`<timestamp>` 必须替换为新的时间戳，RunID 与保存目录必须一致；不得加入 `--resume` 或加载任何 Town02 checkpoint：
 
 ```powershell
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
   --host 127.0.0.1 `
   --port 2000 `
-  --experiment-contract configs/base_mappo/p0_base_critic_v4.json `
-  --run-id P0_BASE_MAPPO_R3_Town02_s42_<timestamp> `
+  --experiment-contract configs/base_mappo/p0_base_town05_v1.json `
+  --run-id P0_BASE_MAPPO_Town05_s42_<timestamp> `
   --updates 5 `
   --cpu `
-  --save-dir logs/P0_BASE_MAPPO_R3_Town02_s42_<timestamp>
+  --follow-spectator `
+  --save-dir logs/P0_BASE_MAPPO_Town05_s42_<timestamp>
 ```
 
-该段完成后先运行 strict validator，再按 C0 v4 执行主/重复 gate，最后使用 GO/HOLD v2 唯一裁决；不要在看到训练 rollout 后临时修改奖励、参数、门槛或继续到 u10。
+`--follow-spectator` 只在每次车辆初始化后移动 CARLA 服务器自带俯视镜头，不启动旧 pygame 可视化。无人观察的长训练可去掉该开关；它不改变观测、动作、奖励或采样时序。
+
+该段完成后先运行 strict validator，再按 Town05 C0 v1 执行主/重复 gate，最后使用 Town05 GO/HOLD v1 唯一裁决；不要在看到训练 rollout 后临时修改奖励、参数、门槛或继续到 u10。
 
 ```powershell
 ..\..\..\venv\Scripts\python.exe -m utils.validate_tensorboard_run `
-  --run-dir logs/P0_BASE_MAPPO_R3_Town02_s42_<same-timestamp> `
+  --run-dir logs/P0_BASE_MAPPO_Town05_s42_<same-timestamp> `
   --expected-updates 1 2 3 4 5 `
   --expected-episodes-per-update 16 `
   --require-ppo-updates `
@@ -331,12 +347,12 @@ python -m training.pretrain_with_manual_data \
 
 ### 1. evaluate_base_policy_c0.py - 当前基础策略 C0 evaluator
 
-**功能：** 按冻结 `p0_base_c0_eval_v4` 契约对 schema-v4 periodic checkpoint 执行无蓝车/无额外交通的 gate 或 held-out validation，输出逐 episode 证据、汇总和清理审计。以下是正式 u5 的主/重复 gate 完整顺序；两个 EvalID 必须不同，但 checkpoint、合同和 profile 必须相同。
+**功能：** 按冻结 Town05 C0 契约对 schema-v4 periodic checkpoint 执行无蓝车/无额外交通的 gate 或 held-out validation，输出逐 episode 证据、汇总和清理审计。以下是正式 u5 的主/重复 gate 完整顺序；两个 EvalID 必须不同，但 checkpoint、合同和 profile 必须相同。
 
 ```powershell
-$runId = "<P0_BASE_MAPPO_R3_Town02_s42_YYYYMMDD_HHMMSS>"
+$runId = "<P0_BASE_MAPPO_Town05_s42_YYYYMMDD_HHMMSS>"
 $checkpoint = "logs/$runId/periodic/ckpt_update_000005.pt"
-$c0Contract = "configs/evaluation/p0_base_c0_eval_v4.json"
+$c0Contract = "configs/evaluation/p0_base_c0_town05_v1.json"
 
 # 主 C0
 $evalA = "P0_BASE_C0_gate_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
@@ -383,13 +399,13 @@ $evalB = "P0_BASE_C0_gate_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 ```powershell
 # 无 CARLA 契约预检
 ..\..\..\venv\Scripts\python.exe -m evaluation.base_go_hold_protocol `
-  --contract configs/evaluation/p0_base_go_hold_v2.json
+  --contract configs/evaluation/p0_base_go_hold_town05_v1.json
 
 # 当前示例是 update 5；EvalA/EvalB 必须是同 checkpoint 的两次独立 gate
 $decisionId = "P0_BASE_GO_HOLD_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 ..\..\..\venv\Scripts\python.exe -m evaluation.judge_base_go_hold `
   --mode milestone `
-  --go-hold-contract configs/evaluation/p0_base_go_hold_v2.json `
+  --go-hold-contract configs/evaluation/p0_base_go_hold_town05_v1.json `
   --run-dir "logs/$runId" `
   --checkpoint $checkpoint `
   --c0-output-dir "evaluations/$evalA" `
@@ -398,7 +414,7 @@ $decisionId = "P0_BASE_GO_HOLD_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
   --expected-update 5
 ```
 
-u5 是 v2 的第一个里程碑，不提供 `--previous-decision-report`；从 u10 开始必须用该参数绑定同一 Run 的相邻上一里程碑报告。`HOLD`、`PILOT_NO_GO`、`VALIDATION_REJECT` 返回非 0。v1 文档只解释历史裁决；当前行为/Critic 持续门槛见 `docs/R4_GO-HOLD-v2早期塌缩门槛与回归验证.md`。
+u5 是 Town05 的第一个里程碑，不提供 `--previous-decision-report`；从 u10 开始必须用该参数绑定同一 Run 的相邻上一里程碑报告。`HOLD`、`PILOT_NO_GO`、`VALIDATION_REJECT` 返回非 0。Town02 v1/v2 文档只解释历史裁决；当前 Town05 语义见迁移设计文档。
 
 ---
 
@@ -481,7 +497,7 @@ python -m utils.record_manual_control \
 |------|--------|------|
 | `--host` | 127.0.0.1 | CARLA 服务器地址 |
 | `--port` | 2000 | CARLA 服务器端口 |
-| `--town` | Town02 | 地图名称 |
+| `--town` | Town05 | 当前正式地图；Town02 仅历史显式加载 |
 | `--straight-road-length` | 100.0 | 直道长度（米） |
 | `--timestep` | 0.1 | 时间步长（秒） |
 | `--max-steps` | 1000 | 每 episode 最大步数 |
@@ -544,8 +560,8 @@ CarlaUE4.exe
 # 5. R1–R5 已完成，最终生产入口、严格恢复、checkpoint/metrics 与 CARLA 清理验收 PASS。
 #    R5 诊断 Run/权重永久禁止作为 resume/pretrained/选模来源。
 
-# 6. 下一步只按“当前有效入口”中的正式命令，使用 p0_base_critic_v4.json、
-#    新 RunID 和随机初始化运行 seed 42 到 u5；随后必须双 C0 v4 + GO/HOLD v2。
+# 6. 下一步只按“当前有效入口”中的正式命令，使用 p0_base_town05_v1.json、
+#    新 RunID 和随机初始化运行 seed 42 到 u5；随后必须双 Town05 C0 + GO/HOLD。
 #    未得到该停点裁决前不得运行 u6–u10，也不得放行多 seed。
 ```
 

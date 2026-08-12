@@ -17,6 +17,7 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 
 from evaluation.base_c0_protocol import (
     C0_EPISODE_RECORD_VERSION,
+    TOWN05_C0_EPISODE_RECORD_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
     load_c0_contract,
 )
@@ -40,6 +41,12 @@ GO_HOLD_PROTOCOL_VERSION = "p0_base_go_hold_v2"
 GO_HOLD_CONTRACT_ID = "P0_BASE_GO_HOLD_TOWN02_R4_V2"
 GO_HOLD_REPORT_VERSION = "p0_base_go_hold_decision_v2"
 GO_HOLD_CONTRACT_RELATIVE_PATH = "configs/evaluation/p0_base_go_hold_v2.json"
+TOWN05_GO_HOLD_PROTOCOL_VERSION = "p0_base_go_hold_town05_v1"
+TOWN05_GO_HOLD_CONTRACT_ID = "P0_BASE_GO_HOLD_TOWN05_V1"
+TOWN05_GO_HOLD_REPORT_VERSION = "p0_base_go_hold_town05_decision_v1"
+TOWN05_GO_HOLD_CONTRACT_RELATIVE_PATH = (
+    "configs/evaluation/p0_base_go_hold_town05_v1.json"
+)
 MILESTONE_DECISIONS = {
     "CONTINUE",
     "CONTINUE_WITH_WARNING",
@@ -418,8 +425,14 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
     }
     _exact(payload, top, context="GO/HOLD v2 contract")
     if (
-        payload["protocol_version"] != GO_HOLD_PROTOCOL_VERSION
-        or payload["contract_id"] != GO_HOLD_CONTRACT_ID
+        payload["protocol_version"]
+        not in {GO_HOLD_PROTOCOL_VERSION, TOWN05_GO_HOLD_PROTOCOL_VERSION}
+        or payload["contract_id"]
+        != (
+            TOWN05_GO_HOLD_CONTRACT_ID
+            if payload["protocol_version"] == TOWN05_GO_HOLD_PROTOCOL_VERSION
+            else GO_HOLD_CONTRACT_ID
+        )
         or payload["status"] != "frozen"
     ):
         raise GoHoldProtocolError("GO/HOLD v2 identity/status mismatch")
@@ -448,7 +461,12 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
     )
     if bindings["metrics_protocol_version"] != METRICS_PROTOCOL_VERSION:
         raise GoHoldProtocolError("GO/HOLD v2 must bind the active metrics protocol")
-    if bindings["c0_episode_record_version"] != C0_EPISODE_RECORD_VERSION:
+    expected_episode_record = (
+        TOWN05_C0_EPISODE_RECORD_VERSION
+        if payload["protocol_version"] == TOWN05_GO_HOLD_PROTOCOL_VERSION
+        else C0_EPISODE_RECORD_VERSION
+    )
+    if bindings["c0_episode_record_version"] != expected_episode_record:
         raise GoHoldProtocolError("GO/HOLD v2 must bind the active C0 episode protocol")
     if bindings["checkpoint_schema_version"] != 4:
         raise GoHoldProtocolError("GO/HOLD v2 requires checkpoint schema v4")
@@ -771,10 +789,15 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
     }:
         raise GoHoldProtocolError("decision output paths have drifted")
     _inside(project_dir, outputs["decision_root"], context="decision root")
+    active_contract_path = (
+        TOWN05_GO_HOLD_CONTRACT_RELATIVE_PATH
+        if payload["protocol_version"] == TOWN05_GO_HOLD_PROTOCOL_VERSION
+        else GO_HOLD_CONTRACT_RELATIVE_PATH
+    )
     expected_paths = [
         "evaluation/base_go_hold_protocol.py",
         "evaluation/judge_base_go_hold.py",
-        GO_HOLD_CONTRACT_RELATIVE_PATH,
+        active_contract_path,
     ]
     if payload["critical_source_paths"] != expected_paths:
         raise GoHoldProtocolError("GO/HOLD v2 critical_source_paths have drifted")
@@ -792,18 +815,19 @@ def validate_go_hold_contract(payload: Any, *, project_dir: Path) -> None:
     if version == LEGACY_GO_HOLD_PROTOCOL_VERSION:
         _validate_go_hold_contract_v1(payload, project_dir=project_dir)
         return
-    if version == GO_HOLD_PROTOCOL_VERSION:
+    if version in {GO_HOLD_PROTOCOL_VERSION, TOWN05_GO_HOLD_PROTOCOL_VERSION}:
         _validate_go_hold_contract_v2(payload, project_dir=project_dir)
         return
     raise GoHoldProtocolError(f"unsupported GO/HOLD protocol_version={version!r}")
 
 
 def go_hold_report_version(contract: Mapping[str, Any]) -> str:
-    return (
-        LEGACY_GO_HOLD_REPORT_VERSION
-        if contract.get("protocol_version") == LEGACY_GO_HOLD_PROTOCOL_VERSION
-        else GO_HOLD_REPORT_VERSION
-    )
+    version = contract.get("protocol_version")
+    if version == LEGACY_GO_HOLD_PROTOCOL_VERSION:
+        return LEGACY_GO_HOLD_REPORT_VERSION
+    if version == TOWN05_GO_HOLD_PROTOCOL_VERSION:
+        return TOWN05_GO_HOLD_REPORT_VERSION
+    return GO_HOLD_REPORT_VERSION
 
 
 def load_go_hold_contract(path: str | Path, *, project_dir: Path) -> Dict[str, Any]:
@@ -822,11 +846,11 @@ def load_go_hold_contract(path: str | Path, *, project_dir: Path) -> Dict[str, A
         raise GoHoldProtocolError(f"invalid GO/HOLD contract JSON: {error}") from error
     validate_go_hold_contract(payload, project_dir=project_dir)
     relative = resolved.relative_to(project_dir.resolve()).as_posix()
-    registered_path = (
-        LEGACY_GO_HOLD_CONTRACT_RELATIVE_PATH
-        if payload["protocol_version"] == LEGACY_GO_HOLD_PROTOCOL_VERSION
-        else GO_HOLD_CONTRACT_RELATIVE_PATH
-    )
+    registered_path = {
+        LEGACY_GO_HOLD_PROTOCOL_VERSION: LEGACY_GO_HOLD_CONTRACT_RELATIVE_PATH,
+        GO_HOLD_PROTOCOL_VERSION: GO_HOLD_CONTRACT_RELATIVE_PATH,
+        TOWN05_GO_HOLD_PROTOCOL_VERSION: TOWN05_GO_HOLD_CONTRACT_RELATIVE_PATH,
+    }[payload["protocol_version"]]
     if relative != registered_path:
         raise GoHoldProtocolError(
             f"GO/HOLD contract must use the registered path {registered_path}"
@@ -1064,7 +1088,10 @@ def evaluate_training_health(
     reason_codes: list[str] = []
     if hard_failures:
         reason_codes.append("NUMERICAL_OR_EVIDENCE_HEALTH")
-    if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION:
+    if contract.get("protocol_version") in {
+        GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_GO_HOLD_PROTOCOL_VERSION,
+    }:
         critic_rule = health["critic_degeneracy"]
         normalizer_rule = health["value_normalizer"]
         prediction_std = series("critic/value_prediction_std")
@@ -1168,7 +1195,12 @@ def evaluate_training_health(
         "hard_failures": hard_failures,
         "warnings": warnings,
         "observed": observed,
-        **({"reason_codes": list(dict.fromkeys(reason_codes))} if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION else {}),
+        **(
+            {"reason_codes": list(dict.fromkeys(reason_codes))}
+            if contract.get("protocol_version")
+            in {GO_HOLD_PROTOCOL_VERSION, TOWN05_GO_HOLD_PROTOCOL_VERSION}
+            else {}
+        ),
     }
 
 
@@ -1343,7 +1375,10 @@ def evaluate_behavioral_health(
     period is what prevents a short, still-exploring policy from being rejected
     merely because it has not completed a route yet.
     """
-    if contract.get("protocol_version") != GO_HOLD_PROTOCOL_VERSION:
+    if contract.get("protocol_version") not in {
+        GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_GO_HOLD_PROTOCOL_VERSION,
+    }:
         return {
             "status": "NOT_APPLICABLE",
             "collapsed_now": False,
@@ -1527,7 +1562,8 @@ def evaluate_milestone_decision(
                     ),
                     "behavior_assessment": behavior,
                 }
-                if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION
+                if contract.get("protocol_version")
+                in {GO_HOLD_PROTOCOL_VERSION, TOWN05_GO_HOLD_PROTOCOL_VERSION}
                 else {}
             ),
         }
@@ -1561,7 +1597,10 @@ def evaluate_milestone_decision(
         "capability_failures": capability_failures,
         "warnings": warnings,
     }
-    if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION:
+    if contract.get("protocol_version") in {
+        GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_GO_HOLD_PROTOCOL_VERSION,
+    }:
         result["reason_codes"] = (
             ["CAPABILITY_NOT_MET"] if capability_failures else []
         )
@@ -1599,7 +1638,10 @@ def evaluate_validation_decision(
             "capability_failures": [],
             "warnings": list(training_health.get("warnings", [])),
         }
-        if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION:
+        if contract.get("protocol_version") in {
+            GO_HOLD_PROTOCOL_VERSION,
+            TOWN05_GO_HOLD_PROTOCOL_VERSION,
+        }:
             result["reason_codes"] = list(
                 dict.fromkeys(
                     [
@@ -1616,7 +1658,10 @@ def evaluate_validation_decision(
         "capability_failures": capability_failures,
         "warnings": list(training_health.get("warnings", [])),
     }
-    if contract.get("protocol_version") == GO_HOLD_PROTOCOL_VERSION:
+    if contract.get("protocol_version") in {
+        GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_GO_HOLD_PROTOCOL_VERSION,
+    }:
         result["reason_codes"] = (
             ["CAPABILITY_NOT_MET"] if capability_failures else []
         )
@@ -1643,7 +1688,7 @@ def main() -> None:
         json.dumps(
             {
                 "status": "PASS",
-                "protocol_version": GO_HOLD_PROTOCOL_VERSION,
+                "protocol_version": record["payload"]["protocol_version"],
                 "contract_id": record["payload"]["contract_id"],
                 "contract_sha256": record["sha256"],
                 "contract_canonical_sha256": record["canonical_sha256"],

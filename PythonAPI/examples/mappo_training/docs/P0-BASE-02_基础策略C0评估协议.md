@@ -1,15 +1,15 @@
 # P0-BASE-02 基础策略 C0 评估协议
 
-> 当前协议 ID：`P0_BASE_C0_TOWN02_CRITIC_V4`（R1 动作 v2 + R2 奖励 v3 + R3 ValueNorm Critic）
+> 当前协议 ID：`P0_BASE_C0_TOWN05_V1`（R1 动作 v2 + R2 奖励 v3 + R3 ValueNorm Critic + Town05 场景）
 >
-> 机器真值：[`configs/evaluation/p0_base_c0_eval_v4.json`](../configs/evaluation/p0_base_c0_eval_v4.json)
+> 机器真值：[`configs/evaluation/p0_base_c0_town05_v1.json`](../configs/evaluation/p0_base_c0_town05_v1.json)
 >
-> 契约 SHA256：文件 `7fdb797b704b9ff53587a529c57e68eb9659b3043921dad9312aad60e66dcc68`；canonical JSON `7a0ee7c2f5fe54784e4a3a63f10eabd9092e9514805c2f32812bd118c0fdfa3e`
+> 契约 SHA256：文件 `ea2e17f633e3b26eaedbbcf5f42cbaf9b14bc7077790e3dfcba438c0c276cab8`
 >
-> 当前状态：v4 实现与离线验收完成；R1–R5 及开训前全链路检查均通过，等待 seed 42 fresh pilot 的正式 u5 periodic checkpoint
+> 当前状态：Town05 v1 实现、16+8 场景与旧 C0 smoke 链路已验收；等待 gamma 修复后 fresh 训练 smoke 与正式 u5 periodic checkpoint
 > 边界：本阶段冻结“如何评估”，不声称已有合格基础策略，也不预先宣称训练性能通过。
 
-v1/WTA/reward-v2、v2/action-v2/reward-v2 与 v3/reward-v3 契约及既有证据保持只读，仍可离线复验原裁决；新执行默认使用 v4。v1/v2/v3 新执行只允许显式 diagnostic smoke，不能作为 R3 正式 gate/validation。动作、奖励与 Critic 升级原理见 [R1 动作](./R1_二维纵向动作协议_论文正文与实验设计.md)、[R2 奖励](./R2_奖励预算校准_论文正文与实验设计.md)和 [R3 Critic](./R3_Critic价值归一化_论文正文与真实CARLA验证.md)。
+Town02 v1–v4 契约及既有证据保持只读，仍可离线复验原裁决；新执行默认使用 Town05 v1。动作、奖励与 Critic 升级原理见 [R1 动作](./R1_二维纵向动作协议_论文正文与实验设计.md)、[R2 奖励](./R2_奖励预算校准_论文正文与实验设计.md)和 [R3 Critic](./R3_Critic价值归一化_论文正文与真实CARLA验证.md)。
 
 ## 1. 目的
 
@@ -29,20 +29,20 @@ P0-BASE-02 的核心确实是统一基础策略的模型评估标准，但不只
 
 C0 只包含两辆合作红车：
 
-- CARLA client/server 版本固定为 0.9.16，地图固定为 Town02；
+- CARLA client/server 版本固定为 0.9.16，地图固定为 Town05；
 - `num_agents=2`，Agent 0 和 Agent 1 各自使用 checkpoint 中对应的独立 Actor；
 - 不生成蓝车，不生成额外自然交通；
 - observation、action、lifecycle、reward 和 metrics 版本必须与当前 `robust_v2` reward-v3 训练协议完全一致；
 - Actor 使用 `tanh(mu)`，不从高斯分布采样；
 - `tanh` 动作为二维 `[signed_longitudinal, steer]`，通过生产入口的连续死区映射转换为 CARLA 三通道动作；
-- 环境步长 0.1 秒，最长 1000 步，奖励版本 v3，`reward_gamma=0.997`。
+- 环境步长 0.1 秒，最长 500 步，奖励版本 v3，`reward_gamma=0.997`；该值必须等于 checkpoint 训练配置和训练环境 runtime 实际值。
 
 正式 checkpoint 必须同时满足：
 
-- checkpoint schema 为 v3，包含精确 `action_spec`，并有可验证的 `.sha256` sidecar；
-- 训练协议为 `mappo_robust_v2_action_v2_p0_00g_v3`；
+- checkpoint schema 为 v4，包含精确 `action_spec`、ValueNorm 和可验证的 `.sha256` sidecar；
+- 训练协议为 `mappo_robust_v2_valuenorm_p0_00g_v4`；
 - Actor 恰好为 0、1，结构为 `obs=19/action=2/hidden=128`；
-- 来源训练契约为 `P0_BASE_MAPPO_TOWN02_REWARD_V3`，文件 SHA256 必须为 `51302570805ea33c769d65cabac7afc7a3a6ec8d21b364678b7237437d578d65`；
+- 来源训练契约为 `P0_BASE_MAPPO_TOWN05_V1`，文件 SHA256 必须为 `eeb12304d9a262ac4297ede90bd651717d7d59cb31cb8ba0f384835e0ed84bde`；
 - `checkpoint_kind=periodic`；
 - update 属于 `5/10/20/30/40/60/80/100` 登记停点。
 
@@ -56,7 +56,7 @@ C0 只包含两辆合作红车：
 | `gate` | 16 × 1 = 16 episodes | 每个登记 checkpoint 的训练内分布健康门 | 是，但不用于最终选模排序 |
 | `validation` | 8 × 3 = 24 episodes | checkpoint 选择用的固定 held-out 验证 | 是 |
 
-`gate` 完整枚举 [`data/training_scenarios_town02_v2`](../data/training_scenarios_town02_v2)；`validation` 完整枚举 [`data/evaluation_scenarios/base_c0_validation_v1`](../data/evaluation_scenarios/base_c0_validation_v1)。两个目录的“文件名 + 文件内容”pool fingerprint 直接写入冻结 JSON；协议加载时还会按单文件内容 SHA256 检查 held-out 未与训练场景重复，并禁止只选取目录中的有利子集。因此，后续即使把场景修改后正常提交 Git，也必须同时提升评估协议版本，不能沿用相同 contract ID/SHA。
+`gate` 完整枚举 [`data/training_scenarios_town05_v1`](../data/training_scenarios_town05_v1)；`validation` 完整枚举 [`data/evaluation_scenarios/town05_c0_validation_v1`](../data/evaluation_scenarios/town05_c0_validation_v1)。两个目录的“文件名 + 文件内容”pool fingerprint 直接写入冻结 JSON；协议加载时还会按单文件内容 SHA256 检查 held-out 未与训练场景重复，并禁止只选取目录中的有利子集。因此，后续即使把场景修改后正常提交 Git，也必须同时提升评估协议版本，不能沿用相同 contract ID/SHA。
 
 8 个 held-out 场景在以下维度保持平衡：难度 1–4 各两个、东/西/南/北各两个、Agent 0/1 后车角色各四个，并覆盖静止起步、同速滚动和后车追近；具体坐标和 seed 一经提交即属于版本化评估输入。
 
@@ -112,7 +112,7 @@ $checkpoint = "logs/<RunID>/periodic/ckpt_update_000005.pt"
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $evalId = "P0_BASE_C0_gate_u000005_$stamp"
 ..\..\..\venv\Scripts\python.exe -m evaluation.evaluate_base_policy_c0 `
-  --eval-contract configs/evaluation/p0_base_c0_eval_v4.json `
+  --eval-contract configs/evaluation/p0_base_c0_town05_v1.json `
   --checkpoint $checkpoint `
   --profile gate `
   --eval-id $evalId `
@@ -126,7 +126,7 @@ $checkpoint = "logs/<RunID>/periodic/ckpt_update_000005.pt"
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $evalId = "P0_BASE_C0_validation_u000005_$stamp"
 ..\..\..\venv\Scripts\python.exe -m evaluation.evaluate_base_policy_c0 `
-  --eval-contract configs/evaluation/p0_base_c0_eval_v4.json `
+  --eval-contract configs/evaluation/p0_base_c0_town05_v1.json `
   --checkpoint $checkpoint `
   --profile validation `
   --eval-id $evalId `
@@ -140,7 +140,7 @@ $evalId = "P0_BASE_C0_validation_u000005_$stamp"
 ```powershell
 ..\..\..\venv\Scripts\python.exe -m evaluation.validate_base_c0_run `
   --output-dir "evaluations/<EvalID>" `
-  --expected-contract configs/evaluation/p0_base_c0_eval_v4.json `
+  --expected-contract configs/evaluation/p0_base_c0_town05_v1.json `
   --expected-checkpoint "logs/<RunID>/periodic/ckpt_update_000005.pt" `
   --expected-profile validation `
   --expected-eval-id "<EvalID>"
@@ -169,7 +169,7 @@ $evalId = "P0_BASE_C0_validation_u000005_$stamp"
 - 可以跳过 seed 42 pilot 直接批量训练；
 - validation 中的 24 episodes 足以替代最终论文多 seed 统计。
 
-历史性能 GO/HOLD v1 数值门槛及其裁决保持冻结，不因 R1/R2/R3 事后重写。动作 v2 + 奖励 v3 + ValueNorm Critic 对应的 GO/HOLD v2 已在 R4、查看新 pilot 前冻结，并在 R5 与开训前检查中通过合同绑定和入口验收；当前只放行 seed 42 fresh pilot 到 u5，不代表已有性能 GO。C0 第二次重复执行只检查离散可复现性，性能计数只取第一套 case，避免把重复性运行伪装成额外样本量。
+Town02 性能 GO/HOLD v1/v2 数值门槛及历史机器裁决保持原样，不做事后篡改；但 gamma 执行偏差使旧训练不再具有新实验的续训/选模资格。当前机器裁决只使用 `P0_BASE_GO_HOLD_TOWN05_V1`。修复后真实训练 smoke 通过才放行 Town05 seed 42 fresh pilot 到 u5，不代表已有性能 GO。C0 第二次重复执行只检查离散可复现性，性能计数只取第一套 case，避免把重复性运行伪装成额外样本量。
 
 ## 8. 风险复盘
 

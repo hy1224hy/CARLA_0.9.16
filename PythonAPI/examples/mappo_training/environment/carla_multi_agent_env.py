@@ -1,6 +1,6 @@
 """
 CARLA多智能体环境包装器
-支持两个自动驾驶车辆在Town02直道上进行训练
+支持自动驾驶车辆在 Town05 双车道直道场景中训练；Town02 作为历史基线可显式加载
 """
 
 import carla
@@ -22,6 +22,8 @@ from environment.base_reward_v3 import (
     control_rate_penalties,
     lane_deviation_penalty as v3_lane_deviation_penalty,
     lane_invasion_penalty as v3_lane_invasion_penalty,
+    is_legal_lane_change_marking,
+    lateral_distance_to_lane_center,
     lidar_risk_penalty,
     overspeed_penalty,
     route_completion,
@@ -53,9 +55,9 @@ class CarlaMultiAgentEnv:
         self,
         host: str = '127.0.0.1',
         port: int = 2000,
-        town: str = 'Town02',
+        town: str = 'Town05',
         num_agents: int = 2,
-        straight_road_length: float = 100.0,
+        straight_road_length: float = 50.0,
         timestep: float = 0.1,
         max_steps: int = 1000,
         spawn_vehicles: bool = True,
@@ -65,6 +67,7 @@ class CarlaMultiAgentEnv:
         seed: Optional[int] = None,
         reward_gamma: float = 0.99,
         adversary_collision_ends_episode: bool = True,
+        follow_spectator: bool = False,
     ):
         """
         初始化CARLA多智能体环境
@@ -101,6 +104,7 @@ class CarlaMultiAgentEnv:
         #   False（PSRO/eval 用）= 仅合作车(红)碰撞/红车全到达/超时才结束，蓝车自撞只 despawn 该车、
         #     红车继续 —— 消除"蓝车自杀=零成本终止回合剥夺红车成功"的退化漏洞。
         self.adversary_collision_ends_episode = adversary_collision_ends_episode
+        self.follow_spectator = bool(follow_spectator)
         self.seed = seed
         # R-1 修复：approach 势能塑形用的折扣因子，应与训练 gamma 一致（默认 0.99）
         self.reward_gamma = validate_gamma(reward_gamma)
@@ -167,6 +171,9 @@ class CarlaMultiAgentEnv:
         self.custom_initial_speeds_mps: Dict[int, float] = {}
         # 自定义终点区域（矩形），None 表示使用直道默认终点
         self.goal_zone: Optional[Dict] = None
+        # 可选的逐车终点区域。Town05 双车道保持类场景用它避免共享目标中心
+        # 把两辆车错误地吸向车道分隔线；未配置的 agent 回退到共享 goal_zone。
+        self.agent_goal_zones: Dict[int, Dict] = {}
 
         # 找到直道（默认位置，后续可被 JSON 场景配置覆盖）
         self._find_straight_road()
@@ -342,8 +349,7 @@ class CarlaMultiAgentEnv:
         # print(f"Agent {agent_id} 车道偏离传感器已挂载")
 
     def _find_straight_road(self):
-        """在Town02中找到一条直道"""
-        # print("正在查找Town02中的直道...")
+        """在当前地图中找到一条满足长度要求的直道。"""
         
         # 获取所有waypoint
         all_waypoints = self.map.generate_waypoints(2.0)
@@ -395,9 +401,14 @@ class CarlaMultiAgentEnv:
                 continue
         
         if not best_straight_segment:
-            # 如果没找到，使用默认位置（Town02的一个已知直道位置）
+            # 若扫描失败，按地图选择一个已知的安全直道锚点。
             # print("使用默认直道位置...")
-            default_location = carla.Location(x=100, y=-257, z=0.5)
+            current_town = self.map.name.rsplit("/", 1)[-1]
+            default_location = (
+                carla.Location(x=-195.09, y=-64.58, z=0.5)
+                if current_town == "Town05"
+                else carla.Location(x=100, y=-257, z=0.5)
+            )
             start_waypoint = self.map.get_waypoint(default_location)
             best_straight_segment = [start_waypoint]
             
@@ -464,6 +475,27 @@ class CarlaMultiAgentEnv:
     
     # ── 目标区域辅助方法 ──
 
+    @staticmethod
+    def _build_goal_zone(goal_config: Dict) -> Dict:
+        """把 JSON 终点矩形转换为 CARLA 向量表示。"""
+        center = carla.Location(
+            x=float(goal_config["x"]),
+            y=float(goal_config["y"]),
+            z=float(goal_config.get("z", 0.5)),
+        )
+        yaw = float(goal_config["yaw"])
+        yaw_rad = math.radians(yaw)
+        forward = carla.Vector3D(math.cos(yaw_rad), math.sin(yaw_rad), 0.0)
+        right = carla.Vector3D(-math.sin(yaw_rad), math.cos(yaw_rad), 0.0)
+        return {
+            "center": center,
+            "yaw": yaw,
+            "forward": forward,
+            "right": right,
+            "half_length": float(goal_config.get("half_length", 3.0)),
+            "half_width": float(goal_config.get("half_width", 1.75)),
+        }
+
     def set_goal_zone(self, goal_config: Dict):
         """
         设置终点矩形区域（覆盖 _find_straight_road 的默认终点）
@@ -475,33 +507,51 @@ class CarlaMultiAgentEnv:
             "half_width": 1.75
         }
         """
-        import carla
-        center = carla.Location(
-            x=float(goal_config["x"]),
-            y=float(goal_config["y"]),
-            z=float(goal_config.get("z", 0.5)),
-        )
-        yaw = float(goal_config["yaw"])
-        yaw_rad = math.radians(yaw)
-        forward = carla.Vector3D(math.cos(yaw_rad), math.sin(yaw_rad), 0.0)
-        # 右向量 = 前进方向逆时针旋转90°
-        right = carla.Vector3D(-math.sin(yaw_rad), math.cos(yaw_rad), 0.0)
-
-        self.goal_zone = {
-            "center": center,
-            "yaw": yaw,
-            "forward": forward,
-            "right": right,
-            "half_length": float(goal_config.get("half_length", 3.0)),
-            "half_width": float(goal_config.get("half_width", 1.75)),
-        }
+        self.goal_zone = self._build_goal_zone(goal_config)
+        center = self.goal_zone["center"]
+        yaw = self.goal_zone["yaw"]
         print(f"终点区域已设置: center=({center.x:.1f},{center.y:.1f}), "
               f"yaw={yaw:.1f}°, size={self.goal_zone['half_length']*2:.1f}m×{self.goal_zone['half_width']*2:.1f}m")
 
+    def set_agent_goal_zones(self, goal_configs: Dict):
+        """设置逐车终点矩形，键格式为 agent0、agent1。"""
+        zones: Dict[int, Dict] = {}
+        for key, value in goal_configs.items():
+            if not str(key).startswith("agent"):
+                raise ValueError(f"逐车终点键无效: {key!r}")
+            try:
+                agent_id = int(str(key)[5:])
+            except ValueError as error:
+                raise ValueError(f"逐车终点键无效: {key!r}") from error
+            if not 0 <= agent_id < self.num_agents:
+                raise ValueError(f"逐车终点超出 agent 范围: {key!r}")
+            zones[agent_id] = self._build_goal_zone(value)
+        self.agent_goal_zones = zones
+
+    def _goal_zone_for_agent(self, agent_id: Optional[int]) -> Optional[Dict]:
+        agent_zones = getattr(self, "agent_goal_zones", {})
+        if agent_id is not None and agent_id in agent_zones:
+            return agent_zones[agent_id]
+        return getattr(self, "goal_zone", None)
+
+    def _get_driving_waypoint(self, location: carla.Location):
+        """Project to the current Driving lane with lightweight-test fallback."""
+        try:
+            return self.map.get_waypoint(
+                location,
+                project_to_road=True,
+                lane_type=carla.LaneType.Driving,
+            )
+        except TypeError:
+            # Small test adapters and old compatible map proxies may only
+            # implement get_waypoint(location). CARLA's default is Driving.
+            return self.map.get_waypoint(location)
+
     def _get_target_location(self, agent_id: int) -> carla.Location:
         """返回 agent_id 的目标位置（优先 goal_zone，回退 target_waypoints）"""
-        if self.goal_zone is not None:
-            return self.goal_zone["center"]
+        goal_zone = self._goal_zone_for_agent(agent_id)
+        if goal_zone is not None:
+            return goal_zone["center"]
         if agent_id < len(self.target_waypoints) and self.target_waypoints[agent_id] is not None:
             return self.target_waypoints[agent_id].transform.location
         return carla.Location(x=0, y=0, z=0)
@@ -566,10 +616,12 @@ class CarlaMultiAgentEnv:
                 return True
         return False
 
-    def _is_in_goal_zone(self, vehicle_location: carla.Location) -> bool:
+    def _is_in_goal_zone(
+        self, vehicle_location: carla.Location, agent_id: Optional[int] = None
+    ) -> bool:
         """检查车辆位置是否在终点矩形区域内"""
-        if self.goal_zone is not None:
-            gz = self.goal_zone
+        gz = self._goal_zone_for_agent(agent_id)
+        if gz is not None:
             rel = carla.Vector3D(
                 vehicle_location.x - gz["center"].x,
                 vehicle_location.y - gz["center"].y,
@@ -582,13 +634,26 @@ class CarlaMultiAgentEnv:
         # 回退：使用 target_waypoints + 默认尺寸
         return False  # 由调用方处理（保持兼容 _check_dones 的默认逻辑）
 
+    def _is_agent_in_goal_zone(
+        self, vehicle_location: carla.Location, agent_id: int
+    ) -> bool:
+        """Agent-aware goal query with compatibility for lightweight tests."""
+        try:
+            return self._is_in_goal_zone(vehicle_location, agent_id)
+        except TypeError:
+            return self._is_in_goal_zone(vehicle_location)
+
     def apply_scenario_config(self, config: Dict):
         """
         应用完整场景配置（起点 + 终点）
 
         config 格式: {
-            "town": "Town02",          # 可选
+            "town": "Town05",          # 可选
             "goal_zone": { ... },      # 可选
+            "agent_goal_zones": {       # 可选，逐车覆盖共享终点
+                "agent0": { ... }, "agent1": { ... }
+            },
+            "goal_mode": "preserve_start_lane",  # 可选，自动生成逐车同车道目标
             "agents": {                # 可选
                 "agent0": {
                     "x": ..., "y": ..., "z": 0.5, "yaw": 90.0,
@@ -612,12 +677,15 @@ class CarlaMultiAgentEnv:
         # 旧实现会让没有 goal_zone 的 JSON 随机继承上一个场景的终点，
         # 导致同一场景的任务定义取决于采样顺序。
         self.goal_zone = None
+        self.agent_goal_zones = {}
         self.custom_start_transforms = None
         self.custom_initial_speeds_mps = {}
 
         # 1. 终点区域
         if "goal_zone" in config:
             self.set_goal_zone(config["goal_zone"])
+        if "agent_goal_zones" in config:
+            self.set_agent_goal_zones(config["agent_goal_zones"])
 
         # 2. 起始位置：兼容 "agents" 嵌套和旧格式
         agents_dict = config.get("agents", config)
@@ -625,6 +693,26 @@ class CarlaMultiAgentEnv:
         agent_keys = {k for k in agents_dict if k.startswith("agent")}
         if agent_keys:
             self.set_custom_start_positions({k: agents_dict[k] for k in agent_keys})
+
+        if config.get("goal_mode") == "preserve_start_lane":
+            if self.goal_zone is None or not agent_keys:
+                raise ValueError("preserve_start_lane 需要 goal_zone 与 agents")
+            goal_configs: Dict[str, Dict] = {}
+            shared = self.goal_zone
+            for key in sorted(agent_keys):
+                start = agents_dict[key]
+                dx = float(start["x"]) - shared["center"].x
+                dy = float(start["y"]) - shared["center"].y
+                lateral = dx * shared["right"].x + dy * shared["right"].y
+                goal_configs[key] = {
+                    "x": shared["center"].x + lateral * shared["right"].x,
+                    "y": shared["center"].y + lateral * shared["right"].y,
+                    "z": shared["center"].z,
+                    "yaw": shared["yaw"],
+                    "half_length": shared["half_length"],
+                    "half_width": 1.6,
+                }
+            self.set_agent_goal_zones(goal_configs)
 
         # print("场景配置已应用")
 
@@ -703,6 +791,8 @@ class CarlaMultiAgentEnv:
         self.world.tick()
         self._apply_initial_vehicle_speeds()
         time.sleep(0.5)
+        if self.follow_spectator:
+            self._update_overhead_spectator()
         # 落地/预热帧只用于构造 reset 状态，不属于策略 rollout。
         # 清除这些帧可能触发的瞬态传感器标志，避免计入第一步奖励。
         for agent_id in range(self.num_agents):
@@ -715,6 +805,34 @@ class CarlaMultiAgentEnv:
                     "crossed_markings": [],
                     "marking_types": [],
                 }
+
+    def _update_overhead_spectator(self):
+        """Frame all live vehicles and their goals with CARLA's spectator."""
+        locations = [
+            vehicle.get_transform().location
+            for vehicle in self.vehicles
+            if vehicle is not None and vehicle.is_alive
+        ]
+        if not locations:
+            return
+        goal_locations = []
+        for agent_id in range(self.num_agents):
+            zone = self._goal_zone_for_agent(agent_id)
+            if zone is not None:
+                goal_locations.append(zone["center"])
+        points = locations + goal_locations
+        min_x, max_x = min(point.x for point in points), max(point.x for point in points)
+        min_y, max_y = min(point.y for point in points), max(point.y for point in points)
+        center_x = (min_x + max_x) * 0.5
+        center_y = (min_y + max_y) * 0.5
+        span = max(max_x - min_x, max_y - min_y, 15.0)
+        height = min(80.0, max(25.0, span * 0.85))
+        self.world.get_spectator().set_transform(
+            carla.Transform(
+                carla.Location(x=center_x, y=center_y, z=height),
+                carla.Rotation(pitch=-90.0, yaw=0.0, roll=0.0),
+            )
+        )
 
     def _prepare_velocity_warm_start(self):
         """Pre-offset actors so the velocity warm-up tick ends at nominal x/y.
@@ -1449,7 +1567,8 @@ class CarlaMultiAgentEnv:
                 speed_reward = 0.1
 
             # 3. 二元居中奖励
-            current_waypoint = self.map.get_waypoint(transform.location)
+            # 以该车辆当帧所属 Driving lane 的中心线为基准。
+            current_waypoint = self._get_driving_waypoint(transform.location)
             centering_reward = 0.0
             lateral_dist = 0.0
             if current_waypoint:
@@ -1457,7 +1576,14 @@ class CarlaMultiAgentEnv:
                 wp_loc = current_waypoint.transform.location
                 vec_wp_to_veh = carla.Vector3D(veh_loc.x - wp_loc.x, veh_loc.y - wp_loc.y, 0)
                 right_vector = current_waypoint.transform.get_right_vector()
-                lateral_dist = abs(vec_wp_to_veh.x * right_vector.x + vec_wp_to_veh.y * right_vector.y)
+                lateral_dist = lateral_distance_to_lane_center(
+                    vehicle_x=veh_loc.x,
+                    vehicle_y=veh_loc.y,
+                    lane_center_x=wp_loc.x,
+                    lane_center_y=wp_loc.y,
+                    lane_right_x=right_vector.x,
+                    lane_right_y=right_vector.y,
+                )
                 if lateral_dist < 0.05:
                     centering_reward = 0.5
 
@@ -1488,8 +1614,8 @@ class CarlaMultiAgentEnv:
 
             # 7. 终点奖励
             success_reward = 0.0
-            if self.goal_zone is not None:
-                in_goal_region = self._is_in_goal_zone(transform.location)
+            if self._goal_zone_for_agent(i) is not None:
+                in_goal_region = self._is_agent_in_goal_zone(transform.location, i)
             else:
                 center_loc = target_loc
                 twp = self.target_waypoints[i]
@@ -1734,7 +1860,8 @@ class CarlaMultiAgentEnv:
             # 关键改动：用"死区平台"取代尖峰指数——|偏移|<CENTER_DEADZONE 内满额且无梯度，
             #   带外才指数衰减。尖峰只奖励"精确压中心"，最优策略=高增益横向修正，在离散时间+
             #   延迟下欠阻尼过冲 → 轻微极限环摆动；平台让"大致居中"即满额，消除微修正激励。
-            current_waypoint = self.map.get_waypoint(transform.location)
+            # v3 偏离量的零点是该车辆当前 Driving lane 的中心。
+            current_waypoint = self._get_driving_waypoint(transform.location)
             centering_reward = 0.0
             lateral_dist = 0.0   # 到最近车道中心的横向距离，供居中奖励 + R-4 偏离惩罚共用
             if current_waypoint:
@@ -1744,8 +1871,13 @@ class CarlaMultiAgentEnv:
                     veh_loc.x - wp_loc.x, veh_loc.y - wp_loc.y, 0
                 )
                 right_vector = current_waypoint.transform.get_right_vector()
-                lateral_dist = abs(
-                    vec_wp_to_veh.x * right_vector.x + vec_wp_to_veh.y * right_vector.y
+                lateral_dist = lateral_distance_to_lane_center(
+                    vehicle_x=veh_loc.x,
+                    vehicle_y=veh_loc.y,
+                    lane_center_x=wp_loc.x,
+                    lane_center_y=wp_loc.y,
+                    lane_right_x=right_vector.x,
+                    lane_right_y=right_vector.y,
                 )
                 d_center = max(0.0, lateral_dist - CENTER_DEADZONE)  # 死区内 = 0 → 满额平台
                 centering_reward = 0.5 * math.exp(
@@ -1870,8 +2002,8 @@ class CarlaMultiAgentEnv:
             success_reward = 0.0
             time_bonus = 0.0
 
-            if self.goal_zone is not None:
-                in_goal_region = self._is_in_goal_zone(transform.location)
+            if self._goal_zone_for_agent(i) is not None:
+                in_goal_region = self._is_agent_in_goal_zone(transform.location, i)
             else:
                 center_loc = target_loc
                 twp = self.target_waypoints[i]
@@ -2134,7 +2266,8 @@ class CarlaMultiAgentEnv:
                 else min(config.ttc_threshold_s, minimum_ttc)
             )
 
-            current_waypoint = self.map.get_waypoint(transform.location)
+            # 每辆车独立投影到其当前最近的 Driving lane 中心线。
+            current_waypoint = self._get_driving_waypoint(transform.location)
             lateral_distance = 0.0
             if current_waypoint:
                 waypoint_location = current_waypoint.transform.location
@@ -2144,9 +2277,13 @@ class CarlaMultiAgentEnv:
                     0.0,
                 )
                 right_vector = current_waypoint.transform.get_right_vector()
-                lateral_distance = abs(
-                    waypoint_to_vehicle.x * right_vector.x
-                    + waypoint_to_vehicle.y * right_vector.y
+                lateral_distance = lateral_distance_to_lane_center(
+                    vehicle_x=transform.location.x,
+                    vehicle_y=transform.location.y,
+                    lane_center_x=waypoint_location.x,
+                    lane_center_y=waypoint_location.y,
+                    lane_right_x=right_vector.x,
+                    lane_right_y=right_vector.y,
                 )
             lane_deviation_cost, lane_deviation_risk = v3_lane_deviation_penalty(
                 lateral_distance,
@@ -2155,21 +2292,28 @@ class CarlaMultiAgentEnv:
 
             crosswalk = self.crosswalk_invasion_events.get(i, False)
             collision_event = bool(self.collision_events.get(i, False) or crosswalk)
+            invasion_details = getattr(
+                self, "lane_invasion_details", {}
+            ).get(i, {})
+            marking_types = invasion_details.get("marking_types", [])
+            legal_lane_change = (
+                getattr(self.map, "name", "").rsplit("/", 1)[-1] == "Town05"
+                and is_legal_lane_change_marking(marking_types)
+            )
             lane_sensor_event = bool(
-                self.lane_invasion_events.get(i, False) and not crosswalk
+                self.lane_invasion_events.get(i, False)
+                and not crosswalk
+                and not legal_lane_change
             )
             lane_event_penalty = 0.0
             if lane_sensor_event:
-                invasion_details = getattr(
-                    self, "lane_invasion_details", {}
-                ).get(i, {})
                 lane_event_penalty = v3_lane_invasion_penalty(
-                    invasion_details.get("marking_types", []),
+                    marking_types,
                     config=config,
                 )
 
-            if self.goal_zone is not None:
-                in_goal_region = self._is_in_goal_zone(transform.location)
+            if self._goal_zone_for_agent(i) is not None:
+                in_goal_region = self._is_agent_in_goal_zone(transform.location, i)
             else:
                 target_waypoint = self.target_waypoints[i]
                 forward_vector = target_waypoint.transform.get_forward_vector()
@@ -2271,8 +2415,8 @@ class CarlaMultiAgentEnv:
             is_collided = self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False)
 
             # 检查是否到达终点区域（矩形判定）
-            if self.goal_zone is not None:
-                in_goal_region = self._is_in_goal_zone(transform.location)
+            if self._goal_zone_for_agent(i) is not None:
+                in_goal_region = self._is_agent_in_goal_zone(transform.location, i)
             else:
                 target_wp = self.target_waypoints[i]
                 center_loc = target_wp.transform.location
@@ -2586,7 +2730,7 @@ class CarlaMultiAgentEnv:
         从场景目录随机加载一个场景配置
 
         Args:
-            scenario_dir: 场景文件目录，默认是 data/training_scenarios
+            scenario_dir: 场景文件目录，默认是 data/training_scenarios_town05_v1
             scenario_files: 可选的场景文件列表，从中随机选择
 
         Returns:
@@ -2597,7 +2741,7 @@ class CarlaMultiAgentEnv:
 
         if scenario_dir is None:
             scenario_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                      'data', 'training_scenarios')
+                                      'data', 'training_scenarios_town05_v1')
 
         if not os.path.exists(scenario_dir):
             # print(f"场景目录不存在: {scenario_dir}")
@@ -2638,7 +2782,7 @@ class CarlaMultiAgentEnv:
 
         if scenario_dir is None:
             scenario_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                      'data', 'training_scenarios')
+                                      'data', 'training_scenarios_town05_v1')
 
         scenario_path = os.path.join(scenario_dir, scenario_name)
 

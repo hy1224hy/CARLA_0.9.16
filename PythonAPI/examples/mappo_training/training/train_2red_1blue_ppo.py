@@ -64,8 +64,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     # 环境
     p.add_argument("--host", type=str, default="127.0.0.1")
     p.add_argument("--port", type=int, default=2000)
-    p.add_argument("--town", type=str, default="Town02")
-    p.add_argument("--straight-road-length", type=float, default=100.0)
+    p.add_argument("--town", type=str, default="Town05")
+    p.add_argument("--straight-road-length", type=float, default=50.0)
     p.add_argument("--timestep", type=float, default=0.1)
     p.add_argument("--max-steps", type=int, default=1000)
     # 团队 / 场景
@@ -74,10 +74,22 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--num-cooperative", type=int, default=2, help="红车数（冻结）")
     p.add_argument("--num-adversarial", type=int, default=1,
                    help="蓝车数（PPO 训练）；改成 2 即 2+2")
-    p.add_argument("--scenario", type=str, default="scenario_03_far.json")
+    p.add_argument("--scenario", type=str,
+                   default="scenario_09_north_stagger_closing_a0_rear.json")
+    p.add_argument(
+        "--scenario-dir",
+        type=str,
+        default="data/training_scenarios_town05_v1",
+        help="Town05 场景目录；相对路径从 mappo_training 解析",
+    )
     p.add_argument("--coop-start-config", type=str, default=None)
     p.add_argument("--auto-adv-positions", action="store_true", default=True)
     p.add_argument("--no-auto-adv-positions", dest="auto_adv_positions", action="store_false")
+    p.add_argument(
+        "--follow-spectator",
+        action="store_true",
+        help="每次初始化后移动 CARLA 内置俯视镜头，不启动旧 pygame 可视化",
+    )
     p.add_argument("--adv-margin-ratio", type=float, default=0.0)
     # PPO
     p.add_argument("--updates", type=int, default=120)
@@ -161,10 +173,14 @@ def train(args):
         adversarial_agent_ids=adversarial_ids, reward_version="v2",
         disable_tensorboard=True, seed=args.seed,
         adversary_collision_ends_episode=False,
+        follow_spectator=args.follow_spectator,
     )
 
-    scenario_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                'data', 'training_scenarios')
+    scenario_dir = args.scenario_dir
+    if not os.path.isabs(scenario_dir):
+        scenario_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), scenario_dir
+        )
     scenario_config = prepare_fixed_scenario_config(
         args.scenario, scenario_dir, cooperative_ids, adversarial_ids,
         args.coop_start_config, args.auto_adv_positions, args.adv_margin_ratio,
@@ -744,6 +760,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 

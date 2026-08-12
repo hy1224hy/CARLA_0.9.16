@@ -12,8 +12,10 @@ from environment.base_reward_v3 import (
     control_rate_penalties,
     discounted_return,
     discounted_step_budget,
+    is_legal_lane_change_marking,
     lane_deviation_penalty,
     lane_invasion_penalty,
+    lateral_distance_to_lane_center,
     lidar_risk_penalty,
     overspeed_penalty,
     potential_discounted_return,
@@ -86,6 +88,50 @@ def _linear_completion(final, transitions=100):
 
 
 class RewardV3MathematicsTests(unittest.TestCase):
+    def test_lane_center_distance_is_per_lane_and_rotation_invariant(self):
+        # 两条平行车道各自居中时都必须得到 0，而不能拿道路整体中线比较。
+        self.assertEqual(
+            lateral_distance_to_lane_center(
+                vehicle_x=-195.09,
+                vehicle_y=-64.58,
+                lane_center_x=-195.09,
+                lane_center_y=-64.58,
+                lane_right_x=-1.0,
+                lane_right_y=0.0,
+            ),
+            0.0,
+        )
+        self.assertEqual(
+            lateral_distance_to_lane_center(
+                vehicle_x=-191.59,
+                vehicle_y=-64.58,
+                lane_center_x=-191.59,
+                lane_center_y=-64.58,
+                lane_right_x=-1.0,
+                lane_right_y=0.0,
+            ),
+            0.0,
+        )
+        self.assertAlmostEqual(
+            lateral_distance_to_lane_center(
+                vehicle_x=2.0,
+                vehicle_y=3.0,
+                lane_center_x=1.0,
+                lane_center_y=1.0,
+                lane_right_x=0.0,
+                lane_right_y=2.0,
+            ),
+            2.0,
+        )
+
+    def test_town05_legal_lane_change_requires_only_broken_markings(self):
+        self.assertTrue(is_legal_lane_change_marking(["Broken"]))
+        self.assertTrue(is_legal_lane_change_marking(["Broken", "Broken"]))
+        self.assertFalse(is_legal_lane_change_marking([]))
+        self.assertFalse(is_legal_lane_change_marking(["Solid"]))
+        self.assertFalse(is_legal_lane_change_marking(["Broken", "Solid"]))
+        self.assertFalse(is_legal_lane_change_marking(["NONE"]))
+
     def test_machine_spec_freezes_components_diagnostics_and_budget(self):
         spec = reward_v3_spec()
         self.assertEqual(spec["reward_protocol_version"], REWARD_PROTOCOL_VERSION)

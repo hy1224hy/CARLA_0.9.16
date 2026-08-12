@@ -8,6 +8,7 @@ import numpy as np
 from models.actor_critic import Actor
 from evaluation.base_c0_protocol import (
     C0_PROTOCOL_VERSION,
+    TOWN05_C0_PROTOCOL_VERSION,
     C0_EPISODE_RECORD_VERSION,
     C0_MANIFEST_VERSION,
     C0_RESOLVED_CONFIG_VERSION,
@@ -64,11 +65,18 @@ CONTRACT_PATH = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v4.jso
 R1_CONTRACT_PATH = (
     PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v2.json"
 )
+TOWN05_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_v1.json"
+)
 
 
 def _checkpoint_payload(contract, *, formal=True):
     run_id = "P0_BASE_MAPPO_Town02_s42_20260804_210000"
-    current = contract["protocol_version"] == C0_PROTOCOL_VERSION
+    current = contract["protocol_version"] in {
+        C0_PROTOCOL_VERSION,
+        TOWN05_C0_PROTOCOL_VERSION,
+    }
+    town05 = contract["protocol_version"] == TOWN05_C0_PROTOCOL_VERSION
     metrics_protocol = (
         METRICS_PROTOCOL_VERSION if current else ACTION_METRICS_PROTOCOL_VERSION
     )
@@ -116,7 +124,7 @@ def _checkpoint_payload(contract, *, formal=True):
                 contract["checkpoint"]["required_training_contract_sha256"] if formal else ""
             ),
         },
-        "training_config": {},
+        "training_config": {"gamma": 0.997} if town05 else {},
         "lr_schedule": {"decay_horizon": 100},
         "rng_state": capture_rng_state(),
         "last_metrics": {
@@ -136,6 +144,10 @@ def _checkpoint_payload(contract, *, formal=True):
                 "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
             }
         )
+    if town05:
+        payload["run_metadata"]["runtime"] = {
+            "environment_reward_gamma": 0.997
+        }
     return payload
 
 
@@ -313,6 +325,42 @@ class C0CheckpointTests(unittest.TestCase):
             save_checkpoint_file(malformed, malformed_path)
             with self.assertRaisesRegex(C0ProtocolError, "actor state"):
                 load_and_validate_c0_checkpoint(malformed_path, contract=self.contract)
+
+    def test_town05_checkpoint_requires_recorded_training_environment_gamma(self):
+        contract = load_c0_contract(
+            TOWN05_CONTRACT_PATH, project_dir=PROJECT_DIR
+        )["payload"]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            valid_path = root / "valid.pt"
+            save_checkpoint_file(_checkpoint_payload(contract), valid_path)
+            result = load_and_validate_c0_checkpoint(
+                valid_path, contract=contract
+            )
+            self.assertTrue(result["formal_eligible"])
+
+            wrong_training = _checkpoint_payload(contract)
+            wrong_training["training_config"]["gamma"] = 0.99
+            wrong_training_path = root / "wrong_training.pt"
+            save_checkpoint_file(wrong_training, wrong_training_path)
+            with self.assertRaisesRegex(
+                C0ProtocolError, "training_config.gamma"
+            ):
+                load_and_validate_c0_checkpoint(
+                    wrong_training_path, contract=contract
+                )
+
+            missing_runtime = _checkpoint_payload(contract)
+            missing_runtime["run_metadata"].pop("runtime")
+            missing_runtime_path = root / "missing_runtime.pt"
+            save_checkpoint_file(missing_runtime, missing_runtime_path)
+            with self.assertRaisesRegex(
+                C0ProtocolError, "environment_reward_gamma"
+            ):
+                load_and_validate_c0_checkpoint(
+                    missing_runtime_path, contract=contract
+                )
 
     def test_r1_reward_v2_checkpoint_remains_strictly_readable_as_history(self):
         historical_contract = load_c0_contract(

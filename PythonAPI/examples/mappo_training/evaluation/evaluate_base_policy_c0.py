@@ -25,6 +25,8 @@ from evaluation.base_c0_protocol import (
     ACTION_C0_PROTOCOL_VERSION,
     C0_EPISODE_RECORD_VERSION,
     C0_PROTOCOL_VERSION,
+    TOWN05_C0_PROTOCOL_VERSION,
+    TOWN05_C0_EPISODE_RECORD_VERSION,
     C0_MANIFEST_VERSION,
     C0_RESOLVED_CONFIG_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
@@ -76,7 +78,7 @@ from training.action_protocol import (
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_eval_v4.json"
+DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_v1.json"
 
 
 def _set_seed(seed: int, env: CarlaMultiAgentEnv | None = None) -> None:
@@ -374,7 +376,12 @@ def _run_case(
                 else (
                     REWARD_C0_EPISODE_RECORD_VERSION
                     if contract["protocol_version"] == REWARD_C0_PROTOCOL_VERSION
-                    else C0_EPISODE_RECORD_VERSION
+                    else (
+                        TOWN05_C0_EPISODE_RECORD_VERSION
+                        if contract["protocol_version"]
+                        == TOWN05_C0_PROTOCOL_VERSION
+                        else C0_EPISODE_RECORD_VERSION
+                    )
                 )
             )
         ),
@@ -592,12 +599,15 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     contract_record = load_c0_contract(args.eval_contract, project_dir=PROJECT_DIR)
     contract = contract_record["payload"]
     if (
-        contract["protocol_version"] != C0_PROTOCOL_VERSION
+        contract["protocol_version"] not in {
+            C0_PROTOCOL_VERSION,
+            TOWN05_C0_PROTOCOL_VERSION,
+        }
         and not args.allow_diagnostic_checkpoint
     ):
         raise C0ProtocolError(
             "historical C0 v1/v2/v3 is read-only evidence; new executions require "
-            "the R3 C0 v4 contract, or an explicit diagnostic smoke invocation"
+            "a current Town02 v4 or Town05 contract, or an explicit diagnostic smoke invocation"
         )
     if args.allow_diagnostic_checkpoint and args.profile != "smoke":
         raise C0ProtocolError("diagnostic checkpoints are restricted to the smoke profile")

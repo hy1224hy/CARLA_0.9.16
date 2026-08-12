@@ -405,6 +405,34 @@ def lane_deviation_penalty(
     return -config.lane_deviation_weight * risk, risk
 
 
+def lateral_distance_to_lane_center(
+    *,
+    vehicle_x: object,
+    vehicle_y: object,
+    lane_center_x: object,
+    lane_center_y: object,
+    lane_right_x: object,
+    lane_right_y: object,
+) -> float:
+    """Return distance to this vehicle's current driving-lane centre.
+
+    The centre is the current CARLA waypoint centre for one vehicle, not the
+    road-level centre shared by adjacent lanes and not the navigation target.
+    """
+    dx = _finite(vehicle_x, name="vehicle x") - _finite(
+        lane_center_x, name="lane-centre x"
+    )
+    dy = _finite(vehicle_y, name="vehicle y") - _finite(
+        lane_center_y, name="lane-centre y"
+    )
+    right_x = _finite(lane_right_x, name="lane right x")
+    right_y = _finite(lane_right_y, name="lane right y")
+    norm = math.hypot(right_x, right_y)
+    if norm <= 1e-12:
+        raise RewardV3Error("lane right vector cannot be zero")
+    return abs(dx * right_x / norm + dy * right_y / norm)
+
+
 def lane_invasion_penalty(
     marking_types: Iterable[object],
     *,
@@ -424,6 +452,19 @@ def lane_invasion_penalty(
     # Use the most severe violation rather than summing list cardinality, so
     # the sparse event has the frozen finite budget [curb, 0].
     return min(severity.get(value, config.solid_line_penalty) for value in values)
+
+
+def is_legal_lane_change_marking(marking_types: Iterable[object]) -> bool:
+    """Return whether a lane sensor event only crossed broken markings.
+
+    CARLA reports both a permitted lane change over a broken separator and an
+    actual road/lane departure through the same lane-invasion sensor.  Town05
+    required-merge tasks need that distinction: a broken-line crossing is a
+    legal manoeuvre, while solid, curb, unknown and empty events remain safety
+    violations.  Crosswalk ``NONE`` events are handled as collisions upstream.
+    """
+    values = [str(value) for value in marking_types]
+    return bool(values) and all(value == "Broken" for value in values)
 
 
 def terminal_rewards(

@@ -32,7 +32,7 @@ class ManualControlRecorder:
         agent_id: int,
         host: str = '127.0.0.1',
         port: int = 2000,
-        town: str = 'Town02',
+        town: str = 'Town05',
         output_dir: str = './manual_driving_data',
         max_steps: int = 1000
     ):
@@ -465,7 +465,7 @@ def main():
                        help="CARLA服务器地址")
     parser.add_argument("--port", type=int, default=2000,
                        help="CARLA服务器端口")
-    parser.add_argument("--town", type=str, default="Town02",
+    parser.add_argument("--town", type=str, default="Town05",
                        help="地图名称")
     parser.add_argument("--output-dir", type=str, default="./manual_driving_data",
                        help="数据保存目录")

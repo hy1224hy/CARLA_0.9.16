@@ -7,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+from training.checkpoint_protocol import CheckpointProtocolError
 from training.experiment_contract import (
     EXPERIMENT_CONTRACT_VERSION,
     EXPERIMENT_MANIFEST_NAME,
@@ -22,7 +23,11 @@ from training.experiment_contract import (
     validate_resume_experiment_evidence,
     verify_critical_sources_clean,
 )
-from training.train_no_rllib_mappo_robust_v2 import build_parser
+from training.train_no_rllib_mappo_robust_v2 import (
+    build_parser,
+    build_training_environment_kwargs,
+    validate_environment_reward_discount,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -37,6 +42,9 @@ R2_CONTRACT_PATH = (
 )
 R3_CONTRACT_PATH = (
     PROJECT_DIR / "configs" / "base_mappo" / "p0_base_critic_v4.json"
+)
+TOWN05_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "base_mappo" / "p0_base_town05_v1.json"
 )
 
 
@@ -166,6 +174,41 @@ class ExperimentContractValidationTests(unittest.TestCase):
 
 
 class ExperimentContractApplicationTests(unittest.TestCase):
+    def test_town05_contract_drives_both_ppo_and_environment_reward_gamma(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_id = "P0_BASE_MAPPO_Town05_s42_20260812_120000"
+            argv = [
+                "--experiment-contract",
+                str(TOWN05_CONTRACT_PATH),
+                "--updates",
+                "5",
+                "--run-id",
+                run_id,
+                "--save-dir",
+                str(Path(temp_dir) / run_id),
+            ]
+            args = build_parser().parse_args(argv)
+            args._explicit_cli_options = {
+                token.split("=", 1)[0]
+                for token in argv
+                if token.startswith("--")
+            }
+            metadata = apply_experiment_contract(args, project_dir=PROJECT_DIR)
+            kwargs = build_training_environment_kwargs(args, num_agents=2)
+
+            self.assertEqual(metadata["payload"]["trainer_args"]["gamma"], 0.997)
+            self.assertEqual(args.gamma, 0.997)
+            self.assertEqual(kwargs["reward_gamma"], args.gamma)
+
+            matching_env = SimpleNamespace(reward_gamma=kwargs["reward_gamma"])
+            validate_environment_reward_discount(matching_env, args)
+            with self.assertRaisesRegex(
+                CheckpointProtocolError, "reward discount mismatch"
+            ):
+                validate_environment_reward_discount(
+                    SimpleNamespace(reward_gamma=0.99), args
+                )
+
     def test_contract_is_authoritative_and_resolves_scenario_path(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             save_dir = Path(temp_dir) / "P0_BASE_MAPPO_Town02_s42_20260804_210000"

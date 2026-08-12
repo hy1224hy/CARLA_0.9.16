@@ -1,0 +1,40 @@
+{
+  "config_version": "town05_parallel_pilot_smoke_v1",
+  "status": "diagnostic_only",
+  "purpose": "Diagnostic Town05 gamma-alignment, strict-metrics, checkpoint-provenance and cleanup smoke; never eligible for formal training or model selection.",
+  "training_entrypoint": "training.train_no_rllib_mappo_robust_v2",
+  "town02_status": "read_only_historical_diagnostic",
+  "town": "Town05",
+  "scenario_dir": "data/training_scenarios_town05_v1",
+  "seed": 42,
+  "smoke": {
+    "updates": 1,
+    "rollout_episodes": 2,
+    "max_steps": 120,
+    "min_transitions_per_update": 64,
+    "ppo_epochs": 1,
+    "minibatch_size": 256,
+    "hidden_dim": 128,
+    "reward_version": "v3",
+    "reward_gamma": 0.997,
+    "scenario_sampling_mode": "stratified",
+    "curriculum_mode": "metadata",
+    "warmup_updates": 0,
+    "full_scenario_updates": 1,
+    "curriculum_transition_window": 0,
+    "tb_histogram_interval": 0,
+    "cpu": true,
+    "render": false
+  },
+  "promotion_gate": {
+    "live_spawn_scenarios": 8,
+    "position_error_max_m": 0.25,
+    "speed_error_max_mps": 0.25,
+    "completed_updates": 1,
+    "ppo_update_required": true,
+    "nonfinite_allowed": false,
+    "checkpoint_training_environment_gamma_must_equal": 0.997,
+    "strict_metrics_required": true,
+    "carla_actor_leaks_allowed": false
+  }
+}

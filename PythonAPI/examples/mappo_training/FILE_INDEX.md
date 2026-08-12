@@ -129,13 +129,18 @@
 | **configs/evaluation/p0_base_c0_eval_v2.json** | R1 action-v2/reward-v2 checkpoint 的历史 C0 v2 真值；新执行默认使用 v4 |
 | **configs/base_mappo/p0_base_reward_v3.json** | R2 二维动作 + 有界路线完成度 reward v3 的历史 fresh 对照契约 |
 | **configs/evaluation/p0_base_c0_eval_v3.json** | R2 reward-v3 checkpoint、奖励分量和双层 action 证据的只读 C0 v3 真值 |
-| **configs/base_mappo/p0_base_critic_v4.json** | R3 冻结的 ValueNorm + normalized-Huber fresh 训练契约 |
-| **configs/evaluation/p0_base_c0_eval_v4.json** | R3 schema-v4 checkpoint 与 Critic provenance 的当前 C0 真值；v1–v3 只读历史 |
+| **configs/base_mappo/p0_base_town05_v1.json** | 当前 Town05 四方向双车道基础策略 fresh 训练契约；Town02 合同只读封存 |
+| **configs/evaluation/p0_base_c0_town05_v1.json** | 当前 Town05 gate/held-out C0 真值；Road 43/6 不参与训练 |
+| **configs/evaluation/p0_base_go_hold_town05_v1.json** | 当前 Town05 里程碑与选模 GO/HOLD 真值 |
+| **data/training_scenarios_town05_v1/** | 当前 16 个 Town05 正式训练场景：四方向 × 四类任务 |
+| **data/evaluation_scenarios/town05_c0_validation_v1/** | 当前 8 个 Town05 held-out 场景，3 seeds 共 24 validation cases |
+| **configs/base_mappo/p0_base_critic_v4.json** | Town02 R3 ValueNorm 历史合同，只读封存 |
+| **configs/evaluation/p0_base_c0_eval_v4.json** | Town02 历史 C0 真值，只读封存 |
 | **evaluation/diagnose_r2_reward_r3_critic.py** | 固定 Town02 脚本的 R2 奖励信号链与同批真实状态 Critic A/B 诊断入口；不用于模型选择 |
 | **diagnostics/r2_r3_real_carla/20260810_200111/report.json** | CARLA 0.9.16 实跑的 10 项机制验收、536-transition Critic A/B 与环境清理证据 |
 | **configs/evaluation/p0_base_go_hold_v1.json** | P0-BASE-04 证据、数值健康、分段能力、批量放行和 held-out 接受门槛的机器真值 |
 | **configs/evaluation/p0_base_go_hold_v2.json** | R4 冻结的持续行为塌缩与 Critic 联合退化门槛；绑定 R3 训练合同、C0 v4、metrics v5 与 checkpoint v4 |
-| **data/evaluation_scenarios/base_c0_validation_v1/** | 与训练场景按内容 SHA 隔离的 8 个 Town02 held-out 基础策略验证场景 |
+| **data/evaluation_scenarios/base_c0_validation_v1/** | Town02 历史 held-out 验证场景，只读封存 |
 | **experiments/base_mappo_registry.csv** | 每个正式基础 Run 一行的跨 Run 机器可读索引 |
 | **evaluations/<EvalID>/** | C0 resolved config、manifest、逐 episode JSONL、summary JSON/CSV 与 validator report |
 | **decisions/base_mappo/<DecisionID>/** | 绑定阈值/Git/训练/checkpoint/双 C0 证据的不可覆盖 GO/HOLD JSON 裁决 |
@@ -173,6 +178,14 @@
 | **tests/test_base_c0_evaluation.py** | C0 场景隔离、checkpoint provenance、确定性 active-agent runner、奖励守恒、恢复顺序、summary 防篡改和重复性测试 |
 | **tests/test_base_reward_v3.py** | reward v3 势能望远镜、预算边界、防刷分、终局排序、对称性与 ±25% 敏感性测试 |
 | **tests/test_base_go_hold.py** | 阈值契约绑定、防漂移、逐 update 污染、数值临界值、里程碑和 held-out 判定回归测试 |
+| **data/training_scenarios_town05_v1/** | **[CURRENT]** Town05 Road 44/3 四方向、四家族、角色镜像的 16 个正式训练场景 |
+| **data/evaluation_scenarios/town05_c0_validation_v1/** | **[CURRENT]** Town05 Road 43/6 的 8 个 held-out C0 场景；训练禁止采样 |
+| **configs/base_mappo/p0_base_town05_v1.json** | **[CURRENT]** Town05 fresh seed-42 基础 MAPPO 正式训练合同 |
+| **configs/evaluation/p0_base_c0_town05_v1.json** | **[CURRENT]** Town05 smoke/gate/validation 冻结 C0 合同 |
+| **configs/evaluation/p0_base_go_hold_town05_v1.json** | **[CURRENT]** Town05 里程碑与 held-out GO/HOLD 合同 |
+| **utils/validate_town05_parallel_scenarios.py** | Town05 训练/留出池的 OpenDRIVE 路由、位置、速度、平衡与目标语义 validator |
+| **utils/run_town05_pilot.py** | 修复后 Town05 一键真实 smoke：离线校验、可选 live spawn、1-update、strict metrics、checkpoint gamma 与 CARLA 清理 |
+| **docs/Town05_正式实验迁移与16场景设计.md** | Town05 16 场景完整坐标、问题定义、逐车车道中心语义、合同与实测记录 |
 
 ---
 

@@ -311,12 +311,47 @@ def _load_pretrained_weights(
 
 def runtime_metadata_with_carla(env) -> Dict[str, object]:
     metadata = runtime_metadata()
+    metadata["environment_reward_gamma"] = float(env.reward_gamma)
     try:
         metadata["carla_client"] = env.client.get_client_version()
         metadata["carla_server"] = env.client.get_server_version()
     except Exception as error:
         metadata["carla_version_error"] = str(error)
     return metadata
+
+
+def build_training_environment_kwargs(args, *, num_agents: int) -> Dict[str, object]:
+    """Build the base environment from the same frozen arguments used by PPO."""
+    reward_gamma = float(args.gamma)
+    if not 0.0 < reward_gamma <= 1.0:
+        raise ValueError("--gamma must be in (0, 1]")
+    return {
+        "host": args.host,
+        "port": args.port,
+        "town": args.town,
+        "num_agents": int(num_agents),
+        "straight_road_length": args.straight_road_length,
+        "timestep": args.timestep,
+        "max_steps": args.max_steps,
+        "spawn_vehicles": True,
+        "reward_version": args.reward_version,
+        "reward_gamma": reward_gamma,
+        "disable_tensorboard": True,
+        "seed": args.seed,
+        "follow_spectator": args.follow_spectator,
+    }
+
+
+def validate_environment_reward_discount(env, args) -> None:
+    """Fail closed if PBRS and PPO/GAE use different discount factors."""
+    environment_gamma = float(getattr(env, "reward_gamma", float("nan")))
+    ppo_gamma = float(args.gamma)
+    if not np.isfinite(environment_gamma) or environment_gamma != ppo_gamma:
+        raise CheckpointProtocolError(
+            "reward discount mismatch: "
+            f"environment PBRS gamma={environment_gamma!r}, "
+            f"PPO/GAE gamma={ppo_gamma!r}"
+        )
 
 
 # ============================================================
@@ -2621,7 +2656,7 @@ def train(args):
         else os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "data",
-            "training_scenarios_town02_v2",
+            "training_scenarios_town05_v1",
         )
     )
     curriculum = CurriculumLearning(
@@ -2728,29 +2763,25 @@ def train(args):
 
     def _create_validated_env():
         created_env = CarlaMultiAgentEnv(
-            host=args.host,
-            port=args.port,
-            town=args.town,
-            num_agents=len(agent_ids),
-            straight_road_length=args.straight_road_length,
-            timestep=args.timestep,
-            max_steps=args.max_steps,
-            spawn_vehicles=True,
-            reward_version=args.reward_version,
-            disable_tensorboard=True,
-            seed=args.seed,
-        )
-        actual_state_dim = int(created_env.get_global_state().shape[0])
-        if (
-            created_env.num_agents != len(agent_ids)
-            or actual_state_dim != state_dim
-        ):
-            created_env.close()
-            raise CheckpointProtocolError(
-                "runtime environment shape differs from frozen protocol: "
-                f"agents={created_env.num_agents}/{len(agent_ids)}, "
-                f"state_dim={actual_state_dim}/{state_dim}"
+            **build_training_environment_kwargs(
+                args, num_agents=len(agent_ids)
             )
+        )
+        try:
+            validate_environment_reward_discount(created_env, args)
+            actual_state_dim = int(created_env.get_global_state().shape[0])
+            if (
+                created_env.num_agents != len(agent_ids)
+                or actual_state_dim != state_dim
+            ):
+                raise CheckpointProtocolError(
+                    "runtime environment shape differs from frozen protocol: "
+                    f"agents={created_env.num_agents}/{len(agent_ids)}, "
+                    f"state_dim={actual_state_dim}/{state_dim}"
+                )
+        except Exception:
+            created_env.close()
+            raise
         print(f"全局状态维度: {actual_state_dim}")
         return created_env
 
@@ -3689,8 +3720,8 @@ def build_parser():
 
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=2000)
-    parser.add_argument("--town", type=str, default="Town02")
-    parser.add_argument("--straight-road-length", type=float, default=100.0)
+    parser.add_argument("--town", type=str, default="Town05")
+    parser.add_argument("--straight-road-length", type=float, default=50.0)
     parser.add_argument("--timestep", type=float, default=0.1)
     parser.add_argument("--max-steps", type=int, default=1000)
 
@@ -3757,8 +3788,8 @@ def build_parser():
         type=str,
         default="",
         help=(
-            "场景目录；默认 data/training_scenarios_town02_v2。"
-            "旧实验可显式传 data/training_scenarios"
+            "场景目录；默认 data/training_scenarios_town05_v1。"
+            "Town02 历史实验必须显式传旧场景目录和地图"
         ),
     )
     parser.add_argument("--scenario-sampling-mode", type=str, default="weighted",
@@ -3780,6 +3811,11 @@ def build_parser():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--render", action="store_true")
+    parser.add_argument(
+        "--follow-spectator",
+        action="store_true",
+        help="每次场景初始化后自动把 CARLA spectator 移到覆盖出生点与目标区的俯视镜头；不启用 pygame 可视化",
+    )
     parser.add_argument("--pretrained-checkpoint", type=str, default="",
                         help="从权重启动新 Run；不恢复 optimizer/update/RNG")
     parser.add_argument("--resume", type=str, default="",

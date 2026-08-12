@@ -3,13 +3,13 @@
 
 基于 CARLA 模拟器的多智能体强化学习项目，实现 MAPPO（Multi-Agent PPO）训练和对抗智能体训练。
 
-## 当前研究入口冻结（2026-07-20）
+## 当前研究入口冻结（2026-08-12）
 
 新实验必须先阅读 [毕业课题研究推进 TODO](docs/毕业课题_研究推进TODO.md)，并且只能从以下入口开始：
 
 | 用途 | 唯一有效入口 | 当前许可 |
 |---|---|---|
-| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | R0 Run 已诊断封存，R1–R5 与开训前全链路检查已通过；只允许按冻结 R3/C0 v4/GO-HOLD v2 组合，以新 RunID、随机初始化运行 seed 42 正式 pilot 到 update 5，禁止复用旧/smoke 权重或启动多 seed 长训 |
+| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | Town05 迁移、gamma 修复与离线回归已通过；当前先重跑修复后的真实 1-update smoke，通过后才允许按 Town05 training/C0/GO-HOLD 合同 fresh 运行 seed 42 到 update 5。Town02/旧 smoke 权重禁止复用，多 seed 尚未放行 |
 | Phase 1 单蓝车 | `python -m training.train_2red_1blue_ppo` | P0-06 通过前禁止启动 |
 
 以下入口均为 **DEPRECATED/历史参考**：`train_rllib.py`、`carla_rllib_wrapper.py`、`train_no_rlib_sharedpolicy.py`、`train_no_rllib_mappo.py`、`train_no_rllib_mappo_robust.py`、`train_adversarial_ppo.py`、`run_adversarial_training_with_viz.py` 以及旧 multi v1/v2。它们不得用于新训练、恢复修复后的训练、生成正式 checkpoint 或论文结果；未来确需使用时，必须先迁移当前生命周期、GAE、指标和 checkpoint 协议并重新验收。
@@ -24,6 +24,7 @@
 | **[FILE_INDEX.md](FILE_INDEX.md)** | 各文件功能详解索引 |
 | **[MANUAL_DATA_USAGE.md](MANUAL_DATA_USAGE.md)** | 手动驾驶数据采集指南 |
 | **[docs/毕业课题_研究推进TODO.md](docs/毕业课题_研究推进TODO.md)** | 当前唯一任务顺序、阶段门槛和实验登记 |
+| **[docs/Town05_正式实验迁移与16场景设计.md](docs/Town05_正式实验迁移与16场景设计.md)** | Town05 四方向 16 场景坐标、逐车车道中心/目标语义、合同、真实运行证据与正式命令 |
 | **[docs/P0-BASE-01_基础策略正式实验契约.md](docs/P0-BASE-01_基础策略正式实验契约.md)** | 正式 JSON 参数、分段停点、HOLD 规则、Run 证据链和标准命令 |
 | **[docs/P0-BASE-02_基础策略C0评估协议.md](docs/P0-BASE-02_基础策略C0评估协议.md)** | 基础 checkpoint 的固定 C0 case、确定性动作、证据 schema、validator 和重复性命令 |
 | **[docs/P0-BASE-04_GO-HOLD数值门槛预注册.md](docs/P0-BASE-04_GO-HOLD数值门槛预注册.md)** | 训练健康、各停点能力、held-out 下界、Git 预注册证据和唯一离线裁决命令 |
@@ -98,12 +99,14 @@ mappo_training/
 ## 功能特性
 
 ### 1. 多智能体环境
-- 支持 Town02 地图中的直道场景
+- 当前实验背景为 Town05 四方向双车道直道，支持真正并排与强制并道；Town02 仅作为历史基线显式加载
 - 2-3 个智能体同时训练
 - 19维观察空间（8维基础状态 + 11维雷达感知）
 - 当前基础策略为 2 维策略动作（signed-longitudinal, steer），经连续死区映射为 CARLA 3 维控制（throttle, steer, brake）
 - 碰撞检测、车道偏离检测
+- 居中/偏离按每辆车当前 `Driving` lane 中心线独立计算；并道后自动切换到目标车道中心
 - 自定义车辆起始位置
+- 可选 `--follow-spectator`：每次初始化自动调整 CARLA 内置俯视镜头，不依赖旧 pygame 可视化程序
 
 ### 2. 奖励函数
 - **唯一正稠密任务信号**：折扣一致、取值有界的路线完成度势能，往返运动不能刷正回报
@@ -145,7 +148,7 @@ python -m utils.record_manual_control --agent-id 0
 
 不要从 `training/` 子目录直接执行文件，也不要从本文档历史段落复制 deprecated 命令。
 
-`p0_base_pilot_v1.json`、WTA checkpoint 和 GO/HOLD v1 已全部封存为历史证据，不得继续 resume/pretrained。R1 已建立 action-v2，R2 已建立 reward-v3，R3 已建立 schema-v4/ValueNorm+Huber/metrics-v5/C0-v4，R4 已冻结 GO/HOLD v2，R5 已通过真实 CARLA 最终入口、严格恢复和证据链验收；随后开训前全链路检查再次确认三合同、场景、179 项回归和正式命令均通过。当前只放行使用 `p0_base_critic_v4.json`、C0 v4、GO/HOLD v2、新 RunID 和随机初始化的 seed 42 fresh pilot 到 update 5；停止后必须完成主 C0、重复 C0 与唯一 judge，才能决定是否继续到 u10。R5 smoke checkpoint 不得复用，多 seed 与对抗长训仍禁止。评估协议见 [P0-BASE-02 C0 协议](docs/P0-BASE-02_基础策略C0评估协议.md)，理论与阶段证据见 [R1 动作正文](docs/R1_二维纵向动作协议_论文正文与实验设计.md)、[R2 奖励正文](docs/R2_奖励预算校准_论文正文与实验设计.md)、[R3 Critic 正文](docs/R3_Critic价值归一化_论文正文与真实CARLA验证.md)、[R4 门槛记录](docs/R4_GO-HOLD-v2早期塌缩门槛与回归验证.md)、[R5 smoke 记录](docs/R5_最终训练入口真实CARLA_smoke验证.md)与 [开训前检查](docs/R1-R5_正式训练前全链路检查记录.md)。
+Town02 的 `p0_base_pilot_v1.json`、R3 合同/checkpoint 和旧 GO/HOLD 均封存为历史诊断，不得继续 resume/pretrained。Town05 已建立新的 16 场景训练合同、8 场景 C0 留出集与 GO/HOLD 绑定。旧最小训练 smoke 后续发现训练环境 PBRS 使用默认 gamma 0.99，而合同/PPO/C0 使用 0.997；当前入口已修复为单源传递、启动断言和 checkpoint 实际值审计。当前先放行修复后 1-update CARLA smoke；通过后才允许 `p0_base_town05_v1.json`、新 RunID、随机初始化的 seed 42 fresh pilot 到 update 5。诊断 checkpoint 不得复用，多 seed 与对抗长训仍禁止。
 
 依赖包括：
 - torch &gt;= 1.9.0
@@ -174,13 +177,13 @@ CarlaUE4.exe
 ```powershell
 ..\..\..\venv\Scripts\python.exe -B -m evaluation.smoke_test_success_logic `
   --mode teleport `
-  --scenario data/training_scenarios/scenario_01_basic.json `
+  --scenario data/training_scenarios_town05_v1/scenario_01_north_parallel_stationary_a0_left.json `
   --seed 42 `
   --follow-spectator
 
 ..\..\..\venv\Scripts\python.exe -B -m evaluation.smoke_test_success_logic `
   --mode scripted `
-  --scenario data/training_scenarios/scenario_01_basic.json `
+  --scenario data/training_scenarios_town05_v1/scenario_01_north_parallel_stationary_a0_left.json `
   --lead-distance 5 `
   --following-gap 10 `
   --throttle 0.30 `

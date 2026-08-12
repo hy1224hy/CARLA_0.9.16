@@ -640,7 +640,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--scenario", type=Path, default=DEFAULT_SCENARIO)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=2000)
-    parser.add_argument("--town", default="Town02")
+    parser.add_argument("--town", default="Town05")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--timestep", type=float, default=0.1)
     parser.add_argument("--max-steps", type=int, default=250)

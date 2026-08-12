@@ -97,6 +97,7 @@ _ALLOWED_FORMAL_OPTIONS = frozenset(
         "--host",
         "--port",
         "--cpu",
+        "--follow-spectator",
         "--updates",
         "--run-id",
         "--save-dir",

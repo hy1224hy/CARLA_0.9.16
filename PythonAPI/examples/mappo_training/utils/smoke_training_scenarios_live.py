@@ -30,6 +30,7 @@ def run_live_smoke(args: argparse.Namespace) -> int:
         spawn_vehicles=False,
         disable_tensorboard=True,
         seed=args.seed,
+        follow_spectator=args.follow_spectator,
     )
     failures = []
     try:
@@ -80,15 +81,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=2000)
-    parser.add_argument("--town", default="Town02")
+    parser.add_argument("--town", default="Town05")
     parser.add_argument(
         "--scenario-dir",
         type=Path,
-        default=training_root / "data" / "training_scenarios_town02_v2",
+        default=training_root / "data" / "training_scenarios_town05_v1",
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--position-tolerance", type=float, default=0.25)
     parser.add_argument("--speed-tolerance", type=float, default=0.25)
+    parser.add_argument("--follow-spectator", action="store_true")
     return parser
 
 

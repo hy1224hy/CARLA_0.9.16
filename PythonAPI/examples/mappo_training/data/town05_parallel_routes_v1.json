@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "town": "Town05",
+  "status": "pilot",
+  "source": "CarlaUE4/Content/Carla/Maps/OpenDrive/Town05.xodr",
+  "routes": [
+    {
+      "route_id": "T05_R44_N",
+      "use": "primary_train_and_smoke",
+      "road_id": 44,
+      "direction": "northbound",
+      "lane_ids": [2, 1],
+      "yaw": 90.0,
+      "straight_length_m": 61.0,
+      "lane_center_spacing_m": 3.5,
+      "start_s": 53.0,
+      "start_lane_centers": [
+        {"lane_id": 2, "x": -195.09, "y": -64.58},
+        {"lane_id": 1, "x": -191.59, "y": -64.58}
+      ],
+      "travel_distance_m": 50.0,
+      "broad_goal": {"x": -193.33, "y": -14.58, "yaw": 90.0, "half_length": 3.0, "half_width": 3.4},
+      "merge_goal_lane_id": 1,
+      "merge_goal": {"x": -191.59, "y": -14.58, "yaw": 90.0, "half_length": 3.0, "half_width": 1.6}
+    },
+    {
+      "route_id": "T05_R44_S",
+      "use": "primary_train_and_smoke",
+      "road_id": 44,
+      "direction": "southbound",
+      "lane_ids": [-1, -2],
+      "yaw": -90.0,
+      "straight_length_m": 61.0,
+      "lane_center_spacing_m": 3.5,
+      "start_s": 8.0,
+      "start_lane_centers": [
+        {"lane_id": -2, "x": -184.58, "y": -19.59},
+        {"lane_id": -1, "x": -188.08, "y": -19.58}
+      ],
+      "travel_distance_m": 50.0,
+      "broad_goal": {"x": -186.33, "y": -69.58, "yaw": -90.0, "half_length": 3.0, "half_width": 3.4},
+      "merge_goal_lane_id": -1,
+      "merge_goal": {"x": -188.08, "y": -69.58, "yaw": -90.0, "half_length": 3.0, "half_width": 1.6}
+    },
+    {
+      "route_id": "T05_R3_EW",
+      "use": "phase_2_direction_generalization",
+      "road_id": 3,
+      "direction": "east_west_pair",
+      "lane_ids": [1, 2, -1, -2],
+      "straight_length_m": 55.0,
+      "lane_center_spacing_m": 3.5,
+      "eastbound": {
+        "lane_ids": [1, 2],
+        "yaw": 359.86,
+        "start_s": 50.0,
+        "start_lane_centers": [
+          {"lane_id": 1, "x": -252.35, "y": 3.16},
+          {"lane_id": 2, "x": -252.34, "y": 6.66}
+        ],
+        "goal": {"x": -207.34, "y": 4.80, "yaw": 359.86, "half_length": 3.0, "half_width": 3.4}
+      },
+      "westbound": {
+        "lane_ids": [-1, -2],
+        "yaw": 179.86,
+        "start_s": 5.0,
+        "start_lane_centers": [
+          {"lane_id": -1, "x": -207.35, "y": -0.45},
+          {"lane_id": -2, "x": -207.36, "y": -3.95}
+        ],
+        "goal": {"x": -252.36, "y": -2.09, "yaw": 179.86, "half_length": 3.0, "half_width": 3.4}
+      }
+    },
+    {
+      "route_id": "T05_R6_EW",
+      "use": "holdout_evaluation",
+      "road_id": 6,
+      "direction": "east_west_pair",
+      "lane_ids": [1, 2, -1, -2],
+      "straight_length_m": 54.0,
+      "lane_center_spacing_m": 3.5,
+      "eastbound": {
+        "lane_ids": [1, 2],
+        "yaw": 0.09,
+        "start_s": 49.0,
+        "start_lane_centers": [
+          {"lane_id": 1, "x": -30.24, "y": -87.94},
+          {"lane_id": 2, "x": -30.25, "y": -84.44}
+        ],
+        "goal": {"x": 13.75, "y": -86.12, "yaw": 0.09, "half_length": 3.0, "half_width": 3.4}
+      },
+      "westbound": {
+        "lane_ids": [-1, -2],
+        "yaw": -179.91,
+        "start_s": 5.0,
+        "start_lane_centers": [
+          {"lane_id": -1, "x": 13.76, "y": -91.37},
+          {"lane_id": -2, "x": 13.77, "y": -94.87}
+        ],
+        "goal": {"x": -30.23, "y": -93.19, "yaw": -179.91, "half_length": 3.0, "half_width": 3.4}
+      }
+    },
+    {
+      "route_id": "T05_R43_NS",
+      "use": "phase_2_longitudinal_generalization",
+      "road_id": 43,
+      "direction": "north_south_pair",
+      "lane_ids": [1, 2, -1, -2],
+      "straight_length_m": 58.0,
+      "lane_center_spacing_m": 3.5,
+      "northbound": {
+        "lane_ids": [1, 2],
+        "yaw": 89.98,
+        "start_s": 53.0,
+        "start_lane_centers": [
+          {"lane_id": 1, "x": -191.57, "y": 20.20},
+          {"lane_id": 2, "x": -195.07, "y": 20.20}
+        ],
+        "goal": {"x": -193.30, "y": 68.20, "yaw": 89.98, "half_length": 3.0, "half_width": 3.4}
+      },
+      "southbound": {
+        "lane_ids": [-1, -2],
+        "yaw": -90.02,
+        "start_s": 5.0,
+        "start_lane_centers": [
+          {"lane_id": -1, "x": -188.05, "y": 68.20},
+          {"lane_id": -2, "x": -184.55, "y": 68.19}
+        ],
+        "goal": {"x": -186.32, "y": 20.19, "yaw": -90.02, "half_length": 3.0, "half_width": 3.4}
+      }
+    }
+  ]
+}

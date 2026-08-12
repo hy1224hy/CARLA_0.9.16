@@ -1,9 +1,11 @@
 # P0-BASE-01 基础策略正式实验契约
 
-> 状态：IMPLEMENTED / CONTRACT FROZEN（2026-08-04）
+> 状态：TOWN05 V1 IMPLEMENTED / CONTRACT FROZEN（2026-08-12）
 > 唯一训练入口：`training.train_no_rllib_mappo_robust_v2`
-> 机器可读真值：[`configs/base_mappo/p0_base_pilot_v1.json`](../configs/base_mappo/p0_base_pilot_v1.json)
+> 当前机器可读真值：[`configs/base_mappo/p0_base_town05_v1.json`](../configs/base_mappo/p0_base_town05_v1.json)
 > 实验台账：[`P0-BASE_基础策略实验记录.md`](./P0-BASE_基础策略实验记录.md) 与 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)
+
+本文原 Town02 参数与命令保留为 P0-BASE-01 的历史设计说明。2026-08-12 起正式执行真值已迁移为 Town05 v1：`max_steps=500`、`Town05 / 50 m / 0.1 s`、16 个四方向训练场景、reward v3。训练入口必须把同一 `gamma=0.997` 同时用于 PPO/GAE 与环境 PBRS，并在创建环境后 fail-fast；Town02 合同和 checkpoint 禁止恢复到 Town05。当前完整命令与场景边界以 [Town05 迁移文档](./Town05_正式实验迁移与16场景设计.md) 和 [`RUN_COMMANDS.md`](../RUN_COMMANDS.md) 为准。
 
 本阶段冻结的是“怎么启动、参数从哪里来、何时停、产物如何追踪”的实验契约，不证明策略已收敛，也不授权直接开始多 seed 批量训练。完成 P0-BASE-02 的独立 C0 evaluator 后，才允许执行 P0-BASE-03 的 seed 42 分段试训。
 

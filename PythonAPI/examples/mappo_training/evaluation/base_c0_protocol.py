@@ -60,10 +60,12 @@ LEGACY_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v1"
 ACTION_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v2"
 REWARD_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v3"
 C0_PROTOCOL_VERSION = "p0_base_c0_eval_v4"
+TOWN05_C0_PROTOCOL_VERSION = "p0_base_c0_eval_town05_v1"
 LEGACY_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v2"
 ACTION_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v3"
 REWARD_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v4"
 C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v5"
+TOWN05_C0_EPISODE_RECORD_VERSION = "p0_base_c0_town05_episode_v1"
 C0_SUMMARY_VERSION = "p0_base_c0_summary_v1"
 C0_MANIFEST_VERSION = "p0_base_c0_manifest_v1"
 C0_RESOLVED_CONFIG_VERSION = "p0_base_c0_resolved_v1"
@@ -183,7 +185,7 @@ def _finite(value: Any, *, context: str) -> float:
     return result
 
 
-def _validate_scenario(payload: Any, *, path: Path) -> None:
+def _validate_scenario(payload: Any, *, path: Path, expected_town: str) -> None:
     required = {
         "schema_version",
         "town",
@@ -194,9 +196,19 @@ def _validate_scenario(payload: Any, *, path: Path) -> None:
         "goal_zone",
         "agents",
     }
-    _require_exact_fields(payload, required, context=f"scenario {path.name}")
-    if payload["schema_version"] != 3 or payload["town"] != "Town02":
-        raise C0ProtocolError(f"scenario {path.name} must use schema 3 and Town02")
+    optional = {"goal_mode"}
+    if not isinstance(payload, Mapping):
+        raise C0ProtocolError(f"scenario {path.name} must be a mapping")
+    missing = required - set(payload)
+    extra = set(payload) - required - optional
+    if missing or extra:
+        raise C0ProtocolError(
+            f"scenario {path.name} fields differ; missing={sorted(missing)}, extra={sorted(extra)}"
+        )
+    if payload["schema_version"] != 3 or payload["town"] != expected_town:
+        raise C0ProtocolError(
+            f"scenario {path.name} must use schema 3 and {expected_town}"
+        )
     if payload["difficulty"] not in (1, 2, 3, 4):
         raise C0ProtocolError(f"scenario {path.name} has invalid difficulty")
     if not str(payload["family"]).strip():
@@ -205,6 +217,18 @@ def _validate_scenario(payload: Any, *, path: Path) -> None:
         raise C0ProtocolError(f"scenario {path.name} must have tags")
     if set(payload["agents"]) != {"agent0", "agent1"}:
         raise C0ProtocolError(f"scenario {path.name} must define agent0 and agent1")
+    goal_mode = payload.get("goal_mode")
+    if goal_mode not in (None, "preserve_start_lane"):
+        raise C0ProtocolError(f"scenario {path.name} has unsupported goal_mode")
+    if expected_town == "Town05":
+        if payload["family"] == "required_merge" and goal_mode is not None:
+            raise C0ProtocolError(
+                f"scenario {path.name} merge task must use the shared target lane"
+            )
+        if payload["family"] != "required_merge" and goal_mode != "preserve_start_lane":
+            raise C0ProtocolError(
+                f"scenario {path.name} lane-holding task needs preserve_start_lane"
+            )
 
 
 def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
@@ -230,6 +254,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         ACTION_C0_PROTOCOL_VERSION,
         REWARD_C0_PROTOCOL_VERSION,
         C0_PROTOCOL_VERSION,
+        TOWN05_C0_PROTOCOL_VERSION,
     }:
         raise C0ProtocolError("C0 protocol version mismatch")
     legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
@@ -242,6 +267,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         ACTION_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_V2",
         REWARD_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_REWARD_V3",
         C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_CRITIC_V4",
+        TOWN05_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN05_V1",
     }[protocol_version]
     if payload["contract_id"] != expected_contract_id:
         raise C0ProtocolError("C0 contract_id mismatch")
@@ -267,13 +293,23 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     )
     if (
         env["carla_version"] != "0.9.16"
-        or env["town"] != "Town02"
+        or env["town"] not in {"Town02", "Town05"}
+        or (
+            protocol_version == TOWN05_C0_PROTOCOL_VERSION
+            and env["town"] != "Town05"
+        )
+        or (
+            protocol_version != TOWN05_C0_PROTOCOL_VERSION
+            and env["town"] != "Town02"
+        )
         or env["num_agents"] != 2
         or env["reward_version"] != ("v2" if reward_v2 else "v3")
         or env["adversarial_agent_ids"] != []
         or env["allow_extra_traffic"] is not False
     ):
-        raise C0ProtocolError("C0 environment must be two-agent Town02 v2 without traffic/adversary")
+        raise C0ProtocolError(
+            "C0 environment must match the registered two-agent town without traffic/adversary"
+        )
     _positive_int(env["max_steps"], context="environment.max_steps")
     for name in ("straight_road_length", "timestep", "reward_gamma"):
         if _finite(env[name], context=f"environment.{name}") <= 0:
@@ -333,6 +369,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         ACTION_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_ACTION_V2",
         REWARD_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_REWARD_V3",
         C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_CRITIC_V4",
+        TOWN05_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN05_V1",
     }[protocol_version]
     if (
         checkpoint["schema_version"] != expected_checkpoint_schema
@@ -395,7 +432,9 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
             except ValueError as error:
                 raise C0ProtocolError(f"scenario path escapes directory: {name}") from error
             scenario = load_strict_json(path)
-            _validate_scenario(scenario, path=path)
+            _validate_scenario(
+                scenario, path=path, expected_town=str(env["town"])
+            )
             hashes.add(sha256_file(path))
             for seed in seeds:
                 _positive_int(seed, context=f"{profile_name}.episode_seed")
@@ -539,7 +578,10 @@ def load_and_validate_c0_checkpoint(
     checkpoint, digest = load_checkpoint_file(path, map_location=map_location)
     protocol_version = contract["protocol_version"]
     legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
-    historical = protocol_version != C0_PROTOCOL_VERSION
+    historical = protocol_version not in {
+        C0_PROTOCOL_VERSION,
+        TOWN05_C0_PROTOCOL_VERSION,
+    }
     validate_checkpoint_header(checkpoint, allow_legacy=historical)
     policy = contract["checkpoint"]
     mismatches: list[str] = []
@@ -590,6 +632,21 @@ def load_and_validate_c0_checkpoint(
         expected_model["critic_output_semantics"] = "normalized_value"
     if not isinstance(model_spec, Mapping) or any(model_spec.get(key) != value for key, value in expected_model.items()):
         mismatches.append("model_spec")
+    if protocol_version == TOWN05_C0_PROTOCOL_VERSION:
+        expected_gamma = float(contract["environment"]["reward_gamma"])
+        training_config = checkpoint.get("training_config", {})
+        metadata = checkpoint.get("run_metadata", {})
+        runtime = metadata.get("runtime", {}) if isinstance(metadata, Mapping) else {}
+        if (
+            not isinstance(training_config, Mapping)
+            or training_config.get("gamma") != expected_gamma
+        ):
+            mismatches.append("training_config.gamma")
+        if (
+            not isinstance(runtime, Mapping)
+            or runtime.get("environment_reward_gamma") != expected_gamma
+        ):
+            mismatches.append("run_metadata.runtime.environment_reward_gamma")
     actors = checkpoint.get("actors")
     if not isinstance(actors, Mapping) or {int(key) for key in actors} != set(policy["required_agent_ids"]):
         mismatches.append("actors")
@@ -745,6 +802,7 @@ def validate_episode_record(
         ACTION_C0_EPISODE_RECORD_VERSION,
         REWARD_C0_EPISODE_RECORD_VERSION,
         C0_EPISODE_RECORD_VERSION,
+        TOWN05_C0_EPISODE_RECORD_VERSION,
     }:
         raise C0ProtocolError("episode record version mismatch")
     current_action = record_version != LEGACY_C0_EPISODE_RECORD_VERSION
@@ -753,6 +811,7 @@ def validate_episode_record(
         if record_version in {
             REWARD_C0_EPISODE_RECORD_VERSION,
             C0_EPISODE_RECORD_VERSION,
+            TOWN05_C0_EPISODE_RECORD_VERSION,
         }
         else "v2"
     )
@@ -1019,6 +1078,9 @@ def build_summary(
         reward_version = "v3"
     elif record_version == C0_EPISODE_RECORD_VERSION:
         eval_protocol_version = C0_PROTOCOL_VERSION
+        reward_version = "v3"
+    elif record_version == TOWN05_C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = TOWN05_C0_PROTOCOL_VERSION
         reward_version = "v3"
     else:
         raise C0ProtocolError("cannot summarize an unknown C0 episode version")
