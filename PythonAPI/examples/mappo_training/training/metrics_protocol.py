@@ -20,8 +20,9 @@ from training.value_normalization import value_normalization_spec
 
 LEGACY_METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v3"
 ACTION_METRICS_PROTOCOL_VERSION = "mappo_metrics_action_v2_p0_00g_v4"
-METRICS_PROTOCOL_VERSION = "mappo_metrics_valuenorm_p0_00g_v5"
-EPISODE_RECORD_VERSION = "mappo_episode_record_v1"
+PRE_OFFROAD_METRICS_PROTOCOL_VERSION = "mappo_metrics_valuenorm_p0_00g_v5"
+METRICS_PROTOCOL_VERSION = "mappo_metrics_offroad_p0_00g_v6"
+EPISODE_RECORD_VERSION = "mappo_episode_record_offroad_v2"
 REWARD_AUDIT_ATOL = 1e-6
 ACTION_ZERO_THRESHOLD = 0.01
 ACTION_SATURATION_THRESHOLD = 0.99
@@ -130,6 +131,7 @@ SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
             "safety_lidar",
             "ttc",
             "lane_invasion",
+            "offroad",
             "collision",
             "success",
         }
@@ -261,6 +263,7 @@ def validate_episode_record(
         "success",
         "collision",
         "timeout",
+        "offroad",
         "agents",
     }
     actual_top_level = set(payload)
@@ -300,9 +303,11 @@ def validate_episode_record(
         payload["collision"], field="collision", context=context
     )
     timeout = _strict_bool(payload["timeout"], field="timeout", context=context)
-    if sum((success, collision, timeout)) > 1:
+    offroad = _strict_bool(payload["offroad"], field="offroad", context=context)
+    if sum((success, collision, timeout, offroad)) != 1:
         raise MetricsProtocolError(
-            f"{context}: success/collision/timeout must be mutually exclusive"
+            f"{context}: success/collision/timeout/offroad must contain exactly "
+            "one terminal outcome"
         )
 
     agents_payload = payload["agents"]
@@ -324,6 +329,10 @@ def validate_episode_record(
         "terminated",
         "truncated",
         "bootstrap_enabled",
+        "offroad_terminated",
+        "first_offroad_evidence",
+        "max_offroad_consecutive_ticks",
+        "max_footprint_outside_fraction",
     }
     normalized_agents: Dict[str, Dict[str, object]] = {}
     for agent_id in normalized_agent_ids:
@@ -367,6 +376,11 @@ def validate_episode_record(
             field="bootstrap_enabled",
             context=agent_context,
         )
+        offroad_terminated = _strict_bool(
+            agent_payload["offroad_terminated"],
+            field="offroad_terminated",
+            context=agent_context,
+        )
         if terminated and truncated:
             raise MetricsProtocolError(
                 f"{agent_context}: terminated and truncated cannot both be true"
@@ -379,6 +393,98 @@ def validate_episode_record(
             raise MetricsProtocolError(
                 f"{agent_context}: bootstrap_enabled must equal truncated"
             )
+        if offroad_terminated and not terminated:
+            raise MetricsProtocolError(
+                f"{agent_context}: offroad_terminated requires terminated=True"
+            )
+        max_offroad_ticks = _nonnegative_int(
+            agent_payload["max_offroad_consecutive_ticks"],
+            field="max_offroad_consecutive_ticks",
+            context=agent_context,
+        )
+        max_outside_fraction = _finite_float(
+            agent_payload["max_footprint_outside_fraction"],
+            field="max_footprint_outside_fraction",
+            context=agent_context,
+        )
+        if not 0.0 <= max_outside_fraction <= 1.0:
+            raise MetricsProtocolError(
+                f"{agent_context}: max_footprint_outside_fraction must be in [0,1]"
+            )
+        first_evidence = agent_payload["first_offroad_evidence"]
+        normalized_first_evidence = None
+        if first_evidence is not None:
+            expected_evidence_fields = {
+                "episode_step",
+                "world_frame",
+                "location",
+                "yaw",
+                "footprint_outside_count",
+                "footprint_outside_fraction",
+            }
+            if (
+                not isinstance(first_evidence, Mapping)
+                or set(first_evidence) != expected_evidence_fields
+            ):
+                raise MetricsProtocolError(
+                    f"{agent_context}: first_offroad_evidence fields differ"
+                )
+            evidence_step = _nonnegative_int(
+                first_evidence["episode_step"],
+                field="first_offroad_evidence.episode_step",
+                context=agent_context,
+            )
+            if evidence_step <= 0:
+                raise MetricsProtocolError(
+                    f"{agent_context}: first offroad step must be positive"
+                )
+            world_frame = first_evidence["world_frame"]
+            if isinstance(world_frame, bool) or not isinstance(world_frame, int):
+                raise MetricsProtocolError(
+                    f"{agent_context}: first offroad world_frame must be an integer"
+                )
+            location = first_evidence["location"]
+            if not isinstance(location, Mapping) or set(location) != {"x", "y", "z"}:
+                raise MetricsProtocolError(
+                    f"{agent_context}: first offroad location fields differ"
+                )
+            outside_count = _nonnegative_int(
+                first_evidence["footprint_outside_count"],
+                field="first_offroad_evidence.footprint_outside_count",
+                context=agent_context,
+            )
+            if outside_count > 8:
+                raise MetricsProtocolError(
+                    f"{agent_context}: first offroad outside count exceeds eight"
+                )
+            first_fraction = _finite_float(
+                first_evidence["footprint_outside_fraction"],
+                field="first_offroad_evidence.footprint_outside_fraction",
+                context=agent_context,
+            )
+            if not 0.0 <= first_fraction <= 1.0:
+                raise MetricsProtocolError(
+                    f"{agent_context}: first offroad fraction must be in [0,1]"
+                )
+            normalized_first_evidence = {
+                "episode_step": evidence_step,
+                "world_frame": int(world_frame),
+                "location": {
+                    axis: _finite_float(
+                        location[axis],
+                        field=f"first_offroad_evidence.location.{axis}",
+                        context=agent_context,
+                    )
+                    for axis in ("x", "y", "z")
+                },
+                "yaw": _finite_float(
+                    first_evidence["yaw"],
+                    field="first_offroad_evidence.yaw",
+                    context=agent_context,
+                ),
+                "footprint_outside_count": outside_count,
+                "footprint_outside_fraction": first_fraction,
+            }
         normalized_agents[key] = {
             "episode_return": _finite_float(
                 agent_payload["episode_return"],
@@ -391,7 +497,18 @@ def validate_episode_record(
             "terminated": terminated,
             "truncated": truncated,
             "bootstrap_enabled": bootstrap_enabled,
+            "offroad_terminated": offroad_terminated,
+            "first_offroad_evidence": normalized_first_evidence,
+            "max_offroad_consecutive_ticks": max_offroad_ticks,
+            "max_footprint_outside_fraction": max_outside_fraction,
         }
+
+    if offroad != any(
+        agent["offroad_terminated"] for agent in normalized_agents.values()
+    ):
+        raise MetricsProtocolError(
+            f"{context}: top-level offroad must match per-agent offroad termination"
+        )
 
     return {
         "episode_record_version": EPISODE_RECORD_VERSION,
@@ -405,6 +522,7 @@ def validate_episode_record(
         "success": success,
         "collision": collision,
         "timeout": timeout,
+        "offroad": offroad,
         "agents": normalized_agents,
     }
 

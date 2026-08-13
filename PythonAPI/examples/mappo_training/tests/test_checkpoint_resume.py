@@ -184,6 +184,7 @@ def _checkpoint_payload():
         "total_successes": 4,
         "total_collisions": 3,
         "total_timeouts": 3,
+        "total_offroads": 0,
     }
 
 

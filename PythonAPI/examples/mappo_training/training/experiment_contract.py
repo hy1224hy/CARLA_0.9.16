@@ -20,10 +20,23 @@ from pathlib import Path
 from typing import Dict, Iterable, Mapping, MutableMapping, Sequence
 
 from training.checkpoint_protocol import atomic_write_json, sha256_file, utc_now_iso
+from environment.offroad_protocol import offroad_protocol_spec
 
 
 EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_v1"
 CRITIC_EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_v2"
+TOWN05_COMPREHENSIVE_EXPERIMENT_CONTRACT_VERSION = (
+    "p0_base_experiment_contract_v3"
+)
+TOWN05_OUTCOME_REPEATABILITY_EXPERIMENT_CONTRACT_VERSION = (
+    "p0_base_experiment_contract_v4"
+)
+TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS = frozenset(
+    {
+        TOWN05_COMPREHENSIVE_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_EXPERIMENT_CONTRACT_VERSION,
+    }
+)
 RESOLVED_CONFIG_NAME = "resolved_config.json"
 EXPERIMENT_MANIFEST_NAME = "experiment_manifest.json"
 
@@ -67,6 +80,10 @@ CRITIC_TRAINER_ARG_NAMES = LEGACY_TRAINER_ARG_NAMES[:16] + (
     "value_norm_variance_floor",
     "huber_delta",
 ) + LEGACY_TRAINER_ARG_NAMES[16:]
+COMPREHENSIVE_TRAINER_ARG_NAMES = CRITIC_TRAINER_ARG_NAMES[:-4] + (
+    "lidar_range_m",
+    "ttc_max_range_m",
+) + CRITIC_TRAINER_ARG_NAMES[-4:]
 
 _TOP_LEVEL_FIELDS = frozenset(
     {
@@ -125,6 +142,17 @@ _REGISTRY_FIELDS = (
 
 class ExperimentContractError(ValueError):
     """Raised when a formal experiment violates its frozen contract."""
+
+
+def _trainer_arg_names_for_contract(
+    payload: Mapping[str, object],
+) -> tuple[str, ...]:
+    version = payload["contract_version"]
+    if version in TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS:
+        return COMPREHENSIVE_TRAINER_ARG_NAMES
+    if version == CRITIC_EXPERIMENT_CONTRACT_VERSION:
+        return CRITIC_TRAINER_ARG_NAMES
+    return LEGACY_TRAINER_ARG_NAMES
 
 
 def canonical_json_sha256(payload: Mapping[str, object]) -> str:
@@ -209,15 +237,28 @@ def validate_experiment_contract(
 ) -> None:
     if not isinstance(payload, dict):
         raise ExperimentContractError("experiment contract root must be an object")
-    _expect_exact_fields(payload, _TOP_LEVEL_FIELDS, "contract")
+    contract_version = payload.get("contract_version")
+    expected_top_level_fields = set(_TOP_LEVEL_FIELDS)
+    if contract_version in TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS:
+        expected_top_level_fields.add("offroad_protocol")
+    _expect_exact_fields(payload, expected_top_level_fields, "contract")
 
     if payload["contract_version"] not in {
         EXPERIMENT_CONTRACT_VERSION,
         CRITIC_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_COMPREHENSIVE_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_EXPERIMENT_CONTRACT_VERSION,
     }:
         raise ExperimentContractError(
             "unsupported contract_version="
             f"{payload['contract_version']!r}"
+        )
+    if (
+        payload["contract_version"] in TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS
+        and payload["offroad_protocol"] != offroad_protocol_spec()
+    ):
+        raise ExperimentContractError(
+            "offroad_protocol differs from the registered footprint safety protocol"
         )
     _require_nonempty_string(payload["contract_id"], "contract_id")
     if payload["status"] != "frozen":
@@ -263,11 +304,7 @@ def validate_experiment_contract(
     trainer_args = payload["trainer_args"]
     if not isinstance(trainer_args, dict):
         raise ExperimentContractError("trainer_args must be an object")
-    contract_trainer_arg_names = (
-        CRITIC_TRAINER_ARG_NAMES
-        if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION
-        else LEGACY_TRAINER_ARG_NAMES
-    )
+    contract_trainer_arg_names = _trainer_arg_names_for_contract(payload)
     _expect_exact_fields(trainer_args, contract_trainer_arg_names, "trainer_args")
 
     for name in (
@@ -315,7 +352,11 @@ def validate_experiment_contract(
         _require_number(
             trainer_args[name], f"trainer_args.{name}", minimum=0.0, maximum=1.0
         )
-    if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION:
+    if payload["contract_version"] in {
+        CRITIC_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_COMPREHENSIVE_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_EXPERIMENT_CONTRACT_VERSION,
+    }:
         _require_number(
             trainer_args["value_norm_beta"],
             "trainer_args.value_norm_beta",
@@ -329,6 +370,13 @@ def validate_experiment_contract(
             "value_norm_variance_floor",
             "huber_delta",
         ):
+            _require_number(trainer_args[name], f"trainer_args.{name}", minimum=0.0)
+            if float(trainer_args[name]) <= 0.0:
+                raise ExperimentContractError(f"trainer_args.{name} must be > 0")
+    if (
+        payload["contract_version"] in TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS
+    ):
+        for name in ("lidar_range_m", "ttc_max_range_m"):
             _require_number(trainer_args[name], f"trainer_args.{name}", minimum=0.0)
             if float(trainer_args[name]) <= 0.0:
                 raise ExperimentContractError(f"trainer_args.{name} must be > 0")
@@ -564,11 +612,7 @@ def apply_experiment_contract(
     record = load_experiment_contract(contract_path, project_dir=project_dir)
     payload = record["payload"]
     trainer_args = payload["trainer_args"]
-    contract_trainer_arg_names = (
-        CRITIC_TRAINER_ARG_NAMES
-        if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION
-        else LEGACY_TRAINER_ARG_NAMES
-    )
+    contract_trainer_arg_names = _trainer_arg_names_for_contract(payload)
     for name in contract_trainer_arg_names:
         value = trainer_args[name]
         if name == "scenario_dir":
@@ -758,11 +802,7 @@ def initialize_experiment_evidence(
     if not metadata:
         return
     payload = metadata["payload"]
-    contract_trainer_arg_names = (
-        CRITIC_TRAINER_ARG_NAMES
-        if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION
-        else LEGACY_TRAINER_ARG_NAMES
-    )
+    contract_trainer_arg_names = _trainer_arg_names_for_contract(payload)
     now = utc_now_iso()
     checkpoint_training_config = dict(training_config)
     unknown_checkpoint_fields = sorted(
@@ -908,11 +948,7 @@ def validate_resume_experiment_evidence(*, args: Namespace, run_dir: Path) -> No
     if not metadata:
         return
     payload = metadata["payload"]
-    contract_trainer_arg_names = (
-        CRITIC_TRAINER_ARG_NAMES
-        if payload["contract_version"] == CRITIC_EXPERIMENT_CONTRACT_VERSION
-        else LEGACY_TRAINER_ARG_NAMES
-    )
+    contract_trainer_arg_names = _trainer_arg_names_for_contract(payload)
     resolved_path = run_dir / RESOLVED_CONFIG_NAME
     manifest_path = run_dir / EXPERIMENT_MANIFEST_NAME
     if not resolved_path.is_file() or not manifest_path.is_file():

@@ -98,7 +98,7 @@ class MetricsProtocolTests(unittest.TestCase):
         self.assertFalse(v3_schema["reward_components"]["overspeed"]["sparse"])
         self.assertEqual(
             v3_schema["reward_protocol"]["reward_protocol_version"],
-            "base_route_completion_reward_v3",
+            "base_route_completion_reward_v3_offroad_v1",
         )
 
     def test_reward_conservation_and_exact_schema_pass(self):
@@ -400,6 +400,22 @@ class EnvironmentRewardDiagnosticsTests(unittest.TestCase):
         self.assertEqual(env.reached_target, {0: False})
         self.assertEqual(env.last_terminated, {0: True})
         self.assertEqual(env.last_truncated, {0: False})
+
+        # During the 3-tick debounce window, a raw offroad footprint inside
+        # the goal must wait rather than being registered as success.
+        env.collision_events[0] = False
+        env.offroad_terminal_events = {0: False}
+        env.last_road_occupancy = {0: {"offroad_raw": True}}
+        _, raw_offroad_details = env._compute_rewards_v3()
+        self.assertEqual(raw_offroad_details[0]["success"], 0.0)
+        self.assertEqual(raw_offroad_details[0]["offroad"], 0.0)
+        self.assertEqual(env._check_dones(), {0: False})
+        self.assertEqual(env.episode_end_reason, "running")
+
+        env.offroad_terminal_events[0] = True
+        self.assertEqual(env._check_dones(), {0: True})
+        self.assertEqual(env.episode_end_reason, "cooperative_offroad")
+        self.assertFalse(env.reached_target[0])
 
 
 class TrainingMetricsRecorderTests(unittest.TestCase):

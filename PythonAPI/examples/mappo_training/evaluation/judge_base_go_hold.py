@@ -379,7 +379,12 @@ def judge(
             f"right={right_validation['status']}"
         )
     repeatability = compare_c0_runs(c0_output_dir, c0_repeat_output_dir)
-    repeatability_pass = repeatability.get("status") == "PASS"
+    repeatability_pass = bool(
+        repeatability.get(
+            "gate_pass",
+            repeatability.get("status") == "PASS",
+        )
+    )
     episodes_name = c0_record["payload"]["outputs"]["episodes_jsonl"]
     c0_records = read_jsonl(Path(c0_output_dir).resolve() / episodes_name)
     c0_summary = summarize_c0_gate(c0_records)
@@ -395,14 +400,29 @@ def judge(
             ),
         )
     else:
-        if expected_update != 100:
-            raise GoHoldProtocolError("registered held-out validation decision is update 100 only")
+        final_update = max(
+            int(rule["update"]) for rule in contract["milestone_rules"]
+        )
+        if expected_update != final_update:
+            raise GoHoldProtocolError(
+                "registered held-out validation decision is final update "
+                f"{final_update} only"
+            )
         result = evaluate_validation_decision(
             training_health=training_health,
             c0_summary=c0_summary,
             repeatability_pass=repeatability_pass,
             contract=contract,
         )
+    if repeatability_pass and repeatability.get("status") == "WARNING":
+        warning = (
+            "C0 repeatability semantic gate passed with registered "
+            f"tick/continuous drift in {len(repeatability.get('warnings', []))} "
+            "case(s)"
+        )
+        result.setdefault("warnings", []).append(warning)
+        if result.get("decision") == "CONTINUE":
+            result["decision"] = "CONTINUE_WITH_WARNING"
 
     report = {
         "report_version": go_hold_report_version(contract),

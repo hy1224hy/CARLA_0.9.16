@@ -27,6 +27,10 @@ from evaluation.base_c0_protocol import (
     C0_PROTOCOL_VERSION,
     TOWN05_C0_PROTOCOL_VERSION,
     TOWN05_C0_EPISODE_RECORD_VERSION,
+    TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+    TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+    TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+    TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
     C0_MANIFEST_VERSION,
     C0_RESOLVED_CONFIG_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
@@ -78,7 +82,7 @@ from training.action_protocol import (
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_v1.json"
+DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_v3.json"
 
 
 def _set_seed(seed: int, env: CarlaMultiAgentEnv | None = None) -> None:
@@ -290,7 +294,11 @@ def _run_case(
         for agent_id in AGENT_IDS
     }
     final_reason = "running"
+    final_info = info
     episode_length = 0
+    lifecycle_transitions: Dict[int, Dict[str, bool] | None] = {
+        agent_id: None for agent_id in AGENT_IDS
+    }
 
     for step_index in range(1, int(contract["environment"]["max_steps"]) + 1):
         pre_active = dict(active_mask)
@@ -314,6 +322,7 @@ def _run_case(
                 )
 
         next_observations, raw_rewards, raw_dones, next_info = env.step(actions)
+        final_info = next_info
         dones = _strict_agent_bool_map(raw_dones, name=f"step={step_index}.dones")
         terminated = _strict_agent_bool_map(next_info.get("terminated"), name=f"step={step_index}.terminated")
         truncated = _strict_agent_bool_map(next_info.get("truncated"), name=f"step={step_index}.truncated")
@@ -337,6 +346,14 @@ def _run_case(
                 raise C0ProtocolError(
                     f"active-mask transition mismatch at step={step_index}, agent={agent_id}"
                 )
+            if pre_active[agent_id] and not next_active[agent_id]:
+                lifecycle_transitions[agent_id] = {
+                    "pre_active": True,
+                    "post_active": False,
+                    "done": done,
+                    "terminated": term,
+                    "truncated": trunc,
+                }
             accumulators[agent_id].set_lifecycle(done=done, terminated=term, truncated=trunc)
             if pre_active[agent_id]:
                 accumulators[agent_id].add(
@@ -366,6 +383,49 @@ def _run_case(
         )
         for agent_id in AGENT_IDS
     }
+    if contract["protocol_version"] in {
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+    }:
+        offroad_terminated = _strict_agent_bool_map(
+            final_info.get("offroad_terminated"),
+            name="final.offroad_terminated",
+        )
+        first_evidence = final_info.get("first_offroad_evidence")
+        max_ticks = final_info.get("max_offroad_consecutive_ticks")
+        max_fraction = final_info.get("max_footprint_outside_fraction")
+        for name, values in (
+            ("first_offroad_evidence", first_evidence),
+            ("max_offroad_consecutive_ticks", max_ticks),
+            ("max_footprint_outside_fraction", max_fraction),
+        ):
+            if not isinstance(values, Mapping) or {
+                int(key) for key in values
+            } != set(AGENT_IDS):
+                raise C0ProtocolError(
+                    f"final.{name} must contain exactly agent ids {AGENT_IDS}"
+                )
+        for agent_id in AGENT_IDS:
+            agents_payload[str(agent_id)].update(
+                {
+                    "offroad_terminated": offroad_terminated[agent_id],
+                    "first_offroad_evidence": first_evidence[agent_id],
+                    "max_offroad_consecutive_ticks": int(max_ticks[agent_id]),
+                    "max_footprint_outside_fraction": float(
+                        max_fraction[agent_id]
+                    ),
+                }
+            )
+            if (
+                contract["protocol_version"]
+                == TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
+            ):
+                transition = lifecycle_transitions[agent_id]
+                if transition is None:
+                    raise C0ProtocolError(
+                        f"missing lifecycle transition for agent={agent_id}"
+                    )
+                agents_payload[str(agent_id)]["lifecycle_transition"] = transition
     record = {
         "record_version": (
             LEGACY_C0_EPISODE_RECORD_VERSION
@@ -380,7 +440,19 @@ def _run_case(
                         TOWN05_C0_EPISODE_RECORD_VERSION
                         if contract["protocol_version"]
                         == TOWN05_C0_PROTOCOL_VERSION
-                        else C0_EPISODE_RECORD_VERSION
+                        else (
+                            (
+                                TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION
+                                if contract["protocol_version"]
+                                == TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
+                                else TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION
+                            )
+                            if contract["protocol_version"] in {
+                                TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+                                TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+                            }
+                            else C0_EPISODE_RECORD_VERSION
+                        )
                     )
                 )
             )
@@ -602,6 +674,7 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
         contract["protocol_version"] not in {
             C0_PROTOCOL_VERSION,
             TOWN05_C0_PROTOCOL_VERSION,
+            TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         }
         and not args.allow_diagnostic_checkpoint
     ):
@@ -660,6 +733,8 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
             seed=cases[0]["episode_seed"],
             reward_gamma=env_config["reward_gamma"],
             adversary_collision_ends_episode=True,
+            lidar_range_m=env_config.get("lidar_range_m", 4.0),
+            ttc_max_range_m=env_config.get("ttc_max_range_m", 10.0),
         )
         _record_carla_runtime(
             env=env,

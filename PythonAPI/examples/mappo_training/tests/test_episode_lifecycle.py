@@ -134,19 +134,23 @@ class BaseEpisodeOutcomeTests(unittest.TestCase):
     def test_terminal_outcomes_follow_end_reason_and_are_mutually_exclusive(self):
         self.assertEqual(
             classify_base_episode_outcome("cooperative_success"),
-            (True, False, False),
+            (True, False, False, False),
         )
         self.assertEqual(
             classify_base_episode_outcome("all_agents_reached"),
-            (True, False, False),
+            (True, False, False, False),
         )
         self.assertEqual(
             classify_base_episode_outcome("cooperative_collision"),
-            (False, True, False),
+            (False, True, False, False),
         )
         self.assertEqual(
             classify_base_episode_outcome("max_steps"),
-            (False, False, True),
+            (False, False, True, False),
+        )
+        self.assertEqual(
+            classify_base_episode_outcome("cooperative_offroad"),
+            (False, False, False, True),
         )
 
     def test_non_terminal_or_unclassified_reason_is_rejected(self):
@@ -174,6 +178,14 @@ def _make_env(
     env.collision_events = {i: False for i in range(num_agents)}
     env.crosswalk_invasion_events = {i: False for i in range(num_agents)}
     env.lane_invasion_events = {i: False for i in range(num_agents)}
+    env.offroad_consecutive_ticks = {i: 0 for i in range(num_agents)}
+    env.offroad_confirmed_events = {i: False for i in range(num_agents)}
+    env.offroad_terminal_events = {i: False for i in range(num_agents)}
+    env.last_road_occupancy = {}
+    env.first_offroad_evidence = {i: None for i in range(num_agents)}
+    env.max_offroad_consecutive_ticks = {i: 0 for i in range(num_agents)}
+    env.max_footprint_outside_fraction = {i: 0.0 for i in range(num_agents)}
+    env.active_mask = {i: True for i in range(num_agents)}
     env.goal_zone = {}
     env.current_step = current_step
     env.max_steps = 10
@@ -207,6 +219,7 @@ class EpisodeLifecycleTests(unittest.TestCase):
         env.use_tensorboard = False
         env.prev_controls = {}
         env._vehicle_on_crosswalk = lambda vehicle: False
+        env._update_offroad_states = lambda: None
         env._get_observations = lambda: {i: [0.0] * 19 for i in range(3)}
         env._compute_rewards = lambda: (
             {0: 0.0, 1: 0.0, 2: -300.0},
@@ -306,6 +319,67 @@ class EpisodeLifecycleTests(unittest.TestCase):
         self.assertEqual(env.episode_end_reason, "cooperative_collision")
         self.assertEqual(env.last_terminated, {0: True, 1: False})
         self.assertEqual(env.last_truncated, {0: False, 1: True})
+
+    def test_base_cooperative_offroad_terminates_vehicle_and_truncates_peer(self):
+        env = _make_env(num_agents=2, adversarial_agent_ids=[])
+        env.offroad_terminal_events[0] = True
+
+        dones = env._check_dones()
+
+        self.assertEqual(dones, {0: True, 1: True})
+        self.assertEqual(env.episode_end_reason, "cooperative_offroad")
+        self.assertEqual(env.last_terminated, {0: True, 1: False})
+        self.assertEqual(env.last_truncated, {0: False, 1: True})
+
+    def test_offroad_has_priority_over_goal_success(self):
+        env = _make_env(num_agents=2, adversarial_agent_ids=[])
+        env.vehicles[0]._transform.location.in_goal = True
+        env.offroad_terminal_events[0] = True
+
+        env._check_dones()
+
+        self.assertEqual(env.episode_end_reason, "cooperative_offroad")
+        self.assertFalse(env.reached_target[0])
+
+    def test_raw_offroad_delays_goal_until_persistence_is_resolved(self):
+        env = _make_env(num_agents=2, adversarial_agent_ids=[])
+        env.vehicles[0]._transform.location.in_goal = True
+        env.last_road_occupancy[0] = {"offroad_raw": True}
+
+        first_dones = env._check_dones()
+
+        self.assertEqual(first_dones, {0: False, 1: False})
+        self.assertEqual(env.episode_end_reason, "running")
+        self.assertFalse(env.reached_target[0])
+
+        env.offroad_terminal_events[0] = True
+        final_dones = env._check_dones()
+
+        self.assertEqual(final_dones, {0: True, 1: True})
+        self.assertEqual(env.episode_end_reason, "cooperative_offroad")
+        self.assertFalse(env.reached_target[0])
+
+    def test_blue_offroad_only_terminates_blue_when_local_lifecycle_enabled(self):
+        env = _make_env()
+        env.offroad_terminal_events[2] = True
+
+        dones = env._check_dones()
+
+        self.assertEqual(dones, {0: False, 1: False, 2: True})
+        self.assertEqual(env.episode_end_reason, "running")
+        self.assertTrue(env.last_terminated[2])
+        self.assertEqual(env.active_mask, {0: True, 1: True, 2: False})
+
+    def test_collision_suppresses_same_tick_offroad_terminal_label(self):
+        env = _make_env(num_agents=2, adversarial_agent_ids=[])
+        env.collision_events[0] = True
+        env.offroad_confirmed_events[0] = True
+
+        env._finalize_offroad_terminal_events()
+        env._check_dones()
+
+        self.assertFalse(env.offroad_terminal_events[0])
+        self.assertEqual(env.episode_end_reason, "cooperative_collision")
 
     def test_base_all_agents_reached_terminates_all_reds(self):
         env = _make_env(num_agents=2, adversarial_agent_ids=[])

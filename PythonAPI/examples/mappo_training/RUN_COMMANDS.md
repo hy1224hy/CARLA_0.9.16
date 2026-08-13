@@ -8,7 +8,7 @@
 > - 基础策略唯一入口：`training.train_no_rllib_mappo_robust_v2`。
 > - Phase 1 单蓝车唯一入口：`training.train_2red_1blue_ppo`。
 > - RLlib、shared-policy、minimal/robust v1、旧 adversarial PPO 和旧 multi 入口全部是 **DEPRECATED**，不得用于新训练、resume、正式 checkpoint 或论文结果。
-> - 2026-08-12 起当前背景为 Town05：使用 `P0_BASE_MAPPO_TOWN05_V1`、Town05 C0 和 Town05 GO/HOLD。提交 `a11cf70` 已通过 16/16 和真实 1-update 门禁；当前只允许以新正式 RunID、随机初始化运行 seed 42 fresh pilot 到 update 5。Town02/诊断 smoke checkpoint 禁止 resume。u5 必须停止并执行 strict validator、两次 C0 gate 和唯一冻结 judge；对抗策略长训练仍需等待 P0-01 至 P0-06 和 P0-05M。
+> - 当前背景为 Town05，正式新证据只使用 `P0_BASE_MAPPO_TOWN05_V3`、C0 v3 和 GO/HOLD v3。旧 v1/v2/Town02/诊断 checkpoint 禁止 resume。当前只允许在受控提交上以新 RunID、随机初始化 fresh 运行 seed 42 到 update 5；u5 必须停止并执行 strict validator、两次 C0 gate 和唯一冻结 judge。CARLA 逐 tick 根因诊断可延后，但安全/结局翻转和系统性漂移仍 HOLD。
 
 Town05 正式坐标、16 场景问题定义和迁移验证见 [Town05 正式实验迁移与 16 场景设计](docs/Town05_正式实验迁移与16场景设计.md)。
 
@@ -130,7 +130,28 @@ Town05 迁移与 gamma 对齐修复提交后，先运行诊断 smoke。它使用
   --output-root diagnostics/town05_gamma_alignment_smoke
 ```
 
-该 smoke、strict metrics、checkpoint gamma 和 CARLA 清理通过后，下一次获准执行的正式命令才是 update 5。`<timestamp>` 必须替换为新的时间戳，RunID 与保存目录必须一致；不得加入 `--resume` 或加载任何 Town02 checkpoint：
+> 2026-08-12 更新：下面的 Town05 v1 命令保留作 16 场景迁移证据，不再是综合基础策略的下一正式入口。当前 v2 设计、离线命令和 live 门禁见 `docs/Town05_基础策略综合场景v2设计.md`；在 32/32 live smoke 与新版 C0/GO-HOLD 冻结前，不启动 v2 正式长训。
+
+### Town05 v3 当前正式首段（提交后、CARLA 2000 端口启动后执行）
+
+v3 使用和 Town05 v2 相同的 32 场景与训练超参数，但换用 fresh 正式身份，绑定 offroad schema-v5 和结果级重复性。不可增加 `--resume`，也不可加载任一诊断权重：
+
+```powershell
+$runId = "P0_BASE_MAPPO_Town05V3_s42_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
+  --host 127.0.0.1 `
+  --port 2000 `
+  --experiment-contract configs/base_mappo/p0_base_town05_v3.json `
+  --run-id $runId `
+  --updates 5 `
+  --cpu `
+  --follow-spectator `
+  --save-dir "logs/$runId"
+```
+
+训练自然停止在 u5 后，先 strict validator，再按本文件评估章节执行双 C0 v3 和 GO/HOLD v3。双 C0 的 `WARNING` 表示安全/结局语义一致但存在注册范围内的局部时序/return 漂移；只有 `gate_pass=false` 才是重复性结构 HOLD。
+
+该 smoke、strict metrics、checkpoint gamma 和 CARLA 清理通过后，v1 当时获准执行的正式命令是 update 5。`<timestamp>` 必须替换为新的时间戳，RunID 与保存目录必须一致；不得加入 `--resume` 或加载任何 Town02 checkpoint：
 
 ```powershell
 ..\..\..\venv\Scripts\python.exe -m training.train_no_rllib_mappo_robust_v2 `
@@ -347,12 +368,12 @@ python -m training.pretrain_with_manual_data \
 
 ### 1. evaluate_base_policy_c0.py - 当前基础策略 C0 evaluator
 
-**功能：** 按冻结 Town05 C0 契约对 schema-v4 periodic checkpoint 执行无蓝车/无额外交通的 gate 或 held-out validation，输出逐 episode 证据、汇总和清理审计。以下是正式 u5 的主/重复 gate 完整顺序；两个 EvalID 必须不同，但 checkpoint、合同和 profile 必须相同。
+**功能：** 按冻结 Town05 C0 v3 契约对 schema-v5 periodic checkpoint 执行无蓝车/无额外交通的 gate 或 held-out validation，输出逐 episode offroad/生命周期证据、汇总和清理审计。以下是正式 u5 的主/重复 gate 完整顺序；两个 EvalID 必须不同，但 checkpoint、合同和 profile 必须相同。
 
 ```powershell
-$runId = "<P0_BASE_MAPPO_Town05_s42_YYYYMMDD_HHMMSS>"
+$runId = "<P0_BASE_MAPPO_Town05V3_s42_YYYYMMDD_HHMMSS>"
 $checkpoint = "logs/$runId/periodic/ckpt_update_000005.pt"
-$c0Contract = "configs/evaluation/p0_base_c0_town05_v1.json"
+$c0Contract = "configs/evaluation/p0_base_c0_town05_v3.json"
 
 # 主 C0
 $evalA = "P0_BASE_C0_gate_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
@@ -370,7 +391,7 @@ $evalA = "P0_BASE_C0_gate_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
   --expected-profile gate `
   --expected-eval-id $evalA
 
-# 重复 C0；性能只计主 C0，第二次只用于离散重复性审计
+# 重复 C0；性能只计主 C0，第二次只用于结果级重复性审计
 $evalB = "P0_BASE_C0_gate_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 ..\..\..\venv\Scripts\python.exe -m evaluation.evaluate_base_policy_c0 `
   --eval-contract $c0Contract `
@@ -394,18 +415,18 @@ $evalB = "P0_BASE_C0_gate_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 
 ### 1B. judge_base_go_hold.py - P0-BASE-04 唯一离线数值裁决
 
-**功能：** 同时校验完整训练证据、formal periodic checkpoint、两次 C0、离散重复性和预注册 Git blob，再按冻结数值门槛输出不可覆盖的 JSON 决策。累计回报不参与 GO。
+**功能：** 同时校验完整训练证据、formal periodic checkpoint、两次 C0、结果级重复性 gate 和预注册 Git blob，再按冻结数值门槛输出不可覆盖的 JSON 决策。累计回报不参与 GO；容差内 return 差异只作重复性告警。
 
 ```powershell
 # 无 CARLA 契约预检
 ..\..\..\venv\Scripts\python.exe -m evaluation.base_go_hold_protocol `
-  --contract configs/evaluation/p0_base_go_hold_town05_v1.json
+  --contract configs/evaluation/p0_base_go_hold_town05_v3.json
 
 # 当前示例是 update 5；EvalA/EvalB 必须是同 checkpoint 的两次独立 gate
 $decisionId = "P0_BASE_GO_HOLD_u000005_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 ..\..\..\venv\Scripts\python.exe -m evaluation.judge_base_go_hold `
   --mode milestone `
-  --go-hold-contract configs/evaluation/p0_base_go_hold_town05_v1.json `
+  --go-hold-contract configs/evaluation/p0_base_go_hold_town05_v3.json `
   --run-dir "logs/$runId" `
   --checkpoint $checkpoint `
   --c0-output-dir "evaluations/$evalA" `

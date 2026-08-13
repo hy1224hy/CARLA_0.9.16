@@ -28,9 +28,17 @@ from environment.base_reward_v3 import (
     overspeed_penalty,
     route_completion,
     route_potential_reward,
+    offroad_terminal_reward,
     terminal_rewards,
     ttc_risk_penalty,
     validate_gamma,
+)
+from environment.offroad_protocol import (
+    OFFROAD_PERSISTENCE_TICKS,
+    classify_offroad_tick,
+    decision_as_dict,
+    footprint_local_offsets,
+    offroad_protocol_spec,
 )
 
 
@@ -68,6 +76,8 @@ class CarlaMultiAgentEnv:
         reward_gamma: float = 0.99,
         adversary_collision_ends_episode: bool = True,
         follow_spectator: bool = False,
+        lidar_range_m: float = 4.0,
+        ttc_max_range_m: float = 10.0,
     ):
         """
         初始化CARLA多智能体环境
@@ -83,6 +93,8 @@ class CarlaMultiAgentEnv:
             adversarial_agent_ids: 对抗智能体ID列表，None表示无对抗智能体
             reward_version: 奖励函数版本；基础策略修复版使用 'v3'
             disable_tensorboard: 禁用环境内部TB writer（训练脚本自行管理TB时设为True）
+            lidar_range_m: 19维观察中11条全周射线的物理量程（米）
+            ttc_max_range_m: 同车道前向TTC候选的最大检测距离（米）
         """
         self.host = host
         self.port = port
@@ -99,6 +111,15 @@ class CarlaMultiAgentEnv:
                 "reward v3 is frozen for the non-adversarial base policy only"
             )
         self.reward_version = reward_version
+        self.lidar_range_m = float(lidar_range_m)
+        if not math.isfinite(self.lidar_range_m) or self.lidar_range_m <= 0.0:
+            raise ValueError("lidar_range_m must be finite and positive")
+        self.ttc_max_range_m = float(ttc_max_range_m)
+        if (
+            not math.isfinite(self.ttc_max_range_m)
+            or self.ttc_max_range_m <= 0.0
+        ):
+            raise ValueError("ttc_max_range_m must be finite and positive")
         # 修改1：对抗车(蓝)自撞是否结束整个回合。
         #   True（默认，旧行为）= 任一 agent 碰撞即全局终止；
         #   False（PSRO/eval 用）= 仅合作车(红)碰撞/红车全到达/超时才结束，蓝车自撞只 despawn 该车、
@@ -160,6 +181,28 @@ class CarlaMultiAgentEnv:
         self.last_terminated: Dict[int, bool] = {i: False for i in range(self.num_agents)}
         self.last_truncated: Dict[int, bool] = {i: False for i in range(self.num_agents)}
         self.episode_end_reason: str = "running"
+        # 非 Driving 车体占用协议。offroad_confirmed_events 是本回合 sticky
+        # 自然终止标志；offroad_terminal_events 是应用碰撞优先级后的本 tick 终局。
+        self.offroad_consecutive_ticks: Dict[int, int] = {
+            i: 0 for i in range(self.num_agents)
+        }
+        self.offroad_confirmed_events: Dict[int, bool] = {
+            i: False for i in range(self.num_agents)
+        }
+        self.offroad_terminal_events: Dict[int, bool] = {
+            i: False for i in range(self.num_agents)
+        }
+        self.last_road_occupancy: Dict[int, Dict] = {}
+        self.first_offroad_evidence: Dict[int, Optional[Dict]] = {
+            i: None for i in range(self.num_agents)
+        }
+        self.max_offroad_consecutive_ticks: Dict[int, int] = {
+            i: 0 for i in range(self.num_agents)
+        }
+        self.max_footprint_outside_fraction: Dict[int, float] = {
+            i: 0.0 for i in range(self.num_agents)
+        }
+        self._last_world_frame = -1
 
         # 上一步控制量（用于平滑性惩罚）
         self.prev_controls: Dict[int, Dict[str, float]] = {}
@@ -546,6 +589,244 @@ class CarlaMultiAgentEnv:
             # Small test adapters and old compatible map proxies may only
             # implement get_waypoint(location). CARLA's default is Driving.
             return self.map.get_waypoint(location)
+
+    def _get_exact_driving_waypoint(self, location: carla.Location):
+        """Return an exact Driving waypoint without projecting an offroad point.
+
+        Unlike ``_get_driving_waypoint()``, this method must never silently
+        fall back to CARLA's default ``project_to_road=True`` behavior because
+        that would turn the safety check back into a nearest-lane-distance
+        check.  Lightweight tests should provide the same keyword interface.
+        """
+
+        try:
+            waypoint = self.map.get_waypoint(
+                location,
+                project_to_road=False,
+                lane_type=carla.LaneType.Driving,
+            )
+        except TypeError as error:
+            raise RuntimeError(
+                "exact Driving membership requires Map.get_waypoint(..., "
+                "project_to_road=False, lane_type=Driving)"
+            ) from error
+        if waypoint is None:
+            return None
+        lane_type = getattr(waypoint, "lane_type", carla.LaneType.Driving)
+        if lane_type != carla.LaneType.Driving:
+            return None
+        return waypoint
+
+    @staticmethod
+    def _vehicle_footprint_locations(vehicle: carla.Actor) -> List[carla.Location]:
+        """Return centre plus eight inset perimeter points in world coordinates."""
+
+        transform = vehicle.get_transform()
+        bounding_box = vehicle.bounding_box
+        local_offsets = footprint_local_offsets(
+            bounding_box.extent.x,
+            bounding_box.extent.y,
+            center_x_m=bounding_box.location.x,
+            center_y_m=bounding_box.location.y,
+        )
+        yaw = math.radians(float(transform.rotation.yaw))
+        cos_yaw = math.cos(yaw)
+        sin_yaw = math.sin(yaw)
+        base = transform.location
+        return [
+            carla.Location(
+                x=float(base.x + local_x * cos_yaw - local_y * sin_yaw),
+                y=float(base.y + local_x * sin_yaw + local_y * cos_yaw),
+                z=float(base.z),
+            )
+            for local_x, local_y in local_offsets
+        ]
+
+    def _inspect_vehicle_road_occupancy(self, agent_id: int) -> Dict:
+        """Inspect one live vehicle against the union of exact Driving lanes."""
+
+        if not 0 <= int(agent_id) < len(self.vehicles):
+            raise IndexError(f"agent_id out of range: {agent_id}")
+        vehicle = self.vehicles[int(agent_id)]
+        if vehicle is None or not vehicle.is_alive:
+            return {
+                "driving_center_valid": False,
+                "footprint_outside_count": 8,
+                "footprint_outside_fraction": 1.0,
+                "offroad_raw": False,
+                "offroad_consecutive_ticks": int(
+                    self.offroad_consecutive_ticks.get(int(agent_id), 0)
+                ),
+                "offroad_confirmed": bool(
+                    self.offroad_confirmed_events.get(int(agent_id), False)
+                ),
+                "world_frame": int(getattr(self, "_last_world_frame", -1)),
+                "episode_step": int(getattr(self, "current_step", 0)),
+                "location": None,
+                "yaw": None,
+                "nearest_driving_road_id": None,
+                "nearest_driving_lane_id": None,
+                "nearest_driving_lane_width_m": None,
+            }
+
+        transform = vehicle.get_transform()
+        samples = self._vehicle_footprint_locations(vehicle)
+        exact_waypoints = [
+            self._get_exact_driving_waypoint(location) for location in samples
+        ]
+        decision = classify_offroad_tick(
+            driving_center_valid=exact_waypoints[0] is not None,
+            boundary_driving_valid=[
+                waypoint is not None for waypoint in exact_waypoints[1:]
+            ],
+            previous_consecutive_ticks=int(
+                self.offroad_consecutive_ticks.get(int(agent_id), 0)
+            ),
+        )
+        nearest = self._get_driving_waypoint(transform.location)
+        result = decision_as_dict(decision)
+        result.update(
+            {
+                "world_frame": int(getattr(self, "_last_world_frame", -1)),
+                "episode_step": int(getattr(self, "current_step", 0)),
+                "location": {
+                    "x": float(transform.location.x),
+                    "y": float(transform.location.y),
+                    "z": float(transform.location.z),
+                },
+                "yaw": float(transform.rotation.yaw),
+                "nearest_driving_road_id": (
+                    int(nearest.road_id) if nearest is not None else None
+                ),
+                "nearest_driving_lane_id": (
+                    int(nearest.lane_id) if nearest is not None else None
+                ),
+                "nearest_driving_lane_width_m": (
+                    float(nearest.lane_width) if nearest is not None else None
+                ),
+            }
+        )
+        return result
+
+    def _reset_offroad_tracking(self) -> None:
+        """Reset persistence and fail fast if a scenario spawns off Driving."""
+
+        self.offroad_consecutive_ticks = {
+            i: 0 for i in range(self.num_agents)
+        }
+        self.offroad_confirmed_events = {
+            i: False for i in range(self.num_agents)
+        }
+        self.offroad_terminal_events = {
+            i: False for i in range(self.num_agents)
+        }
+        self.first_offroad_evidence = {
+            i: None for i in range(self.num_agents)
+        }
+        self.max_offroad_consecutive_ticks = {
+            i: 0 for i in range(self.num_agents)
+        }
+        self.max_footprint_outside_fraction = {
+            i: 0.0 for i in range(self.num_agents)
+        }
+        self.last_road_occupancy = {}
+        invalid_agents = []
+        for agent_id, vehicle in enumerate(self.vehicles):
+            if vehicle is None or not vehicle.is_alive:
+                continue
+            evidence = self._inspect_vehicle_road_occupancy(agent_id)
+            # Reset inspection reports what the first tick would classify, but
+            # must not consume a persistence tick before any policy decision.
+            evidence["offroad_consecutive_ticks"] = 0
+            evidence["offroad_confirmed"] = False
+            self.last_road_occupancy[agent_id] = evidence
+            if evidence["offroad_raw"]:
+                invalid_agents.append(agent_id)
+        if invalid_agents:
+            raise RuntimeError(
+                "scenario spawn footprint is outside exact Driving lanes for "
+                f"agents={invalid_agents}; refuse to start a contaminated episode"
+            )
+
+    def _update_offroad_states(self) -> None:
+        """Advance per-agent persistence after one simulator tick."""
+
+        for agent_id, vehicle in enumerate(self.vehicles):
+            if (
+                vehicle is None
+                or not vehicle.is_alive
+                or self.reached_target.get(agent_id, False)
+                or not self.active_mask.get(agent_id, True)
+            ):
+                continue
+            evidence = self._inspect_vehicle_road_occupancy(agent_id)
+            consecutive = int(evidence["offroad_consecutive_ticks"])
+            confirmed = bool(evidence["offroad_confirmed"])
+            self.offroad_consecutive_ticks[agent_id] = consecutive
+            self.max_offroad_consecutive_ticks[agent_id] = max(
+                self.max_offroad_consecutive_ticks.get(agent_id, 0),
+                consecutive,
+            )
+            outside_fraction = float(evidence["footprint_outside_fraction"])
+            self.max_footprint_outside_fraction[agent_id] = max(
+                self.max_footprint_outside_fraction.get(agent_id, 0.0),
+                outside_fraction,
+            )
+            if evidence["offroad_raw"] and self.first_offroad_evidence.get(agent_id) is None:
+                self.first_offroad_evidence[agent_id] = {
+                    "episode_step": int(evidence["episode_step"]),
+                    "world_frame": int(evidence["world_frame"]),
+                    "location": dict(evidence["location"]),
+                    "yaw": float(evidence["yaw"]),
+                    "footprint_outside_count": int(
+                        evidence["footprint_outside_count"]
+                    ),
+                    "footprint_outside_fraction": outside_fraction,
+                }
+            if confirmed:
+                self.offroad_confirmed_events[agent_id] = True
+            evidence["offroad_confirmed"] = bool(
+                self.offroad_confirmed_events.get(agent_id, False)
+            )
+            self.last_road_occupancy[agent_id] = evidence
+
+    def _finalize_offroad_terminal_events(self) -> None:
+        """Apply collision priority to confirmed offroad events for this tick."""
+
+        self.offroad_terminal_events = {
+            i: bool(
+                self.offroad_confirmed_events.get(i, False)
+                and not self.collision_events.get(i, False)
+                and not self.crosswalk_invasion_events.get(i, False)
+                and not self.reached_target.get(i, False)
+            )
+            for i in range(self.num_agents)
+        }
+
+    def _offroad_info(self) -> Dict:
+        """Return JSON-safe current and episode-level offroad evidence."""
+
+        return {
+            "protocol": offroad_protocol_spec(),
+            "road_occupancy": {
+                int(agent_id): dict(values)
+                for agent_id, values in self.last_road_occupancy.items()
+            },
+            "offroad_confirmed": dict(self.offroad_confirmed_events),
+            "offroad_terminated": dict(self.offroad_terminal_events),
+            "first_offroad_evidence": {
+                int(agent_id): (
+                    None if values is None else dict(values)
+                )
+                for agent_id, values in self.first_offroad_evidence.items()
+            },
+            "max_offroad_consecutive_ticks": dict(
+                self.max_offroad_consecutive_ticks
+            ),
+            "max_footprint_outside_fraction": dict(
+                self.max_footprint_outside_fraction
+            ),
+        }
 
     def _get_target_location(self, agent_id: int) -> carla.Location:
         """返回 agent_id 的目标位置（优先 goal_zone，回退 target_waypoints）"""
@@ -1285,6 +1566,7 @@ class CarlaMultiAgentEnv:
         self.last_terminated = {i: False for i in range(self.num_agents)}
         self.last_truncated = {i: False for i in range(self.num_agents)}
         self.episode_end_reason = "running"
+        self._reset_offroad_tracking()
         
         # 获取初始观察
         observations = self._get_observations()
@@ -1296,6 +1578,7 @@ class CarlaMultiAgentEnv:
             'episode_end_reason': self.episode_end_reason,
             'pre_collision_kinematics': {},
         }
+        info.update(self._offroad_info())
         
         return observations, info
     
@@ -1304,7 +1587,7 @@ class CarlaMultiAgentEnv:
         observations = {}
         # 设定雷达参数
         NUM_RAYS = 11      # 射线数量
-        RAY_LENGTH = 4.0   # 探测距离（全周360度）
+        RAY_LENGTH = getattr(self, "lidar_range_m", 4.0)  # 探测距离（全周360度）
         
         for i, vehicle in enumerate(self.vehicles):
             if not vehicle.is_alive:
@@ -1478,7 +1761,14 @@ class CarlaMultiAgentEnv:
         pre_tick_kinematics = self._snapshot_kinematics()
 
         # 更新世界
-        self.world.tick()
+        world_frame = self.world.tick()
+        if isinstance(world_frame, int) and not isinstance(world_frame, bool):
+            self._last_world_frame = int(world_frame)
+        else:
+            try:
+                self._last_world_frame = int(self.world.get_snapshot().frame)
+            except (AttributeError, RuntimeError, TypeError, ValueError):
+                self._last_world_frame = int(getattr(self, "_last_world_frame", -1))
         self.current_step += 1
         self._total_env_steps += 1
 
@@ -1490,8 +1780,14 @@ class CarlaMultiAgentEnv:
                 if self._vehicle_on_crosswalk(_v):
                     self.crosswalk_invasion_events[i] = True
 
+        # Exact Driving-lane footprint membership is sampled after physics and
+        # before reward/termination, so all consumers see the same simulator
+        # frame.  Persistence is agent-specific and reset only by a legal tick.
+        self._update_offroad_states()
+
         # 必须在 _check_dones() 可能 despawn 到点车辆之前固化碰撞标志。
         step_collisions = self._check_collisions()
+        self._finalize_offroad_terminal_events()
         pre_collision_kinematics = (
             pre_tick_kinematics if any(step_collisions.values()) else {}
         )
@@ -1537,13 +1833,15 @@ class CarlaMultiAgentEnv:
             # 碰撞 tick 返回推进前的全体存活车辆快照，保证几何归因使用同一时刻的数据。
             'pre_collision_kinematics': pre_collision_kinematics,
         }
+        info.update(self._offroad_info())
 
         # 修改1：对抗车(蓝)自撞且回合不全局终止时，移除该蓝车（避免撞毁残骸停在单车道里
         # 变成"自杀路障"，那等于换个形式恢复漏洞）。此处在 info 已记录本步 collisions/terminated
         # 之后执行，故蓝车的撞毁仍被训练侧正确捕获（reward 含碰撞罚、terminated=True）。
         if not self.adversary_collision_ends_episode:
             for i in self.adversarial_agent_ids:
-                if (self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False)) \
+                if (self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False)
+                        or self.offroad_terminal_events.get(i, False)) \
                         and not self.reached_target.get(i, False):
                     if i < len(self.vehicles) and self.vehicles[i] is not None and self.vehicles[i].is_alive:
                         self._despawn_reached_vehicle(i)  # 通用 despawn（不标记 reached_target）
@@ -1699,7 +1997,17 @@ class CarlaMultiAgentEnv:
                 x_along = rel.x * forward_v.x + rel.y * forward_v.y
                 y_lat = rel.x * right_v.x + rel.y * right_v.y
                 in_goal_region = abs(x_along) <= 3.0 and abs(y_lat) <= 1.75
-            if in_goal_region:
+            if (
+                in_goal_region
+                and not self.collision_events.get(i, False)
+                and not crosswalk
+                and not getattr(self, "offroad_terminal_events", {}).get(i, False)
+                and not bool(
+                    getattr(self, "last_road_occupancy", {})
+                    .get(i, {})
+                    .get("offroad_raw", False)
+                )
+            ):
                 success_reward = 100.0
 
             reward = (progress_reward + speed_reward + centering_reward
@@ -1985,7 +2293,9 @@ class CarlaMultiAgentEnv:
 
             # ─── 6. LiDAR 安全距离惩罚 ───
             lidar_dists = self._get_ray_detection(
-                vehicle, ray_length=4.0, num_rays=11
+                vehicle,
+                ray_length=getattr(self, "lidar_range_m", 4.0),
+                num_rays=11,
             )
             safety_penalty = 0.0
             lidar_trigger_ray_count = 0
@@ -2001,7 +2311,9 @@ class CarlaMultiAgentEnv:
             TTC_THRESHOLD = 3.0     # TTC 阈值（秒），低于此值开始惩罚
             TTC_TAU = 1.0           # 指数衰减常数
             TTC_LATERAL_RANGE = 2.0 # 同车道判定宽度（米）
-            TTC_MAX_RANGE = 10.0    # 最大前向检测距离（米）
+            TTC_MAX_RANGE = getattr(
+                self, "ttc_max_range_m", 10.0
+            )  # 最大前向检测距离（米）
 
             ttc_penalty = 0.0
             ttc_candidate_count = 0
@@ -2090,7 +2402,17 @@ class CarlaMultiAgentEnv:
                 y_lat = rel.x * right_v.x + rel.y * right_v.y
                 in_goal_region = abs(x_along) <= 3.0 and abs(y_lat) <= 1.75
 
-            if in_goal_region:
+            if (
+                in_goal_region
+                and not self.collision_events.get(i, False)
+                and not crosswalk
+                and not getattr(self, "offroad_terminal_events", {}).get(i, False)
+                and not bool(
+                    getattr(self, "last_road_occupancy", {})
+                    .get(i, {})
+                    .get("offroad_raw", False)
+                )
+            ):
                 success_reward = SUCCESS_REWARD
                 time_bonus = max(
                     0.0, (self.max_steps - self.current_step) / self.max_steps
@@ -2201,6 +2523,7 @@ class CarlaMultiAgentEnv:
                 {
                     "lidar_min_normalized": 1.0,
                     "ttc_min_seconds_capped": config.ttc_threshold_s,
+                    "driving_center_valid": 1.0,
                 }
             )
             values.update({key: float(value) for key, value in overrides.items()})
@@ -2288,7 +2611,7 @@ class CarlaMultiAgentEnv:
 
             lidar_distances = self._get_ray_detection(
                 vehicle,
-                ray_length=4.0,
+                ray_length=getattr(self, "lidar_range_m", 4.0),
                 num_rays=11,
             )
             lidar_penalty, lidar_risk, lidar_minimum = lidar_risk_penalty(
@@ -2308,7 +2631,8 @@ class CarlaMultiAgentEnv:
                 if (
                     abs(relative["lateral_dist"]) >= 2.0
                     or relative["longitudinal_dist"] <= 0.0
-                    or relative["longitudinal_dist"] >= 10.0
+                    or relative["longitudinal_dist"]
+                    >= getattr(self, "ttc_max_range_m", 10.0)
                 ):
                     continue
                 other_vehicle = self.vehicles[other_id]
@@ -2364,6 +2688,14 @@ class CarlaMultiAgentEnv:
 
             crosswalk = self.crosswalk_invasion_events.get(i, False)
             collision_event = bool(self.collision_events.get(i, False) or crosswalk)
+            offroad_event = bool(
+                getattr(self, "offroad_terminal_events", {}).get(i, False)
+            )
+            offroad_raw = bool(
+                getattr(self, "last_road_occupancy", {})
+                .get(i, {})
+                .get("offroad_raw", False)
+            )
             invasion_details = getattr(
                 self, "lane_invasion_details", {}
             ).get(i, {})
@@ -2402,11 +2734,22 @@ class CarlaMultiAgentEnv:
                 lateral = relative.x * right_vector.x + relative.y * right_vector.y
                 in_goal_region = abs(along) <= 3.0 and abs(lateral) <= 1.75
 
-            # Collision has priority over success when both sensors fire on the
-            # same simulator tick; a crash at the goal cannot collect both.
-            success_event = bool(in_goal_region and not collision_event)
+            # Terminal priority is collision/crosswalk > offroad > success.
+            # A route that reaches the goal from a forbidden surface cannot be
+            # registered as success, and collision/offroad costs never stack.
+            success_event = bool(
+                in_goal_region
+                and not collision_event
+                and not offroad_event
+                and not offroad_raw
+            )
             collision_reward, success_reward = terminal_rewards(
                 success=success_event,
+                collision=collision_event,
+                config=config,
+            )
+            offroad_reward = offroad_terminal_reward(
+                offroad=offroad_event,
                 collision=collision_event,
                 config=config,
             )
@@ -2426,12 +2769,14 @@ class CarlaMultiAgentEnv:
                 "ttc": ttc_penalty,
                 "lane_deviation": lane_deviation_cost,
                 "lane_invasion": lane_event_penalty,
+                "offroad": offroad_reward,
                 "collision": collision_reward,
                 "success": success_reward,
             }
             reward = math.fsum(details.values())
             rewards[i] = reward
             reward_details[i] = details
+            road_occupancy = getattr(self, "last_road_occupancy", {}).get(i, {})
             reward_diagnostics[i] = _empty_diagnostics(
                 progress_m=progress_m,
                 route_completion_prev=previous_completion,
@@ -2453,6 +2798,22 @@ class CarlaMultiAgentEnv:
                 lateral_distance_m=lateral_distance,
                 lane_deviation_risk=lane_deviation_risk,
                 yaw_error_rad=yaw_error,
+                driving_center_valid=float(
+                    bool(road_occupancy.get("driving_center_valid", True))
+                ),
+                footprint_outside_count=float(
+                    road_occupancy.get("footprint_outside_count", 0)
+                ),
+                footprint_outside_fraction=float(
+                    road_occupancy.get("footprint_outside_fraction", 0.0)
+                ),
+                offroad_raw=float(
+                    bool(road_occupancy.get("offroad_raw", False))
+                ),
+                offroad_consecutive_ticks=float(
+                    getattr(self, "offroad_consecutive_ticks", {}).get(i, 0)
+                ),
+                offroad_terminated=float(offroad_event),
                 collision_event=float(collision_event),
                 lane_invasion_sensor_event=float(lane_sensor_event),
                 success_event=float(success_event),
@@ -2469,8 +2830,9 @@ class CarlaMultiAgentEnv:
           - truncated[i]:  agent-specific 任务仍可继续，但被外部边界打断 → value 仍需 bootstrap
           - active_mask[i]: 下一步是否仍允许动作与 transition 采样
           - episode_end_reason: running / cooperative_success / all_agents_reached /
-                                cooperative_collision / adversary_collision / max_steps /
-                                all_agents_terminated
+                                cooperative_collision / adversary_collision /
+                                cooperative_offroad / adversary_offroad /
+                                max_steps / all_agents_terminated
         训练侧据此在 GAE 中只对 terminated 切断价值 bootstrap，对 truncated 保留。
         """
         dones = {}
@@ -2485,6 +2847,14 @@ class CarlaMultiAgentEnv:
             # 检查是否到达目标
             transform = vehicle.get_transform()
             is_collided = self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False)
+            is_offroad = bool(
+                getattr(self, "offroad_terminal_events", {}).get(i, False)
+            )
+            is_offroad_raw = bool(
+                getattr(self, "last_road_occupancy", {})
+                .get(i, {})
+                .get("offroad_raw", False)
+            )
 
             # 检查是否到达终点区域（矩形判定）
             if self._goal_zone_for_agent(i) is not None:
@@ -2516,10 +2886,17 @@ class CarlaMultiAgentEnv:
                 and is_collided
                 and not already_reached
             )
+            offroad_has_priority = bool(
+                is_offroad
+                and not already_reached
+            )
             if collision_has_priority:
                 dones[i] = True
                 terminated[i] = True
-            elif in_goal_region or already_reached:
+            elif offroad_has_priority:
+                dones[i] = True
+                terminated[i] = True
+            elif (in_goal_region and not is_offroad_raw) or already_reached:
                 if not already_reached:
                     # disappear-at-target（MAPF）：到达即从场景移除该车，避免它停在终点
                     # 物理阻挡后到的车，导致"会车被判碰撞"。原 ignore_vehicles_percentage
@@ -2560,6 +2937,12 @@ class CarlaMultiAgentEnv:
             return ((self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False))
                     and not self.reached_target.get(i, False))
 
+        def _is_offroad(i: int) -> bool:
+            return bool(
+                getattr(self, "offroad_terminal_events", {}).get(i, False)
+                and not self.reached_target.get(i, False)
+            )
+
         cooperative_ids = [
             i for i in range(self.num_agents) if i not in self.adversarial_agent_ids
         ]
@@ -2572,6 +2955,7 @@ class CarlaMultiAgentEnv:
             trigger_ids = cooperative_ids
 
         severe_ids = [i for i in trigger_ids if _is_severe(i)]
+        offroad_ids = [i for i in trigger_ids if _is_offroad(i)]
         all_outcome_reached = bool(outcome_ids) and all(
             self.reached_target.get(i, False) for i in outcome_ids
         )
@@ -2584,6 +2968,13 @@ class CarlaMultiAgentEnv:
             else:
                 episode_end_reason = "adversary_collision"
                 print("检测到蓝车严重碰撞，结束本回合")
+        elif offroad_ids:
+            if any(i in cooperative_ids for i in offroad_ids):
+                episode_end_reason = "cooperative_offroad"
+                print("检测到红车驶入非 Driving 区域，结束本回合")
+            else:
+                episode_end_reason = "adversary_offroad"
+                print("检测到蓝车驶入非 Driving 区域，结束本回合")
         elif all_outcome_reached:
             episode_end_reason = (
                 "all_agents_reached"
@@ -2605,7 +2996,11 @@ class CarlaMultiAgentEnv:
         #   对所有蓝车均为 terminated=True，不允许 bootstrap。
         # - adversary_collision_ends_episode=True 是当前入口未启用的兼容分支，本轮保持
         #   旧语义：直接碰撞蓝车 terminated，其他被连带关闭的车辆 truncated。
-        if episode_end_reason in {"cooperative_success", "cooperative_collision"}:
+        if episode_end_reason in {
+            "cooperative_success",
+            "cooperative_collision",
+            "cooperative_offroad",
+        }:
             for i in self.adversarial_agent_ids:
                 terminated[i] = True
 
@@ -2684,6 +3079,56 @@ class CarlaMultiAgentEnv:
             }
 
         return relative_positions
+
+    def get_longitudinal_safety_state(self) -> Dict[int, Dict[str, float]]:
+        """Return per-agent front-vehicle geometry for scenario validation.
+
+        This is diagnostic state, not part of the 19-dimensional policy
+        observation.  It makes following-gap and TTC coverage auditable in
+        live smoke/evaluation without exposing CARLA actors to training logs.
+        """
+        safety_state: Dict[int, Dict[str, float]] = {}
+        for ego_id in range(self.num_agents):
+            candidates = []
+            for other_id, relative in self._get_relative_position_to_agents(
+                ego_id
+            ).items():
+                if (
+                    abs(relative["lateral_dist"]) < 2.0
+                    and relative["longitudinal_dist"] > 0.0
+                ):
+                    candidates.append((other_id, relative))
+            if not candidates:
+                safety_state[ego_id] = {
+                    "has_front_vehicle": 0.0,
+                    "front_agent_id": -1.0,
+                    "front_gap_m": float("nan"),
+                    "relative_speed_mps": 0.0,
+                    "ttc_s": float("inf"),
+                }
+                continue
+            front_agent_id, nearest = min(
+                candidates,
+                key=lambda item: item[1]["longitudinal_dist"],
+            )
+            ego_velocity = self.vehicles[ego_id].get_velocity()
+            front_velocity = self.vehicles[front_agent_id].get_velocity()
+            ego_speed = math.hypot(ego_velocity.x, ego_velocity.y)
+            front_speed = math.hypot(front_velocity.x, front_velocity.y)
+            relative_speed = ego_speed - front_speed
+            ttc = (
+                nearest["longitudinal_dist"] / relative_speed
+                if relative_speed > 0.0
+                else float("inf")
+            )
+            safety_state[ego_id] = {
+                "has_front_vehicle": 1.0,
+                "front_agent_id": float(front_agent_id),
+                "front_gap_m": float(nearest["longitudinal_dist"]),
+                "relative_speed_mps": float(relative_speed),
+                "ttc_s": float(ttc),
+            }
+        return safety_state
 
     def _despawn_reached_vehicle(self, agent_id: int):
         """disappear-at-target：车辆到达终点后从场景移除，使其不再物理阻挡后到的车。

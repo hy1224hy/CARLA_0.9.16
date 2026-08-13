@@ -20,7 +20,7 @@ import re
 import random
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, Iterable, List, Mapping, Tuple, Optional
 
 import numpy as np
 import torch
@@ -28,6 +28,10 @@ import torch.nn as nn
 import torch.optim as optim
 
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
+from environment.offroad_protocol import (
+    OFFROAD_PROTOCOL_VERSION,
+    offroad_protocol_spec,
+)
 from visualization.mappo_visualizer import MAPPOVisualizer
 from models.actor_critic import Actor, AgentConditionedCritic
 from training.lifecycle_semantics import (
@@ -64,6 +68,7 @@ from training.checkpoint_protocol import (
     LIFECYCLE_PROTOCOL_VERSION,
     MANIFEST_NAME,
     OBSERVATION_PROTOCOL_VERSION,
+    TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION,
     PERIODIC_DIR_NAME,
     TRAINING_PROTOCOL_VERSION,
     CheckpointProtocolError,
@@ -95,12 +100,17 @@ VALID_EPISODE_END_REASONS = frozenset({
     "all_agents_reached",
     "cooperative_collision",
     "adversary_collision",
+    "cooperative_offroad",
+    "adversary_offroad",
     "max_steps",
     "all_agents_terminated",
 })
 BASE_SUCCESS_END_REASONS = frozenset({"cooperative_success", "all_agents_reached"})
 BASE_COLLISION_END_REASONS = frozenset(
     {"cooperative_collision", "adversary_collision"}
+)
+BASE_OFFROAD_END_REASONS = frozenset(
+    {"cooperative_offroad", "adversary_offroad"}
 )
 
 OBS_DIM = 19
@@ -109,17 +119,68 @@ ACTION_DIM = POLICY_ACTION_DIM
 
 def classify_base_episode_outcome(
     episode_end_reason: str,
-) -> Tuple[bool, bool, bool]:
-    """Return mutually exclusive success/collision/timeout terminal outcomes."""
+) -> Tuple[bool, bool, bool, bool]:
+    """Return mutually exclusive success/collision/timeout/offroad outcomes."""
     reason = str(episode_end_reason)
     success = reason in BASE_SUCCESS_END_REASONS
     collision = reason in BASE_COLLISION_END_REASONS
     timeout = reason == "max_steps"
-    if sum((success, collision, timeout)) != 1:
+    offroad = reason in BASE_OFFROAD_END_REASONS
+    if sum((success, collision, timeout, offroad)) != 1:
         raise RuntimeError(
             f"base episode ended with non-classifiable reason={reason!r}"
         )
-    return success, collision, timeout
+    return success, collision, timeout, offroad
+
+
+def build_offroad_episode_audit(
+    info: Mapping[str, object],
+    agent_ids: Iterable[int],
+    *,
+    context: str,
+) -> Dict[int, Dict[str, object]]:
+    """Extract strict episode-level offroad evidence from environment info."""
+
+    normalized_ids = tuple(int(agent_id) for agent_id in agent_ids)
+    expected = set(normalized_ids)
+    sources = {
+        "offroad_terminated": info.get("offroad_terminated"),
+        "first_offroad_evidence": info.get("first_offroad_evidence"),
+        "max_offroad_consecutive_ticks": info.get(
+            "max_offroad_consecutive_ticks"
+        ),
+        "max_footprint_outside_fraction": info.get(
+            "max_footprint_outside_fraction"
+        ),
+    }
+    for name, source in sources.items():
+        if not isinstance(source, Mapping) or {
+            int(key) for key in source
+        } != expected:
+            raise RuntimeError(
+                f"{context}: {name} must contain exactly agent ids "
+                f"{sorted(expected)}"
+            )
+    result: Dict[int, Dict[str, object]] = {}
+    for agent_id in normalized_ids:
+        terminated = sources["offroad_terminated"][agent_id]
+        if not isinstance(terminated, bool):
+            raise RuntimeError(
+                f"{context}: offroad_terminated[{agent_id}] must be bool"
+            )
+        result[agent_id] = {
+            "offroad_terminated": terminated,
+            "first_offroad_evidence": sources[
+                "first_offroad_evidence"
+            ][agent_id],
+            "max_offroad_consecutive_ticks": sources[
+                "max_offroad_consecutive_ticks"
+            ][agent_id],
+            "max_footprint_outside_fraction": sources[
+                "max_footprint_outside_fraction"
+            ][agent_id],
+        }
+    return result
 
 RESUME_IMMUTABLE_ARG_NAMES = (
     "town",
@@ -150,6 +211,8 @@ RESUME_IMMUTABLE_ARG_NAMES = (
     "full_scenario_updates",
     "curriculum_transition_window",
     "curriculum_mode",
+    "lidar_range_m",
+    "ttc_max_range_m",
     "reward_version",
     "save_interval",
     "log_interval",
@@ -167,11 +230,28 @@ def set_seed(seed: int):
     torch.backends.cudnn.benchmark = False
 
 
-def checkpoint_protocol_versions(reward_version: str) -> Dict[str, str]:
+def observation_protocol_version(lidar_range_m: float) -> str:
+    """Bind normalized ray values to their physical range in checkpoints."""
+    lidar_range = float(lidar_range_m)
+    if lidar_range == 4.0:
+        return OBSERVATION_PROTOCOL_VERSION
+    if lidar_range == 20.0:
+        return TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
+    raise ValueError(
+        "observation protocol only registers lidar_range_m 4.0 or 20.0; "
+        f"got {lidar_range}"
+    )
+
+
+def checkpoint_protocol_versions(
+    reward_version: str,
+    lidar_range_m: float = 4.0,
+) -> Dict[str, str]:
     return {
-        "observation": OBSERVATION_PROTOCOL_VERSION,
+        "observation": observation_protocol_version(lidar_range_m),
         "action": ACTION_PROTOCOL_VERSION,
         "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
+        "offroad": OFFROAD_PROTOCOL_VERSION,
         "reward": str(reward_version),
         "metrics": METRICS_PROTOCOL_VERSION,
         "value_normalization": VALUE_NORMALIZATION_PROTOCOL_VERSION,
@@ -312,6 +392,7 @@ def _load_pretrained_weights(
 def runtime_metadata_with_carla(env) -> Dict[str, object]:
     metadata = runtime_metadata()
     metadata["environment_reward_gamma"] = float(env.reward_gamma)
+    metadata["offroad_protocol"] = offroad_protocol_spec()
     try:
         metadata["carla_client"] = env.client.get_client_version()
         metadata["carla_server"] = env.client.get_server_version()
@@ -339,6 +420,8 @@ def build_training_environment_kwargs(args, *, num_agents: int) -> Dict[str, obj
         "disable_tensorboard": True,
         "seed": args.seed,
         "follow_spectator": args.follow_spectator,
+        "lidar_range_m": args.lidar_range_m,
+        "ttc_max_range_m": args.ttc_max_range_m,
     }
 
 
@@ -2736,10 +2819,14 @@ def train(args):
     total_successes = 0
     total_collisions = 0
     total_timeouts = 0
+    total_offroads = 0
     completed_update = 0
     start_update = 1
 
-    protocol_versions = checkpoint_protocol_versions(args.reward_version)
+    protocol_versions = checkpoint_protocol_versions(
+        args.reward_version,
+        args.lidar_range_m,
+    )
     current_action_spec = action_protocol_spec()
     model_spec = checkpoint_model_spec(
         agent_ids, state_dim, args.hidden_dim
@@ -2833,6 +2920,7 @@ def train(args):
         total_successes = int(resume_checkpoint["total_successes"])
         total_collisions = int(resume_checkpoint["total_collisions"])
         total_timeouts = int(resume_checkpoint["total_timeouts"])
+        total_offroads = int(resume_checkpoint["total_offroads"])
         curriculum.scenario_success_history = {
             str(name): list(values)
             for name, values in saved_curriculum["success_history"].items()
@@ -3124,6 +3212,7 @@ def train(args):
             "total_successes": int(total_successes),
             "total_collisions": int(total_collisions),
             "total_timeouts": int(total_timeouts),
+            "total_offroads": int(total_offroads),
             "curriculum_success_history": {
                 name: list(values)
                 for name, values in (
@@ -3199,6 +3288,7 @@ def train(args):
             window_successes: List[float] = []          # 严格成功（all reached_target）
             window_collisions: List[float] = []         # 任一 agent 发生碰撞
             window_timeouts: List[float] = []           # max_steps 截断且未成功未碰撞
+            window_offroads: List[float] = []           # 车体进入非 Driving 区域
 
             # ── 场景采样（分层/加权） ──
             available_scenarios = curriculum.get_available_scenarios(update)
@@ -3295,6 +3385,11 @@ def train(args):
                 final_dones: Dict[int, bool] = {aid: False for aid in agent_ids}
                 final_terminated = dict(info['terminated'])
                 final_truncated = dict(info['truncated'])
+                final_offroad_audit = build_offroad_episode_audit(
+                    info,
+                    agent_ids,
+                    context=f"robust_v2 reset episode={rollout_episode}",
+                )
                 final_global_state = env.get_global_state().astype(np.float32)
 
                 for step in range(args.max_steps):
@@ -3329,6 +3424,13 @@ def train(args):
                         episode_end_reason=episode_end_reason,
                         agent_ids=agent_ids,
                         context=f"robust_v2 episode={rollout_episode} step={step}",
+                    )
+                    final_offroad_audit = build_offroad_episode_audit(
+                        info,
+                        agent_ids,
+                        context=(
+                            f"robust_v2 episode={rollout_episode} step={step}"
+                        ),
                     )
                     # 直接从 env.step() 返回的 observation 固化该 transition 的 s_(t+1)，
                     # 避免后续 despawn 改变重新读取的全局状态。只有合法 X 边界会使用。
@@ -3405,9 +3507,12 @@ def train(args):
                 # 严格互斥三类终局只服从环境发布的全局 end reason。这样即使
                 # success/collision sticky 信号在同一 tick 同时出现，也不会把一个
                 # episode 同时计入两个 outcome；逐 agent 事件仍保留在 diagnostics。
-                ep_success, ep_collision, ep_timeout = classify_base_episode_outcome(
-                    episode_end_reason
-                )
+                (
+                    ep_success,
+                    ep_collision,
+                    ep_timeout,
+                    ep_offroad,
+                ) = classify_base_episode_outcome(episode_end_reason)
 
                 if ep_success:
                     total_successes += 1
@@ -3415,6 +3520,8 @@ def train(args):
                     total_collisions += 1
                 elif ep_timeout:
                     total_timeouts += 1
+                elif ep_offroad:
+                    total_offroads += 1
 
                 # P0-00B：bootstrap 类型只服从环境发布的最终 T/X 协议，不再根据
                 # reached_target 或碰撞 sticky 标志二次猜测。X 可来自 max_steps，
@@ -3442,6 +3549,7 @@ def train(args):
                 window_successes.append(1.0 if ep_success else 0.0)
                 window_collisions.append(1.0 if ep_collision else 0.0)
                 window_timeouts.append(1.0 if ep_timeout else 0.0)
+                window_offroads.append(1.0 if ep_offroad else 0.0)
                 metrics_recorder.finish_episode(
                     update=update,
                     episode_index=rollout_episode,
@@ -3456,6 +3564,8 @@ def train(args):
                     success=ep_success,
                     collision=ep_collision,
                     timeout=ep_timeout,
+                    offroad=ep_offroad,
+                    offroad_audit_by_agent=final_offroad_audit,
                     end_reason=episode_end_reason,
                     scenario_name=scenario_name,
                     context=(
@@ -3569,6 +3679,9 @@ def train(args):
                     "episode/timeout_rate_cumulative": (
                         total_timeouts / max(total_episodes, 1)
                     ),
+                    "episode/offroad_rate_cumulative": (
+                        total_offroads / max(total_episodes, 1)
+                    ),
                     "train/total_episodes_cumulative": total_episodes,
                     "curriculum/available_scenario_count": len(available_scenarios),
                     "curriculum/sampled_unique_scenario_count": len(
@@ -3600,6 +3713,7 @@ def train(args):
                 win_succ = float(np.mean(window_successes))
                 win_coll = float(np.mean(window_collisions))
                 win_to = float(np.mean(window_timeouts))
+                win_offroad = float(np.mean(window_offroads))
 
                 def _mean_comp(name):
                     if name not in metrics_recorder.component_names:
@@ -3607,7 +3721,8 @@ def train(args):
                     return metrics_recorder.reward_component_mean(name)
 
                 print(f"更新 {update}: avg_return={avg_r:.2f}, "
-                      f"success={win_succ:.2%}, collision={win_coll:.2%}, timeout={win_to:.2%}, "
+                      f"success={win_succ:.2%}, collision={win_coll:.2%}, "
+                      f"offroad={win_offroad:.2%}, timeout={win_to:.2%}, "
                       f"cum_success={total_successes/max(total_episodes,1):.2%}, "
                       f"avg_ep_len={float(np.mean(window_episode_lengths)):.0f}, "
                       f"n_trans={n_transitions_per_agent} (total={n_transitions}), "
@@ -3621,6 +3736,7 @@ def train(args):
                         f"steer_rate={_mean_comp('steer_rate'):.4f}, "
                         f"safety+ttc={(_mean_comp('safety_lidar') + _mean_comp('ttc')):.4f}, "
                         f"lane={(_mean_comp('lane_deviation') + _mean_comp('lane_invasion')):.4f}, "
+                        f"offroad={_mean_comp('offroad'):.4f}, "
                         f"collision={_mean_comp('collision'):.4f}, "
                         f"success={_mean_comp('success'):.4f}"
                     )
@@ -3806,6 +3922,18 @@ def build_parser():
                         help="课程模式: metadata=读取 JSON difficulty(默认); "
                              "classic=basic/left|right/all 旧逻辑; "
                              "distance=按 dist_<N>m 距离分层(实验性)")
+    parser.add_argument(
+        "--lidar-range-m",
+        type=float,
+        default=4.0,
+        help="19维观察中11条全周射线的物理量程；Town05综合基础场景使用20m",
+    )
+    parser.add_argument(
+        "--ttc-max-range-m",
+        type=float,
+        default=10.0,
+        help="同车道前向TTC候选最大距离；Town05综合基础场景使用20m",
+    )
 
     # 其他
     parser.add_argument("--seed", type=int, default=42)

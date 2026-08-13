@@ -4,9 +4,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from evaluation.base_c0_protocol import read_jsonl
+from evaluation.base_c0_protocol import (
+    TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+    TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+    read_jsonl,
+)
 from evaluation.base_go_hold_protocol import (
     GO_HOLD_PROTOCOL_VERSION,
+    TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION,
+    TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
     GoHoldProtocolError,
     evaluate_behavioral_health,
     evaluate_milestone_decision,
@@ -20,6 +26,18 @@ from evaluation.judge_base_go_hold import _load_previous_milestone_evidence
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = (
     PROJECT_DIR / "configs" / "evaluation" / "p0_base_go_hold_v2.json"
+)
+TOWN05_OFFROAD_CONTRACT_PATH = (
+    PROJECT_DIR
+    / "configs"
+    / "evaluation"
+    / "p0_base_go_hold_town05_v2.json"
+)
+TOWN05_OUTCOME_REPEATABILITY_CONTRACT_PATH = (
+    PROJECT_DIR
+    / "configs"
+    / "evaluation"
+    / "p0_base_go_hold_town05_v3.json"
 )
 FAMILIES = ("basic", "offset", "close", "rear")
 
@@ -178,6 +196,154 @@ class GoHoldV2ContractTests(unittest.TestCase):
                     run_id="R3_TEST_RUN",
                     current_update=10,
                 )
+
+
+class Town05OffroadGoHoldTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.contract = load_go_hold_contract(
+            TOWN05_OFFROAD_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )["payload"]
+
+    def test_contract_binds_32_case_gate_and_final_update_160(self):
+        self.assertEqual(
+            self.contract["protocol_version"],
+            TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION,
+        )
+        self.assertEqual(
+            self.contract["evidence_rules"]["expected_gate_case_count"],
+            32,
+        )
+        self.assertEqual(
+            self.contract["bindings"]["c0_episode_record_version"],
+            TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+        )
+        self.assertEqual(self.contract["milestone_rules"][-1]["update"], 160)
+
+    def test_verified_offroad_is_an_explicit_structural_hold(self):
+        summary = {
+            "case_count": 32,
+            "outcome_counts": {
+                "success": 0,
+                "collision": 0,
+                "timeout": 31,
+                "other": 1,
+            },
+            "family_case_counts": {"family": 32},
+            "family_success_counts": {"family": 0},
+            "scenario_case_counts": {"scenario": 32},
+            "scenario_success_counts": {"scenario": 0},
+            "lane_invasion_episode_count": 0,
+            "offroad_count": 1,
+            "behavior": {
+                "timeout_rate": 31 / 32,
+                "agents": {
+                    str(agent_id): {
+                        "active_decision_steps": 100,
+                        "brake_mode_rate": 0.4,
+                        "throttle_mode_rate": 0.5,
+                        "coast_mode_rate": 0.1,
+                        "mean_speed_mps": 1.0,
+                        "mean_progress_m_per_episode": 5.0,
+                    }
+                    for agent_id in (0, 1)
+                },
+            },
+        }
+        result = evaluate_milestone_decision(
+            update=5,
+            training_health={
+                "status": "PASS",
+                "updates": [1, 2, 3, 4, 5],
+                "hard_failures": [],
+                "warnings": [],
+            },
+            c0_summary=summary,
+            repeatability_pass=True,
+            contract=self.contract,
+        )
+        self.assertEqual(result["decision"], "HOLD")
+        self.assertTrue(
+            any("offroad episodes=1" in value for value in result["hard_failures"])
+        )
+
+
+class Town05OutcomeRepeatabilityGoHoldTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.contract = load_go_hold_contract(
+            TOWN05_OUTCOME_REPEATABILITY_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )["payload"]
+
+    def test_contract_binds_semantic_repeatability_gate(self):
+        self.assertEqual(
+            self.contract["protocol_version"],
+            TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+        )
+        self.assertEqual(
+            self.contract["bindings"]["c0_episode_record_version"],
+            TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+        )
+        self.assertTrue(
+            self.contract["evidence_rules"][
+                "require_repeatability_gate_pass"
+            ]
+        )
+
+    def test_failed_semantic_gate_holds_but_warning_gate_can_continue(self):
+        summary = {
+            "case_count": 32,
+            "outcome_counts": {
+                "success": 0,
+                "collision": 0,
+                "timeout": 32,
+                "other": 0,
+            },
+            "family_case_counts": {"family": 32},
+            "family_success_counts": {"family": 0},
+            "scenario_case_counts": {"scenario": 32},
+            "scenario_success_counts": {"scenario": 0},
+            "lane_invasion_episode_count": 0,
+            "offroad_count": 0,
+            "behavior": {
+                "timeout_rate": 1.0,
+                "agents": {
+                    str(agent_id): {
+                        "active_decision_steps": 100,
+                        "brake_mode_rate": 0.4,
+                        "throttle_mode_rate": 0.5,
+                        "coast_mode_rate": 0.1,
+                        "mean_speed_mps": 1.0,
+                        "mean_progress_m_per_episode": 5.0,
+                    }
+                    for agent_id in (0, 1)
+                },
+            },
+        }
+        health = {
+            "status": "PASS",
+            "updates": [1, 2, 3, 4, 5],
+            "hard_failures": [],
+            "warnings": [],
+        }
+        held = evaluate_milestone_decision(
+            update=5,
+            training_health=health,
+            c0_summary=summary,
+            repeatability_pass=False,
+            contract=self.contract,
+        )
+        self.assertEqual(held["decision"], "HOLD")
+        continued = evaluate_milestone_decision(
+            update=5,
+            training_health=health,
+            c0_summary=summary,
+            repeatability_pass=True,
+            contract=self.contract,
+        )
+        self.assertNotEqual(continued["decision"], "HOLD")
 
 
 class BehavioralHoldV2Tests(unittest.TestCase):

@@ -65,6 +65,7 @@ def validate_scenario_pool(
     scenario_dir: Path,
     xodr_path: Path,
     expected_town: str = "Town02",
+    expected_count: int | None = None,
 ) -> List[str]:
     errors: List[str] = []
     road_map = carla.Map(
@@ -73,11 +74,15 @@ def validate_scenario_pool(
     files = sorted(scenario_dir.glob("*.json"))
     if not files:
         return [f"场景目录没有 JSON: {scenario_dir}"]
+    if expected_count is not None and len(files) != expected_count:
+        errors.append(
+            f"场景数量必须为 {expected_count}，实际为 {len(files)}"
+        )
 
     difficulty_counts: Counter = Counter()
     family_counts: Counter = Counter()
     direction_counts: Counter = Counter()
-    rear_role_counts: Counter = Counter()
+    longitudinal_rear_role_counts: Counter = Counter()
     speed_profile_counts: Counter = Counter()
     schema_versions: Counter = Counter()
     for path in files:
@@ -104,8 +109,10 @@ def validate_scenario_pool(
         family = config.get("family")
         if not isinstance(family, str) or not family.strip():
             errors.append(f"{prefix}: 缺少合法 family")
+            family = ""
         else:
-            family_counts[family.strip()] += 1
+            family = family.strip()
+            family_counts[family] += 1
 
         tags = config.get("tags")
         if not isinstance(tags, list) or not all(
@@ -134,7 +141,11 @@ def validate_scenario_pool(
         goal_wp = road_map.get_waypoint(
             goal, project_to_road=True, lane_type=carla.LaneType.Driving
         )
-        if _planar_distance(goal, goal_wp.transform.location) > 0.25:
+        uses_lane_projected_goals = config.get("goal_mode") == "preserve_start_lane"
+        if (
+            not uses_lane_projected_goals
+            and _planar_distance(goal, goal_wp.transform.location) > 0.25
+        ):
             errors.append(f"{prefix}: goal_zone 未落在车道中心附近")
         if _yaw_error(
             float(goal_config["yaw"]), goal_wp.transform.rotation.yaw
@@ -170,7 +181,11 @@ def validate_scenario_pool(
             to_goal_y = goal.y - location.y
             if to_goal_x * forward.x + to_goal_y * forward.y <= 0.0:
                 errors.append(f"{prefix}/{agent_name}: 终点不在车辆前方")
-            if not _route_reaches_goal(waypoint, goal):
+            if (
+                not uses_lane_projected_goals
+                and family != "required_merge"
+                and not _route_reaches_goal(waypoint, goal)
+            ):
                 errors.append(f"{prefix}/{agent_name}: 沿车道拓扑无法到达终点")
 
             try:
@@ -190,10 +205,27 @@ def validate_scenario_pool(
         separation = _planar_distance(
             start_locations["agent0"], start_locations["agent1"]
         )
-        if separation < 8.0:
-            errors.append(f"{prefix}: 初始中心距 {separation:.2f}m < 8m")
+        same_lane = (
+            road_map.get_waypoint(
+                start_locations["agent0"],
+                project_to_road=True,
+                lane_type=carla.LaneType.Driving,
+            ).lane_id
+            == road_map.get_waypoint(
+                start_locations["agent1"],
+                project_to_road=True,
+                lane_type=carla.LaneType.Driving,
+            ).lane_id
+        )
+        minimum_separation = 8.0 if same_lane else 3.4
+        if separation < minimum_separation:
+            errors.append(
+                f"{prefix}: 初始中心距 {separation:.2f}m < "
+                f"{minimum_separation:.1f}m"
+            )
         rear = max(distances_to_goal, key=distances_to_goal.get)
-        rear_role_counts[rear] += 1
+        if family.startswith("car_following_"):
+            longitudinal_rear_role_counts[rear] += 1
         front = "agent1" if rear == "agent0" else "agent0"
         rear_speed = initial_speeds[rear]
         front_speed = initial_speeds[front]
@@ -219,8 +251,14 @@ def validate_scenario_pool(
 
     if len(difficulty_counts) > 1 and len(set(difficulty_counts.values())) != 1:
         errors.append(f"difficulty 场景数不均衡: {dict(difficulty_counts)}")
-    if rear_role_counts.get("agent0", 0) != rear_role_counts.get("agent1", 0):
-        errors.append(f"前后角色不均衡: {dict(rear_role_counts)}")
+    if (
+        longitudinal_rear_role_counts
+        and longitudinal_rear_role_counts.get("agent0", 0)
+        != longitudinal_rear_role_counts.get("agent1", 0)
+    ):
+        errors.append(
+            f"跟车前后角色不均衡: {dict(longitudinal_rear_role_counts)}"
+        )
     if schema_versions and set(schema_versions) == {3}:
         if len(set(family_counts.values())) != 1:
             errors.append(f"family 场景数不均衡: {dict(family_counts)}")
@@ -231,7 +269,7 @@ def validate_scenario_pool(
         f"场景数={len(files)}, difficulty={dict(sorted(difficulty_counts.items()))}, "
         f"family={dict(sorted(family_counts.items()))}, "
         f"方向={dict(sorted(direction_counts.items()))}, "
-        f"后车角色={dict(sorted(rear_role_counts.items()))}, "
+        f"跟车后车角色={dict(sorted(longitudinal_rear_role_counts.items()))}, "
         f"速度档={dict(sorted(speed_profile_counts.items()))}"
     )
     return errors
@@ -246,6 +284,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=training_root / "data" / "training_scenarios_town02_v2",
     )
+    parser.add_argument("--town", default="Town02")
+    parser.add_argument("--expected-count", type=int, default=None)
     parser.add_argument(
         "--xodr",
         type=Path,
@@ -259,20 +299,66 @@ def build_parser() -> argparse.ArgumentParser:
             / "Town02.xodr"
         ),
     )
+    parser.add_argument(
+        "--require-family",
+        action="append",
+        default=[],
+        help="必须存在且四方向平衡的 family；可重复给出",
+    )
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
     errors = validate_scenario_pool(
-        args.scenario_dir.resolve(), args.xodr.resolve()
+        args.scenario_dir.resolve(),
+        args.xodr.resolve(),
+        expected_town=args.town,
+        expected_count=args.expected_count,
     )
+    if not errors and args.require_family:
+        family_counts: Counter = Counter()
+        family_directions: Dict[str, Counter] = {}
+        for path in args.scenario_dir.resolve().glob("*.json"):
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            family = str(payload.get("family", ""))
+            family_counts[family] += 1
+            direction = next(
+                (
+                    tag
+                    for tag in payload.get("tags", [])
+                    if tag in {
+                        "eastbound",
+                        "westbound",
+                        "northbound",
+                        "southbound",
+                    }
+                ),
+                None,
+            )
+            if direction is not None:
+                family_directions.setdefault(family, Counter())[direction] += 1
+        for family in args.require_family:
+            if family_counts[family] != 4:
+                errors.append(
+                    f"family {family!r} 必须有4个方向场景，实际为 {family_counts[family]}"
+                )
+            elif set(family_directions.get(family, {})) != {
+                "eastbound",
+                "westbound",
+                "northbound",
+                "southbound",
+            }:
+                errors.append(
+                    f"family {family!r} 四方向不完整: "
+                    f"{dict(family_directions.get(family, {}))}"
+                )
     if errors:
         print("校验失败:")
         for error in errors:
             print(f"- {error}")
         return 1
-    print("Town02 场景池校验通过")
+    print(f"{args.town} 场景池校验通过")
     return 0
 
 

@@ -30,11 +30,15 @@ from training.checkpoint_protocol import (
     ACTION_CHECKPOINT_SCHEMA_VERSION,
     ACTION_TRAINING_PROTOCOL_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
+    VALUENORM_CHECKPOINT_SCHEMA_VERSION,
     LEGACY_CHECKPOINT_SCHEMA_VERSION,
     LEGACY_TRAINING_PROTOCOL_VERSION,
     LIFECYCLE_PROTOCOL_VERSION,
+    PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION,
     OBSERVATION_PROTOCOL_VERSION,
+    TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION,
     TRAINING_PROTOCOL_VERSION,
+    VALUENORM_TRAINING_PROTOCOL_VERSION,
     atomic_write_json,
     load_checkpoint_file,
     scenario_pool_fingerprint,
@@ -46,9 +50,14 @@ from training.metrics_protocol import (
     ACTION_RATE_NAMES,
     LEGACY_METRICS_PROTOCOL_VERSION,
     METRICS_PROTOCOL_VERSION,
+    PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
     POLICY_ACTION_RATE_NAMES,
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
+)
+from environment.offroad_protocol import (
+    OFFROAD_PROTOCOL_VERSION,
+    offroad_protocol_spec,
 )
 from training.value_normalization import (
     VALUE_LOSS_PROTOCOL_VERSION,
@@ -61,11 +70,21 @@ ACTION_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v2"
 REWARD_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v3"
 C0_PROTOCOL_VERSION = "p0_base_c0_eval_v4"
 TOWN05_C0_PROTOCOL_VERSION = "p0_base_c0_eval_town05_v1"
+TOWN05_OFFROAD_C0_PROTOCOL_VERSION = "p0_base_c0_eval_town05_v2"
+TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION = (
+    "p0_base_c0_eval_town05_v3"
+)
 LEGACY_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v2"
 ACTION_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v3"
 REWARD_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v4"
 C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v5"
 TOWN05_C0_EPISODE_RECORD_VERSION = "p0_base_c0_town05_episode_v1"
+TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION = (
+    "p0_base_c0_town05_offroad_episode_v2"
+)
+TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION = (
+    "p0_base_c0_town05_offroad_episode_v3"
+)
 C0_SUMMARY_VERSION = "p0_base_c0_summary_v1"
 C0_MANIFEST_VERSION = "p0_base_c0_manifest_v1"
 C0_RESOLVED_CONFIG_VERSION = "p0_base_c0_resolved_v1"
@@ -80,6 +99,52 @@ REPEATABILITY_FIELDS = (
     "agent_0_reached",
     "agent_1_reached",
 )
+OUTCOME_REPEATABILITY_MODE = "outcome_strict_tick_tolerant_v1"
+OUTCOME_REPEATABILITY_HARD_FIELDS = (
+    "case_id",
+    "outcome",
+    "episode_end_reason",
+    "agent_0_reached",
+    "agent_0_collision",
+    "agent_0_offroad_terminated",
+    "agent_0_final_done",
+    "agent_0_final_terminated",
+    "agent_0_final_truncated",
+    "agent_0_first_offroad_evidence_present",
+    "agent_0_lifecycle_transition",
+    "agent_1_reached",
+    "agent_1_collision",
+    "agent_1_offroad_terminated",
+    "agent_1_final_done",
+    "agent_1_final_terminated",
+    "agent_1_final_truncated",
+    "agent_1_first_offroad_evidence_present",
+    "agent_1_lifecycle_transition",
+)
+OUTCOME_REPEATABILITY_TOLERANT_FIELDS = (
+    "episode_length",
+    "agent_0_active_decision_steps",
+    "agent_1_active_decision_steps",
+)
+OUTCOME_REPEATABILITY_TOLERANCES = {
+    "episode_length": 2,
+    "agent_0_active_decision_steps": 2,
+    "agent_1_active_decision_steps": 2,
+}
+OUTCOME_REPEATABILITY_CONTINUOUS_FIELDS = (
+    "agent_0_episode_return",
+    "agent_1_episode_return",
+)
+OUTCOME_REPEATABILITY_CONTINUOUS_PASS_ABS_TOLERANCE = {
+    "agent_0_episode_return": 1e-5,
+    "agent_1_episode_return": 1e-5,
+}
+OUTCOME_REPEATABILITY_CONTINUOUS_HOLD_ABS_TOLERANCE = {
+    "agent_0_episode_return": 0.1,
+    "agent_1_episode_return": 0.1,
+}
+OUTCOME_REPEATABILITY_MAX_WARNING_CASE_FRACTION = 0.5
+OUTCOME_REPEATABILITY_SYSTEMATIC_MIN_CASE_COUNT = 8
 RUN_ID_RE = re.compile(
     r"^P0_BASE_C0_(smoke|gate|validation)_u([0-9]{6})_([0-9]{8}_[0-9]{6})$"
 )
@@ -196,7 +261,7 @@ def _validate_scenario(payload: Any, *, path: Path, expected_town: str) -> None:
         "goal_zone",
         "agents",
     }
-    optional = {"goal_mode"}
+    optional = {"goal_mode", "agent_goal_zones"}
     if not isinstance(payload, Mapping):
         raise C0ProtocolError(f"scenario {path.name} must be a mapping")
     missing = required - set(payload)
@@ -217,6 +282,13 @@ def _validate_scenario(payload: Any, *, path: Path, expected_town: str) -> None:
         raise C0ProtocolError(f"scenario {path.name} must have tags")
     if set(payload["agents"]) != {"agent0", "agent1"}:
         raise C0ProtocolError(f"scenario {path.name} must define agent0 and agent1")
+    if "agent_goal_zones" in payload and set(payload["agent_goal_zones"]) != {
+        "agent0",
+        "agent1",
+    }:
+        raise C0ProtocolError(
+            f"scenario {path.name} agent_goal_zones must define agent0 and agent1"
+        )
     goal_mode = payload.get("goal_mode")
     if goal_mode not in (None, "preserve_start_lane"):
         raise C0ProtocolError(f"scenario {path.name} has unsupported goal_mode")
@@ -255,6 +327,8 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         REWARD_C0_PROTOCOL_VERSION,
         C0_PROTOCOL_VERSION,
         TOWN05_C0_PROTOCOL_VERSION,
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
     }:
         raise C0ProtocolError("C0 protocol version mismatch")
     legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
@@ -268,6 +342,10 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         REWARD_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_REWARD_V3",
         C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN02_CRITIC_V4",
         TOWN05_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN05_V1",
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN05_V2",
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION: (
+            "P0_BASE_C0_TOWN05_V3"
+        ),
     }[protocol_version]
     if payload["contract_id"] != expected_contract_id:
         raise C0ProtocolError("C0 contract_id mismatch")
@@ -275,31 +353,49 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         raise C0ProtocolError("C0 contract must be frozen with the registered prefix")
 
     env = payload["environment"]
+    new_offroad_protocol = protocol_version in {
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+    }
+    environment_fields = {
+        "carla_version",
+        "town",
+        "num_agents",
+        "straight_road_length",
+        "timestep",
+        "max_steps",
+        "reward_version",
+        "reward_gamma",
+        "adversarial_agent_ids",
+        "allow_extra_traffic",
+    }
+    if new_offroad_protocol:
+        environment_fields.update(
+            {"lidar_range_m", "ttc_max_range_m", "offroad_protocol"}
+        )
     _require_exact_fields(
         env,
-        {
-            "carla_version",
-            "town",
-            "num_agents",
-            "straight_road_length",
-            "timestep",
-            "max_steps",
-            "reward_version",
-            "reward_gamma",
-            "adversarial_agent_ids",
-            "allow_extra_traffic",
-        },
+        environment_fields,
         context="environment",
     )
     if (
         env["carla_version"] != "0.9.16"
         or env["town"] not in {"Town02", "Town05"}
         or (
-            protocol_version == TOWN05_C0_PROTOCOL_VERSION
+            protocol_version in {
+                TOWN05_C0_PROTOCOL_VERSION,
+                TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+                TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+            }
             and env["town"] != "Town05"
         )
         or (
-            protocol_version != TOWN05_C0_PROTOCOL_VERSION
+            protocol_version
+            not in {
+                TOWN05_C0_PROTOCOL_VERSION,
+                TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+                TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+            }
             and env["town"] != "Town02"
         )
         or env["num_agents"] != 2
@@ -310,6 +406,12 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         raise C0ProtocolError(
             "C0 environment must match the registered two-agent town without traffic/adversary"
         )
+    if new_offroad_protocol:
+        if env["offroad_protocol"] != offroad_protocol_spec():
+            raise C0ProtocolError("C0 offroad protocol differs from training")
+        for name in ("lidar_range_m", "ttc_max_range_m"):
+            if _finite(env[name], context=f"environment.{name}") <= 0.0:
+                raise C0ProtocolError(f"environment.{name} must be positive")
     _positive_int(env["max_steps"], context="environment.max_steps")
     for name in ("straight_road_length", "timestep", "reward_gamma"):
         if _finite(env[name], context=f"environment.{name}") <= 0:
@@ -326,7 +428,11 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     else:
         expected_action = {
             "mode": "deterministic_actor_mean_tanh",
-            "observation_protocol_version": OBSERVATION_PROTOCOL_VERSION,
+            "observation_protocol_version": (
+                TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
+                if new_offroad_protocol
+                else OBSERVATION_PROTOCOL_VERSION
+            ),
             "action_protocol_version": ACTION_PROTOCOL_VERSION,
             "mapping_version": ACTION_MAPPING_VERSION,
             "policy_action_dim": 2,
@@ -360,9 +466,12 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     elif protocol_version in {ACTION_C0_PROTOCOL_VERSION, REWARD_C0_PROTOCOL_VERSION}:
         expected_checkpoint_schema = ACTION_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = ACTION_TRAINING_PROTOCOL_VERSION
-    else:
+    elif new_offroad_protocol:
         expected_checkpoint_schema = CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = TRAINING_PROTOCOL_VERSION
+    else:
+        expected_checkpoint_schema = VALUENORM_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = VALUENORM_TRAINING_PROTOCOL_VERSION
     expected_action_dim = 3 if legacy else 2
     expected_training_contract_id = {
         LEGACY_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_PILOT_V1",
@@ -370,12 +479,21 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         REWARD_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_REWARD_V3",
         C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN02_CRITIC_V4",
         TOWN05_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN05_V1",
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN05_V2",
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION: (
+            "P0_BASE_MAPPO_TOWN05_V3"
+        ),
     }[protocol_version]
     if (
         checkpoint["schema_version"] != expected_checkpoint_schema
         or checkpoint["training_protocol_version"] != expected_training_protocol
         or checkpoint["allowed_checkpoint_kinds"] != ["periodic"]
-        or checkpoint["allowed_checkpoint_updates"] != [5, 10, 20, 30, 40, 60, 80, 100]
+        or checkpoint["allowed_checkpoint_updates"]
+        != (
+            [5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160]
+            if new_offroad_protocol
+            else [5, 10, 20, 30, 40, 60, 80, 100]
+        )
         or checkpoint["required_agent_ids"] != [0, 1]
         or checkpoint["obs_dim"] != 19
         or checkpoint["action_dim"] != expected_action_dim
@@ -389,7 +507,11 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     profiles = payload["profiles"]
     if set(profiles) != {"smoke", "gate", "validation"}:
         raise C0ProtocolError("profiles must be exactly smoke, gate and validation")
-    expected_counts = {"smoke": (1, 1), "gate": (16, 1), "validation": (8, 3)}
+    expected_counts = {
+        "smoke": (1, 1),
+        "gate": (32 if new_offroad_protocol else 16, 1),
+        "validation": (8, 3),
+    }
     seen_case_ids: set[tuple[str, int]] = set()
     profile_hashes: Dict[str, set[str]] = {}
     for profile_name, profile in profiles.items():
@@ -488,11 +610,81 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
             raise C0ProtocolError(f"outputs.{name} must be a safe relative path")
 
     repeatability = payload["repeatability"]
-    _require_exact_fields(repeatability, {"required_repeats", "discrete_fields"}, context="repeatability")
+    outcome_repeatability = (
+        protocol_version == TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
+    )
+    repeatability_fields = (
+        {
+            "required_repeats",
+            "comparison_mode",
+            "hard_fields",
+            "tolerant_fields",
+            "absolute_tolerance_ticks",
+            "continuous_fields",
+            "continuous_pass_abs_tolerance",
+            "continuous_hold_abs_tolerance",
+            "max_warning_case_fraction",
+            "systematic_drift_min_case_count",
+        }
+        if outcome_repeatability
+        else {"required_repeats", "discrete_fields"}
+    )
+    _require_exact_fields(
+        repeatability,
+        repeatability_fields,
+        context="repeatability",
+    )
     if _positive_int(repeatability["required_repeats"], context="repeatability.required_repeats") < 2:
         raise C0ProtocolError("repeatability requires at least two runs")
-    if repeatability["discrete_fields"] != list(REPEATABILITY_FIELDS):
-        raise C0ProtocolError("repeatability.discrete_fields differ from the frozen signature")
+    if outcome_repeatability:
+        if repeatability["comparison_mode"] != OUTCOME_REPEATABILITY_MODE:
+            raise C0ProtocolError("repeatability.comparison_mode differs")
+        if repeatability["hard_fields"] != list(
+            OUTCOME_REPEATABILITY_HARD_FIELDS
+        ):
+            raise C0ProtocolError("repeatability.hard_fields differ")
+        if repeatability["tolerant_fields"] != list(
+            OUTCOME_REPEATABILITY_TOLERANT_FIELDS
+        ):
+            raise C0ProtocolError("repeatability.tolerant_fields differ")
+        if repeatability["absolute_tolerance_ticks"] != (
+            OUTCOME_REPEATABILITY_TOLERANCES
+        ):
+            raise C0ProtocolError(
+                "repeatability.absolute_tolerance_ticks differ"
+            )
+        if repeatability["continuous_fields"] != list(
+            OUTCOME_REPEATABILITY_CONTINUOUS_FIELDS
+        ):
+            raise C0ProtocolError("repeatability.continuous_fields differ")
+        if repeatability["continuous_pass_abs_tolerance"] != (
+            OUTCOME_REPEATABILITY_CONTINUOUS_PASS_ABS_TOLERANCE
+        ):
+            raise C0ProtocolError(
+                "repeatability.continuous_pass_abs_tolerance differ"
+            )
+        if repeatability["continuous_hold_abs_tolerance"] != (
+            OUTCOME_REPEATABILITY_CONTINUOUS_HOLD_ABS_TOLERANCE
+        ):
+            raise C0ProtocolError(
+                "repeatability.continuous_hold_abs_tolerance differ"
+            )
+        if repeatability["max_warning_case_fraction"] != (
+            OUTCOME_REPEATABILITY_MAX_WARNING_CASE_FRACTION
+        ):
+            raise C0ProtocolError(
+                "repeatability.max_warning_case_fraction differ"
+            )
+        if repeatability["systematic_drift_min_case_count"] != (
+            OUTCOME_REPEATABILITY_SYSTEMATIC_MIN_CASE_COUNT
+        ):
+            raise C0ProtocolError(
+                "repeatability.systematic_drift_min_case_count differ"
+            )
+    elif repeatability["discrete_fields"] != list(REPEATABILITY_FIELDS):
+        raise C0ProtocolError(
+            "repeatability.discrete_fields differ from the frozen signature"
+        )
 
     critical = payload["critical_source_paths"]
     if not isinstance(critical, list) or not critical or len(critical) != len(set(critical)):
@@ -578,10 +770,11 @@ def load_and_validate_c0_checkpoint(
     checkpoint, digest = load_checkpoint_file(path, map_location=map_location)
     protocol_version = contract["protocol_version"]
     legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
-    historical = protocol_version not in {
-        C0_PROTOCOL_VERSION,
-        TOWN05_C0_PROTOCOL_VERSION,
+    new_offroad_protocol = protocol_version in {
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
     }
+    historical = not new_offroad_protocol
     validate_checkpoint_header(checkpoint, allow_legacy=historical)
     policy = contract["checkpoint"]
     mismatches: list[str] = []
@@ -590,25 +783,45 @@ def load_and_validate_c0_checkpoint(
     if checkpoint.get("training_protocol_version") != policy["training_protocol_version"]:
         mismatches.append("training protocol")
     expected_protocols = {
-        "observation": OBSERVATION_PROTOCOL_VERSION,
+        "observation": (
+            TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
+            if new_offroad_protocol
+            else OBSERVATION_PROTOCOL_VERSION
+        ),
         "action": (
             LEGACY_ACTION_PROTOCOL_VERSION
             if legacy
             else ACTION_PROTOCOL_VERSION
         ),
-        "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
+        "lifecycle": (
+            LIFECYCLE_PROTOCOL_VERSION
+            if new_offroad_protocol
+            else PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION
+        ),
         "reward": contract["environment"]["reward_version"],
         "metrics": (
             LEGACY_METRICS_PROTOCOL_VERSION
             if legacy
             else (
-                ACTION_METRICS_PROTOCOL_VERSION
-                if historical
-                else METRICS_PROTOCOL_VERSION
+                METRICS_PROTOCOL_VERSION
+                if new_offroad_protocol
+                else (
+                    PRE_OFFROAD_METRICS_PROTOCOL_VERSION
+                    if protocol_version
+                    in {C0_PROTOCOL_VERSION, TOWN05_C0_PROTOCOL_VERSION}
+                    else ACTION_METRICS_PROTOCOL_VERSION
+                )
             )
         ),
     }
-    if not historical:
+    if new_offroad_protocol:
+        expected_protocols["offroad"] = OFFROAD_PROTOCOL_VERSION
+    if protocol_version in {
+        C0_PROTOCOL_VERSION,
+        TOWN05_C0_PROTOCOL_VERSION,
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+    }:
         expected_protocols.update(
             {
                 "value_normalization": VALUE_NORMALIZATION_PROTOCOL_VERSION,
@@ -632,7 +845,11 @@ def load_and_validate_c0_checkpoint(
         expected_model["critic_output_semantics"] = "normalized_value"
     if not isinstance(model_spec, Mapping) or any(model_spec.get(key) != value for key, value in expected_model.items()):
         mismatches.append("model_spec")
-    if protocol_version == TOWN05_C0_PROTOCOL_VERSION:
+    if protocol_version in {
+        TOWN05_C0_PROTOCOL_VERSION,
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+    }:
         expected_gamma = float(contract["environment"]["reward_gamma"])
         training_config = checkpoint.get("training_config", {})
         metadata = checkpoint.get("run_metadata", {})
@@ -647,6 +864,10 @@ def load_and_validate_c0_checkpoint(
             or runtime.get("environment_reward_gamma") != expected_gamma
         ):
             mismatches.append("run_metadata.runtime.environment_reward_gamma")
+        if new_offroad_protocol and runtime.get(
+            "offroad_protocol"
+        ) != offroad_protocol_spec():
+            mismatches.append("run_metadata.runtime.offroad_protocol")
     actors = checkpoint.get("actors")
     if not isinstance(actors, Mapping) or {int(key) for key in actors} != set(policy["required_agent_ids"]):
         mismatches.append("actors")
@@ -803,6 +1024,8 @@ def validate_episode_record(
         REWARD_C0_EPISODE_RECORD_VERSION,
         C0_EPISODE_RECORD_VERSION,
         TOWN05_C0_EPISODE_RECORD_VERSION,
+        TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
     }:
         raise C0ProtocolError("episode record version mismatch")
     current_action = record_version != LEGACY_C0_EPISODE_RECORD_VERSION
@@ -812,6 +1035,8 @@ def validate_episode_record(
             REWARD_C0_EPISODE_RECORD_VERSION,
             C0_EPISODE_RECORD_VERSION,
             TOWN05_C0_EPISODE_RECORD_VERSION,
+            TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+            TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
         }
         else "v2"
     )
@@ -855,6 +1080,21 @@ def validate_episode_record(
         "diagnostics",
         "actions",
     }
+    offroad_record = record_version in {
+        TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+    }
+    if offroad_record:
+        expected_agent_fields.update(
+            {
+                "offroad_terminated",
+                "first_offroad_evidence",
+                "max_offroad_consecutive_ticks",
+                "max_footprint_outside_fraction",
+            }
+        )
+    if record_version == TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION:
+        expected_agent_fields.add("lifecycle_transition")
     returns = []
     active_total = 0
     for agent_id in ("0", "1"):
@@ -869,6 +1109,25 @@ def validate_episode_record(
             raise C0ProtocolError(f"agent {agent_id} final done semantics are invalid")
         if agent["final_terminated"] and agent["final_truncated"]:
             raise C0ProtocolError(f"agent {agent_id} cannot terminate and truncate")
+        if record_version == TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION:
+            transition = agent["lifecycle_transition"]
+            if (
+                not isinstance(transition, Mapping)
+                or set(transition)
+                != {"pre_active", "post_active", "done", "terminated", "truncated"}
+                or not all(isinstance(value, bool) for value in transition.values())
+                or transition
+                != {
+                    "pre_active": True,
+                    "post_active": False,
+                    "done": agent["final_done"],
+                    "terminated": agent["final_terminated"],
+                    "truncated": agent["final_truncated"],
+                }
+            ):
+                raise C0ProtocolError(
+                    f"agent {agent_id} lifecycle transition evidence is invalid"
+                )
         episode_return = _finite(agent["episode_return"], context=f"agent {agent_id}.episode_return")
         residual = _finite(agent["reward_residual_max_abs"], context=f"agent {agent_id}.reward_residual")
         if residual > 1e-5:
@@ -1017,6 +1276,44 @@ def validate_episode_record(
         returns.append(episode_return)
         active_total += active_steps
 
+        if offroad_record:
+            if not isinstance(agent["offroad_terminated"], bool):
+                raise C0ProtocolError("offroad_terminated must be boolean")
+            if agent["offroad_terminated"] and not agent["final_terminated"]:
+                raise C0ProtocolError(
+                    "offroad termination requires final_terminated=True"
+                )
+            if (
+                isinstance(agent["max_offroad_consecutive_ticks"], bool)
+                or not isinstance(agent["max_offroad_consecutive_ticks"], int)
+                or agent["max_offroad_consecutive_ticks"] < 0
+            ):
+                raise C0ProtocolError(
+                    "max_offroad_consecutive_ticks must be non-negative integer"
+                )
+            outside_fraction = _finite(
+                agent["max_footprint_outside_fraction"],
+                context="max_footprint_outside_fraction",
+            )
+            if not 0.0 <= outside_fraction <= 1.0:
+                raise C0ProtocolError(
+                    "max_footprint_outside_fraction must be in [0,1]"
+                )
+            first_evidence = agent["first_offroad_evidence"]
+            if first_evidence is not None:
+                _require_exact_fields(
+                    first_evidence,
+                    {
+                        "episode_step",
+                        "world_frame",
+                        "location",
+                        "yaw",
+                        "footprint_outside_count",
+                        "footprint_outside_fraction",
+                    },
+                    context="first_offroad_evidence",
+                )
+
     team = record["team"]
     _require_exact_fields(team, {"mean_episode_return", "total_active_decision_steps"}, context="team")
     if not math.isclose(_finite(team["mean_episode_return"], context="team.mean_return"), sum(returns) / 2.0, rel_tol=0.0, abs_tol=1e-9):
@@ -1030,12 +1327,22 @@ def validate_episode_record(
         raise C0ProtocolError("collision outcome requires at least one per-agent collision")
     if record["outcome"] != "collision" and any(collision_flags):
         raise C0ProtocolError("per-agent collision cannot appear under a non-collision outcome")
+    if offroad_record:
+        offroad_flags = [agent["offroad_terminated"] for agent in agents.values()]
+        end_is_offroad = record["episode_end_reason"] in {
+            "cooperative_offroad",
+            "adversary_offroad",
+        }
+        if end_is_offroad != any(offroad_flags):
+            raise C0ProtocolError(
+                "offroad end reason must match per-agent offroad termination"
+            )
 
 
 def _aggregate_group(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     count = len(records)
     outcome_counts = Counter(record["outcome"] for record in records)
-    return {
+    result = {
         "case_count": count,
         "outcome_counts": {name: outcome_counts.get(name, 0) for name in OUTCOMES},
         "outcome_rates": {
@@ -1052,6 +1359,19 @@ def _aggregate_group(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
             else None
         ),
     }
+    if records and records[0].get("record_version") in {
+        TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+    }:
+        result["offroad_count"] = sum(
+            any(
+                record["agents"][agent_id]["offroad_terminated"]
+                for agent_id in ("0", "1")
+            )
+            for record in records
+        )
+        result["offroad_rate"] = result["offroad_count"] / count if count else 0.0
+    return result
 
 
 def build_summary(
@@ -1082,6 +1402,12 @@ def build_summary(
     elif record_version == TOWN05_C0_EPISODE_RECORD_VERSION:
         eval_protocol_version = TOWN05_C0_PROTOCOL_VERSION
         reward_version = "v3"
+    elif record_version == TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = TOWN05_OFFROAD_C0_PROTOCOL_VERSION
+        reward_version = "v3"
+    elif record_version == TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
+        reward_version = "v3"
     else:
         raise C0ProtocolError("cannot summarize an unknown C0 episode version")
     overall = _aggregate_group(records)
@@ -1106,6 +1432,14 @@ def build_summary(
                 for component in REWARD_COMPONENTS[reward_version]
             },
         }
+        if record_version in {
+            TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+            TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+        }:
+            agents[agent_id]["offroad_episode_count"] = sum(
+                bool(record["agents"][agent_id]["offroad_terminated"])
+                for record in records
+            )
     return {
         "summary_version": C0_SUMMARY_VERSION,
         "eval_protocol_version": eval_protocol_version,
@@ -1198,26 +1532,94 @@ def repeatability_signature(record: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
+def outcome_repeatability_signature(record: Mapping[str, Any]) -> Dict[str, Any]:
+    """Return safety/lifecycle identity plus registered tolerant diagnostics."""
+    signature: Dict[str, Any] = {
+        "case_id": record["case_id"],
+        "outcome": record["outcome"],
+        "episode_end_reason": record["episode_end_reason"],
+        "episode_length": record["episode_length"],
+    }
+    for agent_id in ("0", "1"):
+        agent = record["agents"][agent_id]
+        prefix = f"agent_{agent_id}"
+        signature.update(
+            {
+                f"{prefix}_reached": agent["reached_target"],
+                f"{prefix}_collision": agent["collision"],
+                f"{prefix}_offroad_terminated": agent[
+                    "offroad_terminated"
+                ],
+                f"{prefix}_final_done": agent["final_done"],
+                f"{prefix}_final_terminated": agent["final_terminated"],
+                f"{prefix}_final_truncated": agent["final_truncated"],
+                f"{prefix}_first_offroad_evidence_present": (
+                    agent["first_offroad_evidence"] is not None
+                ),
+                f"{prefix}_lifecycle_transition": agent[
+                    "lifecycle_transition"
+                ],
+                f"{prefix}_active_decision_steps": agent[
+                    "active_decision_steps"
+                ],
+                f"{prefix}_episode_return": agent["episode_return"],
+            }
+        )
+    return signature
+
+
 def compare_repeatability_records(
     left: Sequence[Mapping[str, Any]],
     right: Sequence[Mapping[str, Any]],
     *,
     contract: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    configured_fields = contract["repeatability"]["discrete_fields"]
-    if configured_fields != list(REPEATABILITY_FIELDS):
-        raise C0ProtocolError("repeatability fields differ from the implemented discrete signature")
+    repeatability = contract["repeatability"]
+    outcome_mode = (
+        contract["protocol_version"]
+        == TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
+    )
+    if outcome_mode:
+        if repeatability["comparison_mode"] != OUTCOME_REPEATABILITY_MODE:
+            raise C0ProtocolError("repeatability comparison mode differs")
+        hard_fields = repeatability["hard_fields"]
+        tolerant_fields = repeatability["tolerant_fields"]
+        tick_tolerances = repeatability["absolute_tolerance_ticks"]
+        continuous_fields = repeatability["continuous_fields"]
+        continuous_pass = repeatability["continuous_pass_abs_tolerance"]
+        continuous_hold = repeatability["continuous_hold_abs_tolerance"]
+        max_warning_case_fraction = float(
+            repeatability["max_warning_case_fraction"]
+        )
+        systematic_min_case_count = int(
+            repeatability["systematic_drift_min_case_count"]
+        )
+    else:
+        configured_fields = repeatability["discrete_fields"]
+        if configured_fields != list(REPEATABILITY_FIELDS):
+            raise C0ProtocolError(
+                "repeatability fields differ from the implemented discrete signature"
+            )
     if len(left) != len(right):
         raise C0ProtocolError("repeatability runs have different case counts")
     mismatches = []
+    warnings = []
     for index, (left_record, right_record) in enumerate(zip(left, right)):
         if left_record.get("checkpoint_sha256") != right_record.get("checkpoint_sha256"):
             raise C0ProtocolError("repeatability runs use different checkpoints")
         if left_record.get("profile") != right_record.get("profile"):
             raise C0ProtocolError("repeatability runs use different profiles")
-        left_signature = repeatability_signature(left_record)
-        right_signature = repeatability_signature(right_record)
-        if left_signature != right_signature:
+        left_signature = (
+            outcome_repeatability_signature(left_record)
+            if outcome_mode
+            else repeatability_signature(left_record)
+        )
+        right_signature = (
+            outcome_repeatability_signature(right_record)
+            if outcome_mode
+            else repeatability_signature(right_record)
+        )
+        if not outcome_mode and left_signature != right_signature:
             mismatches.append(
                 {
                     "case_ordinal": index + 1,
@@ -1226,11 +1628,118 @@ def compare_repeatability_records(
                     "right": right_signature,
                 }
             )
+        elif outcome_mode:
+            hard_differences = {
+                field: {
+                    "left": left_signature[field],
+                    "right": right_signature[field],
+                }
+                for field in hard_fields
+                if left_signature[field] != right_signature[field]
+            }
+            tolerance_excesses = {}
+            tolerance_warnings = {}
+            for field in tolerant_fields:
+                delta = abs(
+                    int(left_signature[field])
+                    - int(right_signature[field])
+                )
+                tolerance = int(tick_tolerances[field])
+                if delta > tolerance:
+                    tolerance_excesses[field] = {
+                        "left": left_signature[field],
+                        "right": right_signature[field],
+                        "absolute_delta": delta,
+                        "allowed": tolerance,
+                    }
+                elif delta > 0:
+                    tolerance_warnings[field] = {
+                        "left": left_signature[field],
+                        "right": right_signature[field],
+                        "absolute_delta": delta,
+                        "allowed": tolerance,
+                    }
+            continuous_excesses = {}
+            continuous_warnings = {}
+            for field in continuous_fields:
+                delta = abs(
+                    float(left_signature[field])
+                    - float(right_signature[field])
+                )
+                if delta > float(continuous_hold[field]):
+                    continuous_excesses[field] = {
+                        "left": left_signature[field],
+                        "right": right_signature[field],
+                        "absolute_delta": delta,
+                        "hold_above": continuous_hold[field],
+                    }
+                elif delta > float(continuous_pass[field]):
+                    continuous_warnings[field] = {
+                        "left": left_signature[field],
+                        "right": right_signature[field],
+                        "absolute_delta": delta,
+                        "pass_at_or_below": continuous_pass[field],
+                        "hold_above": continuous_hold[field],
+                    }
+            evidence = {
+                "case_ordinal": index + 1,
+                "case_id": left_record.get("case_id", ""),
+            }
+            if hard_differences or tolerance_excesses or continuous_excesses:
+                mismatches.append(
+                    {
+                        **evidence,
+                        "hard_differences": hard_differences,
+                        "tolerance_excesses": tolerance_excesses,
+                        "continuous_excesses": continuous_excesses,
+                    }
+                )
+            elif tolerance_warnings or continuous_warnings:
+                warnings.append(
+                    {
+                        **evidence,
+                        "tolerated_tick_differences": tolerance_warnings,
+                        "continuous_differences": continuous_warnings,
+                    }
+                )
+    if outcome_mode and left:
+        warning_case_fraction = len(warnings) / len(left)
+        if (
+            len(left) >= systematic_min_case_count
+            and warning_case_fraction > max_warning_case_fraction
+        ):
+            mismatches.append(
+                {
+                    "scope": "run",
+                    "reason": "systematic_tolerated_drift",
+                    "warning_case_count": len(warnings),
+                    "case_count": len(left),
+                    "warning_case_fraction": warning_case_fraction,
+                    "hold_above": max_warning_case_fraction,
+                }
+            )
+    else:
+        warning_case_fraction = 0.0
+    status = "HOLD" if mismatches else ("WARNING" if warnings else "PASS")
     return {
-        "status": "PASS" if not mismatches else "HOLD",
+        "status": status,
+        "gate_pass": not mismatches,
         "case_count": len(left),
-        "discrete_fields": configured_fields,
+        **(
+            {
+                "comparison_mode": OUTCOME_REPEATABILITY_MODE,
+                "hard_fields": hard_fields,
+                "tolerant_fields": tolerant_fields,
+                "continuous_fields": continuous_fields,
+                "warning_case_fraction": warning_case_fraction,
+                "max_warning_case_fraction": max_warning_case_fraction,
+                "systematic_drift_min_case_count": systematic_min_case_count,
+            }
+            if outcome_mode
+            else {"discrete_fields": configured_fields}
+        ),
         "mismatches": mismatches,
+        "warnings": warnings,
     }
 
 

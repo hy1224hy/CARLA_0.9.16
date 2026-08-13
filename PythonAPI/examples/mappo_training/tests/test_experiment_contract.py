@@ -26,6 +26,7 @@ from training.experiment_contract import (
 from training.train_no_rllib_mappo_robust_v2 import (
     build_parser,
     build_training_environment_kwargs,
+    observation_protocol_version,
     validate_environment_reward_discount,
 )
 
@@ -45,6 +46,12 @@ R3_CONTRACT_PATH = (
 )
 TOWN05_CONTRACT_PATH = (
     PROJECT_DIR / "configs" / "base_mappo" / "p0_base_town05_v1.json"
+)
+TOWN05_V2_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "base_mappo" / "p0_base_town05_v2.json"
+)
+TOWN05_V3_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "base_mappo" / "p0_base_town05_v3.json"
 )
 
 
@@ -156,6 +163,45 @@ class ExperimentContractValidationTests(unittest.TestCase):
         payload["silent_override"] = True
         with self.assertRaisesRegex(ExperimentContractError, "unknown"):
             validate_experiment_contract(payload, project_dir=PROJECT_DIR)
+
+    def test_town05_v2_registers_comprehensive_curriculum_and_perception(self):
+        record = load_experiment_contract(
+            TOWN05_V2_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )
+        payload = record["payload"]
+        self.assertEqual(
+            payload["contract_id"],
+            "P0_BASE_MAPPO_TOWN05_V2",
+        )
+        self.assertEqual(payload["planned_total_updates"], 160)
+        self.assertEqual(
+            payload["trainer_args"]["scenario_dir"],
+            "data/training_scenarios_town05_v2",
+        )
+        self.assertEqual(payload["trainer_args"]["lidar_range_m"], 20.0)
+        self.assertEqual(payload["trainer_args"]["ttc_max_range_m"], 20.0)
+        self.assertEqual(
+            observation_protocol_version(20.0),
+            "carla_obs_19_lidar20m_v2",
+        )
+
+    def test_town05_v3_preserves_science_and_binds_new_c0_identity(self):
+        v2 = load_experiment_contract(
+            TOWN05_V2_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )["payload"]
+        v3 = load_experiment_contract(
+            TOWN05_V3_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )["payload"]
+        self.assertEqual(v3["contract_id"], "P0_BASE_MAPPO_TOWN05_V3")
+        self.assertEqual(v3["trainer_args"], v2["trainer_args"])
+        self.assertEqual(v3["offroad_protocol"], v2["offroad_protocol"])
+        self.assertEqual(
+            v3["evaluation_contract"]["protocol_version"],
+            "p0_base_c0_eval_town05_v3",
+        )
 
     def test_fragmented_minibatch_is_rejected(self):
         payload = copy.deepcopy(self.payload)

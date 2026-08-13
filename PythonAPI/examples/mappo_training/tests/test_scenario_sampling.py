@@ -184,6 +184,28 @@ class MetadataCurriculumTests(unittest.TestCase):
         self.assertEqual(curriculum.get_scenario_sample_count(scenario), 20)
         self.assertEqual(curriculum.get_scenario_total_sample_count(scenario), 25)
 
+    def test_town05_v2_curriculum_has_four_cumulative_balanced_stages(self):
+        project_dir = Path(__file__).resolve().parents[1]
+        curriculum = CurriculumLearning(
+            str(project_dir / "data" / "training_scenarios_town05_v2"),
+            mode="metadata",
+            warmup_updates=20,
+            full_scenario_updates=80,
+            transition_window=10,
+        )
+        self.assertEqual(
+            [len(stage) for stage in curriculum.curriculum_stages],
+            [8, 16, 24, 32],
+        )
+        self.assertEqual(len(curriculum.get_available_scenarios(19)), 8)
+        self.assertEqual(len(curriculum.get_available_scenarios(20)), 16)
+        self.assertEqual(len(curriculum.get_available_scenarios(50)), 24)
+        self.assertEqual(len(curriculum.get_available_scenarios(80)), 32)
+        groups = curriculum.get_scenario_coverage_groups(
+            curriculum.curriculum_stages[-1]
+        )
+        self.assertEqual(len(set(groups.values())), 8)
+
 
 if __name__ == "__main__":
     unittest.main()

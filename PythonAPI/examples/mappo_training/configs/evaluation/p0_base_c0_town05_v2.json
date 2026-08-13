@@ -1,0 +1,163 @@
+{
+  "protocol_version": "p0_base_c0_eval_town05_v2",
+  "contract_id": "P0_BASE_C0_TOWN05_V2",
+  "status": "frozen",
+  "purpose": "Deterministic two-agent Town05 evaluation for the comprehensive 32-scenario base-policy curriculum with exact Driving-footprint offroad termination and evidence.",
+  "environment": {
+    "carla_version": "0.9.16",
+    "town": "Town05",
+    "num_agents": 2,
+    "straight_road_length": 50.0,
+    "timestep": 0.1,
+    "max_steps": 500,
+    "reward_version": "v3",
+    "reward_gamma": 0.997,
+    "adversarial_agent_ids": [],
+    "allow_extra_traffic": false,
+    "lidar_range_m": 20.0,
+    "ttc_max_range_m": 20.0,
+    "offroad_protocol": {
+      "protocol_version": "driving_footprint_offroad_v1",
+      "footprint_inset_fraction": 0.9,
+      "sample_count": 9,
+      "boundary_sample_count": 8,
+      "outside_count_threshold": 3,
+      "persistence_ticks": 3,
+      "terminal_penalty": -20.0,
+      "raw_rule": "center_not_driving_or_boundary_outside_count_gte_threshold",
+      "membership_rule": "exact_OpenDRIVE_Driving_union_no_projection"
+    }
+  },
+  "action": {
+    "mode": "deterministic_actor_mean_tanh",
+    "observation_protocol_version": "carla_obs_19_lidar20m_v2",
+    "action_protocol_version": "tanh_gaussian_signed_longitudinal_2d_pre_tanh_z_v2",
+    "mapping_version": "signed_longitudinal_deadzone_v2",
+    "policy_action_dim": 2,
+    "environment_action_dim": 3,
+    "longitudinal_deadzone": 0.05
+  },
+  "checkpoint": {
+    "schema_version": 5,
+    "training_protocol_version": "mappo_robust_v2_offroad_p0_00g_v5",
+    "required_training_contract_id": "P0_BASE_MAPPO_TOWN05_V2",
+    "required_training_contract_sha256": "f7fe84d603fb68125c44ec0b7ce24d95c54984f982dce84f8d481961f4e04885",
+    "allowed_checkpoint_kinds": ["periodic"],
+    "allowed_checkpoint_updates": [5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160],
+    "required_agent_ids": [0, 1],
+    "obs_dim": 19,
+    "action_dim": 2,
+    "hidden_dim": 128
+  },
+  "profiles": {
+    "smoke": {
+      "purpose": "Protocol-only Town05 real-CARLA smoke; never used for model selection.",
+      "scenario_dir": "data/evaluation_scenarios/town05_c0_validation_v1",
+      "scenario_pool_sha256": "4c109b0cd0fd7e0d838558a35366aedd0f74214b80cd15da8fdabcf9c9cce33e",
+      "scenario_names": ["t05v_01_north_parallel_stationary_a1_left.json"],
+      "episode_seeds": [61001],
+      "formal_use": "diagnostic_only"
+    },
+    "gate": {
+      "purpose": "In-distribution health, capability and offroad-safety gate over every comprehensive Town05 training scenario.",
+      "scenario_dir": "data/training_scenarios_town05_v2",
+      "scenario_pool_sha256": "fd7ea9605b60a7f22fa40e4491399cd76700cc04334c7054eccbdc69983e82ae",
+      "scenario_names": [
+        "scenario_01_north_parallel_stationary_a0_left.json",
+        "scenario_02_south_parallel_stationary_a1_left.json",
+        "scenario_03_east_parallel_stationary_a1_left.json",
+        "scenario_04_west_parallel_stationary_a0_left.json",
+        "scenario_05_north_parallel_rolling_a1_left.json",
+        "scenario_06_south_parallel_rolling_a0_left.json",
+        "scenario_07_east_parallel_rolling_a0_left.json",
+        "scenario_08_west_parallel_rolling_a1_left.json",
+        "scenario_09_north_stagger_closing_a0_rear.json",
+        "scenario_10_south_stagger_closing_a1_rear.json",
+        "scenario_11_east_stagger_closing_a1_rear.json",
+        "scenario_12_west_stagger_closing_a0_rear.json",
+        "scenario_13_north_required_merge_a0_merge.json",
+        "scenario_14_south_required_merge_a1_merge.json",
+        "scenario_15_east_required_merge_a1_merge.json",
+        "scenario_16_west_required_merge_a0_merge.json",
+        "scenario_17_northbound_free_flow.json",
+        "scenario_18_southbound_free_flow.json",
+        "scenario_19_eastbound_free_flow.json",
+        "scenario_20_westbound_free_flow.json",
+        "scenario_21_northbound_car_following_steady_agent0_rear.json",
+        "scenario_22_southbound_car_following_steady_agent1_rear.json",
+        "scenario_23_eastbound_car_following_steady_agent0_rear.json",
+        "scenario_24_westbound_car_following_steady_agent1_rear.json",
+        "scenario_25_northbound_car_following_closing_agent0_rear.json",
+        "scenario_26_southbound_car_following_closing_agent1_rear.json",
+        "scenario_27_eastbound_car_following_closing_agent0_rear.json",
+        "scenario_28_westbound_car_following_closing_agent1_rear.json",
+        "scenario_29_northbound_car_following_near_gap_agent0_rear.json",
+        "scenario_30_southbound_car_following_near_gap_agent1_rear.json",
+        "scenario_31_eastbound_car_following_near_gap_agent0_rear.json",
+        "scenario_32_westbound_car_following_near_gap_agent1_rear.json"
+      ],
+      "episode_seeds": [42001],
+      "formal_use": "milestone_health_gate"
+    },
+    "validation": {
+      "purpose": "Held-out Roads 43 and 6 checkpoint-selection validation; never sampled by training.",
+      "scenario_dir": "data/evaluation_scenarios/town05_c0_validation_v1",
+      "scenario_pool_sha256": "4c109b0cd0fd7e0d838558a35366aedd0f74214b80cd15da8fdabcf9c9cce33e",
+      "scenario_names": [
+        "t05v_01_north_parallel_stationary_a1_left.json",
+        "t05v_02_west_parallel_stationary_a0_left.json",
+        "t05v_03_south_parallel_rolling_a0_left.json",
+        "t05v_04_east_parallel_rolling_a1_left.json",
+        "t05v_05_north_stagger_closing_a1_rear.json",
+        "t05v_06_west_stagger_closing_a0_rear.json",
+        "t05v_07_south_required_merge_a0_merge.json",
+        "t05v_08_east_required_merge_a1_merge.json"
+      ],
+      "episode_seeds": [51001, 51002, 51003],
+      "formal_use": "checkpoint_selection_validation"
+    }
+  },
+  "outcomes": {
+    "success_reasons": ["cooperative_success", "all_agents_reached"],
+    "collision_reasons": ["cooperative_collision", "adversary_collision"],
+    "timeout_reasons": ["max_steps"],
+    "other_reasons": ["cooperative_offroad", "adversary_offroad", "all_agents_terminated"],
+    "require_mutual_exclusivity": true,
+    "allow_other_for_go": false
+  },
+  "outputs": {
+    "evaluation_root": "evaluations",
+    "manifest": "evaluation_manifest.json",
+    "resolved_config": "resolved_eval_config.json",
+    "episodes_jsonl": "episodes.jsonl",
+    "summary_json": "summary.json",
+    "summary_csv": "summary.csv",
+    "validator_report": "validator_report.json"
+  },
+  "repeatability": {
+    "required_repeats": 2,
+    "discrete_fields": ["case_id", "outcome", "episode_end_reason", "episode_length", "agent_0_reached", "agent_1_reached"]
+  },
+  "run_id_prefix": "P0_BASE_C0_",
+  "critical_source_paths": [
+    "evaluation/base_c0_protocol.py",
+    "evaluation/evaluate_base_policy_c0.py",
+    "evaluation/validate_base_c0_run.py",
+    "training/train_no_rllib_mappo_robust_v2.py",
+    "training/action_protocol.py",
+    "training/checkpoint_protocol.py",
+    "training/experiment_contract.py",
+    "training/lifecycle_semantics.py",
+    "training/metrics_protocol.py",
+    "training/value_normalization.py",
+    "utils/training_metrics_recorder.py",
+    "models/actor_critic.py",
+    "environment/base_reward_v3.py",
+    "environment/offroad_protocol.py",
+    "environment/carla_multi_agent_env.py",
+    "configs/evaluation/p0_base_c0_town05_v2.json",
+    "configs/base_mappo/p0_base_town05_v2.json",
+    "data/training_scenarios_town05_v2",
+    "data/evaluation_scenarios/town05_c0_validation_v1"
+  ]
+}

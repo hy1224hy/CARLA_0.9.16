@@ -9,6 +9,10 @@ from models.actor_critic import Actor
 from evaluation.base_c0_protocol import (
     C0_PROTOCOL_VERSION,
     TOWN05_C0_PROTOCOL_VERSION,
+    TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+    TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+    TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+    TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
     C0_EPISODE_RECORD_VERSION,
     C0_MANIFEST_VERSION,
     C0_RESOLVED_CONFIG_VERSION,
@@ -33,8 +37,12 @@ from training.checkpoint_protocol import (
     ACTION_PROTOCOL_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
     LIFECYCLE_PROTOCOL_VERSION,
+    PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION,
     OBSERVATION_PROTOCOL_VERSION,
+    TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION,
     TRAINING_PROTOCOL_VERSION,
+    VALUENORM_CHECKPOINT_SCHEMA_VERSION,
+    VALUENORM_TRAINING_PROTOCOL_VERSION,
     atomic_write_json,
     capture_rng_state,
     save_checkpoint_file,
@@ -44,6 +52,7 @@ from training.metrics_protocol import (
     ACTION_METRICS_PROTOCOL_VERSION,
     ACTION_RATE_NAMES,
     METRICS_PROTOCOL_VERSION,
+    PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
     POLICY_ACTION_RATE_NAMES,
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
@@ -58,6 +67,10 @@ from training.value_normalization import (
     VALUE_NORMALIZATION_PROTOCOL_VERSION,
     ValueNormalizer,
 )
+from environment.offroad_protocol import (
+    OFFROAD_PROTOCOL_VERSION,
+    offroad_protocol_spec,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -68,6 +81,12 @@ R1_CONTRACT_PATH = (
 TOWN05_CONTRACT_PATH = (
     PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_v1.json"
 )
+TOWN05_OFFROAD_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_v2.json"
+)
+TOWN05_OUTCOME_REPEATABILITY_CONTRACT_PATH = (
+    PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_v3.json"
+)
 
 
 def _checkpoint_payload(contract, *, formal=True):
@@ -75,22 +94,60 @@ def _checkpoint_payload(contract, *, formal=True):
     current = contract["protocol_version"] in {
         C0_PROTOCOL_VERSION,
         TOWN05_C0_PROTOCOL_VERSION,
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
     }
-    town05 = contract["protocol_version"] == TOWN05_C0_PROTOCOL_VERSION
+    offroad_current = (
+        contract["protocol_version"] in {
+            TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+            TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+        }
+    )
+    town05 = contract["protocol_version"] in {
+        TOWN05_C0_PROTOCOL_VERSION,
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+    }
     metrics_protocol = (
-        METRICS_PROTOCOL_VERSION if current else ACTION_METRICS_PROTOCOL_VERSION
+        METRICS_PROTOCOL_VERSION
+        if offroad_current
+        else (
+            PRE_OFFROAD_METRICS_PROTOCOL_VERSION
+            if current
+            else ACTION_METRICS_PROTOCOL_VERSION
+        )
     )
     payload = {
         "checkpoint_schema_version": (
-            CHECKPOINT_SCHEMA_VERSION if current else ACTION_CHECKPOINT_SCHEMA_VERSION
+            CHECKPOINT_SCHEMA_VERSION
+            if offroad_current
+            else (
+                VALUENORM_CHECKPOINT_SCHEMA_VERSION
+                if current
+                else ACTION_CHECKPOINT_SCHEMA_VERSION
+            )
         ),
         "training_protocol_version": (
-            TRAINING_PROTOCOL_VERSION if current else ACTION_TRAINING_PROTOCOL_VERSION
+            TRAINING_PROTOCOL_VERSION
+            if offroad_current
+            else (
+                VALUENORM_TRAINING_PROTOCOL_VERSION
+                if current
+                else ACTION_TRAINING_PROTOCOL_VERSION
+            )
         ),
         "protocol_versions": {
-            "observation": OBSERVATION_PROTOCOL_VERSION,
+            "observation": (
+                TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
+                if offroad_current
+                else OBSERVATION_PROTOCOL_VERSION
+            ),
             "action": ACTION_PROTOCOL_VERSION,
-            "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
+            "lifecycle": (
+                LIFECYCLE_PROTOCOL_VERSION
+                if offroad_current
+                else PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION
+            ),
             "reward": contract["environment"]["reward_version"],
             "metrics": metrics_protocol,
         },
@@ -144,10 +201,16 @@ def _checkpoint_payload(contract, *, formal=True):
                 "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
             }
         )
+    if offroad_current:
+        payload["protocol_versions"]["offroad"] = OFFROAD_PROTOCOL_VERSION
     if town05:
         payload["run_metadata"]["runtime"] = {
             "environment_reward_gamma": 0.997
         }
+    if offroad_current:
+        payload["run_metadata"]["runtime"]["offroad_protocol"] = (
+            offroad_protocol_spec()
+        )
     return payload
 
 
@@ -256,6 +319,10 @@ class _OneStepTimeoutEnv:
                 "truncated": {0: True, 1: True},
                 "active_mask": {0: False, 1: False},
                 "episode_end_reason": "max_steps",
+                "offroad_terminated": {0: False, 1: False},
+                "first_offroad_evidence": {0: None, 1: None},
+                "max_offroad_consecutive_ticks": {0: 0, 1: 0},
+                "max_footprint_outside_fraction": {0: 0.0, 1: 0.0},
             },
         )
 
@@ -287,6 +354,25 @@ class C0ContractTests(unittest.TestCase):
         historical = load_c0_contract(R1_CONTRACT_PATH, project_dir=PROJECT_DIR)
         self.assertEqual(historical["payload"]["protocol_version"], "p0_base_c0_eval_v2")
         self.assertEqual(historical["payload"]["environment"]["reward_version"], "v2")
+
+    def test_town05_offroad_contract_registers_all_32_gate_cases(self):
+        record = load_c0_contract(
+            TOWN05_OFFROAD_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )
+        contract = record["payload"]
+
+        self.assertEqual(
+            contract["protocol_version"], TOWN05_OFFROAD_C0_PROTOCOL_VERSION
+        )
+        self.assertEqual(
+            contract["environment"]["offroad_protocol"],
+            offroad_protocol_spec(),
+        )
+        self.assertEqual(
+            len(expand_profile_cases(contract, "gate", project_dir=PROJECT_DIR)),
+            32,
+        )
 
     def test_resume_evidence_must_be_an_exact_case_prefix(self):
         cases = expand_profile_cases(self.record["payload"], "validation", project_dir=PROJECT_DIR)
@@ -360,6 +446,31 @@ class C0CheckpointTests(unittest.TestCase):
             ):
                 load_and_validate_c0_checkpoint(
                     missing_runtime_path, contract=contract
+                )
+
+    def test_town05_offroad_checkpoint_requires_new_protocol_identity(self):
+        contract = load_c0_contract(
+            TOWN05_OFFROAD_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )["payload"]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            valid_path = Path(temp_dir) / "offroad_valid.pt"
+            save_checkpoint_file(_checkpoint_payload(contract), valid_path)
+
+            result = load_and_validate_c0_checkpoint(
+                valid_path,
+                contract=contract,
+            )
+            self.assertTrue(result["formal_eligible"])
+
+            drifted = _checkpoint_payload(contract)
+            drifted["protocol_versions"].pop("offroad")
+            drifted_path = Path(temp_dir) / "offroad_drift.pt"
+            save_checkpoint_file(drifted, drifted_path)
+            with self.assertRaisesRegex(C0ProtocolError, "protocol_versions"):
+                load_and_validate_c0_checkpoint(
+                    drifted_path,
+                    contract=contract,
                 )
 
     def test_r1_reward_v2_checkpoint_remains_strictly_readable_as_history(self):
@@ -445,6 +556,84 @@ class C0EvidenceTests(unittest.TestCase):
         self.assertEqual(result["status"], "HOLD")
         self.assertEqual(result["mismatches"][0]["case_id"], self.case["case_id"])
 
+    def test_outcome_repeatability_warns_for_registered_tick_and_return_drift(self):
+        contract = load_c0_contract(
+            TOWN05_OUTCOME_REPEATABILITY_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )["payload"]
+        left = _episode_record(self.case, eval_id="left", checkpoint_sha="c" * 64)
+        for agent in left["agents"].values():
+            agent.update(
+                {
+                    "offroad_terminated": False,
+                    "first_offroad_evidence": None,
+                    "max_offroad_consecutive_ticks": 0,
+                    "max_footprint_outside_fraction": 0.0,
+                    "lifecycle_transition": {
+                        "pre_active": True,
+                        "post_active": False,
+                        "done": True,
+                        "terminated": False,
+                        "truncated": True,
+                    },
+                }
+            )
+        left["record_version"] = (
+            TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION
+        )
+        right = copy.deepcopy(left)
+        right["eval_id"] = "right"
+        right["episode_length"] += 2
+        right["agents"]["0"]["episode_return"] += 0.05
+        result = compare_repeatability_records(
+            [left], [right], contract=contract
+        )
+        self.assertEqual(result["status"], "WARNING")
+        self.assertTrue(result["gate_pass"])
+        self.assertEqual(result["mismatches"], [])
+
+    def test_outcome_repeatability_holds_on_safety_or_excessive_drift(self):
+        contract = load_c0_contract(
+            TOWN05_OUTCOME_REPEATABILITY_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )["payload"]
+        left = _episode_record(self.case, eval_id="left", checkpoint_sha="c" * 64)
+        for agent in left["agents"].values():
+            agent.update(
+                {
+                    "offroad_terminated": False,
+                    "first_offroad_evidence": None,
+                    "max_offroad_consecutive_ticks": 0,
+                    "max_footprint_outside_fraction": 0.0,
+                    "lifecycle_transition": {
+                        "pre_active": True,
+                        "post_active": False,
+                        "done": True,
+                        "terminated": False,
+                        "truncated": True,
+                    },
+                }
+            )
+        left["record_version"] = (
+            TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION
+        )
+        right = copy.deepcopy(left)
+        right["eval_id"] = "right"
+        right["agents"]["0"]["offroad_terminated"] = True
+        result = compare_repeatability_records(
+            [left], [right], contract=contract
+        )
+        self.assertEqual(result["status"], "HOLD")
+        self.assertFalse(result["gate_pass"])
+
+        right = copy.deepcopy(left)
+        right["agents"]["0"]["episode_return"] += 0.100001
+        result = compare_repeatability_records(
+            [left], [right], contract=contract
+        )
+        self.assertEqual(result["status"], "HOLD")
+        self.assertFalse(result["gate_pass"])
+
     def test_simulator_runner_uses_active_agents_and_deterministic_actor_mean(self):
         actors = {0: Actor(act_dim=2), 1: Actor(act_dim=2)}
         first = _run_case(
@@ -469,6 +658,33 @@ class C0EvidenceTests(unittest.TestCase):
         self.assertEqual(first["episode_length"], 1)
         self.assertEqual(first["agents"]["0"]["actions"], second["agents"]["0"]["actions"])
         self.assertEqual(first["agents"]["1"]["actions"], second["agents"]["1"]["actions"])
+
+    def test_v3_runner_records_compressed_active_mask_transition(self):
+        contract = load_c0_contract(
+            TOWN05_OUTCOME_REPEATABILITY_CONTRACT_PATH,
+            project_dir=PROJECT_DIR,
+        )["payload"]
+        case = expand_profile_cases(
+            contract, "smoke", project_dir=PROJECT_DIR
+        )[0]
+        record = _run_case(
+            env=_OneStepTimeoutEnv(),
+            actors={0: Actor(act_dim=2), 1: Actor(act_dim=2)},
+            case=case,
+            contract=contract,
+            eval_id="eval",
+            profile="smoke",
+            checkpoint_sha256="c" * 64,
+        )
+        expected = {
+            "pre_active": True,
+            "post_active": False,
+            "done": True,
+            "terminated": False,
+            "truncated": True,
+        }
+        self.assertEqual(record["agents"]["0"]["lifecycle_transition"], expected)
+        self.assertEqual(record["agents"]["1"]["lifecycle_transition"], expected)
 
     def test_offline_validator_reconstructs_summary_and_detects_tampering(self):
         eval_id = "P0_BASE_C0_smoke_u000005_20260804_210000"

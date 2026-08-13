@@ -1,0 +1,235 @@
+{
+  "protocol_version": "p0_base_go_hold_town05_v3",
+  "contract_id": "P0_BASE_GO_HOLD_TOWN05_V3",
+  "status": "frozen",
+  "purpose": "Pre-registered numerical-health, persistent behavioral-collapse, offroad-safety, milestone-capability and held-out validation decisions for the comprehensive two-agent Town05 v3 base-policy experiment with outcome-level repeatability.",
+  "bindings": {
+    "training_contract_path": "configs/base_mappo/p0_base_town05_v3.json",
+    "training_contract_id": "P0_BASE_MAPPO_TOWN05_V3",
+    "training_contract_sha256": "d39956e0ee1021d7e6d27057bc0a9877edc9dbee0bf9f6ebbf1224f9a5a08e92",
+    "c0_contract_path": "configs/evaluation/p0_base_c0_town05_v3.json",
+    "c0_contract_id": "P0_BASE_C0_TOWN05_V3",
+    "c0_contract_sha256": "0ddf0efa3b00f170721f35f7e32878fae67d5f6c88cb954f6edafd164de38553",
+    "metrics_protocol_version": "mappo_metrics_offroad_p0_00g_v6",
+    "c0_episode_record_version": "p0_base_c0_town05_offroad_episode_v3",
+    "checkpoint_schema_version": 5,
+    "pilot_seed": 42,
+    "milestone_profile": "gate",
+    "validation_profile": "validation",
+    "required_repeats": 2,
+    "agent_ids": [0, 1]
+  },
+  "evidence_rules": {
+    "expected_episodes_per_update": 16,
+    "expected_gate_case_count": 32,
+    "reward_conservation_abs_error_max": 0.000001,
+    "preupdate_ratio_abs_error_max_exclusive": 0.000001,
+    "missing_required_metric_count_max": 0,
+    "nonfinite_metric_count_max": 0,
+    "longitudinal_conflict_rate_max": 0.0,
+    "allow_skipped_ppo_updates": false,
+    "require_segment_completed": true,
+    "require_formal_periodic_checkpoint": true,
+    "require_c0_validator_pass": true,
+    "require_repeatability_gate_pass": true,
+    "max_other_outcome_count": 0,
+    "max_offroad_outcome_count": 0
+  },
+  "training_health": {
+    "approx_kl": {
+      "warning_above": 0.02,
+      "hold_once_above": 0.1,
+      "hold_consecutive_above": 0.05,
+      "hold_consecutive_updates": 2
+    },
+    "clip_fraction": {
+      "warning_above": 0.5,
+      "hold_consecutive_above": 0.8,
+      "hold_consecutive_updates": 2
+    },
+    "gradient_clip_activation": {
+      "warning_above": 0.8,
+      "warning_consecutive_updates": 3
+    },
+    "critic_explained_variance": {
+      "warning_below": -0.5,
+      "warning_consecutive_updates": 5
+    },
+    "action_saturation": {
+      "warning_above": 0.65,
+      "warning_consecutive_updates": 3,
+      "channels": ["throttle", "steer", "brake"]
+    },
+    "actor_log_std": {
+      "warning_at_or_below": -0.99,
+      "warning_above": 1.0,
+      "warning_consecutive_updates": 3
+    },
+    "critic_degeneracy": {
+      "assessment_start_update": 5,
+      "hold_start_update": 10,
+      "hold_consecutive_updates": 5,
+      "explained_variance_at_or_below": 0.02,
+      "prediction_target_std_ratio_at_or_below": 0.05,
+      "relative_mae_at_or_above": 1.0,
+      "grad_clip_activation_at_or_above": 0.95,
+      "target_std_floor": 0.000001,
+      "warning_signal_count_at_least": 2,
+      "hold_requires_all_signals": true
+    },
+    "value_normalizer": {
+      "update_count_must_equal_training_update": true,
+      "std_at_or_above": 0.1,
+      "normalized_target_std_warning_below": 0.25,
+      "normalized_target_std_warning_above": 4.0
+    }
+  },
+  "behavioral_health": {
+    "assessment_milestones": [5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160],
+    "warning_from_update": 5,
+    "hold_from_update": 10,
+    "required_consecutive_milestones": 2,
+    "all_agents_required": true,
+    "zero_success_required": true,
+    "deterministic_brake_mode_rate_at_or_above": 0.95,
+    "mean_speed_mps_at_or_below": 0.1,
+    "mean_progress_m_per_episode_at_or_below": 3.0,
+    "timeout_rate_at_or_above": 0.95,
+    "previous_milestone_report_required_for_hold": true
+  },
+  "milestone_rules": [
+    {
+      "update": 5,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": false
+    },
+    {
+      "update": 10,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": false
+    },
+    {
+      "update": 20,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": true
+    },
+    {
+      "update": 30,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": true
+    },
+    {
+      "update": 40,
+      "rule_type": "health_only",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "warn_if_zero_success": true
+    },
+    {
+      "update": 60,
+      "rule_type": "minimum_capability",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "HOLD",
+      "min_success_count": 1,
+      "max_collision_count": 16
+    },
+    {
+      "update": 80,
+      "rule_type": "provisional_candidate",
+      "pass_decision": "CONTINUE",
+      "fail_decision": "CONTINUE_WITH_WARNING",
+      "min_success_count": 12,
+      "max_collision_count": 8,
+      "max_timeout_count": 16
+    },
+    {
+      "update": 100,
+      "rule_type": "provisional_candidate",
+      "pass_decision": "CANDIDATE",
+      "fail_decision": "CONTINUE_WITH_WARNING",
+      "min_success_count": 20,
+      "max_collision_count": 6,
+      "max_timeout_count": 12
+    },
+    {
+      "update": 120,
+      "rule_type": "provisional_candidate",
+      "pass_decision": "CANDIDATE",
+      "fail_decision": "CONTINUE_WITH_WARNING",
+      "min_success_count": 24,
+      "max_collision_count": 4,
+      "max_timeout_count": 8
+    },
+    {
+      "update": 140,
+      "rule_type": "provisional_candidate",
+      "pass_decision": "CANDIDATE",
+      "fail_decision": "CONTINUE_WITH_WARNING",
+      "min_success_count": 26,
+      "max_collision_count": 2,
+      "max_timeout_count": 6
+    },
+    {
+      "update": 160,
+      "rule_type": "pilot_go",
+      "pass_decision": "PILOT_GO",
+      "fail_decision": "PILOT_NO_GO",
+      "min_success_count": 28,
+      "max_collision_count": 0,
+      "max_timeout_count": 4,
+      "min_success_per_family": 3,
+      "max_lane_invasion_episode_count": 0
+    }
+  ],
+  "validation_acceptance": {
+    "release_stage": "P0-BASE-06",
+    "case_count": 24,
+    "min_success_count": 18,
+    "max_collision_count": 0,
+    "max_timeout_count": 6,
+    "max_other_count": 0,
+    "max_offroad_count": 0,
+    "min_success_per_family": 4,
+    "min_success_per_scenario": 1,
+    "max_lane_invasion_episode_count": 0,
+    "pass_decision": "VALIDATION_ACCEPT",
+    "fail_decision": "VALIDATION_REJECT"
+  },
+  "decision_policy": {
+    "returns_are_selection_criteria": false,
+    "gate_repeat_is_additional_sample": false,
+    "warnings_block_pilot_go": false,
+    "update_80_can_release_multiseed": false,
+    "only_final_update_pilot_go_releases_multiseed": true,
+    "threshold_override_allowed": false,
+    "threshold_commit_must_be_ancestor_of_run_origin": true,
+    "single_early_zero_success_can_hold": false,
+    "hold_preserves_checkpoint_for_diagnosis": true
+  },
+  "outputs": {
+    "decision_root": "decisions/base_mappo",
+    "decision_report": "go_hold_decision.json"
+  },
+  "critical_source_paths": [
+    "evaluation/base_go_hold_protocol.py",
+    "evaluation/judge_base_go_hold.py",
+    "configs/evaluation/p0_base_go_hold_town05_v3.json"
+  ],
+  "limitations": [
+    "HOLD is an engineering pause for diagnosis, not proof that the algorithm can never learn.",
+    "Zero success, low speed, high brake use, or timeout alone cannot trigger an early behavioral HOLD.",
+    "Any verified offroad termination is a structural C0 failure; it cannot be averaged away by return or success counts.",
+    "Behavioral HOLD requires the frozen conjunction to persist across two adjacent milestone checkpoints; repeated C0 is a reproducibility audit, where safety/lifecycle changes HOLD, registered local drift warns, and drift in more than half of cases HOLDs as systematic.",
+    "These gates are not statistical safety guarantees and the in-distribution gate cannot replace held-out validation.",
+    "No threshold may be relaxed after observing a formal Town05 v3 pilot outcome; a changed rule requires a new contract ID and fresh run origin.",
+    "Broken-line lane changes inside the union of Driving lanes remain legal; solid-boundary departure and non-Driving footprint occupation are independently audited."
+  ]
+}

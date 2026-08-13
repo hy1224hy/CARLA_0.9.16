@@ -18,6 +18,7 @@ from environment.base_reward_v3 import (
     lateral_distance_to_lane_center,
     lidar_risk_penalty,
     overspeed_penalty,
+    offroad_terminal_reward,
     potential_discounted_return,
     reward_v3_spec,
     route_completion,
@@ -88,6 +89,17 @@ def _linear_completion(final, transitions=100):
 
 
 class RewardV3MathematicsTests(unittest.TestCase):
+    def test_offroad_terminal_penalty_is_one_shot_and_collision_has_priority(self):
+        self.assertEqual(
+            offroad_terminal_reward(offroad=True, collision=False), -20.0
+        )
+        self.assertEqual(
+            offroad_terminal_reward(offroad=True, collision=True), 0.0
+        )
+        self.assertEqual(
+            offroad_terminal_reward(offroad=False, collision=False), 0.0
+        )
+
     def test_lane_center_distance_is_per_lane_and_rotation_invariant(self):
         # 两条平行车道各自居中时都必须得到 0，而不能拿道路整体中线比较。
         self.assertEqual(
@@ -258,6 +270,10 @@ class RewardV3MathematicsTests(unittest.TestCase):
         with self.assertRaisesRegex(RewardV3Error, "lane penalties"):
             validate_reward_v3_config(
                 replace(DEFAULT_REWARD_V3_CONFIG, curb_penalty=-0.1)
+            )
+        with self.assertRaisesRegex(RewardV3Error, "offroad penalty"):
+            validate_reward_v3_config(
+                replace(DEFAULT_REWARD_V3_CONFIG, offroad_penalty=-5.0)
             )
         with self.assertRaisesRegex(RewardV3Error, "collision_penalty"):
             validate_reward_v3_config(

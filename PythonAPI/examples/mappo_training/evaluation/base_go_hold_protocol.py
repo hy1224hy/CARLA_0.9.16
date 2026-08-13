@@ -18,6 +18,8 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 from evaluation.base_c0_protocol import (
     C0_EPISODE_RECORD_VERSION,
     TOWN05_C0_EPISODE_RECORD_VERSION,
+    TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+    TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
     load_c0_contract,
 )
@@ -28,8 +30,13 @@ from training.experiment_contract import (
 from training.metrics_protocol import (
     LEGACY_METRICS_PROTOCOL_VERSION,
     METRICS_PROTOCOL_VERSION,
+    PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
 )
-from training.checkpoint_protocol import sha256_file
+from training.checkpoint_protocol import (
+    CHECKPOINT_SCHEMA_VERSION,
+    VALUENORM_CHECKPOINT_SCHEMA_VERSION,
+    sha256_file,
+)
 
 
 LEGACY_GO_HOLD_PROTOCOL_VERSION = "p0_base_go_hold_v1"
@@ -46,6 +53,34 @@ TOWN05_GO_HOLD_CONTRACT_ID = "P0_BASE_GO_HOLD_TOWN05_V1"
 TOWN05_GO_HOLD_REPORT_VERSION = "p0_base_go_hold_town05_decision_v1"
 TOWN05_GO_HOLD_CONTRACT_RELATIVE_PATH = (
     "configs/evaluation/p0_base_go_hold_town05_v1.json"
+)
+TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION = "p0_base_go_hold_town05_v2"
+TOWN05_OFFROAD_GO_HOLD_CONTRACT_ID = "P0_BASE_GO_HOLD_TOWN05_V2"
+TOWN05_OFFROAD_GO_HOLD_REPORT_VERSION = (
+    "p0_base_go_hold_town05_offroad_decision_v2"
+)
+TOWN05_OFFROAD_GO_HOLD_CONTRACT_RELATIVE_PATH = (
+    "configs/evaluation/p0_base_go_hold_town05_v2.json"
+)
+TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION = (
+    "p0_base_go_hold_town05_v3"
+)
+TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_CONTRACT_ID = (
+    "P0_BASE_GO_HOLD_TOWN05_V3"
+)
+TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_REPORT_VERSION = (
+    "p0_base_go_hold_town05_outcome_repeatability_decision_v3"
+)
+TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_CONTRACT_RELATIVE_PATH = (
+    "configs/evaluation/p0_base_go_hold_town05_v3.json"
+)
+GO_HOLD_V2_PROTOCOL_VERSIONS = frozenset(
+    {
+        GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+    }
 )
 MILESTONE_DECISIONS = {
     "CONTINUE",
@@ -424,15 +459,20 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         "limitations",
     }
     _exact(payload, top, context="GO/HOLD v2 contract")
+    protocol_version = payload["protocol_version"]
+    expected_contract_ids = {
+        GO_HOLD_PROTOCOL_VERSION: GO_HOLD_CONTRACT_ID,
+        TOWN05_GO_HOLD_PROTOCOL_VERSION: TOWN05_GO_HOLD_CONTRACT_ID,
+        TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION: (
+            TOWN05_OFFROAD_GO_HOLD_CONTRACT_ID
+        ),
+        TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION: (
+            TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_CONTRACT_ID
+        ),
+    }
     if (
-        payload["protocol_version"]
-        not in {GO_HOLD_PROTOCOL_VERSION, TOWN05_GO_HOLD_PROTOCOL_VERSION}
-        or payload["contract_id"]
-        != (
-            TOWN05_GO_HOLD_CONTRACT_ID
-            if payload["protocol_version"] == TOWN05_GO_HOLD_PROTOCOL_VERSION
-            else GO_HOLD_CONTRACT_ID
-        )
+        protocol_version not in GO_HOLD_V2_PROTOCOL_VERSIONS
+        or payload["contract_id"] != expected_contract_ids.get(protocol_version)
         or payload["status"] != "frozen"
     ):
         raise GoHoldProtocolError("GO/HOLD v2 identity/status mismatch")
@@ -459,17 +499,45 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         },
         context="bindings",
     )
-    if bindings["metrics_protocol_version"] != METRICS_PROTOCOL_VERSION:
+    outcome_repeatability_protocol = (
+        protocol_version
+        == TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION
+    )
+    new_offroad_protocol = protocol_version in {
+        TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+    }
+    expected_metrics_protocol = (
+        METRICS_PROTOCOL_VERSION
+        if new_offroad_protocol
+        else PRE_OFFROAD_METRICS_PROTOCOL_VERSION
+    )
+    if bindings["metrics_protocol_version"] != expected_metrics_protocol:
         raise GoHoldProtocolError("GO/HOLD v2 must bind the active metrics protocol")
     expected_episode_record = (
-        TOWN05_C0_EPISODE_RECORD_VERSION
-        if payload["protocol_version"] == TOWN05_GO_HOLD_PROTOCOL_VERSION
-        else C0_EPISODE_RECORD_VERSION
+        TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION
+        if outcome_repeatability_protocol
+        else (
+            TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION
+            if new_offroad_protocol
+            else (
+                TOWN05_C0_EPISODE_RECORD_VERSION
+                if protocol_version == TOWN05_GO_HOLD_PROTOCOL_VERSION
+                else C0_EPISODE_RECORD_VERSION
+            )
+        )
     )
     if bindings["c0_episode_record_version"] != expected_episode_record:
         raise GoHoldProtocolError("GO/HOLD v2 must bind the active C0 episode protocol")
-    if bindings["checkpoint_schema_version"] != 4:
-        raise GoHoldProtocolError("GO/HOLD v2 requires checkpoint schema v4")
+    expected_checkpoint_schema = (
+        CHECKPOINT_SCHEMA_VERSION
+        if new_offroad_protocol
+        else VALUENORM_CHECKPOINT_SCHEMA_VERSION
+    )
+    if bindings["checkpoint_schema_version"] != expected_checkpoint_schema:
+        raise GoHoldProtocolError(
+            "GO/HOLD v2 checkpoint schema differs from its bound training protocol"
+        )
     if bindings["pilot_seed"] != 42 or bindings["agent_ids"] != [0, 1]:
         raise GoHoldProtocolError("pilot seed/agent IDs differ from the R3 contract")
     if (
@@ -496,22 +564,31 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
     ):
         raise GoHoldProtocolError("bound C0 v4 contract ID/SHA256 mismatch")
 
+    evidence_fields = {
+        "expected_episodes_per_update",
+        "reward_conservation_abs_error_max",
+        "preupdate_ratio_abs_error_max_exclusive",
+        "missing_required_metric_count_max",
+        "nonfinite_metric_count_max",
+        "longitudinal_conflict_rate_max",
+        "allow_skipped_ppo_updates",
+        "require_segment_completed",
+        "require_formal_periodic_checkpoint",
+        "require_c0_validator_pass",
+        (
+            "require_repeatability_gate_pass"
+            if outcome_repeatability_protocol
+            else "require_repeatability_pass"
+        ),
+        "max_other_outcome_count",
+    }
+    if new_offroad_protocol:
+        evidence_fields.update(
+            {"expected_gate_case_count", "max_offroad_outcome_count"}
+        )
     evidence = _exact(
         payload["evidence_rules"],
-        {
-            "expected_episodes_per_update",
-            "reward_conservation_abs_error_max",
-            "preupdate_ratio_abs_error_max_exclusive",
-            "missing_required_metric_count_max",
-            "nonfinite_metric_count_max",
-            "longitudinal_conflict_rate_max",
-            "allow_skipped_ppo_updates",
-            "require_segment_completed",
-            "require_formal_periodic_checkpoint",
-            "require_c0_validator_pass",
-            "require_repeatability_pass",
-            "max_other_outcome_count",
-        },
+        evidence_fields,
         context="evidence_rules",
     )
     if evidence["expected_episodes_per_update"] != 16:
@@ -529,6 +606,11 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
     ):
         if evidence[name] != 0:
             raise GoHoldProtocolError(f"evidence_rules.{name} must be zero")
+    if new_offroad_protocol:
+        if evidence["expected_gate_case_count"] != 32:
+            raise GoHoldProtocolError("Town05 v2 gate must contain 32 cases")
+        if evidence["max_offroad_outcome_count"] != 0:
+            raise GoHoldProtocolError("formal C0 cannot accept an offroad episode")
     if _finite(evidence["longitudinal_conflict_rate_max"], context="conflict max") != 0.0:
         raise GoHoldProtocolError("longitudinal conflict must remain zero")
     required_flags = {
@@ -536,7 +618,11 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         "require_segment_completed": True,
         "require_formal_periodic_checkpoint": True,
         "require_c0_validator_pass": True,
-        "require_repeatability_pass": True,
+        (
+            "require_repeatability_gate_pass"
+            if outcome_repeatability_protocol
+            else "require_repeatability_pass"
+        ): True,
     }
     for name, expected in required_flags.items():
         if evidence[name] is not expected:
@@ -688,7 +774,9 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
 
     milestones = payload["milestone_rules"]
     if not isinstance(milestones, list) or len(milestones) != len(expected_updates):
-        raise GoHoldProtocolError("exactly eight milestone rules are required")
+        raise GoHoldProtocolError(
+            "milestone rules must cover every registered training stop"
+        )
     if [rule.get("update") for rule in milestones if isinstance(rule, Mapping)] != expected_updates:
         raise GoHoldProtocolError("milestone updates differ from the R3 training contract")
     common = {"update", "rule_type", "pass_decision", "fail_decision"}
@@ -720,9 +808,7 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
             elif isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise GoHoldProtocolError(f"milestone {rule['update']} {name} is invalid")
 
-    validation = _exact(
-        payload["validation_acceptance"],
-        {
+    validation_fields = {
             "release_stage",
             "case_count",
             "min_success_count",
@@ -734,12 +820,17 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
             "max_lane_invasion_episode_count",
             "pass_decision",
             "fail_decision",
-        },
+    }
+    if new_offroad_protocol:
+        validation_fields.add("max_offroad_count")
+    validation = _exact(
+        payload["validation_acceptance"],
+        validation_fields,
         context="validation_acceptance",
     )
     if validation["release_stage"] != "P0-BASE-06":
         raise GoHoldProtocolError("held-out acceptance release stage drifted")
-    for name in (
+    validation_integer_fields = (
         "case_count",
         "min_success_count",
         "max_collision_count",
@@ -748,25 +839,34 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         "min_success_per_family",
         "min_success_per_scenario",
         "max_lane_invasion_episode_count",
-    ):
+    )
+    if new_offroad_protocol:
+        validation_integer_fields += ("max_offroad_count",)
+    for name in validation_integer_fields:
         if isinstance(validation[name], bool) or not isinstance(validation[name], int) or validation[name] < 0:
             raise GoHoldProtocolError(f"validation_acceptance.{name} is invalid")
     if validation["pass_decision"] != "VALIDATION_ACCEPT" or validation["fail_decision"] != "VALIDATION_REJECT":
         raise GoHoldProtocolError("validation decision names drifted")
 
-    policy = _exact(
-        payload["decision_policy"],
-        {
+    policy_fields = {
             "returns_are_selection_criteria",
             "gate_repeat_is_additional_sample",
             "warnings_block_pilot_go",
             "update_80_can_release_multiseed",
-            "only_update_100_pilot_go_releases_multiseed",
             "threshold_override_allowed",
             "threshold_commit_must_be_ancestor_of_run_origin",
             "single_early_zero_success_can_hold",
             "hold_preserves_checkpoint_for_diagnosis",
-        },
+    }
+    final_release_field = (
+        "only_final_update_pilot_go_releases_multiseed"
+        if new_offroad_protocol
+        else "only_update_100_pilot_go_releases_multiseed"
+    )
+    policy_fields.add(final_release_field)
+    policy = _exact(
+        payload["decision_policy"],
+        policy_fields,
         context="decision_policy",
     )
     expected_policy = {
@@ -774,7 +874,7 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         "gate_repeat_is_additional_sample": False,
         "warnings_block_pilot_go": False,
         "update_80_can_release_multiseed": False,
-        "only_update_100_pilot_go_releases_multiseed": True,
+        final_release_field: True,
         "threshold_override_allowed": False,
         "threshold_commit_must_be_ancestor_of_run_origin": True,
         "single_early_zero_success_can_hold": False,
@@ -789,11 +889,16 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
     }:
         raise GoHoldProtocolError("decision output paths have drifted")
     _inside(project_dir, outputs["decision_root"], context="decision root")
-    active_contract_path = (
-        TOWN05_GO_HOLD_CONTRACT_RELATIVE_PATH
-        if payload["protocol_version"] == TOWN05_GO_HOLD_PROTOCOL_VERSION
-        else GO_HOLD_CONTRACT_RELATIVE_PATH
-    )
+    active_contract_path = {
+        GO_HOLD_PROTOCOL_VERSION: GO_HOLD_CONTRACT_RELATIVE_PATH,
+        TOWN05_GO_HOLD_PROTOCOL_VERSION: TOWN05_GO_HOLD_CONTRACT_RELATIVE_PATH,
+        TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION: (
+            TOWN05_OFFROAD_GO_HOLD_CONTRACT_RELATIVE_PATH
+        ),
+        TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION: (
+            TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_CONTRACT_RELATIVE_PATH
+        ),
+    }[protocol_version]
     expected_paths = [
         "evaluation/base_go_hold_protocol.py",
         "evaluation/judge_base_go_hold.py",
@@ -815,7 +920,7 @@ def validate_go_hold_contract(payload: Any, *, project_dir: Path) -> None:
     if version == LEGACY_GO_HOLD_PROTOCOL_VERSION:
         _validate_go_hold_contract_v1(payload, project_dir=project_dir)
         return
-    if version in {GO_HOLD_PROTOCOL_VERSION, TOWN05_GO_HOLD_PROTOCOL_VERSION}:
+    if version in GO_HOLD_V2_PROTOCOL_VERSIONS:
         _validate_go_hold_contract_v2(payload, project_dir=project_dir)
         return
     raise GoHoldProtocolError(f"unsupported GO/HOLD protocol_version={version!r}")
@@ -825,6 +930,10 @@ def go_hold_report_version(contract: Mapping[str, Any]) -> str:
     version = contract.get("protocol_version")
     if version == LEGACY_GO_HOLD_PROTOCOL_VERSION:
         return LEGACY_GO_HOLD_REPORT_VERSION
+    if version == TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION:
+        return TOWN05_OFFROAD_GO_HOLD_REPORT_VERSION
+    if version == TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION:
+        return TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_REPORT_VERSION
     if version == TOWN05_GO_HOLD_PROTOCOL_VERSION:
         return TOWN05_GO_HOLD_REPORT_VERSION
     return GO_HOLD_REPORT_VERSION
@@ -850,6 +959,12 @@ def load_go_hold_contract(path: str | Path, *, project_dir: Path) -> Dict[str, A
         LEGACY_GO_HOLD_PROTOCOL_VERSION: LEGACY_GO_HOLD_CONTRACT_RELATIVE_PATH,
         GO_HOLD_PROTOCOL_VERSION: GO_HOLD_CONTRACT_RELATIVE_PATH,
         TOWN05_GO_HOLD_PROTOCOL_VERSION: TOWN05_GO_HOLD_CONTRACT_RELATIVE_PATH,
+        TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION: (
+            TOWN05_OFFROAD_GO_HOLD_CONTRACT_RELATIVE_PATH
+        ),
+        TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION: (
+            TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_CONTRACT_RELATIVE_PATH
+        ),
     }[payload["protocol_version"]]
     if relative != registered_path:
         raise GoHoldProtocolError(
@@ -1088,10 +1203,7 @@ def evaluate_training_health(
     reason_codes: list[str] = []
     if hard_failures:
         reason_codes.append("NUMERICAL_OR_EVIDENCE_HEALTH")
-    if contract.get("protocol_version") in {
-        GO_HOLD_PROTOCOL_VERSION,
-        TOWN05_GO_HOLD_PROTOCOL_VERSION,
-    }:
+    if contract.get("protocol_version") in GO_HOLD_V2_PROTOCOL_VERSIONS:
         critic_rule = health["critic_degeneracy"]
         normalizer_rule = health["value_normalizer"]
         prediction_std = series("critic/value_prediction_std")
@@ -1198,7 +1310,7 @@ def evaluate_training_health(
         **(
             {"reason_codes": list(dict.fromkeys(reason_codes))}
             if contract.get("protocol_version")
-            in {GO_HOLD_PROTOCOL_VERSION, TOWN05_GO_HOLD_PROTOCOL_VERSION}
+            in GO_HOLD_V2_PROTOCOL_VERSIONS
             else {}
         ),
     }
@@ -1213,6 +1325,20 @@ def summarize_c0_gate(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     family_counts: Dict[str, Counter] = {}
     scenario_counts: Dict[str, Counter] = {}
     lane_invasion_count = 0
+    record_versions = {record.get("record_version") for record in records}
+    offroad_record_versions = {
+        TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+    }
+    offroad_evidence_required = (
+        len(record_versions) == 1
+        and next(iter(record_versions)) in offroad_record_versions
+    )
+    if record_versions & offroad_record_versions and not offroad_evidence_required:
+        raise GoHoldProtocolError(
+            "cannot mix offroad-aware and historical C0 episode records"
+        )
+    offroad_count = 0
     behavior_available = True
     behavior_totals: Dict[str, Dict[str, float]] = {
         agent_id: {
@@ -1235,6 +1361,21 @@ def summarize_c0_gate(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         agents = record.get("agents")
         if not isinstance(agents, Mapping) or set(agents) != {"0", "1"}:
             raise GoHoldProtocolError(f"C0 record {index} has invalid agents")
+        if offroad_evidence_required:
+            try:
+                offroad_flags = [
+                    agents[agent_id]["offroad_terminated"]
+                    for agent_id in ("0", "1")
+                ]
+            except (KeyError, TypeError) as error:
+                raise GoHoldProtocolError(
+                    f"C0 record {index} lacks offroad termination evidence"
+                ) from error
+            if any(not isinstance(value, bool) for value in offroad_flags):
+                raise GoHoldProtocolError(
+                    f"C0 record {index} offroad flags must be boolean"
+                )
+            offroad_count += int(any(offroad_flags))
         event = False
         for agent_id in ("0", "1"):
             try:
@@ -1325,6 +1466,8 @@ def summarize_c0_gate(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
             "timeout_rate": float(outcomes.get("timeout", 0)) / len(records),
             "agents": behavior_agents,
         }
+    if offroad_evidence_required:
+        summary["offroad_count"] = offroad_count
     return summary
 
 
@@ -1339,6 +1482,12 @@ def _capability_failures(summary: Mapping[str, Any], rule: Mapping[str, Any]) ->
         (
             "max_lane_invasion_episode_count",
             summary["lane_invasion_episode_count"],
+            lambda actual, limit: actual <= limit,
+            "<=",
+        ),
+        (
+            "max_offroad_count",
+            summary.get("offroad_count", 0),
             lambda actual, limit: actual <= limit,
             "<=",
         ),
@@ -1375,10 +1524,7 @@ def evaluate_behavioral_health(
     period is what prevents a short, still-exploring policy from being rejected
     merely because it has not completed a route yet.
     """
-    if contract.get("protocol_version") not in {
-        GO_HOLD_PROTOCOL_VERSION,
-        TOWN05_GO_HOLD_PROTOCOL_VERSION,
-    }:
+    if contract.get("protocol_version") not in GO_HOLD_V2_PROTOCOL_VERSIONS:
         return {
             "status": "NOT_APPLICABLE",
             "collapsed_now": False,
@@ -1513,7 +1659,12 @@ def evaluate_milestone_decision(
     rules = {int(rule["update"]): rule for rule in contract["milestone_rules"]}
     if update not in rules:
         raise GoHoldProtocolError(f"update {update} is not a registered milestone")
-    expected_cases = int(contract["evidence_rules"]["expected_episodes_per_update"])
+    expected_cases = int(
+        contract["evidence_rules"].get(
+            "expected_gate_case_count",
+            contract["evidence_rules"]["expected_episodes_per_update"],
+        )
+    )
     structural_failures = list(evidence_errors)
     health_updates = training_health.get("updates", [])
     if not isinstance(health_updates, list) or not health_updates or health_updates[-1] != update:
@@ -1529,8 +1680,31 @@ def evaluate_milestone_decision(
     other_count = int(c0_summary["outcome_counts"]["other"])
     if other_count > contract["evidence_rules"]["max_other_outcome_count"]:
         structural_failures.append(f"unexpected C0 other outcomes={other_count}")
-    if contract["evidence_rules"]["require_repeatability_pass"] and not repeatability_pass:
-        structural_failures.append("C0 discrete repeatability did not PASS")
+    if contract.get("protocol_version") in {
+        TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+    }:
+        offroad_count = c0_summary.get("offroad_count")
+        if (
+            isinstance(offroad_count, bool)
+            or not isinstance(offroad_count, int)
+            or offroad_count < 0
+        ):
+            structural_failures.append("C0 offroad evidence is missing or invalid")
+        elif offroad_count > contract["evidence_rules"][
+            "max_offroad_outcome_count"
+        ]:
+            structural_failures.append(
+                f"unexpected C0 offroad episodes={offroad_count}"
+            )
+    repeatability_rule = (
+        "require_repeatability_gate_pass"
+        if contract.get("protocol_version")
+        == TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION
+        else "require_repeatability_pass"
+    )
+    if contract["evidence_rules"][repeatability_rule] and not repeatability_pass:
+        structural_failures.append("C0 repeatability semantic gate did not PASS")
     warnings = list(training_health.get("warnings", []))
     behavior = evaluate_behavioral_health(
         update=update,
@@ -1563,7 +1737,7 @@ def evaluate_milestone_decision(
                     "behavior_assessment": behavior,
                 }
                 if contract.get("protocol_version")
-                in {GO_HOLD_PROTOCOL_VERSION, TOWN05_GO_HOLD_PROTOCOL_VERSION}
+                in GO_HOLD_V2_PROTOCOL_VERSIONS
                 else {}
             ),
         }
@@ -1590,17 +1764,15 @@ def evaluate_milestone_decision(
         decision = str(rule["pass_decision"])
         if decision == "CONTINUE" and warnings:
             decision = "CONTINUE_WITH_WARNING"
+    final_update = max(int(rule["update"]) for rule in contract["milestone_rules"])
     result = {
         "decision": decision,
-        "multiseed_released": decision == "PILOT_GO" and update == 100,
+        "multiseed_released": decision == "PILOT_GO" and update == final_update,
         "hard_failures": [],
         "capability_failures": capability_failures,
         "warnings": warnings,
     }
-    if contract.get("protocol_version") in {
-        GO_HOLD_PROTOCOL_VERSION,
-        TOWN05_GO_HOLD_PROTOCOL_VERSION,
-    }:
+    if contract.get("protocol_version") in GO_HOLD_V2_PROTOCOL_VERSIONS:
         result["reason_codes"] = (
             ["CAPABILITY_NOT_MET"] if capability_failures else []
         )
@@ -1619,9 +1791,15 @@ def evaluate_validation_decision(
     rule = contract["validation_acceptance"]
     structural_failures = list(evidence_errors)
     health_updates = training_health.get("updates", [])
-    if not isinstance(health_updates, list) or not health_updates or health_updates[-1] != 100:
+    final_update = max(int(rule["update"]) for rule in contract["milestone_rules"])
+    if (
+        not isinstance(health_updates, list)
+        or not health_updates
+        or health_updates[-1] != final_update
+    ):
         structural_failures.append(
-            f"validation training health evidence must end at update 100, got {health_updates!r}"
+            "validation training health evidence must end at update "
+            f"{final_update}, got {health_updates!r}"
         )
     if training_health.get("status") != "PASS":
         structural_failures.extend(str(value) for value in training_health.get("hard_failures", []))
@@ -1629,8 +1807,14 @@ def evaluate_validation_decision(
         structural_failures.append(
             f"validation case_count={c0_summary.get('case_count')} expected={rule['case_count']}"
         )
-    if contract["evidence_rules"]["require_repeatability_pass"] and not repeatability_pass:
-        structural_failures.append("C0 discrete repeatability did not PASS")
+    repeatability_rule = (
+        "require_repeatability_gate_pass"
+        if contract.get("protocol_version")
+        == TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION
+        else "require_repeatability_pass"
+    )
+    if contract["evidence_rules"][repeatability_rule] and not repeatability_pass:
+        structural_failures.append("C0 repeatability semantic gate did not PASS")
     if structural_failures:
         result = {
             "decision": "HOLD",
@@ -1638,10 +1822,7 @@ def evaluate_validation_decision(
             "capability_failures": [],
             "warnings": list(training_health.get("warnings", [])),
         }
-        if contract.get("protocol_version") in {
-            GO_HOLD_PROTOCOL_VERSION,
-            TOWN05_GO_HOLD_PROTOCOL_VERSION,
-        }:
+        if contract.get("protocol_version") in GO_HOLD_V2_PROTOCOL_VERSIONS:
             result["reason_codes"] = list(
                 dict.fromkeys(
                     [
@@ -1658,10 +1839,7 @@ def evaluate_validation_decision(
         "capability_failures": capability_failures,
         "warnings": list(training_health.get("warnings", [])),
     }
-    if contract.get("protocol_version") in {
-        GO_HOLD_PROTOCOL_VERSION,
-        TOWN05_GO_HOLD_PROTOCOL_VERSION,
-    }:
+    if contract.get("protocol_version") in GO_HOLD_V2_PROTOCOL_VERSIONS:
         result["reason_codes"] = (
             ["CAPABILITY_NOT_MET"] if capability_failures else []
         )

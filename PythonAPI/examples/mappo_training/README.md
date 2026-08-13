@@ -9,7 +9,7 @@
 
 | 用途 | 唯一有效入口 | 当前许可 |
 |---|---|---|
-| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | Town05 迁移、gamma 与初始化修复已在 `a11cf70` 上通过 16/16 和真实 1-update 门禁；当前仅允许按 Town05 training/C0/GO-HOLD 合同、正式新 RunID、随机初始化运行 seed 42 到 update 5，随后 strict/C0×2/judge。Town02/诊断 smoke 权重禁止复用，多 seed 尚未放行 |
+| 基础红车策略 | `python -m training.train_no_rllib_mappo_robust_v2` | Town05 offroad 约束和结果级重复性已冻结为 v3 training/C0/GO-HOLD 合同；提交后仅允许用正式新 RunID、随机初始化 fresh 运行 seed 42 到 update 5，随后 strict/C0×2/judge。旧 Town05 v1/v2、Town02 和诊断 smoke 权重禁止复用，多 seed 尚未放行 |
 | Phase 1 单蓝车 | `python -m training.train_2red_1blue_ppo` | P0-06 通过前禁止启动 |
 
 以下入口均为 **DEPRECATED/历史参考**：`train_rllib.py`、`carla_rllib_wrapper.py`、`train_no_rlib_sharedpolicy.py`、`train_no_rllib_mappo.py`、`train_no_rllib_mappo_robust.py`、`train_adversarial_ppo.py`、`run_adversarial_training_with_viz.py` 以及旧 multi v1/v2。它们不得用于新训练、恢复修复后的训练、生成正式 checkpoint 或论文结果；未来确需使用时，必须先迁移当前生命周期、GAE、指标和 checkpoint 协议并重新验收。
@@ -148,7 +148,7 @@ python -m utils.record_manual_control --agent-id 0
 
 不要从 `training/` 子目录直接执行文件，也不要从本文档历史段落复制 deprecated 命令。
 
-Town02 的 `p0_base_pilot_v1.json`、R3 合同/checkpoint 和旧 GO/HOLD 均封存为历史诊断，不得继续 resume/pretrained。Town05 已建立新的 16 场景训练合同、8 场景 C0 留出集与 GO/HOLD 绑定。旧最小训练 smoke 后续发现训练环境 PBRS 使用默认 gamma 0.99，而合同/PPO/C0 使用 0.997；当前入口已修复为单源传递、启动断言和 checkpoint 实际值审计。当前先放行修复后 1-update CARLA smoke；通过后才允许 `p0_base_town05_v1.json`、新 RunID、随机初始化的 seed 42 fresh pilot 到 update 5。诊断 checkpoint 不得复用，多 seed 与对抗长训仍禁止。
+Town02 的 `p0_base_pilot_v1.json`、R3 合同/checkpoint 和旧 GO/HOLD 均封存为历史诊断。Town05 v1 的 16 场景以及 v2 的 offroad 机制诊断也只读保留；当前正式入口是 `training_scenarios_town05_v2`（32 场景、八个非对抗能力家族）配套的 `p0_base_town05_v3.json`、C0 v3 和 GO/HOLD v3。v3 不改训练超参数，而是在新 Run 身份中绑定 offroad 终止与结果级重复性：安全/结局严格一致，局部 1–2 tick/小 return 漂移告警，系统性漂移仍 HOLD。任何旧 checkpoint 均不得 resume/pretrained 到 v3。详细边界见 [Town05 基础策略综合场景 v2 设计](docs/Town05_基础策略综合场景v2设计.md)。
 
 依赖包括：
 - torch &gt;= 1.9.0

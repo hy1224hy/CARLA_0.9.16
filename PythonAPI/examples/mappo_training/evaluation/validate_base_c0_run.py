@@ -391,9 +391,20 @@ def main() -> None:
             report["repeatability"] = compare_c0_runs(
                 args.output_dir, args.repeat_output_dir
             )
-            if report["repeatability"]["status"] != "PASS":
+            gate_pass = report["repeatability"].get(
+                "gate_pass",
+                report["repeatability"]["status"] == "PASS",
+            )
+            if not gate_pass:
                 report["status"] = "HOLD"
-                report["errors"].append("discrete repeatability comparison failed")
+                report["errors"].append(
+                    "repeatability semantic/safety comparison failed"
+                )
+            elif report["repeatability"]["status"] == "WARNING":
+                report["warnings"] = [
+                    "repeatability passed the semantic gate with registered "
+                    "tick/continuous drift"
+                ]
         except Exception as error:
             report["status"] = "HOLD"
             report["errors"].append(f"repeatability: {type(error).__name__}: {error}")

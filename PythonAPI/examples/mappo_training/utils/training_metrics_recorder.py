@@ -512,6 +512,7 @@ class TrainingMetricsRecorder:
         self.success_count = 0
         self.collision_count = 0
         self.timeout_count = 0
+        self.offroad_count = 0
         self.end_reason_counts: Dict[str, int] = {}
         self.scenario_stats: Dict[str, Dict[str, RunningStats]] = {}
         self.max_step_reward_residual = 0.0
@@ -647,6 +648,10 @@ class TrainingMetricsRecorder:
         end_reason: str,
         scenario_name: str,
         context: str,
+        offroad: bool = False,
+        offroad_audit_by_agent: Optional[
+            Mapping[int, Mapping[str, object]]
+        ] = None,
     ) -> None:
         if episode_length <= 0:
             raise MetricsProtocolError(f"{context}: episode_length must be positive")
@@ -666,6 +671,22 @@ class TrainingMetricsRecorder:
                     f"{context}: {name} agent ids differ; "
                     f"expected={sorted(expected_agent_ids)}, actual={sorted(mapping)}"
                 )
+        if offroad_audit_by_agent is None:
+            offroad_audit_by_agent = {
+                agent_id: {
+                    "offroad_terminated": False,
+                    "first_offroad_evidence": None,
+                    "max_offroad_consecutive_ticks": 0,
+                    "max_footprint_outside_fraction": 0.0,
+                }
+                for agent_id in self.agent_ids
+            }
+        if set(offroad_audit_by_agent) != expected_agent_ids:
+            raise MetricsProtocolError(
+                f"{context}: offroad_audit_by_agent agent ids differ; "
+                f"expected={sorted(expected_agent_ids)}, "
+                f"actual={sorted(offroad_audit_by_agent)}"
+            )
 
         normalized_returns: Dict[int, float] = {}
         episode_residuals: Dict[int, float] = {}
@@ -710,6 +731,7 @@ class TrainingMetricsRecorder:
                 "success": bool(success),
                 "collision": bool(collision),
                 "timeout": bool(timeout),
+                "offroad": bool(offroad),
                 "agents": {
                     str(agent_id): {
                         "episode_return": normalized_returns[agent_id],
@@ -722,6 +744,32 @@ class TrainingMetricsRecorder:
                         "truncated": bool(truncated[agent_id]),
                         "bootstrap_enabled": bool(
                             bootstrap_enabled[agent_id]
+                        ),
+                        "offroad_terminated": bool(
+                            offroad_audit_by_agent[agent_id][
+                                "offroad_terminated"
+                            ]
+                        ),
+                        "first_offroad_evidence": (
+                            None
+                            if offroad_audit_by_agent[agent_id].get(
+                                "first_offroad_evidence"
+                            ) is None
+                            else dict(
+                                offroad_audit_by_agent[agent_id][
+                                    "first_offroad_evidence"
+                                ]
+                            )
+                        ),
+                        "max_offroad_consecutive_ticks": int(
+                            offroad_audit_by_agent[agent_id][
+                                "max_offroad_consecutive_ticks"
+                            ]
+                        ),
+                        "max_footprint_outside_fraction": float(
+                            offroad_audit_by_agent[agent_id][
+                                "max_footprint_outside_fraction"
+                            ]
                         ),
                     }
                     for agent_id in self.agent_ids
@@ -751,6 +799,7 @@ class TrainingMetricsRecorder:
         self.success_count += int(bool(success))
         self.collision_count += int(bool(collision))
         self.timeout_count += int(bool(timeout))
+        self.offroad_count += int(bool(offroad))
         reason = _safe_name(end_reason)
         self.end_reason_counts[reason] = self.end_reason_counts.get(reason, 0) + 1
 
@@ -760,11 +809,13 @@ class TrainingMetricsRecorder:
                 "success": RunningStats(),
                 "collision": RunningStats(),
                 "timeout": RunningStats(),
+                "offroad": RunningStats(),
                 "length": RunningStats(),
             }
         self.scenario_stats[scenario]["success"].add(float(bool(success)))
         self.scenario_stats[scenario]["collision"].add(float(bool(collision)))
         self.scenario_stats[scenario]["timeout"].add(float(bool(timeout)))
+        self.scenario_stats[scenario]["offroad"].add(float(bool(offroad)))
         self.scenario_stats[scenario]["length"].add(float(episode_length))
 
     def _append_episode_record(self, payload: Mapping[str, object]) -> None:
@@ -1035,6 +1086,7 @@ class TrainingMetricsRecorder:
         put("episode/success_rate", self.success_count / self.episode_count)
         put("episode/collision_rate", self.collision_count / self.episode_count)
         put("episode/timeout_rate", self.timeout_count / self.episode_count)
+        put("episode/offroad_rate", self.offroad_count / self.episode_count)
         for reason, count in sorted(self.end_reason_counts.items()):
             put(f"episode/end_reason/{reason}_count", count)
 
@@ -1113,6 +1165,7 @@ class TrainingMetricsRecorder:
             put(f"scenario/{scenario}/success_rate", stats["success"].mean)
             put(f"scenario/{scenario}/collision_rate", stats["collision"].mean)
             put(f"scenario/{scenario}/timeout_rate", stats["timeout"].mean)
+            put(f"scenario/{scenario}/offroad_rate", stats["offroad"].mean)
             put(f"scenario/{scenario}/episode_length_mean", stats["length"].mean)
 
         for tag, value in self.external_scalars.items():

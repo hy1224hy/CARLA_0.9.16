@@ -29,12 +29,16 @@ from training.action_protocol import (
 
 LEGACY_CHECKPOINT_SCHEMA_VERSION = 2
 ACTION_CHECKPOINT_SCHEMA_VERSION = 3
-CHECKPOINT_SCHEMA_VERSION = 4
+VALUENORM_CHECKPOINT_SCHEMA_VERSION = 4
+CHECKPOINT_SCHEMA_VERSION = 5
 LEGACY_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00g_v2"
 ACTION_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_action_v2_p0_00g_v3"
-TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_valuenorm_p0_00g_v4"
+VALUENORM_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_valuenorm_p0_00g_v4"
+TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_offroad_p0_00g_v5"
 OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_v1"
-LIFECYCLE_PROTOCOL_VERSION = "agent_centric_terminated_truncated_v1"
+TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_lidar20m_v2"
+PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION = "agent_centric_terminated_truncated_v1"
+LIFECYCLE_PROTOCOL_VERSION = "agent_centric_offroad_terminated_truncated_v2"
 
 LATEST_CHECKPOINT_NAME = "latest.pt"
 INTERRUPTED_CHECKPOINT_NAME = "interrupted.pt"
@@ -369,6 +373,7 @@ def validate_checkpoint_payload(
         "total_successes",
         "total_collisions",
         "total_timeouts",
+        "total_offroads",
     }
     missing = required - set(checkpoint)
     if missing:
@@ -458,12 +463,22 @@ def validate_checkpoint_header(
         == ACTION_TRAINING_PROTOCOL_VERSION
         and protocol_versions.get("action") == ACTION_PROTOCOL_VERSION
     )
+    is_valuenorm_historical = (
+        checkpoint["checkpoint_schema_version"]
+        == VALUENORM_CHECKPOINT_SCHEMA_VERSION
+        and checkpoint["training_protocol_version"]
+        == VALUENORM_TRAINING_PROTOCOL_VERSION
+        and protocol_versions.get("action") == ACTION_PROTOCOL_VERSION
+    )
     if allow_legacy and is_legacy:
         expected_schema = LEGACY_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = LEGACY_TRAINING_PROTOCOL_VERSION
     elif allow_legacy and is_action_historical:
         expected_schema = ACTION_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = ACTION_TRAINING_PROTOCOL_VERSION
+    elif allow_legacy and is_valuenorm_historical:
+        expected_schema = VALUENORM_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = VALUENORM_TRAINING_PROTOCOL_VERSION
     else:
         expected_schema = CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = TRAINING_PROTOCOL_VERSION

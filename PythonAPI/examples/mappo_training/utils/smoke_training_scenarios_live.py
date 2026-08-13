@@ -31,13 +31,15 @@ def run_live_smoke(args: argparse.Namespace) -> int:
         disable_tensorboard=True,
         seed=args.seed,
         follow_spectator=args.follow_spectator,
+        lidar_range_m=args.lidar_range_m,
+        ttc_max_range_m=args.ttc_max_range_m,
     )
     failures = []
     try:
         for path in files:
             config = json.loads(path.read_text(encoding="utf-8"))
             env.set_scenario(config)
-            env.reset()
+            observations_by_agent, info = env.reset()
             observations = []
             for agent_id, vehicle in enumerate(env.vehicles):
                 expected = config["agents"][f"agent{agent_id}"]
@@ -53,6 +55,24 @@ def run_live_smoke(args: argparse.Namespace) -> int:
                     f"a{agent_id}:pos_err={location_error:.2f}m,"
                     f"speed={actual_speed:.2f}/{expected_speed:.2f}m/s"
                 )
+                occupancy = info.get("road_occupancy", {}).get(agent_id)
+                if not isinstance(occupancy, dict):
+                    failures.append(
+                        f"{path.name}/agent{agent_id}: missing road occupancy evidence"
+                    )
+                else:
+                    observations[-1] += (
+                        f",outside={occupancy['footprint_outside_count']}/8,"
+                        f"raw={int(bool(occupancy['offroad_raw']))}"
+                    )
+                    if not occupancy.get("driving_center_valid", False):
+                        failures.append(
+                            f"{path.name}/agent{agent_id}: center is not exact Driving"
+                        )
+                    if occupancy.get("offroad_raw", True):
+                        failures.append(
+                            f"{path.name}/agent{agent_id}: spawn footprint is offroad"
+                        )
                 if location_error > args.position_tolerance:
                     failures.append(
                         f"{path.name}/agent{agent_id}: position error "
@@ -63,7 +83,34 @@ def run_live_smoke(args: argparse.Namespace) -> int:
                         f"{path.name}/agent{agent_id}: speed error "
                         f"{speed_error:.2f}m/s"
                     )
-            print(f"PASS {path.name}: " + "; ".join(observations))
+            if "car_following" in config.get("tags", []):
+                rear_tag = next(
+                    tag
+                    for tag in config["tags"]
+                    if tag in {"agent0_rear", "agent1_rear"}
+                )
+                rear_id = int(rear_tag[len("agent")])
+                safety = env.get_longitudinal_safety_state()[rear_id]
+                gap_m = float(safety["front_gap_m"])
+                lidar_min = float(observations_by_agent[rear_id][8:].min())
+                observations.append(
+                    f"rear=a{rear_id},gap={gap_m:.2f}m,lidar_min={lidar_min:.3f}"
+                )
+                if safety["has_front_vehicle"] != 1.0:
+                    failures.append(
+                        f"{path.name}/agent{rear_id}: no same-lane front vehicle"
+                    )
+                if not math.isfinite(gap_m) or gap_m > args.ttc_max_range_m:
+                    failures.append(
+                        f"{path.name}/agent{rear_id}: front gap {gap_m:.2f}m "
+                        f"outside TTC range {args.ttc_max_range_m:.2f}m"
+                    )
+                if lidar_min >= 1.0:
+                    failures.append(
+                        f"{path.name}/agent{rear_id}: 20m lidar did not detect "
+                        "the configured front vehicle"
+                    )
+            print(f"CHECK {path.name}: " + "; ".join(observations))
     finally:
         env.close()
 
@@ -85,12 +132,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--scenario-dir",
         type=Path,
-        default=training_root / "data" / "training_scenarios_town05_v1",
+        default=training_root / "data" / "training_scenarios_town05_v2",
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--position-tolerance", type=float, default=0.25)
     parser.add_argument("--speed-tolerance", type=float, default=0.25)
     parser.add_argument("--follow-spectator", action="store_true")
+    parser.add_argument("--lidar-range-m", type=float, default=20.0)
+    parser.add_argument("--ttc-max-range-m", type=float, default=20.0)
     return parser
 
 

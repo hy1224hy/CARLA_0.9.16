@@ -18,9 +18,11 @@ from dataclasses import asdict, dataclass
 import math
 from typing import Dict, Iterable, Optional, Tuple
 
+from environment.offroad_protocol import OFFROAD_TERMINAL_PENALTY
+
 
 REWARD_VERSION = "v3"
-REWARD_PROTOCOL_VERSION = "base_route_completion_reward_v3"
+REWARD_PROTOCOL_VERSION = "base_route_completion_reward_v3_offroad_v1"
 
 REWARD_COMPONENTS = (
     "progress",
@@ -31,6 +33,7 @@ REWARD_COMPONENTS = (
     "ttc",
     "lane_deviation",
     "lane_invasion",
+    "offroad",
     "collision",
     "success",
 )
@@ -56,6 +59,12 @@ REWARD_DIAGNOSTICS = (
     "lateral_distance_m",
     "lane_deviation_risk",
     "yaw_error_rad",
+    "driving_center_valid",
+    "footprint_outside_count",
+    "footprint_outside_fraction",
+    "offroad_raw",
+    "offroad_consecutive_ticks",
+    "offroad_terminated",
     "collision_event",
     "lane_invasion_sensor_event",
     "success_event",
@@ -80,6 +89,7 @@ class RewardV3Config:
     route_potential_scale: float = 10.0
     success_bonus: float = 10.0
     collision_penalty: float = -20.0
+    offroad_penalty: float = OFFROAD_TERMINAL_PENALTY
 
     overspeed_start_mps: float = 15.0 / 3.6
     overspeed_full_mps: float = 30.0 / 3.6
@@ -134,6 +144,10 @@ def validate_reward_v3_config(config: RewardV3Config) -> None:
     if config.collision_penalty >= -config.route_potential_scale:
         raise RewardV3Error(
             "collision penalty magnitude must exceed the complete-route scale"
+        )
+    if config.offroad_penalty >= -config.route_potential_scale:
+        raise RewardV3Error(
+            "offroad penalty magnitude must exceed the complete-route scale"
         )
     if not (
         0.0 < config.overspeed_start_mps < config.overspeed_full_mps
@@ -217,6 +231,8 @@ def reward_v3_spec(
             "lidar_risk_is_ray_count_invariant",
             "lane_event_penalty_is_marking_count_invariant",
             "ttc_risk_is_continuous_at_threshold",
+            "offroad_and_collision_terminal_costs_do_not_stack",
+            "offroad_has_priority_over_goal_success",
         ],
     }
 
@@ -482,6 +498,21 @@ def terminal_rewards(
         config.collision_penalty if collision else 0.0,
         config.success_bonus if success else 0.0,
     )
+
+
+def offroad_terminal_reward(
+    *,
+    offroad: bool,
+    collision: bool,
+    config: RewardV3Config = DEFAULT_REWARD_V3_CONFIG,
+) -> float:
+    """Return the one-shot offroad component after collision priority."""
+
+    if not isinstance(offroad, bool) or not isinstance(collision, bool):
+        raise RewardV3Error("offroad/collision terminal flags must be booleans")
+    if collision:
+        return 0.0
+    return config.offroad_penalty if offroad else 0.0
 
 
 def discounted_return(rewards: Iterable[object], *, gamma: object) -> float:
