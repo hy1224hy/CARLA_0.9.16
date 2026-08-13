@@ -1,6 +1,6 @@
 # Town05 基础策略综合场景 v2 设计
 
-> 状态：设计与实现完成；32/32 离线/真实初始化、offroad 四方向正反例、fresh 1-update 严格链路和 210/210 全量回归均通过。Town05 v1/v2 证据只读保留；当前正式 fresh 身份升级为 training/C0/GO-HOLD v3，用结果级重复性取代逐 tick 硬相同。CARLA 当前关闭，待本阶段提交后再启动 seed-42 u5。
+> 状态：设计与实现完成；32/32 离线/真实初始化、offroad 四方向正反例、fresh 1-update 严格链路和 210/210 全量回归均通过。Town05 v1/v2 证据只读保留；training/C0/GO-HOLD v3 已由 `69252d4` 提交并通过 clean-source preflight。CARLA 当前关闭，等待重新启动后运行 fresh seed-42 u5。
 
 ## 1. 结论
 

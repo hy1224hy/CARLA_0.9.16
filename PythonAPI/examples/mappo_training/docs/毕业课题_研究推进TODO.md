@@ -10,7 +10,7 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                      |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                  |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                             |
-| 当前工程基线    | `P0-T05-OFFROAD-LIVE-VERIFIED / OUTCOME-REPEATABILITY-V3-IMPLEMENTED`：非 Driving 修复已通过真实闭环；Town05 v3 结果级重复性已实现并通过 210/210 回归。正式 Run 前只剩受控源码提交；旧 u5 与旧 HOLD 不改写 |
+| 当前工程基线    | `69252d4 / READY FOR FRESH TOWN05 V3 U5`：非 Driving 修复与结果级重复性 v3 已提交；210/210 回归和 training/C0/GO-HOLD 三套 clean-source preflight PASS。旧 u5 与旧 HOLD 不改写 |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                          |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                   |
 | 当前有效自动化测试 | 210/210 全量通过（2026-08-13）；Town05 v2 32/32 真实出生点和四方向 offroad 正反例 PASS；fresh 1-update strict validator、schema-v5 checkpoint、SHA256、PPO 更新与 CARLA 清理均 PASS |
@@ -142,7 +142,7 @@
 
 **兼容性结论**：该修复同时改变环境终止、reward 分解和证据 schema，虽然 Actor/Critic 张量形状可不变，旧 u5 checkpoint 所对应的 MDP 已不同，因此只能保留为历史诊断权重，不能正式 resume 或参与新协议选模。正在建设的 Town05 v2 本来就要求 fresh 训练，应在其正式 Run 前合入本修复，避免再产生一批道路语义不合格的策略。
 
-#### P0-T05-06 HOLD 分级与结果级重复性（已实现，待 commit 后正式取证）
+#### P0-T05-06 HOLD 分级与结果级重复性（已提交，等待正式取证）
 
 - **结构性 HOLD**：道路/碰撞/成功语义错误、结局或 T/X/active-mask 翻转、reward 不守恒、证据缺失、checkpoint 损坏、actor/同步模式泄漏。此时不得继续正式长训练、选模或论文比较；允许且应当运行有界诊断实验定位问题。
 - **正式资格 HOLD**：当前产物未满足其预注册合同（例如旧 Town05 双 C0 要求离散签名逐项完全相同）。这表示该产物不能升级为正式证据，不等于算法“禁止再实验”。可以修复流程，也可以在查看新结果前发布新的协议版本并从 fresh Run 重新取证，但不得用新阈值追认旧产物。
@@ -156,7 +156,7 @@
 - 新 C0 合同：`configs/evaluation/p0_base_c0_town05_v3.json` / `P0_BASE_C0_TOWN05_V3`；episode schema 升级为 `p0_base_c0_town05_offroad_episode_v3`。
 - 新 GO/HOLD 合同：`configs/evaluation/p0_base_go_hold_town05_v3.json` / `P0_BASE_GO_HOLD_TOWN05_V3`；证据字段由 `require_repeatability_pass` 攵称为 `require_repeatability_gate_pass`，明确 `WARNING` 不等于失败。
 - 回归：重复性/C0/合同/judge 专项 51/51；全量离线 210/210；系统性漂移合成样例为 `HOLD / gate_pass=false`；`git diff --check` 无空白错误。
-- 当前 CARLA 已关闭，本阶段不需要服务器；提交后开始 fresh seed-42 到 u5 前，需猹师傅重新启动 `127.0.0.1:2000`。
+- 当前 CARLA 已关闭；受控实现提交为 `69252d4`，提交后 training/C0/GO-HOLD v3 critical-source preflight 全部 PASS。开始 fresh seed-42 到 u5 前，需猹师傅重新启动 `127.0.0.1:2000`。
 
 - [x] **P0-00A 冻结训练入口**：基础策略只维护 `train_no_rllib_mappo_robust_v2.py`，Phase 1 单蓝车只维护 `train_2red_1blue_ppo.py`；README、运行命令和文件索引已标记 RLlib 和其他旧入口停止使用。
 - [x] **P0-00B 冻结并适配 terminated/truncated 语义**：采用 agent-centric 回报边界；同伴红车碰撞时未碰撞红车按 truncation bootstrap，红车成功/碰撞时蓝车按对抗任务结局 termination；环境、两个当前入口和 15 项测试已同步。
@@ -873,8 +873,8 @@ git rev-parse HEAD
 | 2026-08-11 | `P0-BASE-03R-R5` | 最终生产入口真实 CARLA 3-update smoke、R2/R3 机制复验、checkpoint/恢复/TB/JSONL 审计与 R5 记录 | 不改算法与科学参数；验证 action-v2、reward-v3、ValueNorm-Huber、metrics-v5、schema-v4 checkpoint 和 R4 所需字段在唯一入口端到端连通 | 10 项机制诊断 PASS；fresh u1、u2 受控中断/严格恢复、u3 完成；12 episodes、197 必需标签、575 TB scalar 标签、全部 checkpoint SHA/manifest/ValueNorm/RNG/optimizer 与清理审计 PASS；全量 179 项回归通过 | 诊断 LR horizon/episode 规模仅用于 smoke；不执行正式 C0/judge，不复用权重，不声称性能或收敛；未出现 CARLA 卡死，无需重启 | P0-BASE-03R-R5 |
 | 2026-08-11 | `P0-BASE-03R-PREFLIGHT` | R1–R5 端到端审计、三合同/场景/运行时预检、正式 u5 命令 dry preflight、C0/GO-HOLD 操作文档与独立检查记录 | 不改算法、配置或阈值；统一当前 C0 v4/GO-HOLD v2 操作入口，明确 u5 后双 C0 与唯一 judge 停止顺序 | R1–R4 专项 38 项、全量 179 项、训练/C0/GO-HOLD preflight、16 场景 validator、R5 strict validator、5 checkpoint 与 CARLA 0.9.16 空闲审计均 PASS | 只放行 seed 42 fresh 到 u5；尚无正式性能结果，不放行 u10、多 seed、选模或对抗训练 | P0-BASE-03R-PREFLIGHT |
 | 2026-08-12 | `2d18f68` / `a11cf70` | Town05 迁移/gamma 数据流、初始状态同步核验、正式合同/C0/GO-HOLD、场景/工具/tests/docs | 训练环境 reward gamma 与 PPO/GAE 同源且 fail-fast；checkpoint/C0 审计实际 gamma；CARLA 初始 transform/速度整组同步提交、有限核验重试并在失配时拒绝 rollout | 全量 184/184；训练池 16/16、留出池 8/8 离线；三合同 clean preflight；真实 16/16；clean-commit 1-update/960-transition strict/checkpoint/cleanup PASS | Town02 与旧 gamma=0.99 smoke 仅历史诊断；网络张量未因初始化修复改变；Town05 正式训练只允许 `a11cf70` 后 fresh，不得复用诊断 checkpoint | P0-T05-03A/B、`T05_parallel_smoke_s42_20260812_161632` |
-| 2026-08-13 | `P0-T05-05`（本次提交） | offroad protocol、环境/reward、训练/metrics/checkpoint、C0/GO-HOLD v2、Town05 v2 合同/场景、live validator、tests/docs | 车辆连续 3 tick 实质占用非 Driving 区域时成为显式安全失败；禁止 offroad 目标捷径；记录车体占用和首证据；合法相邻 Driving 并线不误判 | 204/204；32/32 live spawn；四方向 v4 PASS；fresh u1 strict/checkpoint/SHA/PPO/cleanup PASS | 终止/reward/schema/协议身份均变化，旧 u5 仅历史读取且禁止 resume；正式新 Run 必须在本修改提交后 fresh | P0-T05-05、`DIAG_OFFROAD_TOWN05V2_U1_20260813_V2` |
-| 2026-08-13 | `P0-T05-06`（本次提交） | Town05 training/C0/GO-HOLD v3、结果级重复性比较器、validator/judge、边界 tests/docs | 安全/结局/生命周期零容忍；episode length/active steps ±2 tick 和 return ≤0.1 分级告警；至少 8 cases 且告警 >50% 升级系统性 HOLD | 专项 51/51、全量 210/210、合成系统漂移 HOLD、diff check PASS；未运行 CARLA | 旧 v2 HOLD 不改写；新 v3 必须 commit 后 fresh；本阶段只改判定协议身份，不改训练超参数或网络 | P0-T05-06 |
+| 2026-08-13 | `69252d4` | offroad protocol、环境/reward、训练/metrics/checkpoint、C0/GO-HOLD v2、Town05 v2 合同/场景、live validator、tests/docs | 车辆连续 3 tick 实质占用非 Driving 区域时成为显式安全失败；禁止 offroad 目标捷径；记录车体占用和首证据；合法相邻 Driving 并线不误判 | 204/204；32/32 live spawn；四方向 v4 PASS；fresh u1 strict/checkpoint/SHA/PPO/cleanup PASS | 终止/reward/schema/协议身份均变化，旧 u5 仅历史读取且禁止 resume；正式新 Run 必须在本修改提交后 fresh | P0-T05-05、`DIAG_OFFROAD_TOWN05V2_U1_20260813_V2` |
+| 2026-08-13 | `69252d4` | Town05 training/C0/GO-HOLD v3、结果级重复性比较器、validator/judge、边界 tests/docs | 安全/结局/生命周期零容忍；episode length/active steps ±2 tick 和 return ≤0.1 分级告警；至少 8 cases 且告警 >50% 升级系统性 HOLD | 专项 51/51、全量 210/210、合成系统漂移 HOLD、diff check PASS；提交后 training/C0/GO-HOLD clean preflight PASS | 旧 v2 HOLD 不改写；新 v3 必须 commit 后 fresh；本阶段只改判定协议身份，不改训练超参数或网络 | P0-T05-06 |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志
@@ -942,7 +942,7 @@ git rev-parse HEAD
 - [x] 第 1 天前半：修复版 seed 42 u5 正式训练、双 C0 v4 与 GO/HOLD v2 已完成，结果 `CONTINUE_WITH_WARNING`；未事后放宽阈值。
 - [x] 第 1 天后半：Town05 正式 seed-42 u5、strict validator、双 C0 和唯一 GO/HOLD 已完成；机器裁决因 5/16 collision case 的 episode length 漂移 1–2 tick 为 `HOLD`，未启动 u6。
 - [x] 第 2 天前半：P0-T05-05 非 Driving 终止与证据修复完成；204/204、32/32 出生点、四方向真实正反例和 fresh 1-update strict smoke 均 PASS。P0-T05-06 的逐 tick 根因修复可顺延，旧裁决不改写。
-- [x] 第 2 天后半：猹师傅审核后完成 P0-T05-06 结果级重复性协议、Town05 v3 三合同和 210/210 离线回归；下一动作是提交受控源码。CARLA 关闭不影响本项。
+- [x] 第 2 天后半：猹师傅审核后完成 P0-T05-06、Town05 v3 三合同、210/210 离线回归并提交 `69252d4`；提交后三套 critical-source preflight PASS。CARLA 关闭不影响本项。
 - [ ] 第 3 天前半：猹师傅启动 CARLA 2000 端口后，在本次 clean commit 上按 Town05 v3 合同 fresh 运行 seed 42 到 u5；随后立即 strict validator、双 C0 v3 和唯一 GO/HOLD v3，不复用 dirty-tree 诊断权重。
 - [ ] 第 2-4 天：仅在 GO 后以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
 - [ ] 第 5 天：用冻结 C0 验证全部 periodic checkpoints，生成带 SHA/manifest 的 `best_base_valid.pt`。
@@ -978,4 +978,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。R1 二维 signed-longitudinal、R2 有界 reward v3、R3 ValueNorm+Huber、R4 早期塌缩门槛和 R5 生产入口均已闭环。P0-T05-05 已把道路合法性升级为精确车体占用、3-tick 终止、负奖励和可重建证据；P0-T05-06 又以前瞻 Town05 v3 合同把重复性分为安全语义零容忍、局部时序/return 告警和系统性漂移 HOLD，全量 210/210 通过。旧 Town05 u5、双 C0 和 `HOLD` 继续只读；当前仍没有可用于多 seed、独立选模或对抗训练的合格 checkpoint。唯一 NEXT 是完成本阶段受控提交；随后请猹师傅启动 CARLA 2000 端口，在该 clean commit 上 fresh 运行 Town05 v3 seed-42 到 u5，再做 strict、双 C0 v3 和 GO/HOLD v3。
+本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。R1 二维 signed-longitudinal、R2 有界 reward v3、R3 ValueNorm+Huber、R4 早期塌缩门槛和 R5 生产入口均已闭环。P0-T05-05 已把道路合法性升级为精确车体占用、3-tick 终止、负奖励和可重建证据；P0-T05-06 又以前瞻 Town05 v3 合同把重复性分为安全语义零容忍、局部时序/return 告警和系统性漂移 HOLD，全量 210/210 通过并提交为 `69252d4`。旧 Town05 u5、双 C0 和 `HOLD` 继续只读；当前仍没有可用于多 seed、独立选模或对抗训练的合格 checkpoint。唯一 NEXT 是请猹师傅启动 CARLA 2000 端口，在 clean HEAD 上 fresh 运行 Town05 v3 seed-42 到 u5，再做 strict、双 C0 v3 和 GO/HOLD v3。
