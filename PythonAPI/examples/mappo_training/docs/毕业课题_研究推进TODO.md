@@ -86,6 +86,7 @@
 - [x] **P0-T05-05 修复并实测非 Driving 区域终止及证据记录**：204/204 离线回归、Town05 v2 32/32 出生点、四方向合法相邻 Driving/强制越界/offroad+goal、fresh 1-update、strict metrics、schema-v5 checkpoint/SHA256 与退出清理全部 PASS。随机初始策略的 10/16 offroad 均在第 3 个连续 raw tick 正确终止并带首证据，不属于合法轨迹假阳性；旧 u5 仍不得 resume。
 - [x] **P0-T05-06 前瞻冻结 C0 结果级重复性口径**：已发布 training/C0/GO-HOLD Town05 v3 三套新合同；旧 v2 双 C0、GO/HOLD 报告和 `HOLD` 原样只读。新版严格比较 scenario/结局/end reason、success/collision/offroad、T/X/done、压缩 active-mask 生命周期转换和首个 offroad 证据存在性；episode length/各 Agent active steps 允许最多 2 tick，单 Agent episode return 在 `1e-5` 以上至 `0.1` 记 `WARNING`，超过 `0.1` 为 `HOLD`。不少于 8 cases 且告警案例超过 50% 时按系统性漂移 `HOLD`。C0 validator 和 GO/HOLD judge 只把 `gate_pass=false` 当结构失败，容差内告警仍写入报告；全量 210/210 离线回归通过。新合同必须在本阶段提交后 fresh 运行，不能追认旧产物。
 - [x] **P0-T05-07 完成 Town05 v3 正式 seed-42 u5 与机器裁决**：Run `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` fresh 完成 5 updates/80 episodes；strict validator 核对 208 必需指标、682 TB scalar 和 schema-v5 checkpoint。首次 C0 暴露生产入口漏接 v3 常量，修复 `a33a573` 不改变算法/合同/checkpoint，专项 17/17、全量 211/211 和三合同 preflight PASS。主/重复 C0 各 32 cases，安全/结局无 hard mismatch；13/32 return 容差告警且比例 40.625%，重复性 gate PASS。主 C0 为 0 success、2 collision、0 offroad、30 timeout，8 lane invasion；唯一 judge=`CONTINUE_WITH_WARNING`，允许同 Run 续下一停点但不放行多 seed。完整记录见 [Town05 v3 seed-42 u5 记录](./P0-BASE-Town05V3_seed42_u5正式训练与GO-HOLD记录.md)。
+- [x] **P0-T05-08 停止 u50 制动局部最优并封存诊断**：同一 Run 曾按冻结身份恢复，研究者于最后完整 u50 要求停止；800 个完整 episode 为 0 success、23 collision、48 offroad、729 timeout，另保留 1 条未完成 u51 中断记录。u41–u50 的 agent0 brake mode `0.9901`、速度 `0.0101 m/s`、完成度 `0.0138`，且其平均回报 `-5.7736` 高于仍运动的 agent1 `-8.3456`，证明停车是当前目标下的稳定相对最优。50 次 PPO 无 ratio/reward/nonfinite/skipped 故障；u50 checkpoint SHA256 `20b86366...d92adba`，仅作失败对照，禁止 resume/选模。CARLA 最终 async/None、actor 0/0。下一步转为 squashed-action entropy、task horizon/reward budget、mastery curriculum 新协议，详见 [u50 局部最优诊断](./P0-BASE-Town05V3_seed42_u50局部最优诊断.md)。
 
 #### P0-T05-05 非 Driving 区域终止及证据记录（真实 CARLA 验收完成）
 
@@ -947,7 +948,8 @@ git rev-parse HEAD
 - [x] 第 2 天前半：P0-T05-05 非 Driving 终止与证据修复完成；204/204、32/32 出生点、四方向真实正反例和 fresh 1-update strict smoke 均 PASS。P0-T05-06 的逐 tick 根因修复可顺延，旧裁决不改写。
 - [x] 第 2 天后半：猹师傅审核后完成 P0-T05-06、Town05 v3 三合同、210/210 离线回归并提交 `69252d4`；提交后三套 critical-source preflight PASS。CARLA 关闭不影响本项。
 - [x] 第 3 天前半：Town05 v3 seed-42 fresh u5、strict validator、双 32-case C0 v3 和唯一 GO/HOLD v3 已完成；裁决 `CONTINUE_WITH_WARNING`，未启动 u6，未放行多 seed。
-- [ ] 第 3 天后半：如猹师傅批准，按同一 Run/合同 strict resume 到 u10；停止后绑定 u5 decision，再执行 strict、双 C0 v3 和 GO/HOLD v3。启动前先处理 C 盘空间风险。
+- [x] 第 3 天后半：猹师傅随后批准同一 Run 长训观察；Run 最终在完整 u50 因 agent0 99% 制动局部最优人工停止，未继续浪费算力到 u100。原始 u51 单条中断记录保留，安全 checkpoint 为 u50；没有伪造 u50 C0 或机器 judge。
+- [ ] 第 4 天前半：审核并冻结新的 P0-T05-09 协议；优先修复 post-tanh 动作熵、log-std 上界/熵退火和饱和告警，再按真实轨迹重做 task horizon/reward budget，并把课程切换为 mastery gate。协议变化后必须新 Git、新 RunID、fresh 训练，禁止恢复 u50。
 - [ ] 第 2-4 天：仅在 GO 后以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
 - [ ] 第 5 天：用冻结 C0 验证全部 periodic checkpoints，生成带 SHA/manifest 的 `best_base_valid.pt`。
 - [ ] 第 6 天：开始 P0-01/P0-02，修复对抗碰撞对象和 steer/control 解析，并补相应测试。
@@ -982,4 +984,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。R1 二维 signed-longitudinal、R2 有界 reward v3、R3 ValueNorm+Huber、R4 早期塌缩门槛和 R5 生产入口均已闭环。Town05 v3 正式 seed-42 u5 已完成：训练健康、checkpoint、双 32-case C0、安全/结局重复性和来源均 PASS，机器裁决 `CONTINUE_WITH_WARNING`。当前策略仍为 0 success、制动主导和 93.75% timeout，不能称为收敛或合格基础策略；同时它没有 C0 offroad，且冻结的 all-agent 持久塌缩条件在 u5 尚未成立。当前仍没有可用于多 seed、独立选模或对抗训练的合格 checkpoint。唯一 NEXT 是经猹师傅批准后，以同一 Run/合同 strict resume 到 u10，随后立即 strict、双 C0 v3 和绑定 u5 报告的 GO/HOLD v3；不得直接大规模训练。
+本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。R1 二维 signed-longitudinal、R2 有界 reward v3、R3 ValueNorm+Huber、R4 早期塌缩门槛和 R5 生产入口均已闭环，但 Town05 v3 正式长训给出了新的反证：同一 seed-42 Run 到 u50 仍为 0 success，agent0 已稳定到约 99% 制动、0.01 m/s，停车回报还高于尝试行驶。训练健康、Critic、checkpoint 和 CARLA 链路正确不等于任务目标正确；pre-tanh entropy 与 post-tanh 饱和、500 步折扣时域、奖励预算、独立 actor 和 update 驱动课程共同形成了制动吸引域。当前没有可用于多 seed、独立选模、基础策略池或对抗训练的合格 checkpoint。唯一 NEXT 是先审核并实现 P0-T05-09 新协议，完成无 CARLA 回归、真实机制测试和 fresh 小规模 pilot；禁止直接恢复 u50 或继续大规模训练。

@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：Town05 v3 正式 seed-42 Run `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` 已 fresh 完成 u1–u5；strict validator、双 32-case C0、结果级重复性和唯一 GO/HOLD v3 均闭环，裁决 `CONTINUE_WITH_WARNING`。当前只允许同一 Run 严格恢复到下一登记停点；多 seed、选模、基础策略池和对抗训练仍未放行。旧 Town05 v1/v2 与 Town02 产物继续仅作历史证据。
+> 当前状态：Town05 v3 正式 seed-42 Run `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` 在 u5 机器裁决 `CONTINUE_WITH_WARNING` 后曾按同一身份恢复，研究者于最后完整 u50 因 agent0 持续制动局部最优要求停止。当前状态为 `INTERRUPTED / DIAGNOSTIC HOLD`；u50 checkpoint 只保留为失败对照，禁止继续能力训练、选模、基础策略池和多 seed。下一步是冻结新的 action/reward/curriculum 协议并 fresh 小规模验证。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
@@ -29,7 +29,7 @@
 
 | 日期 | RunID | Git SHA | 契约 SHA256 | 当前 update | 训练状态 | strict validator | C0 | GO/HOLD | 下一动作 |
 |---|---|---|---|---:|---|---|---|---|---|
-| 2026-08-14 | `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` | origin `5dad4d4`；C0 入口修复 `a33a573` | `d39956e0...a08e92` | 5 | `SEGMENT_COMPLETED`；80 episodes，未启动 u6 | PASS：updates 1–5、208 required tags、682 scalar tags；PPO/reward/finite/checkpoint/cleanup 均通过 | 主/重复各 32 cases；主为 0 success、2 collision、0 offroad、30 timeout；安全/结局完全一致，13/32 return 容差告警，gate PASS | `CONTINUE_WITH_WARNING`；8/32 lane invasion；联合行为塌缩条件不成立；多 seed 未放行 | 同一 Run 可 strict resume 到 u10；随后立即 strict、双 C0 和 judge，并绑定本次 u5 decision |
+| 2026-08-14 | `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` | origin `5dad4d4`；C0 入口修复 `a33a573` | `d39956e0...a08e92` | 50 | `INTERRUPTED / DIAGNOSTIC HOLD`；800 完整 episodes，另保留 1 条未完成 u51 中断记录 | u1–u50 PPO/ratio/reward/finite/checkpoint 健康；原目录 strict 如实因 u51 单条 episode 无对应 metrics 而拒绝；u50 checkpoint schema/SHA PASS | u5 双 C0 原结论保留；没有伪造 u50 C0。训练窗口 u41–u50 为 0 success、2 collision、0 offroad、158 timeout，A0 brake mode 99.01% | u5 机器输出仍为 `CONTINUE_WITH_WARNING`；u50 研究结论为局部最优 `DIAGNOSTIC HOLD`，不续训、不放行多 seed | 设计 squashed-action entropy、奖励时域/预算和 mastery curriculum 新协议；fresh 小规模验证 |
 | 2026-08-12 | `P0_BASE_MAPPO_Town05_s42_20260812_164411` | `6c28a9141d3ede87f7f54734cc277973381e6f05` | `eeb12304...84bde` | 5 | `SEGMENT_COMPLETED / EVIDENCE_HOLD`；80 episodes、65178 transitions，未启动 u6 | PASS：updates 1–5、197 required tags、575 scalar tags；PPO/ratio/reward/finite/ValueNorm/checkpoint/gamma/cleanup 均通过 | 两轮各 0 success、12 collision、4 timeout；各自 validator PASS；5/16 碰撞 case 的长度相差 1–2 tick，repeatability HOLD | `HOLD`：唯一 hard failure 为 C0 离散重复性；训练健康和 R4 行为评估 PASS；8/16 lane-invasion warning | 冻结本 Run；诊断 collision callback/world frame/episode step 的 1–2 tick 漂移，禁止 resume、多 seed和调参 |
 | 2026-08-12 | `T05_parallel_smoke_s42_20260812_161632` | `a11cf70721529d8960d0457a9cab219b54b2d563` | N/A：冻结诊断 smoke 配置 | 1 | `CLEAN-COMMIT SMOKE PASS`；4 episodes/960 transitions，0 collision/4 timeout | PASS：197 required tags / 582 scalar tags；ratio precheck 0/0；PPO 执行；reward step residual 0；训练/环境 gamma 0.997；清理 0/0 | 未运行：只验证训练入口 | 不裁决 | P0-T05-04：正式新 RunID、随机初始化 seed 42 到 u5 |
 | 2026-08-12 | `T05_parallel_smoke_s42_20260812_160851` | `2d18f68` + 未提交初始化修复 | N/A：诊断 smoke | 1 | `PRECOMMIT DIAGNOSTIC PASS`；4 episodes/954 transitions，1 collision/3 timeout | PASS：197 required tags / 583 scalar tags；训练与环境 gamma 均 0.997；清理 0/0 | 未运行：只验证训练入口 | 不裁决 | 提交初始化修复，在精确 commit 上重复完整 live spawn 与单更新 smoke |
@@ -40,6 +40,15 @@
 | 2026-08-09 | `P0_BASE_MAPPO_Town02_s42_20260809_173321` | `8a0bd9d` | `342a1f...f6f` | 5 | `EVIDENCE_HOLD`；模型仅诊断 | PASS：5 updates / 80 episodes / 570 scalar tags | 两次 gate 均 0/16 success、0/16 collision、16/16 timeout；离散重复性 PASS | 来源预检 HOLD：resolved config 漏记 seed，未进入性能裁决 | 提交证据修复后新 RunID fresh 重跑 update 5；禁止 resume 本 Run |
 
 ## 4. 已运行记录
+
+### `P0_BASE_MAPPO_Town05V3_s42_20260814_125226`：u50 人工停止与局部最优诊断
+
+- 训练从 u5 严格恢复并保持 origin Git、合同、seed、RunID、PPO、奖励与课程参数不变；最后完整边界 u50 共 800 episodes，另有 1 条未完成 u51 episode 原样保留。u50 checkpoint SHA256 为 `20b86366f3246a5603ac602652e4f86e904752ba63d3ca2416b2990cdd92adba`。
+- 全段为 0 success、23 collision、48 offroad、729 timeout。u41–u50 的 160 episodes 为 0 success、2 collision、0 offroad、158 timeout；agent0 平均速度 `0.0101 m/s`、完成度 `0.0138`、brake mode `0.9901`、signed-longitudinal `-0.9328`，已经稳定进入全制动局部最优。
+- u41–u50 的平均 episode return 为 agent0 `-5.7736`、仍在尝试行驶的 agent1 `-8.3456`。停车通过减少纵向变化、车道偏离和违规成本获得更高相对回报，因此 PPO 是在优化失配目标；50 次更新均无 skipped、nonfinite、ratio 或 reward 守恒错误。
+- 模型使用 pre-tanh Normal entropy，而环境执行 tanh 后动作；训练熵和 log-std 上升时，agent0 的实际动作仍可饱和为 99% 制动。`gamma=0.997` 在 500 步末只保留 `0.2226` 的任务信号，加上独立 actor 和 update 驱动课程，共同固化该吸引域。critic EV 上升只说明能预测全超时窄分布，不代表驾驶能力。
+- 研究者要求停止后，训练进程退出；CARLA 恢复 async/None，并清理终止前待提交命令产生的 2 辆训练车与 6 个传感器，最终 actor `0/0`。registry/manifest 更新为 `INTERRUPTED`、安全边界 u50，禁止 resume 本 checkpoint 作能力训练。
+- 完整数值、数学原因和优化顺序见 [u50 制动局部最优诊断](./P0-BASE-Town05V3_seed42_u50局部最优诊断.md)。下一步不是继续到 u100，而是新建 squashed-action entropy、task horizon/reward budget、mastery curriculum 协议，回归通过后 fresh 小规模验证。
 
 ### `P0_BASE_MAPPO_Town05_s42_20260812_164411`
 
