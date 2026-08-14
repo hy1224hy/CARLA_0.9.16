@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：Town05 正式 seed-42 Run `P0_BASE_MAPPO_Town05_s42_20260812_164411` 已从随机初始化完成 u1–u5，训练、checkpoint 和两次 C0 各自的严格完整性均 PASS；两轮 C0 宏观结果均为 0/16 success、12/16 collision、4/16 timeout，但 5/16 个碰撞 case 的 `episode_length` 相差 1–2 tick，未满足预注册的逐值离散重复性，唯一 GO/HOLD 裁决为 `HOLD`。当前禁止 u6、u10、多 seed 和选模，只允许诊断 C0 逐 tick 漂移；Town02 产物继续仅作历史证据。
+> 当前状态：Town05 v3 正式 seed-42 Run `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` 已 fresh 完成 u1–u5；strict validator、双 32-case C0、结果级重复性和唯一 GO/HOLD v3 均闭环，裁决 `CONTINUE_WITH_WARNING`。当前只允许同一 Run 严格恢复到下一登记停点；多 seed、选模、基础策略池和对抗训练仍未放行。旧 Town05 v1/v2 与 Town02 产物继续仅作历史证据。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
@@ -29,6 +29,7 @@
 
 | 日期 | RunID | Git SHA | 契约 SHA256 | 当前 update | 训练状态 | strict validator | C0 | GO/HOLD | 下一动作 |
 |---|---|---|---|---:|---|---|---|---|---|
+| 2026-08-14 | `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` | origin `5dad4d4`；C0 入口修复 `a33a573` | `d39956e0...a08e92` | 5 | `SEGMENT_COMPLETED`；80 episodes，未启动 u6 | PASS：updates 1–5、208 required tags、682 scalar tags；PPO/reward/finite/checkpoint/cleanup 均通过 | 主/重复各 32 cases；主为 0 success、2 collision、0 offroad、30 timeout；安全/结局完全一致，13/32 return 容差告警，gate PASS | `CONTINUE_WITH_WARNING`；8/32 lane invasion；联合行为塌缩条件不成立；多 seed 未放行 | 同一 Run 可 strict resume 到 u10；随后立即 strict、双 C0 和 judge，并绑定本次 u5 decision |
 | 2026-08-12 | `P0_BASE_MAPPO_Town05_s42_20260812_164411` | `6c28a9141d3ede87f7f54734cc277973381e6f05` | `eeb12304...84bde` | 5 | `SEGMENT_COMPLETED / EVIDENCE_HOLD`；80 episodes、65178 transitions，未启动 u6 | PASS：updates 1–5、197 required tags、575 scalar tags；PPO/ratio/reward/finite/ValueNorm/checkpoint/gamma/cleanup 均通过 | 两轮各 0 success、12 collision、4 timeout；各自 validator PASS；5/16 碰撞 case 的长度相差 1–2 tick，repeatability HOLD | `HOLD`：唯一 hard failure 为 C0 离散重复性；训练健康和 R4 行为评估 PASS；8/16 lane-invasion warning | 冻结本 Run；诊断 collision callback/world frame/episode step 的 1–2 tick 漂移，禁止 resume、多 seed和调参 |
 | 2026-08-12 | `T05_parallel_smoke_s42_20260812_161632` | `a11cf70721529d8960d0457a9cab219b54b2d563` | N/A：冻结诊断 smoke 配置 | 1 | `CLEAN-COMMIT SMOKE PASS`；4 episodes/960 transitions，0 collision/4 timeout | PASS：197 required tags / 582 scalar tags；ratio precheck 0/0；PPO 执行；reward step residual 0；训练/环境 gamma 0.997；清理 0/0 | 未运行：只验证训练入口 | 不裁决 | P0-T05-04：正式新 RunID、随机初始化 seed 42 到 u5 |
 | 2026-08-12 | `T05_parallel_smoke_s42_20260812_160851` | `2d18f68` + 未提交初始化修复 | N/A：诊断 smoke | 1 | `PRECOMMIT DIAGNOSTIC PASS`；4 episodes/954 transitions，1 collision/3 timeout | PASS：197 required tags / 583 scalar tags；训练与环境 gamma 均 0.997；清理 0/0 | 未运行：只验证训练入口 | 不裁决 | 提交初始化修复，在精确 commit 上重复完整 live spawn 与单更新 smoke |
