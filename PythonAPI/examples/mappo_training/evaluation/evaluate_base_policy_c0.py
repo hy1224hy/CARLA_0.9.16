@@ -83,6 +83,14 @@ from training.action_protocol import (
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_v3.json"
+FORMAL_EXECUTABLE_C0_PROTOCOL_VERSIONS = frozenset(
+    {
+        C0_PROTOCOL_VERSION,
+        TOWN05_C0_PROTOCOL_VERSION,
+        TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+    }
+)
 
 
 def _set_seed(seed: int, env: CarlaMultiAgentEnv | None = None) -> None:
@@ -671,11 +679,7 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     contract_record = load_c0_contract(args.eval_contract, project_dir=PROJECT_DIR)
     contract = contract_record["payload"]
     if (
-        contract["protocol_version"] not in {
-            C0_PROTOCOL_VERSION,
-            TOWN05_C0_PROTOCOL_VERSION,
-            TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
-        }
+        contract["protocol_version"] not in FORMAL_EXECUTABLE_C0_PROTOCOL_VERSIONS
         and not args.allow_diagnostic_checkpoint
     ):
         raise C0ProtocolError(

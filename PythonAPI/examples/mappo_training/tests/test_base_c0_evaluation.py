@@ -30,7 +30,10 @@ from evaluation.base_c0_protocol import (
     validate_episode_record,
 )
 from evaluation.validate_base_c0_run import validate_c0_run
-from evaluation.evaluate_base_policy_c0 import _run_case
+from evaluation.evaluate_base_policy_c0 import (
+    FORMAL_EXECUTABLE_C0_PROTOCOL_VERSIONS,
+    _run_case,
+)
 from training.checkpoint_protocol import (
     ACTION_CHECKPOINT_SCHEMA_VERSION,
     ACTION_TRAINING_PROTOCOL_VERSION,
@@ -328,6 +331,12 @@ class _OneStepTimeoutEnv:
 
 
 class C0ContractTests(unittest.TestCase):
+    def test_current_town05_v3_protocol_is_formally_executable(self):
+        self.assertIn(
+            TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+            FORMAL_EXECUTABLE_C0_PROTOCOL_VERSIONS,
+        )
+
     @classmethod
     def setUpClass(cls):
         cls.record = load_c0_contract(CONTRACT_PATH, project_dir=PROJECT_DIR)
