@@ -88,6 +88,70 @@
 - [x] **P0-T05-07 完成 Town05 v3 正式 seed-42 u5 与机器裁决**：Run `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` fresh 完成 5 updates/80 episodes；strict validator 核对 208 必需指标、682 TB scalar 和 schema-v5 checkpoint。首次 C0 暴露生产入口漏接 v3 常量，修复 `a33a573` 不改变算法/合同/checkpoint，专项 17/17、全量 211/211 和三合同 preflight PASS。主/重复 C0 各 32 cases，安全/结局无 hard mismatch；13/32 return 容差告警且比例 40.625%，重复性 gate PASS。主 C0 为 0 success、2 collision、0 offroad、30 timeout，8 lane invasion；唯一 judge=`CONTINUE_WITH_WARNING`，允许同 Run 续下一停点但不放行多 seed。完整记录见 [Town05 v3 seed-42 u5 记录](./P0-BASE-Town05V3_seed42_u5正式训练与GO-HOLD记录.md)。
 - [x] **P0-T05-08 停止 u50 制动局部最优并封存诊断**：同一 Run 曾按冻结身份恢复，研究者于最后完整 u50 要求停止；800 个完整 episode 为 0 success、23 collision、48 offroad、729 timeout，另保留 1 条未完成 u51 中断记录。u41–u50 的 agent0 brake mode `0.9901`、速度 `0.0101 m/s`、完成度 `0.0138`，且其平均回报 `-5.7736` 高于仍运动的 agent1 `-8.3456`，证明停车是当前目标下的稳定相对最优。50 次 PPO 无 ratio/reward/nonfinite/skipped 故障；u50 checkpoint SHA256 `20b86366...d92adba`，仅作失败对照，禁止 resume/选模。CARLA 最终 async/None、actor 0/0。下一步转为 squashed-action entropy、task horizon/reward budget、mastery curriculum 新协议，详见 [u50 局部最优诊断](./P0-BASE-Town05V3_seed42_u50局部最优诊断.md)。
 
+#### P0-T05-09 / R6 下一版基础策略修复计划（待审核后实施）
+
+> **状态：PLANNED / DESIGN REVIEW（2026-08-17）**。实现基线为分支 `codex/mappo-experiment-baseline`、提交 `2c4d088`。本阶段必须建立新协议、新合同、新 Git 提交和新 RunID；旧 u50 checkpoint 只作失败回归输入，禁止 resume、选模、进入基础策略池或追认为新版本结果。开始实现和无 CARLA 回归时不需要启动 CARLA；只有进入真实机制测试和 fresh smoke 时才提醒猹师傅启动 `127.0.0.1:2000`。
+
+**目标与边界**
+
+1. 修复 tanh 前 Normal 熵与 CARLA 实际执行动作熵不一致造成的饱和漏洞，阻止“pre-tanh 熵上升、post-tanh 动作却近乎恒定全制动”。
+2. 联合校准 500 步任务时域、路线/成功信号和沿途风险/舒适成本，使合法平滑前进严格优于静止超时，同时保持碰撞/offroad 为强失败。
+3. 把课程推进从 update 数驱动改成能力掌握门控；基础驾驶未掌握时不得自动加入更难交互场景。
+4. 把行为 HOLD 从“双 agent 同时塌缩”扩展为“任意单 agent 持续塌缩”，避免团队均值掩盖 agent0 一类退化。
+5. 本轮 P0 不同时引入共享 actor 或行为克隆，先保证当前独立 actor 架构下的目标函数正确，以便归因；参数共享和 BC 仅作为后续 P1 消融。
+
+**P0-A：策略分布与动作空间熵**
+
+- 保留当前带 tanh Jacobian 修正的 action log-prob；新增基于**当前策略 fresh sample** 的 squashed-entropy Monte Carlo 估计 `H[pi(a|s)] ≈ -E[log pi(tanh(z)|s)]`。PPO 熵奖励不得复用 rollout 中由旧策略采出的 `z` 估计当前熵，避免把交叉熵误当策略熵。
+- `dist.entropy()` 只保留为 `pre_tanh_entropy` 诊断；正式优化和健康判断使用 `post_tanh_entropy`。增加每一动作维度的 `log_std`、确定性 actor mean、longitudinal/steer 饱和率和“高 pre-tanh 熵 + 高 post-tanh 饱和”告警。
+- Actor 增加 `max_log_std`，并让熵系数支持冻结的线性退火。首轮离线候选为 `init_log_std=-0.5`、`min_log_std=-2.0`、`max_log_std=0.0`、`ent_coef=0.01→0.001`；这些只是待敏感性测试的候选，必须在 fresh pilot 前冻结，禁止看结果后追调。
+- 专项测试覆盖：Jacobian log-prob 一致性、未更新 ratio 严格为 1、fresh-sample entropy 梯度有限、均值进入 ±饱和区时 post-tanh entropy 正确下降、log-std 上下界、CPU/GPU 可重复张量形状、checkpoint 保存/恢复熵调度状态。
+
+**P0-B：task horizon、奖励预算与超时语义**
+
+- 保留 reward v3 的 gamma-consistent 路线势能、防往返刷分、成功/碰撞/offroad 互斥和非正安全/舒适成本；不恢复正 speed/alive/centering 奖励，也不得通过简单降低道路安全惩罚强迫车辆移动。
+- 联合比较 `gamma`、episode 长度、初级路线长度和 route/success task scale。当前 `gamma=0.997` 在 500 步末只剩 `gamma^500=0.2226`；候选方向包括评估 `gamma=0.999`、缩短 Stage-0 路线或分阶段子目标。任何候选都必须连同沿途负成本重新计算，不能只比较末端正奖励。
+- 区分 `mission_timeout` 与纯 `rollout_cutoff`：固定任务截止失败应有明确失败语义和有界剩余距离项，例如 `r_timeout=-w_timeout*(1-final_completion)`，并切断任务终局后的 value bootstrap；纯采样截断才允许 bootstrap。具体权重由轨迹预算决定，不先拍脑袋写死。
+- 增加 `stalled` 诊断：低速、路线完成度长期无增加、持续超过预注册窗口。首版默认只记录；只有简单、无需停车让行的 Stage-0 场景在真实校准后才可升级为终止。复杂交互必须加入前车阻塞/合理让行豁免，防止把安全停车误杀。
+- 重点复核 `safety_lidar` 对平行同速或静止邻车的持续计费，优先评估用 ego motion、closing speed 或 TTC 门控；控制变化成本必须用 post-tanh 实际控制轨迹重新预算。
+- 奖励预算的硬排序为：`成功 > 安全平滑前进 > 有进度但未完成 > 静止/无进度超时 > 碰撞或 offroad`；同进度下 `平滑 > 振荡`，且 `移动但越界 < 合法静止`。固定平滑前进、静止、振荡、部分进度超时、成功、碰撞和 offroad 七类轨迹均需通过基准与核心参数敏感性测试。
+
+**P0-C：mastery curriculum 与单 agent HOLD**
+
+- Stage 0 仅使用自由行驶、平行车道和静止起步等简单合法场景，不包含强制并线或明显冲突；只有连续两个冻结评估窗口同时满足双车最低完成度、最低速度、成功/timeout 和 collision/offroad 上界，才加入下一难度。
+- 候选门槛为：每个 agent 平均速度至少 `0.2–0.5 m/s`、完成度至少 `0.10–0.25`、brake mode 不高于 `0.80`、collision/offroad 各不高于 `0.10`，并连续两个窗口成立。准确数值必须根据合法脚本轨迹和 Stage-0 任务长度在第一次 fresh pilot 前冻结。
+- GO/HOLD 增加 per-agent collapse：任意 agent 在相邻两个正式停点持续满足高制动、低速度、低完成度、零成功和团队高 timeout，即 `BEHAVIORAL_COLLAPSE/HOLD`；不得要求两个 agent 同时塌缩。
+- 增加 post-tanh 饱和、pre/post entropy 背离和课程越权升级检查；mastery 未通过时课程必须保持当前阶段，并留下原因和窗口证据。
+
+**P1 消融（P0 验收后再决定）**
+
+- 若 P0 修复后仍出现独立 actor 的角色分化，再比较当前独立 actor、共享 trunk + agent/角色 embedding、共享 actor + 独立输出 head；保持 centralized critic 和 decentralized execution。结构变化必须再次升级模型/合同身份。
+- 若目标函数修复后随机初始化仍无法获得成功样本，再用 CARLA autopilot 或合法脚本轨迹做短行为克隆 warm start，然后由 MAPPO 微调；禁止在奖励排序仍失配时用 BC 掩盖问题。
+
+**版本、兼容性与拟修改范围**
+
+- 新增 policy-distribution protocol 身份；reward 改动发布为 reward v4，课程发布为 curriculum v2，同时升级 metrics、checkpoint schema、Town05 training/C0/GO-HOLD 合同和 critical-source 指纹。
+- 旧 schema-v5 checkpoint 继续可按历史协议只读检查，但新训练入口必须拒绝 resume；C0/GO-HOLD 不得把旧 u50 产物追认为新协议结果。
+- 预计涉及 `models/actor_critic.py`、`training/train_no_rllib_mappo_robust_v2.py`、`training/metrics_protocol.py`、`utils/training_metrics_recorder.py`、`environment/base_reward_v3.py` 或新的 reward-v4 模块、生命周期/课程/experiment/checkpoint 协议、C0/GO-HOLD evaluator、版本化合同、测试和文档。实施前先审计精确调用链，再确定最小文件集合。
+
+**执行与验收顺序**
+
+1. 不启动 CARLA：输出代码位置审计、数学定义、拟修改文件、协议版本和测试矩阵，猹师傅审核后再实施。
+2. 实现 P0-A，先通过 squashed-entropy/log-std/ratio/checkpoint 专项和全量无 CARLA 回归。
+3. 实现 P0-B，完成七类轨迹排序、折扣预算、timeout/bootstrap、守恒与敏感性测试；不得以删除安全断言换取通过。
+4. 实现 P0-C，完成 mastery 状态机、恢复一致性、单 agent HOLD 和旧证据只读兼容测试；随后冻结新 training/C0/GO-HOLD 合同。
+5. 需要真实验证时提醒猹师傅启动 CARLA；依次执行平滑前进、静止、振荡、碰撞、offroad、部分进度超时和成功轨迹，验证动作空间熵、奖励排序、终局、bootstrap 和清理。
+6. 在精确 clean commit 上运行 fresh 1-update 工程 smoke，只验 metrics/checkpoint/resume/证据/清理，不作收敛结论。
+7. 新 RunID、seed 42、fresh 运行 Stage-0 小规模 pilot；若任一 agent 再次持续制动或 mastery 未通过，立即 HOLD，不用延长至 u100 代替机制修复。
+8. 只有 Stage-0 连续通过 mastery gate，才扩展完整课程、双 C0、GO/HOLD 和多 seed；只有多 seed 与 held-out 能力通过后，才能建立基础策略池并进入对抗训练。
+
+**交付物**
+
+- 新策略分布/奖励/课程/metrics/checkpoint/C0/GO-HOLD 协议与版本化合同。
+- 单元、集成、恢复、旧证据只读兼容和真实 CARLA 机制报告。
+- fresh smoke 与 Stage-0 pilot 的 RunID、Git/config/scenario 指纹、checkpoint SHA、strict validator、双 C0/GO-HOLD（到达对应正式停点时）和 CARLA cleanup 审计。
+- 同步更新基础策略实验记录、机器 registry 与本 TODO；失败 Run 和未完成前缀同样保留，不删除、不覆盖、不冒充正式能力证据。
+
 #### P0-T05-05 非 Driving 区域终止及证据记录（真实 CARLA 验收完成）
 
 > **状态：LIVE VERIFIED / COMPLETED（2026-08-13）**。环境、reward、训练、metrics、checkpoint、C0 与 GO/HOLD 已按审核语义实现；旧 u5 checkpoint 和旧 C0/GO-HOLD 证据保持只读且不会被新协议接续。离线全量 204/204、真实 Town05 四方向正反例、32/32 出生点和 fresh 1-update 机制 smoke 均 PASS。该结论只证明道路约束和训练链路正确，不宣称随机初始化策略已经学会驾驶；正式训练仍需在受控源码 commit 和新重复性协议冻结后 fresh 启动。
