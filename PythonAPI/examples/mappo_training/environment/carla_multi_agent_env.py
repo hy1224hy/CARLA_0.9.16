@@ -33,12 +33,38 @@ from environment.base_reward_v3 import (
     ttc_risk_penalty,
     validate_gamma,
 )
+from environment.base_reward_v4 import (
+    DEFAULT_REWARD_V4_CONFIG,
+    REWARD_COMPONENTS as REWARD_V4_COMPONENTS,
+    REWARD_DIAGNOSTICS as REWARD_V4_DIAGNOSTICS,
+    approach_gated_lidar_penalty as v4_lidar_penalty,
+    control_rate_penalties as v4_control_rate_penalties,
+    is_legal_lane_change_marking as v4_is_legal_lane_change_marking,
+    lane_deviation_penalty as v4_lane_deviation_penalty,
+    lane_invasion_penalty as v4_lane_invasion_penalty,
+    lateral_distance_to_lane_center as v4_lateral_distance_to_lane_center,
+    mission_timeout_reward,
+    offroad_terminal_reward as v4_offroad_terminal_reward,
+    overspeed_penalty as v4_overspeed_penalty,
+    projected_ttc_seconds,
+    route_completion as v4_route_completion,
+    route_potential_reward as v4_route_potential_reward,
+    terminal_rewards as v4_terminal_rewards,
+    ttc_risk_penalty as v4_ttc_risk_penalty,
+)
+from environment.stall_protocol import (
+    DEFAULT_STALL_CONFIG,
+    StallState,
+    is_complex_interaction_family,
+    update_stall_diagnostic,
+)
 from environment.offroad_protocol import (
     OFFROAD_PERSISTENCE_TICKS,
     classify_offroad_tick,
     decision_as_dict,
     footprint_local_offsets,
     offroad_protocol_spec,
+    r6_offroad_protocol_spec,
 )
 
 
@@ -91,9 +117,9 @@ class CarlaMultiAgentEnv:
             timestep: 时间步长（秒）
             max_steps: 最大步数
             adversarial_agent_ids: 对抗智能体ID列表，None表示无对抗智能体
-            reward_version: 奖励函数版本；基础策略修复版使用 'v3'
+            reward_version: 奖励函数版本；R6 基础策略使用 'v4'
             disable_tensorboard: 禁用环境内部TB writer（训练脚本自行管理TB时设为True）
-            lidar_range_m: 19维观察中11条全周射线的物理量程（米）
+            lidar_range_m: 观察中11条全周射线的物理量程（米）
             ttc_max_range_m: 同车道前向TTC候选的最大检测距离（米）
         """
         self.host = host
@@ -104,13 +130,14 @@ class CarlaMultiAgentEnv:
         self.timestep = timestep
         self.max_steps = max_steps
         self.adversarial_agent_ids = adversarial_agent_ids if adversarial_agent_ids is not None else []
-        if reward_version not in {"v1", "v2", "v3"}:
+        if reward_version not in {"v1", "v2", "v3", "v4"}:
             raise ValueError(f"unsupported reward_version: {reward_version!r}")
-        if reward_version == "v3" and self.adversarial_agent_ids:
+        if reward_version in {"v3", "v4"} and self.adversarial_agent_ids:
             raise ValueError(
-                "reward v3 is frozen for the non-adversarial base policy only"
+                f"reward {reward_version} is base-policy only"
             )
         self.reward_version = reward_version
+        self.observation_dim = 20 if reward_version == "v4" else 19
         self.lidar_range_m = float(lidar_range_m)
         if not math.isfinite(self.lidar_range_m) or self.lidar_range_m <= 0.0:
             raise ValueError("lidar_range_m must be finite and positive")
@@ -206,6 +233,10 @@ class CarlaMultiAgentEnv:
 
         # 上一步控制量（用于平滑性惩罚）
         self.prev_controls: Dict[int, Dict[str, float]] = {}
+        self.previous_lidar_distances: Dict[int, np.ndarray] = {}
+        self.legal_lane_change_grace_ticks: Dict[int, int] = {}
+        self.stall_states: Dict[int, StallState] = {}
+        self.current_scenario_family = ""
 
         # 自定义起始位置（优先级高于start_waypoints）
         self.custom_start_transforms: Optional[List[carla.Transform]] = None
@@ -807,7 +838,11 @@ class CarlaMultiAgentEnv:
         """Return JSON-safe current and episode-level offroad evidence."""
 
         return {
-            "protocol": offroad_protocol_spec(),
+            "protocol": (
+                r6_offroad_protocol_spec()
+                if getattr(self, "reward_version", "v3") == "v4"
+                else offroad_protocol_spec()
+            ),
             "road_occupancy": {
                 int(agent_id): dict(values)
                 for agent_id, values in self.last_road_occupancy.items()
@@ -946,6 +981,7 @@ class CarlaMultiAgentEnv:
         兼容旧格式（顶层直接 agent0 而无 agents 嵌套）。
         """
         configured_town = config.get("town")
+        self.current_scenario_family = str(config.get("family", "")).strip()
         if configured_town:
             current_town = self.map.name.rsplit("/", 1)[-1]
             if str(configured_town) != current_town:
@@ -1537,6 +1573,13 @@ class CarlaMultiAgentEnv:
 
         # 初始化上一帧的控制量（用于平滑性惩罚，首帧无惩罚）
         self.prev_controls = {}
+        self.previous_lidar_distances = {}
+        self.legal_lane_change_grace_ticks = {
+            i: 0 for i in range(self.num_agents)
+        }
+        self.stall_states = {
+            i: StallState() for i in range(self.num_agents)
+        }
 
         # 初始化上一帧的距离
         self.prev_distances = {}
@@ -1591,8 +1634,7 @@ class CarlaMultiAgentEnv:
         
         for i, vehicle in enumerate(self.vehicles):
             if not vehicle.is_alive:
-                # 8个基础状态 + NUM_RAYS个雷达状态
-                observations[i] = np.zeros(8 + NUM_RAYS, dtype=np.float32)
+                observations[i] = np.zeros(self.observation_dim, dtype=np.float32)
                 continue
             
             # 获取车辆状态
@@ -1648,8 +1690,19 @@ class CarlaMultiAgentEnv:
             # 获取雷达感知信息（已归一化到 [0,1]）
             lidar_obs = self._get_ray_detection(vehicle, ray_length=RAY_LENGTH, num_rays=NUM_RAYS)
 
-            # 拼接观测向量 (8 + 11 = 19维)
-            obs = np.concatenate([base_obs, lidar_obs])
+            # Reward-v4 把自然任务期限显式放入状态，避免同一物理状态在
+            # 不同剩余时间下具有不同最优动作却对策略不可辨认。
+            if self.reward_version == "v4":
+                remaining_time = max(
+                    0.0, (self.max_steps - self.current_step) / self.max_steps
+                )
+                obs = np.concatenate([
+                    base_obs,
+                    lidar_obs,
+                    np.asarray([remaining_time], dtype=np.float32),
+                ])
+            else:
+                obs = np.concatenate([base_obs, lidar_obs])
 
             # P2：防御性裁剪 —— 正常范围（约 [-1,1]）内不触发，仅兜底长路/越界/数值异常，
             # 避免极端输入直接进网络导致 Tanh 首层饱和或 NaN 传播。
@@ -1875,6 +1928,8 @@ class CarlaMultiAgentEnv:
             return self._compute_rewards_v2()
         if self.reward_version == 'v3':
             return self._compute_rewards_v3()
+        if self.reward_version == 'v4':
+            return self._compute_rewards_v4()
         raise RuntimeError(f"unsupported reward_version: {self.reward_version!r}")
 
     def _compute_rewards_v1(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
@@ -2821,6 +2876,370 @@ class CarlaMultiAgentEnv:
 
         self.last_reward_diagnostics = reward_diagnostics
         return rewards, reward_details
+
+    def _compute_rewards_v4(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
+        """P0-T05-09/R6 mission reward with explicit timeout failure."""
+        if self.adversarial_agent_ids:
+            raise RuntimeError("reward v4 cannot score adversarial agents")
+
+        config = DEFAULT_REWARD_V4_CONFIG
+        rewards: Dict[int, float] = {}
+        reward_details: Dict[int, Dict[str, float]] = {}
+        reward_diagnostics: Dict[int, Dict[str, float]] = {}
+
+        def _empty_details(**overrides) -> Dict[str, float]:
+            values = {name: 0.0 for name in REWARD_V4_COMPONENTS}
+            values.update({key: float(value) for key, value in overrides.items()})
+            return values
+
+        def _empty_diagnostics(**overrides) -> Dict[str, float]:
+            values = {name: 0.0 for name in REWARD_V4_DIAGNOSTICS}
+            values.update({
+                "remaining_time_fraction": max(
+                    0.0, (self.max_steps - self.current_step) / self.max_steps
+                ),
+                "lidar_min_normalized": 1.0,
+                "lidar_previous_min_normalized": 1.0,
+                "ttc_min_seconds_capped": config.ttc_threshold_s,
+                "driving_center_valid": 1.0,
+            })
+            values.update({key: float(value) for key, value in overrides.items()})
+            return values
+
+        for i, vehicle in enumerate(self.vehicles):
+            if self.reached_target.get(i, False):
+                rewards[i] = 0.0
+                reward_details[i] = _empty_details()
+                reward_diagnostics[i] = _empty_diagnostics(success_event=1.0)
+                continue
+            if not vehicle.is_alive:
+                collision_reward, _ = v4_terminal_rewards(
+                    success=False, collision=True, config=config
+                )
+                rewards[i] = collision_reward
+                reward_details[i] = _empty_details(collision=collision_reward)
+                reward_diagnostics[i] = _empty_diagnostics(collision_event=1.0)
+                continue
+
+            transform = vehicle.get_transform()
+            velocity = vehicle.get_velocity()
+            target_loc = self._get_target_location(i)
+            speed = math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2)
+            goal_dx = target_loc.x - transform.location.x
+            goal_dy = target_loc.y - transform.location.y
+            goal_norm = math.hypot(goal_dx, goal_dy)
+            closing_speed = (
+                max(0.0, (velocity.x * goal_dx + velocity.y * goal_dy) / goal_norm)
+                if goal_norm > 1e-6 else speed
+            )
+
+            current_dist = transform.location.distance(target_loc)
+            previous_dist = self.prev_distances.get(i, current_dist)
+            initial_dist = self.initial_distances.get(
+                i, max(previous_dist, current_dist, 1.0)
+            )
+            previous_completion = v4_route_completion(initial_dist, previous_dist)
+            current_completion = v4_route_completion(initial_dist, current_dist)
+            remaining_route_fraction = 1.0 - current_completion
+            progress_m = previous_dist - current_dist
+            progress_reward = v4_route_potential_reward(
+                previous_completion,
+                current_completion,
+                gamma=self.reward_gamma,
+                config=config,
+            )
+            self.prev_distances[i] = current_dist
+
+            overspeed_cost, overspeed_risk = v4_overspeed_penalty(
+                speed, config=config
+            )
+            control = vehicle.get_control()
+            longitudinal_command = float(control.throttle - control.brake)
+            longitudinal_rate_penalty = 0.0
+            steer_rate_penalty = 0.0
+            longitudinal_rate_normalized = 0.0
+            steer_rate_normalized = 0.0
+            previous_control = self.prev_controls.get(i)
+            if previous_control is not None:
+                (
+                    longitudinal_rate_penalty,
+                    steer_rate_penalty,
+                    longitudinal_rate_normalized,
+                    steer_rate_normalized,
+                ) = v4_control_rate_penalties(
+                    current_longitudinal=longitudinal_command,
+                    previous_longitudinal=float(
+                        previous_control["throttle"] - previous_control["brake"]
+                    ),
+                    current_steer=control.steer,
+                    previous_steer=previous_control["steer"],
+                    timestep_s=self.timestep,
+                    config=config,
+                )
+
+            lidar_distances = self._get_ray_detection(
+                vehicle,
+                ray_length=self.lidar_range_m,
+                num_rays=11,
+            )
+            (
+                lidar_penalty,
+                lidar_risk,
+                lidar_minimum,
+                lidar_previous_minimum,
+                lidar_closing_speed,
+                lidar_approach_gate,
+            ) = v4_lidar_penalty(
+                lidar_distances,
+                self.previous_lidar_distances.get(i),
+                timestep_s=self.timestep,
+                lidar_range_m=self.lidar_range_m,
+                config=config,
+            )
+            self.previous_lidar_distances[i] = np.asarray(
+                lidar_distances, dtype=np.float32
+            ).copy()
+            lidar_trigger_count = sum(
+                float(distance) < config.lidar_threshold_normalized
+                for distance in lidar_distances
+            )
+
+            relative_positions = self._get_relative_position_to_agents(i)
+            ttc_candidate_count = 0
+            ttc_trigger_count = 0
+            minimum_ttc: Optional[float] = None
+            has_front_blocker = False
+            for other_id, relative in relative_positions.items():
+                longitudinal_distance = float(relative["longitudinal_dist"])
+                lateral_distance = float(relative["lateral_dist"])
+                if (
+                    abs(lateral_distance) >= 2.0
+                    or longitudinal_distance <= 0.0
+                    or longitudinal_distance >= self.ttc_max_range_m
+                ):
+                    continue
+                other_vehicle = self.vehicles[other_id]
+                if not other_vehicle.is_alive:
+                    continue
+                if longitudinal_distance <= DEFAULT_STALL_CONFIG.front_blocker_gap_m:
+                    has_front_blocker = True
+                ttc_candidate_count += 1
+                other_location = other_vehicle.get_location()
+                other_velocity = other_vehicle.get_velocity()
+                ttc = projected_ttc_seconds(
+                    (
+                        other_location.x - transform.location.x,
+                        other_location.y - transform.location.y,
+                        other_location.z - transform.location.z,
+                    ),
+                    (velocity.x, velocity.y, velocity.z),
+                    (other_velocity.x, other_velocity.y, other_velocity.z),
+                )
+                if ttc is None:
+                    continue
+                minimum_ttc = ttc if minimum_ttc is None else min(minimum_ttc, ttc)
+                if ttc < config.ttc_threshold_s:
+                    ttc_trigger_count += 1
+            ttc_penalty, ttc_risk = v4_ttc_risk_penalty(
+                minimum_ttc, config=config
+            )
+            ttc_min_capped = (
+                config.ttc_threshold_s
+                if minimum_ttc is None
+                else min(config.ttc_threshold_s, minimum_ttc)
+            )
+
+            current_waypoint = self._get_driving_waypoint(transform.location)
+            lateral_distance = 0.0
+            if current_waypoint:
+                waypoint_location = current_waypoint.transform.location
+                right_vector = current_waypoint.transform.get_right_vector()
+                lateral_distance = v4_lateral_distance_to_lane_center(
+                    vehicle_x=transform.location.x,
+                    vehicle_y=transform.location.y,
+                    lane_center_x=waypoint_location.x,
+                    lane_center_y=waypoint_location.y,
+                    lane_right_x=right_vector.x,
+                    lane_right_y=right_vector.y,
+                )
+
+            crosswalk = self.crosswalk_invasion_events.get(i, False)
+            collision_event = bool(self.collision_events.get(i, False) or crosswalk)
+            offroad_event = bool(
+                getattr(self, "offroad_terminal_events", {}).get(i, False)
+            )
+            road_occupancy = getattr(self, "last_road_occupancy", {}).get(i, {})
+            offroad_raw = bool(road_occupancy.get("offroad_raw", False))
+            invasion_details = getattr(self, "lane_invasion_details", {}).get(i, {})
+            marking_types = invasion_details.get("marking_types", [])
+            legal_lane_change_event = bool(
+                self.lane_invasion_events.get(i, False)
+                and not crosswalk
+                and getattr(self.map, "name", "").rsplit("/", 1)[-1] == "Town05"
+                and v4_is_legal_lane_change_marking(marking_types)
+            )
+            if legal_lane_change_event:
+                self.legal_lane_change_grace_ticks[i] = (
+                    config.legal_lane_change_grace_ticks
+                )
+            grace_remaining = int(self.legal_lane_change_grace_ticks.get(i, 0))
+            lane_deviation_exempted = grace_remaining > 0
+            lane_deviation_cost, lane_deviation_risk = v4_lane_deviation_penalty(
+                lateral_distance,
+                exempt=lane_deviation_exempted,
+                config=config,
+            )
+            self.legal_lane_change_grace_ticks[i] = max(0, grace_remaining - 1)
+            lane_sensor_event = bool(
+                self.lane_invasion_events.get(i, False)
+                and not crosswalk
+                and not legal_lane_change_event
+            )
+            lane_event_penalty = (
+                v4_lane_invasion_penalty(marking_types, config=config)
+                if lane_sensor_event else 0.0
+            )
+
+            if self._goal_zone_for_agent(i) is not None:
+                in_goal_region = self._is_agent_in_goal_zone(transform.location, i)
+            else:
+                target_waypoint = self.target_waypoints[i]
+                forward_vector = target_waypoint.transform.get_forward_vector()
+                right_vector = target_waypoint.transform.get_right_vector()
+                relative = carla.Vector3D(
+                    transform.location.x - target_loc.x,
+                    transform.location.y - target_loc.y,
+                    0.0,
+                )
+                along = relative.x * forward_vector.x + relative.y * forward_vector.y
+                lateral = relative.x * right_vector.x + relative.y * right_vector.y
+                in_goal_region = abs(along) <= 3.0 and abs(lateral) <= 1.75
+
+            success_event = bool(
+                in_goal_region
+                and not collision_event
+                and not offroad_event
+                and not offroad_raw
+            )
+            mission_timeout_event = bool(
+                self.current_step >= self.max_steps
+                and not collision_event
+                and not offroad_event
+                and not success_event
+            )
+            collision_reward, success_reward = v4_terminal_rewards(
+                success=success_event,
+                collision=collision_event,
+                config=config,
+            )
+            offroad_reward = v4_offroad_terminal_reward(
+                offroad=offroad_event,
+                collision=collision_event,
+                config=config,
+            )
+            timeout_reward = mission_timeout_reward(
+                remaining_route_fraction,
+                mission_timeout=mission_timeout_event,
+                collision=collision_event,
+                offroad=offroad_event,
+                success=success_event,
+                config=config,
+            )
+
+            stall_decision = update_stall_diagnostic(
+                self.stall_states.get(i, StallState()),
+                current_step=self.current_step,
+                speed_mps=speed,
+                route_completion=current_completion,
+                has_front_blocker=has_front_blocker,
+                complex_interaction=is_complex_interaction_family(
+                    self.current_scenario_family
+                ),
+            )
+            self.stall_states[i] = stall_decision.state
+
+            target_yaw = math.atan2(goal_dy, goal_dx)
+            vehicle_yaw = math.radians(transform.rotation.yaw)
+            yaw_error = abs(target_yaw - vehicle_yaw)
+            if yaw_error > math.pi:
+                yaw_error = 2 * math.pi - yaw_error
+
+            details = {
+                "progress": progress_reward,
+                "overspeed": overspeed_cost,
+                "longitudinal_rate": longitudinal_rate_penalty,
+                "steer_rate": steer_rate_penalty,
+                "safety_lidar": lidar_penalty,
+                "ttc": ttc_penalty,
+                "lane_deviation": lane_deviation_cost,
+                "lane_invasion": lane_event_penalty,
+                "offroad": offroad_reward,
+                "collision": collision_reward,
+                "success": success_reward,
+                "mission_timeout": timeout_reward,
+            }
+            rewards[i] = math.fsum(details.values())
+            reward_details[i] = details
+            reward_diagnostics[i] = _empty_diagnostics(
+                progress_m=progress_m,
+                route_completion_prev=previous_completion,
+                route_completion=current_completion,
+                remaining_route_fraction=remaining_route_fraction,
+                distance_to_goal_m=current_dist,
+                speed_mps=speed,
+                closing_speed_mps=closing_speed,
+                overspeed_risk=overspeed_risk,
+                longitudinal_command=longitudinal_command,
+                longitudinal_rate_normalized=longitudinal_rate_normalized,
+                steer_rate_normalized=steer_rate_normalized,
+                lidar_min_normalized=lidar_minimum,
+                lidar_previous_min_normalized=lidar_previous_minimum,
+                lidar_trigger_ray_count=lidar_trigger_count,
+                lidar_closing_speed_mps=lidar_closing_speed,
+                lidar_approach_gate=lidar_approach_gate,
+                lidar_risk=lidar_risk,
+                ttc_candidate_count=ttc_candidate_count,
+                ttc_trigger_count=ttc_trigger_count,
+                ttc_min_seconds_capped=ttc_min_capped,
+                ttc_risk=ttc_risk,
+                lateral_distance_m=lateral_distance,
+                lane_deviation_risk=lane_deviation_risk,
+                legal_lane_change_event=float(legal_lane_change_event),
+                legal_lane_change_grace_remaining=grace_remaining,
+                lane_deviation_exempted=float(lane_deviation_exempted),
+                yaw_error_rad=yaw_error,
+                driving_center_valid=float(
+                    bool(road_occupancy.get("driving_center_valid", True))
+                ),
+                footprint_outside_count=float(
+                    road_occupancy.get("footprint_outside_count", 0)
+                ),
+                footprint_outside_fraction=float(
+                    road_occupancy.get("footprint_outside_fraction", 0.0)
+                ),
+                offroad_raw=float(offroad_raw),
+                offroad_consecutive_ticks=float(
+                    getattr(self, "offroad_consecutive_ticks", {}).get(i, 0)
+                ),
+                offroad_terminated=float(offroad_event),
+                collision_event=float(collision_event),
+                lane_invasion_sensor_event=float(lane_sensor_event),
+                success_event=float(success_event),
+                mission_timeout_event=float(mission_timeout_event),
+                stall_low_speed=float(stall_decision.low_speed),
+                stall_no_progress_ticks=stall_decision.no_progress_ticks,
+                stall_raw=float(stall_decision.raw),
+                stall_front_blocker_exempt=float(
+                    stall_decision.front_blocker_exempt
+                ),
+                stall_complex_interaction_exempt=float(
+                    stall_decision.complex_interaction_exempt
+                ),
+                stall_reportable=float(stall_decision.reportable),
+            )
+
+        self.last_reward_diagnostics = reward_diagnostics
+        return rewards, reward_details
     
     def _check_dones(self) -> Dict[int, bool]:
         """检查是否完成。
@@ -2882,7 +3301,7 @@ class CarlaMultiAgentEnv:
             # outcome when goal and collision occur on the same simulator tick.
             # Keep legacy v1/v2 evidence semantics unchanged.
             collision_has_priority = bool(
-                getattr(self, "reward_version", "v2") == "v3"
+                getattr(self, "reward_version", "v2") in {"v3", "v4"}
                 and is_collided
                 and not already_reached
             )
@@ -2910,7 +3329,9 @@ class CarlaMultiAgentEnv:
                 terminated[i] = True   # 自身严重碰撞：真正终止
             elif self.current_step >= self.max_steps:
                 dones[i] = True
-                terminated[i] = False  # 超时截断：value 仍需 bootstrap
+                # v4 的 mission timeout 是 MDP 内自然失败终态，且剩余时间
+                # 已进入观察；旧版本的外部 max_steps 截断语义保持不变。
+                terminated[i] = getattr(self, "reward_version", "v2") == "v4"
             else:
                 dones[i] = False
                 terminated[i] = False
@@ -2983,7 +3404,11 @@ class CarlaMultiAgentEnv:
             )
             print("红车已全部到达终点，结束本回合")
         elif self.current_step >= self.max_steps:
-            episode_end_reason = "max_steps"
+            episode_end_reason = (
+                "mission_timeout"
+                if getattr(self, "reward_version", "v2") == "v4"
+                else "max_steps"
+            )
         elif dones and all(dones.values()):
             # 兜底纯对抗/自定义 agent 编组，避免没有 active agent 时空转到 max_steps。
             episode_end_reason = "all_agents_terminated"
@@ -3083,7 +3508,7 @@ class CarlaMultiAgentEnv:
     def get_longitudinal_safety_state(self) -> Dict[int, Dict[str, float]]:
         """Return per-agent front-vehicle geometry for scenario validation.
 
-        This is diagnostic state, not part of the 19-dimensional policy
+        This is diagnostic state, not part of the policy
         observation.  It makes following-gap and TTC coverage auditable in
         live smoke/evaluation without exposing CARLA actors to training logs.
         """
@@ -3230,13 +3655,13 @@ class CarlaMultiAgentEnv:
         return collisions
     
     def get_global_state(self) -> np.ndarray:
-        """获取全局状态：拼接所有智能体的完整观测（19维/agent），用于集中式Critic"""
+        """获取全局状态：拼接所有智能体的完整观测，用于集中式 Critic。"""
         obs = self._get_observations()
         features = [obs[i] for i in range(self.num_agents)]
         return np.concatenate(features)
 
     def get_adversarial_global_state(self) -> np.ndarray:
-        """获取对抗团队全局状态：拼接对抗智能体的完整观测（19维/agent），用于对抗团队集中式Critic"""
+        """获取对抗团队全局状态：拼接对抗智能体的完整观测。"""
         obs = self._get_observations()
         features = [obs[aid] for aid in self.adversarial_agent_ids]
         return np.concatenate(features) if features else np.array([], dtype=np.float32)

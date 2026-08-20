@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：Town05 v3 正式 seed-42 Run `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` 在 u5 机器裁决 `CONTINUE_WITH_WARNING` 后曾按同一身份恢复，研究者于最后完整 u50 因 agent0 持续制动局部最优要求停止。当前状态为 `INTERRUPTED / DIAGNOSTIC HOLD`；u50 checkpoint 只保留为失败对照，禁止继续能力训练、选模、基础策略池和多 seed。下一步是冻结新的 action/reward/curriculum 协议并 fresh 小规模验证。
+> 当前状态：Town05 v3 正式 seed-42 Run `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` 在最后完整 u50 因 agent0 持续制动局部最优停止，u50 checkpoint 只保留为失败对照。P0-T05-09/R6 已完成 249/249 离线回归、32/32 live spawn 和完整真实机制 smoke；尚未产生 R6 训练 checkpoint。用户随后要求运行 fresh 50-update 奖励趋势诊断，使用独立诊断合同且禁止选模。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
@@ -24,6 +24,10 @@
 | `P0_BASE_MAPPO_TOWN05_V1` | `configs/base_mappo/p0_base_town05_v1.json` | 当前 Town05 四方向/四家族基础 MAPPO fresh pilot | 42 | 5/10/20/30/40/60/80/100 | FROZEN；SHA256 `eeb12304d9a262ac4297ede90bd651717d7d59cb31cb8ba0f384835e0ed84bde`；`a11cf70` 真实入口门禁 PASS，允许正式 fresh u5 |
 | `P0_BASE_C0_TOWN05_V1` | `configs/evaluation/p0_base_c0_town05_v1.json` | 当前 Town05 gate 与 Road 43/6 held-out validation | gate 42001；validation 51001/51002/51003 | 对应 Town05 登记停点 | FROZEN；SHA256 `ea2e17f633e3b26eaedbbcf5f42cbaf9b14bc7077790e3dfcba438c0c276cab8` |
 | `P0_BASE_GO_HOLD_TOWN05_V1` | `configs/evaluation/p0_base_go_hold_town05_v1.json` | 当前 Town05 证据、健康、行为与能力裁决 | 继承 Town05 训练/C0 合同 | u5 首门；u100 才可 `PILOT_GO` | FROZEN；SHA256 `bbe6903c1ba9fb5932eafc0ba4dd250f0f6254d2e9f9066d0da4c5d940c7e9c4` |
+| `P0_BASE_MAPPO_TOWN05_R6_V4` | `configs/base_mappo/p0_base_town05_r6_v4.json` | P0-T05-09/R6 fresh seed-42 pilot；post-tanh entropy、reward-v4、mastery gate | 42 | 5/10/20/30/40/60/80/100/120/140/160 | FROZEN；SHA256 `53397a3c13ace5c014149127ab3191e38f2db1c85a35bdb86a1bfa8056f95f8e`；OFFLINE PASS，未运行 CARLA |
+| `P0_BASE_C0_TOWN05_R6_V4` | `configs/evaluation/p0_base_c0_town05_r6_v4.json` | schema-v6、20维 time-aware R6 gate/held-out evaluation | gate 42001；validation 51001/51002/51003 | 对应 R6 登记停点 | FROZEN；SHA256 `3772d368d892f524c98b0494fa64c6f072061a8b2ec0dbcb4366c4368502866f` |
+| `P0_BASE_GO_HOLD_TOWN05_R6_V4` | `configs/evaluation/p0_base_go_hold_town05_r6_v4.json` | R6 分布审计、mastery、任意单 agent 持续塌缩与能力裁决 | 继承 R6 训练/C0 合同 | u5 首门；u10 起同一 agent 相邻里程碑持续塌缩即 HOLD；u160 才可 `PILOT_GO` | FROZEN；SHA256 `c094b6744211d455737166057deb14dde08a23913cb2550d695c5336e6f89425` |
+| `P0_DIAG_MAPPO_TOWN05_R6_U50_V1` | `configs/base_mappo/p0_diag_town05_r6_u50_v1.json` | 用户授权的 R6 fresh 50-update 奖励/塌缩趋势诊断 | 42 | 5/10/20/30/40/50；合同长期边界仍保留到160 | FROZEN；SHA256 `b50df18c2f1eac0b904c55f022efd31fac64cf1d64617900ad638cc91adf82c4`；不受正式 C0 合同绑定，禁止选模/策略池 |
 
 ## 3. Run 总表
 
@@ -40,6 +44,14 @@
 | 2026-08-09 | `P0_BASE_MAPPO_Town02_s42_20260809_173321` | `8a0bd9d` | `342a1f...f6f` | 5 | `EVIDENCE_HOLD`；模型仅诊断 | PASS：5 updates / 80 episodes / 570 scalar tags | 两次 gate 均 0/16 success、0/16 collision、16/16 timeout；离散重复性 PASS | 来源预检 HOLD：resolved config 漏记 seed，未进入性能裁决 | 提交证据修复后新 RunID fresh 重跑 update 5；禁止 resume 本 Run |
 
 ## 4. 已运行记录
+
+### P0-T05-09/R6：离线与真实机制 smoke 完成，尚无训练 Run
+
+- 新协议不加载失败 u50：训练合同 `source_mode=fresh`，新 RunID 前缀为 `P0_BASE_MAPPO_Town05R6_s42_`；共享 actor 和行为克隆均未接入。
+- tanh 后动作熵使用当前策略新鲜样本的 Jacobian-corrected `-log π(a|s)`；Normal entropy 降为诊断。`log_std∈[-2,0]`，熵系数 u1 `0.01` 到 u160 `0.001`，并记录 pre/post entropy gap、raw/effective `log_std` 和确定性动作饱和。
+- reward-v4 以 `γ=0.999` 的路线完成度 PBRS 为唯一正稠密项；任务 500 tick、剩余时间进入第 20 维观察；成功 `+20`、碰撞/offroad `-50`、timeout `-(10+10×remaining)`。车道中心 0.5 m 内为 0，外侧只有最大 `-0.002/tick` 的封顶成本，合法跨虚线后豁免 10 tick，不发中心驻留正奖励。
+- stall 只诊断且对 blocker/复杂交互豁免；课程必须连续两个全 rollout mastery window 通过才晋级；R6 GO/HOLD 改为同一任意单 agent 在相邻里程碑持续塌缩即可 HOLD。
+- 全量离线回归 `249/249 PASS`。2026-08-20 的 32/32 live spawn 及 R6 机制 smoke 全部 PASS：20 维倒计时、reward residual `0`、timeout T/X、两类 stall 豁免、LiDAR approach/projected TTC、Broken grace 和 cleanup `0/0` 均闭环。第一份 FAIL 报告只暴露验证夹具车辆重合，PPO 未启动；修正后报告为 `diagnostics/r6_live/P0_T05_09_R6_MECHANISM_SMOKE_20260820_121926/report.json`。下一步按用户要求运行独立 fresh u50 诊断，当前仍无性能结论。
 
 ### `P0_BASE_MAPPO_Town05V3_s42_20260814_125226`：u50 人工停止与局部最优诊断
 

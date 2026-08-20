@@ -893,16 +893,54 @@ class TrainingMetricsRecorder:
                 delta_norm / max(parameter_norm, 1e-12),
             )
             if hasattr(actor, "log_std"):
-                log_std = actor.log_std.detach()
+                raw_log_std = actor.log_std.detach()
+                effective_log_std = (
+                    actor.effective_log_std().detach()
+                    if hasattr(actor, "effective_log_std")
+                    else raw_log_std
+                )
+                # Historical aliases now describe the distribution actually
+                # sampled.  Raw parameters remain visible so clamp/projection
+                # bugs cannot be hidden by the compatibility names.
                 self.record_scalar(
-                    f"policy/agent_{agent_id}/log_std_mean", log_std.mean().item()
+                    f"policy/agent_{agent_id}/log_std_mean",
+                    effective_log_std.mean().item(),
                 )
                 self.record_scalar(
-                    f"policy/agent_{agent_id}/log_std_min", log_std.min().item()
+                    f"policy/agent_{agent_id}/log_std_min",
+                    effective_log_std.min().item(),
                 )
                 self.record_scalar(
-                    f"policy/agent_{agent_id}/log_std_max", log_std.max().item()
+                    f"policy/agent_{agent_id}/log_std_max",
+                    effective_log_std.max().item(),
                 )
+                for prefix, values in (
+                    ("raw_log_std", raw_log_std),
+                    ("effective_log_std", effective_log_std),
+                ):
+                    self.record_scalar(
+                        f"policy/agent_{agent_id}/{prefix}_mean",
+                        values.mean().item(),
+                    )
+                    self.record_scalar(
+                        f"policy/agent_{agent_id}/{prefix}_min",
+                        values.min().item(),
+                    )
+                    self.record_scalar(
+                        f"policy/agent_{agent_id}/{prefix}_max",
+                        values.max().item(),
+                    )
+                if effective_log_std.numel() >= 1:
+                    self.record_scalar(
+                        f"policy/agent_{agent_id}/"
+                        "effective_log_std_signed_longitudinal",
+                        effective_log_std.flatten()[0].item(),
+                    )
+                if effective_log_std.numel() >= 2:
+                    self.record_scalar(
+                        f"policy/agent_{agent_id}/effective_log_std_steer",
+                        effective_log_std.flatten()[1].item(),
+                    )
 
         critic_parameter_norm = _parameter_norm(critic)
         critic_delta_norm = _parameter_delta_norm(
@@ -996,6 +1034,13 @@ class TrainingMetricsRecorder:
             "actor_loss",
             "surrogate_loss",
             "entropy",
+            "post_tanh_entropy",
+            "pre_tanh_entropy",
+            "pre_post_entropy_gap",
+            "deterministic_longitudinal_saturation",
+            "deterministic_steer_saturation",
+            "deterministic_longitudinal_mean",
+            "deterministic_steer_mean",
             "entropy_bonus",
             "approx_kl",
             "clip_frac",

@@ -944,6 +944,7 @@ git rev-parse HEAD
 | 2026-08-12 | `2d18f68` / `a11cf70` | Town05 迁移/gamma 数据流、初始状态同步核验、正式合同/C0/GO-HOLD、场景/工具/tests/docs | 训练环境 reward gamma 与 PPO/GAE 同源且 fail-fast；checkpoint/C0 审计实际 gamma；CARLA 初始 transform/速度整组同步提交、有限核验重试并在失配时拒绝 rollout | 全量 184/184；训练池 16/16、留出池 8/8 离线；三合同 clean preflight；真实 16/16；clean-commit 1-update/960-transition strict/checkpoint/cleanup PASS | Town02 与旧 gamma=0.99 smoke 仅历史诊断；网络张量未因初始化修复改变；Town05 正式训练只允许 `a11cf70` 后 fresh，不得复用诊断 checkpoint | P0-T05-03A/B、`T05_parallel_smoke_s42_20260812_161632` |
 | 2026-08-13 | `69252d4` | offroad protocol、环境/reward、训练/metrics/checkpoint、C0/GO-HOLD v2、Town05 v2 合同/场景、live validator、tests/docs | 车辆连续 3 tick 实质占用非 Driving 区域时成为显式安全失败；禁止 offroad 目标捷径；记录车体占用和首证据；合法相邻 Driving 并线不误判 | 204/204；32/32 live spawn；四方向 v4 PASS；fresh u1 strict/checkpoint/SHA/PPO/cleanup PASS | 终止/reward/schema/协议身份均变化，旧 u5 仅历史读取且禁止 resume；正式新 Run 必须在本修改提交后 fresh | P0-T05-05、`DIAG_OFFROAD_TOWN05V2_U1_20260813_V2` |
 | 2026-08-13 | `69252d4` | Town05 training/C0/GO-HOLD v3、结果级重复性比较器、validator/judge、边界 tests/docs | 安全/结局/生命周期零容忍；episode length/active steps ±2 tick 和 return ≤0.1 分级告警；至少 8 cases 且告警 >50% 升级系统性 HOLD | 专项 51/51、全量 210/210、合成系统漂移 HOLD、diff check PASS；提交后 training/C0/GO-HOLD clean preflight PASS | 旧 v2 HOLD 不改写；新 v3 必须 commit 后 fresh；本阶段只改判定协议身份，不改训练超参数或网络 | P0-T05-06 |
+| 2026-08-20 | `codex/mappo-experiment-baseline` / P0-T05-09/R6 | Actor、robust_v2、reward-v4/env、metrics/checkpoint、mastery/stall、C0/GO-HOLD、R6 三正式合同、一诊断合同、live validator 与 6 组新增 tests | PPO 熵改为 tanh 后实际动作熵；500-tick 可观测任务期限和显式 timeout；中心线只作低权重非正成本；课程按 mastery 晋级；同一任意单 agent 持续塌缩即可 HOLD | 全量 249/249 PASS；32/32 live spawn；倒计时/reward residual 0/timeout T-X/stall 豁免/LiDAR-TTC/Broken grace/cleanup 0-0 真实 smoke PASS | schema-v6/metrics-v7/reward-v4/20维 observation 为新身份；旧 u50 只读；新诊断 u50 禁止选模；无共享 actor/BC | P0-T05-09/R6 |
 | YYYY-MM-DD | `<sha/branch>` | `<paths>` | `<observable behavior>` | `<tests/eval>` | `<yes/no/reason>` | `<task/run>` |
 
 ## 16. 决策日志
@@ -1015,7 +1016,7 @@ git rev-parse HEAD
 - [x] 第 2 天后半：猹师傅审核后完成 P0-T05-06、Town05 v3 三合同、210/210 离线回归并提交 `69252d4`；提交后三套 critical-source preflight PASS。CARLA 关闭不影响本项。
 - [x] 第 3 天前半：Town05 v3 seed-42 fresh u5、strict validator、双 32-case C0 v3 和唯一 GO/HOLD v3 已完成；裁决 `CONTINUE_WITH_WARNING`，未启动 u6，未放行多 seed。
 - [x] 第 3 天后半：猹师傅随后批准同一 Run 长训观察；Run 最终在完整 u50 因 agent0 99% 制动局部最优人工停止，未继续浪费算力到 u100。原始 u51 单条中断记录保留，安全 checkpoint 为 u50；没有伪造 u50 C0 或机器 judge。
-- [ ] 第 4 天前半：审核并冻结新的 P0-T05-09 协议；优先修复 post-tanh 动作熵、log-std 上界/熵退火和饱和告警，再按真实轨迹重做 task horizon/reward budget，并把课程切换为 mastery gate。协议变化后必须新 Git、新 RunID、fresh 训练，禁止恢复 u50。
+- [x] 第 4 天前半：P0-T05-09/R6 实现、249/249 离线回归、32/32 live spawn 与真实机制 smoke 均通过；post-tanh entropy、reward-v4、timeout、stall/mastery/any-agent HOLD 和 cleanup 已闭环。用户授权下一步使用独立 fresh `P0_DIAG_MAPPO_TOWN05_R6_U50_V1` 跑 50 updates 观察奖励与塌缩趋势；诊断 checkpoint 禁止正式 C0 选模或进入策略池。
 - [ ] 第 2-4 天：仅在 GO 后以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
 - [ ] 第 5 天：用冻结 C0 验证全部 periodic checkpoints，生成带 SHA/manifest 的 `best_base_valid.pt`。
 - [ ] 第 6 天：开始 P0-01/P0-02，修复对抗碰撞对象和 steer/control 解析，并补相应测试。

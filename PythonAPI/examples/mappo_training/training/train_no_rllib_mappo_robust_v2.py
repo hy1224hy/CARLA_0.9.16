@@ -30,7 +30,9 @@ import torch.optim as optim
 from environment.carla_multi_agent_env import CarlaMultiAgentEnv
 from environment.offroad_protocol import (
     OFFROAD_PROTOCOL_VERSION,
+    R6_OFFROAD_PROTOCOL_VERSION,
     offroad_protocol_spec,
+    r6_offroad_protocol_spec,
 )
 from visualization.mappo_visualizer import MAPPOVisualizer
 from models.actor_critic import Actor, AgentConditionedCritic
@@ -45,6 +47,15 @@ from training.action_protocol import (
     action_tanh_to_env,
 )
 from training.metrics_protocol import METRICS_PROTOCOL_VERSION
+from training.mastery_curriculum import (
+    CURRICULUM_PROTOCOL_VERSION,
+    MasteryGate,
+    MasteryWindow,
+)
+from training.policy_distribution_protocol import (
+    POLICY_DISTRIBUTION_PROTOCOL_VERSION,
+)
+from environment.stall_protocol import STALL_PROTOCOL_VERSION
 from training.value_normalization import (
     VALUE_LOSS_PROTOCOL_VERSION,
     VALUE_NORMALIZATION_PROTOCOL_VERSION,
@@ -68,6 +79,7 @@ from training.checkpoint_protocol import (
     LIFECYCLE_PROTOCOL_VERSION,
     MANIFEST_NAME,
     OBSERVATION_PROTOCOL_VERSION,
+    R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION,
     TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION,
     PERIODIC_DIR_NAME,
     TRAINING_PROTOCOL_VERSION,
@@ -103,6 +115,7 @@ VALID_EPISODE_END_REASONS = frozenset({
     "cooperative_offroad",
     "adversary_offroad",
     "max_steps",
+    "mission_timeout",
     "all_agents_terminated",
 })
 BASE_SUCCESS_END_REASONS = frozenset({"cooperative_success", "all_agents_reached"})
@@ -114,7 +127,39 @@ BASE_OFFROAD_END_REASONS = frozenset(
 )
 
 OBS_DIM = 19
+R6_OBS_DIM = 20
 ACTION_DIM = POLICY_ACTION_DIM
+
+
+def observation_dim_for_reward(reward_version: str) -> int:
+    return R6_OBS_DIM if str(reward_version) == "v4" else OBS_DIM
+
+
+def entropy_coefficient_for_update(
+    update: int,
+    *,
+    start: float,
+    final: Optional[float] = None,
+    anneal_updates: int = 0,
+) -> float:
+    """Return the frozen linear post-tanh entropy coefficient schedule."""
+
+    if isinstance(update, bool) or not isinstance(update, int) or update <= 0:
+        raise ValueError("update must be a positive integer")
+    start_value = float(start)
+    final_value = start_value if final is None else float(final)
+    if not np.isfinite(start_value) or start_value < 0.0:
+        raise ValueError("entropy coefficient start must be finite and non-negative")
+    if not np.isfinite(final_value) or final_value < 0.0:
+        raise ValueError("entropy coefficient final must be finite and non-negative")
+    if isinstance(anneal_updates, bool) or not isinstance(anneal_updates, int):
+        raise ValueError("entropy anneal_updates must be an integer")
+    if anneal_updates <= 1:
+        if final is not None and anneal_updates == 1:
+            return final_value
+        return start_value
+    progress = min(1.0, max(0.0, (update - 1) / (anneal_updates - 1)))
+    return start_value + progress * (final_value - start_value)
 
 
 def classify_base_episode_outcome(
@@ -124,7 +169,7 @@ def classify_base_episode_outcome(
     reason = str(episode_end_reason)
     success = reason in BASE_SUCCESS_END_REASONS
     collision = reason in BASE_COLLISION_END_REASONS
-    timeout = reason == "max_steps"
+    timeout = reason in {"max_steps", "mission_timeout"}
     offroad = reason in BASE_OFFROAD_END_REASONS
     if sum((success, collision, timeout, offroad)) != 1:
         raise RuntimeError(
@@ -206,11 +251,16 @@ RESUME_IMMUTABLE_ARG_NAMES = (
     "target_kl",
     "lr_decay",
     "init_log_std",
+    "min_log_std",
+    "max_log_std",
+    "ent_coef_final",
+    "entropy_anneal_updates",
     "scenario_sampling_mode",
     "warmup_updates",
     "full_scenario_updates",
     "curriculum_transition_window",
     "curriculum_mode",
+    "curriculum_protocol",
     "lidar_range_m",
     "ttc_max_range_m",
     "reward_version",
@@ -230,9 +280,18 @@ def set_seed(seed: int):
     torch.backends.cudnn.benchmark = False
 
 
-def observation_protocol_version(lidar_range_m: float) -> str:
+def observation_protocol_version(
+    lidar_range_m: float,
+    reward_version: str = "v3",
+) -> str:
     """Bind normalized ray values to their physical range in checkpoints."""
     lidar_range = float(lidar_range_m)
+    if str(reward_version) == "v4":
+        if lidar_range != 20.0:
+            raise ValueError(
+                "reward v4 registers only the 20m time-aware observation"
+            )
+        return R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION
     if lidar_range == 4.0:
         return OBSERVATION_PROTOCOL_VERSION
     if lidar_range == 20.0:
@@ -247,16 +306,29 @@ def checkpoint_protocol_versions(
     reward_version: str,
     lidar_range_m: float = 4.0,
 ) -> Dict[str, str]:
-    return {
-        "observation": observation_protocol_version(lidar_range_m),
+    versions = {
+        "observation": observation_protocol_version(
+            lidar_range_m, reward_version
+        ),
         "action": ACTION_PROTOCOL_VERSION,
         "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
-        "offroad": OFFROAD_PROTOCOL_VERSION,
+        "offroad": (
+            R6_OFFROAD_PROTOCOL_VERSION
+            if str(reward_version) == "v4"
+            else OFFROAD_PROTOCOL_VERSION
+        ),
         "reward": str(reward_version),
         "metrics": METRICS_PROTOCOL_VERSION,
         "value_normalization": VALUE_NORMALIZATION_PROTOCOL_VERSION,
         "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
     }
+    if str(reward_version) == "v4":
+        versions.update({
+            "policy_distribution": POLICY_DISTRIBUTION_PROTOCOL_VERSION,
+            "curriculum": CURRICULUM_PROTOCOL_VERSION,
+            "stall": STALL_PROTOCOL_VERSION,
+        })
+    return versions
 
 
 def checkpoint_training_config(args) -> Dict[str, object]:
@@ -266,10 +338,11 @@ def checkpoint_training_config(args) -> Dict[str, object]:
 
 
 def checkpoint_model_spec(
-    agent_ids: List[int], state_dim: int, hidden_dim: int
+    agent_ids: List[int], state_dim: int, hidden_dim: int,
+    obs_dim: int = OBS_DIM,
 ) -> Dict[str, object]:
     return {
-        "obs_dim": OBS_DIM,
+        "obs_dim": int(obs_dim),
         "action_dim": ACTION_DIM,
         "state_dim": int(state_dim),
         "num_agents": len(agent_ids),
@@ -392,7 +465,11 @@ def _load_pretrained_weights(
 def runtime_metadata_with_carla(env) -> Dict[str, object]:
     metadata = runtime_metadata()
     metadata["environment_reward_gamma"] = float(env.reward_gamma)
-    metadata["offroad_protocol"] = offroad_protocol_spec()
+    metadata["offroad_protocol"] = (
+        r6_offroad_protocol_spec()
+        if getattr(env, "reward_version", "v3") == "v4"
+        else offroad_protocol_spec()
+    )
     try:
         metadata["carla_client"] = env.client.get_client_version()
         metadata["carla_server"] = env.client.get_server_version()
@@ -1654,7 +1731,10 @@ def compute_clipped_actor_loss(
     ensure_finite_tensor(actor_loss, name="actor_loss", context=context)
     return actor_loss, {
         "surrogate_loss": float(surrogate_loss.item()),
+        # Historical public name remains an alias during the schema migration;
+        # R6 records the same value explicitly as post_tanh_entropy.
         "entropy": float(entropy.mean().item()),
+        "post_tanh_entropy": float(entropy.mean().item()),
         "entropy_bonus": float(entropy_bonus.item()),
         "approx_kl": approx_kl,
         "clip_fraction": clip_fraction,
@@ -1828,6 +1908,13 @@ def run_mappo_ppo_update(
             f"actor_loss_{aid}": [],
             f"surrogate_loss_{aid}": [],
             f"entropy_{aid}": [],
+            f"post_tanh_entropy_{aid}": [],
+            f"pre_tanh_entropy_{aid}": [],
+            f"pre_post_entropy_gap_{aid}": [],
+            f"deterministic_longitudinal_saturation_{aid}": [],
+            f"deterministic_steer_saturation_{aid}": [],
+            f"deterministic_longitudinal_mean_{aid}": [],
+            f"deterministic_steer_mean_{aid}": [],
             f"entropy_bonus_{aid}": [],
             f"approx_kl_{aid}": [],
             f"clip_frac_{aid}": [],
@@ -1897,6 +1984,12 @@ def run_mappo_ppo_update(
             epoch_actor_losses = []
             epoch_surrogate_losses = []
             epoch_entropies = []
+            epoch_pre_tanh_entropies = []
+            epoch_entropy_gaps = []
+            epoch_deterministic_longitudinal_saturation = []
+            epoch_deterministic_steer_saturation = []
+            epoch_deterministic_longitudinal_mean = []
+            epoch_deterministic_steer_mean = []
             epoch_entropy_bonuses = []
             epoch_approx_kls = []
             epoch_clip_fracs = []
@@ -1911,9 +2004,35 @@ def run_mappo_ppo_update(
                     f"{context} actor={aid} epoch={epoch} "
                     f"minibatch_start={start}"
                 )
-                new_log_probs, entropy = actors[aid].evaluate_actions_z(
+                new_log_probs, _old_sample_pre_tanh_entropy = (
+                    actors[aid].evaluate_actions_z(
                     tensors["obs"][mb], tensors["act"][mb]
+                    )
                 )
+                # Entropy is an expectation under the current policy.  A
+                # Jacobian-corrected log-probability evaluated at rollout z
+                # would be old-policy/current-policy cross-entropy, not
+                # H[pi_current], so draw a fresh reparameterized sample.
+                entropy, pre_tanh_entropy = actors[
+                    aid
+                ].estimate_post_tanh_entropy(tensors["obs"][mb])
+                deterministic_actions = actors[aid].get_deterministic_action(
+                    tensors["obs"][mb]
+                )
+                epoch_deterministic_longitudinal_saturation.append(float(
+                    (deterministic_actions[:, 0].abs() >= 0.99)
+                    .float().mean().item()
+                ))
+                epoch_deterministic_steer_saturation.append(float(
+                    (deterministic_actions[:, 1].abs() >= 0.99)
+                    .float().mean().item()
+                ))
+                epoch_deterministic_longitudinal_mean.append(float(
+                    deterministic_actions[:, 0].mean().item()
+                ))
+                epoch_deterministic_steer_mean.append(float(
+                    deterministic_actions[:, 1].mean().item()
+                ))
                 actor_loss, diagnostics = compute_clipped_actor_loss(
                     new_log_probs,
                     tensors["old_logp"][mb],
@@ -1939,12 +2058,18 @@ def run_mappo_ppo_update(
                     context=actor_context,
                 )
                 actor_optims[aid].step()
+                actors[aid].project_log_std_()
                 ensure_finite_module_parameters(
                     actors[aid], context=actor_context
                 )
                 epoch_actor_losses.append(float(actor_loss.item()))
                 epoch_surrogate_losses.append(diagnostics["surrogate_loss"])
                 epoch_entropies.append(diagnostics["entropy"])
+                pre_entropy_value = float(pre_tanh_entropy.mean().item())
+                epoch_pre_tanh_entropies.append(pre_entropy_value)
+                epoch_entropy_gaps.append(
+                    pre_entropy_value - diagnostics["post_tanh_entropy"]
+                )
                 epoch_entropy_bonuses.append(diagnostics["entropy_bonus"])
                 epoch_approx_kls.append(diagnostics["approx_kl"])
                 epoch_clip_fracs.append(diagnostics["clip_fraction"])
@@ -1963,6 +2088,27 @@ def run_mappo_ppo_update(
             )
             metrics[f"entropy_{aid}"].append(
                 float(np.mean(epoch_entropies))
+            )
+            metrics[f"post_tanh_entropy_{aid}"].append(
+                float(np.mean(epoch_entropies))
+            )
+            metrics[f"pre_tanh_entropy_{aid}"].append(
+                float(np.mean(epoch_pre_tanh_entropies))
+            )
+            metrics[f"pre_post_entropy_gap_{aid}"].append(
+                float(np.mean(epoch_entropy_gaps))
+            )
+            metrics[f"deterministic_longitudinal_saturation_{aid}"].append(
+                float(np.mean(epoch_deterministic_longitudinal_saturation))
+            )
+            metrics[f"deterministic_steer_saturation_{aid}"].append(
+                float(np.mean(epoch_deterministic_steer_saturation))
+            )
+            metrics[f"deterministic_longitudinal_mean_{aid}"].append(
+                float(np.mean(epoch_deterministic_longitudinal_mean))
+            )
+            metrics[f"deterministic_steer_mean_{aid}"].append(
+                float(np.mean(epoch_deterministic_steer_mean))
             )
             metrics[f"entropy_bonus_{aid}"].append(
                 float(np.mean(epoch_entropy_bonuses))
@@ -2267,12 +2413,15 @@ class CurriculumLearning:
         full_scenario_updates: int = 40,
         transition_window: int = 10,
         mode: str = "classic",
+        mastery_enabled: bool = False,
+        mastery_agent_ids: Tuple[int, ...] = (0, 1),
     ):
         self.scenario_dir = scenario_dir
         self.warmup_updates = warmup_updates
         self.full_scenario_updates = full_scenario_updates
         self.transition_window = transition_window
         self.mode = mode
+        self.mastery_enabled = bool(mastery_enabled)
 
         all_scenario_files = []
         if os.path.exists(scenario_dir):
@@ -2301,6 +2450,14 @@ class CurriculumLearning:
             )
         else:
             self.curriculum_stages = curriculum_stages
+
+        self.mastery_gate = (
+            MasteryGate(
+                stage_count=len(self.curriculum_stages),
+                agent_ids=mastery_agent_ids,
+            )
+            if self.mastery_enabled else None
+        )
 
         self.scenario_success_history: Dict[str, List[float]] = {f: [] for f in all_scenario_files}
         self.scenario_total_sample_counts: Dict[str, int] = {
@@ -2398,6 +2555,8 @@ class CurriculumLearning:
 
     def _get_stage_idx(self, current_update: int) -> int:
         """获取当前所处的阶段索引"""
+        if self.mastery_gate is not None:
+            return self.mastery_gate.stage_index
         n_stages = len(self.curriculum_stages)
         if n_stages <= 1 or current_update < self.warmup_updates:
             return 0
@@ -2437,6 +2596,8 @@ class CurriculumLearning:
         在阶段切换点附近线性过渡。
         """
         stage_idx = self._get_stage_idx(current_update)
+        if self.mastery_gate is not None:
+            return 1.0
         if stage_idx == 0:
             return 1.0  # 第一阶段，无旧场景
 
@@ -2479,6 +2640,8 @@ class CurriculumLearning:
         current_scenarios = self.curriculum_stages[
             min(stage_idx, len(self.curriculum_stages) - 1)
         ]
+        if self.mastery_gate is not None:
+            return {scenario: 1.0 for scenario in current_scenarios}
         if stage_idx == 0:
             return {scenario: 1.0 for scenario in current_scenarios}
 
@@ -2516,6 +2679,11 @@ class CurriculumLearning:
 
     def get_scenario_total_sample_count(self, scenario_name: str) -> int:
         return int(self.scenario_total_sample_counts.get(scenario_name, 0))
+
+    def record_mastery_window(self, window: MasteryWindow) -> Dict[str, object]:
+        if self.mastery_gate is None:
+            raise RuntimeError("mastery curriculum is not enabled")
+        return self.mastery_gate.evaluate(window)
 
 
 # ============================================================
@@ -2582,10 +2750,21 @@ def train(args):
         Path(__file__).resolve().parents[1]
         / "environment"
         / "base_reward_v3.py",
+        Path(__file__).resolve().parents[1]
+        / "environment"
+        / "base_reward_v4.py",
+        Path(__file__).resolve().parents[1]
+        / "environment"
+        / "offroad_protocol.py",
+        Path(__file__).resolve().parents[1]
+        / "environment"
+        / "stall_protocol.py",
         Path(__file__).resolve().with_name("experiment_contract.py"),
         Path(__file__).resolve().with_name("checkpoint_protocol.py"),
         Path(__file__).resolve().with_name("lifecycle_semantics.py"),
         Path(__file__).resolve().with_name("metrics_protocol.py"),
+        Path(__file__).resolve().with_name("mastery_curriculum.py"),
+        Path(__file__).resolve().with_name("policy_distribution_protocol.py"),
         Path(__file__).resolve().with_name("value_normalization.py"),
         project_dir / "utils" / "training_metrics_recorder.py",
         project_dir / "models" / "actor_critic.py",
@@ -2748,19 +2927,25 @@ def train(args):
         full_scenario_updates=args.full_scenario_updates,
         transition_window=args.curriculum_transition_window,
         mode=args.curriculum_mode,
+        mastery_enabled=args.curriculum_protocol == "mastery_v2",
+        mastery_agent_ids=(0, 1),
     )
 
-    # 当前冻结基础入口始终是 2 个 19 维红车观察的集中状态。
+    # R6 adds the observable remaining-time fraction; historical rewards keep
+    # their exact 19-dimensional observation contract.
     # 先按协议构建/校验完整训练状态，确认可恢复后才连接 CARLA。
     agent_ids = [0, 1]
-    state_dim = OBS_DIM * len(agent_ids)
+    obs_dim = observation_dim_for_reward(args.reward_version)
+    state_dim = obs_dim * len(agent_ids)
 
     actors: Dict[int, Actor] = {
         aid: Actor(
-            obs_dim=OBS_DIM,
+            obs_dim=obs_dim,
             act_dim=ACTION_DIM,
             hidden=args.hidden_dim,
             init_log_std=args.init_log_std,
+            min_log_std=args.min_log_std,
+            max_log_std=args.max_log_std,
         ).to(device)
         for aid in agent_ids
     }
@@ -2829,7 +3014,7 @@ def train(args):
     )
     current_action_spec = action_protocol_spec()
     model_spec = checkpoint_model_spec(
-        agent_ids, state_dim, args.hidden_dim
+        agent_ids, state_dim, args.hidden_dim, obs_dim=obs_dim
     )
     training_config = checkpoint_training_config(args)
     pool_fingerprint = scenario_pool_fingerprint(scenario_dir)
@@ -2933,6 +3118,18 @@ def train(args):
             ))
             for scenario in curriculum.scenario_total_sample_counts
         }
+        if curriculum.mastery_gate is not None:
+            saved_mastery = saved_curriculum.get("mastery_state")
+            if not isinstance(saved_mastery, Mapping):
+                raise CheckpointProtocolError(
+                    "mastery checkpoint is missing curriculum state"
+                )
+            try:
+                curriculum.mastery_gate.load_state_dict(saved_mastery)
+            except (TypeError, ValueError) as error:
+                raise CheckpointProtocolError(
+                    f"mastery curriculum state mismatch: {error}"
+                ) from error
         if start_update > args.updates:
             raise CheckpointProtocolError(
                 f"checkpoint completed update={completed_update}, but "
@@ -3190,7 +3387,13 @@ def train(args):
                         args.curriculum_transition_window
                     ),
                     "mode": args.curriculum_mode,
+                    "protocol": args.curriculum_protocol,
                 },
+                "curriculum_protocol_version": (
+                    CURRICULUM_PROTOCOL_VERSION
+                    if curriculum.mastery_gate is not None
+                    else "update_schedule_v1"
+                ),
                 "stages": curriculum.curriculum_stages,
                 "scenario_pool_fingerprint": pool_fingerprint,
                 "success_history": {
@@ -3205,6 +3408,10 @@ def train(args):
                         curriculum.scenario_total_sample_counts.items()
                     )
                 },
+                "mastery_state": (
+                    curriculum.mastery_gate.state_dict()
+                    if curriculum.mastery_gate is not None else None
+                ),
             },
             "rng_state": capture_rng_state(),
             "last_metrics": copy.deepcopy(last_metrics_payload),
@@ -3277,6 +3484,12 @@ def train(args):
             _save_safe_checkpoint(include_periodic=False)
         for update in range(start_update, args.updates + 1):
             update_started_at = time.perf_counter()
+            current_ent_coef = entropy_coefficient_for_update(
+                update,
+                start=args.ent_coef,
+                final=args.ent_coef_final,
+                anneal_updates=args.entropy_anneal_updates,
+            )
             # 学习率线性衰减
             cur_lr_a, cur_lr_c = _apply_lr_decay(update)
 
@@ -3349,6 +3562,16 @@ def train(args):
 
             # ── 收集 rollout 数据 ──
             rollout_started_at = time.perf_counter()
+            mastery_speed_sums = {aid: 0.0 for aid in agent_ids}
+            mastery_active_counts = {aid: 0 for aid in agent_ids}
+            mastery_brake_mode_sums = {aid: 0.0 for aid in agent_ids}
+            mastery_completion_samples = {aid: [] for aid in agent_ids}
+            mastery_outcomes = {
+                "success": 0,
+                "timeout": 0,
+                "collision": 0,
+                "offroad": 0,
+            }
             for rollout_episode in range(args.rollout_episodes):
                 scenario_name = sampled_scenarios[rollout_episode]
                 scenario_config = env.load_scenario_by_name(scenario_name, scenario_dir)
@@ -3377,6 +3600,7 @@ def train(args):
                     )
 
                 episode_rewards = {aid: 0.0 for aid in agent_ids}
+                episode_last_completion = {aid: 0.0 for aid in agent_ids}
                 active_decision_steps = {aid: 0 for aid in agent_ids}
                 episode_buffer_starts = {
                     aid: len(buffer.get_agent_data(aid)) for aid in agent_ids
@@ -3410,6 +3634,27 @@ def train(args):
                         active_decision_steps[aid] += 1
 
                     next_obs, rewards, dones, info = env.step(action_dict)
+                    step_reward_diagnostics = (
+                        info.get("reward_diagnostics", {}) or {}
+                    )
+                    if curriculum.mastery_gate is not None:
+                        for aid in step_cache:
+                            diagnostics = step_reward_diagnostics.get(aid, {})
+                            mastery_speed_sums[aid] += float(
+                                diagnostics.get("speed_mps", 0.0)
+                            )
+                            mastery_active_counts[aid] += 1
+                            episode_last_completion[aid] = float(
+                                diagnostics.get(
+                                    "route_completion",
+                                    episode_last_completion[aid],
+                                )
+                            )
+                            environment_action = action_dict[aid]
+                            mastery_brake_mode_sums[aid] += float(
+                                environment_action[2] > 0.01
+                                and environment_action[0] <= 0.01
+                            )
                     episode_end_reason = info['episode_end_reason']
                     (
                         next_active_mask,
@@ -3516,12 +3761,21 @@ def train(args):
 
                 if ep_success:
                     total_successes += 1
+                    mastery_outcomes["success"] += 1
                 elif ep_collision:
                     total_collisions += 1
+                    mastery_outcomes["collision"] += 1
                 elif ep_timeout:
                     total_timeouts += 1
+                    mastery_outcomes["timeout"] += 1
                 elif ep_offroad:
                     total_offroads += 1
+                    mastery_outcomes["offroad"] += 1
+                if curriculum.mastery_gate is not None:
+                    for aid in agent_ids:
+                        mastery_completion_samples[aid].append(
+                            episode_last_completion[aid]
+                        )
 
                 # P0-00B：bootstrap 类型只服从环境发布的最终 T/X 协议，不再根据
                 # reached_target 或碰撞 sticky 标志二次猜测。X 可来自 max_steps，
@@ -3587,6 +3841,66 @@ def train(args):
                     )
                     raise KeyboardInterrupt
 
+            if curriculum.mastery_gate is not None:
+                episode_count = int(args.rollout_episodes)
+                mastery_evidence = curriculum.record_mastery_window(
+                    MasteryWindow(
+                        update=update,
+                        episode_count=episode_count,
+                        agent_mean_speed_mps={
+                            aid: mastery_speed_sums[aid]
+                            / max(1, mastery_active_counts[aid])
+                            for aid in agent_ids
+                        },
+                        agent_mean_completion={
+                            aid: float(np.mean(mastery_completion_samples[aid]))
+                            for aid in agent_ids
+                        },
+                        agent_brake_mode_rate={
+                            aid: mastery_brake_mode_sums[aid]
+                            / max(1, mastery_active_counts[aid])
+                            for aid in agent_ids
+                        },
+                        team_success_rate=(
+                            mastery_outcomes["success"] / episode_count
+                        ),
+                        team_timeout_rate=(
+                            mastery_outcomes["timeout"] / episode_count
+                        ),
+                        team_collision_rate=(
+                            mastery_outcomes["collision"] / episode_count
+                        ),
+                        team_offroad_rate=(
+                            mastery_outcomes["offroad"] / episode_count
+                        ),
+                    )
+                )
+                metrics_recorder.record_scalars({
+                    "curriculum/stage_index": mastery_evidence["stage_index"],
+                    "curriculum/mastery_passed": float(
+                        mastery_evidence["passed"]
+                    ),
+                    "curriculum/mastery_promoted": float(
+                        mastery_evidence["promoted"]
+                    ),
+                    "curriculum/mastery_consecutive_passes": (
+                        mastery_evidence["consecutive_passes"]
+                    ),
+                })
+                for aid in agent_ids:
+                    window = mastery_evidence["window"]
+                    metrics_recorder.record_scalars({
+                        f"curriculum/agent_{aid}/mean_speed_mps": (
+                            window["agent_mean_speed_mps"][str(aid)]
+                        ),
+                        f"curriculum/agent_{aid}/mean_completion": (
+                            window["agent_mean_completion"][str(aid)]
+                        ),
+                        f"curriculum/agent_{aid}/brake_mode_rate": (
+                            window["agent_brake_mode_rate"][str(aid)]
+                        ),
+                    })
+
             rollout_seconds = time.perf_counter() - rollout_started_at
 
             # ===== PPO 更新 =====
@@ -3615,7 +3929,7 @@ def train(args):
                     device=device,
                     gamma=args.gamma,
                     gae_lambda=args.gae_lambda,
-                    obs_dim=19,
+                    obs_dim=obs_dim,
                     state_dim=state_dim,
                     action_dim=ACTION_DIM,
                     context=f"robust_v2 update={update}",
@@ -3630,13 +3944,13 @@ def train(args):
                     critic=critic,
                     critic_optim=critic_optim,
                     agent_ids=agent_ids,
-                    obs_dim=19,
+                    obs_dim=obs_dim,
                     state_dim=state_dim,
                     action_dim=ACTION_DIM,
                     ppo_epochs=args.ppo_epochs,
                     minibatch_size=args.minibatch_size,
                     clip_eps=args.clip_eps,
-                    ent_coef=args.ent_coef,
+                    ent_coef=current_ent_coef,
                     max_grad_norm=args.max_grad_norm,
                     target_kl=args.target_kl,
                     value_normalizer=value_normalizer,
@@ -3649,6 +3963,9 @@ def train(args):
                 preupdate_ratio_errors = update_result.preupdate_ratio_errors
             ppo_seconds = time.perf_counter() - ppo_started_at
             metrics_recorder.record_model_update(actors, critic)
+            metrics_recorder.record_scalar(
+                "policy/entropy_coefficient", current_ent_coef
+            )
 
             # ===== 版本化、模块化指标记录 =====
             # 每个 update 都落盘；--log-interval 只控制控制台打印频率。
@@ -3727,9 +4044,9 @@ def train(args):
                       f"avg_ep_len={float(np.mean(window_episode_lengths)):.0f}, "
                       f"n_trans={n_transitions_per_agent} (total={n_transitions}), "
                       f"lr_a={cur_lr_a:.2e}")
-                if args.reward_version == "v3":
+                if args.reward_version in {"v3", "v4"}:
                     print(
-                        "   reward-v3分量(均值/有效步): "
+                        f"   reward-{args.reward_version}分量(均值/有效步): "
                         f"progress={_mean_comp('progress'):.4f}, "
                         f"overspeed={_mean_comp('overspeed'):.4f}, "
                         f"long_rate={_mean_comp('longitudinal_rate'):.4f}, "
@@ -3738,7 +4055,8 @@ def train(args):
                         f"lane={(_mean_comp('lane_deviation') + _mean_comp('lane_invasion')):.4f}, "
                         f"offroad={_mean_comp('offroad'):.4f}, "
                         f"collision={_mean_comp('collision'):.4f}, "
-                        f"success={_mean_comp('success'):.4f}"
+                        f"success={_mean_comp('success'):.4f}, "
+                        f"mission_timeout={_mean_comp('mission_timeout'):.4f}"
                     )
                 else:
                     print(
@@ -3862,6 +4180,18 @@ def build_parser():
                         help="PPO clip 系数（v2 修复：0.2→0.15，小批量训练更稳）")
     parser.add_argument("--ent-coef", type=float, default=0.03,
                         help="熵损失系数（v2 修复：0.01→0.03），防止 log_std 早期塌缩")
+    parser.add_argument(
+        "--ent-coef-final",
+        type=float,
+        default=None,
+        help="post-tanh 熵系数线性退火终值；不设时保持 --ent-coef",
+    )
+    parser.add_argument(
+        "--entropy-anneal-updates",
+        type=int,
+        default=0,
+        help="熵系数线性退火终点 update；0 表示关闭退火",
+    )
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
     parser.add_argument(
         "--value-norm-beta", type=float, default=0.99999,
@@ -3897,6 +4227,14 @@ def build_parser():
     )
     parser.add_argument("--init-log-std", type=float, default=0.0,
                         help="Actor log_std 初始值（std=1.0），配合 target-kl 早停，给足初期探索空间")
+    parser.add_argument(
+        "--min-log-std", type=float, default=-1.0,
+        help="Actor 有效 log_std 下界",
+    )
+    parser.add_argument(
+        "--max-log-std", type=float, default=None,
+        help="Actor 有效 log_std 上界；旧协议为空，R6 必须显式冻结",
+    )
 
     # 场景采样
     parser.add_argument(
@@ -3923,10 +4261,17 @@ def build_parser():
                              "classic=basic/left|right/all 旧逻辑; "
                              "distance=按 dist_<N>m 距离分层(实验性)")
     parser.add_argument(
+        "--curriculum-protocol",
+        type=str,
+        default="update_schedule_v1",
+        choices=["update_schedule_v1", "mastery_v2"],
+        help="课程推进协议；P0-T05-09/R6 必须使用 mastery_v2",
+    )
+    parser.add_argument(
         "--lidar-range-m",
         type=float,
         default=4.0,
-        help="19维观察中11条全周射线的物理量程；Town05综合基础场景使用20m",
+        help="观察中11条全周射线的物理量程；Town05综合基础场景使用20m",
     )
     parser.add_argument(
         "--ttc-max-range-m",
@@ -4000,8 +4345,8 @@ def build_parser():
         "--reward-version",
         type=str,
         default="v3",
-        choices=["v1", "v2", "v3"],
-        help="奖励函数版本；当前基础策略使用 v3 路线完成度预算",
+        choices=["v1", "v2", "v3", "v4"],
+        help="奖励函数版本；P0-T05-09/R6 使用 v4 mission 预算",
     )
 
     return parser

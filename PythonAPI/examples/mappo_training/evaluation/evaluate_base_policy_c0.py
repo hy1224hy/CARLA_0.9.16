@@ -31,6 +31,8 @@ from evaluation.base_c0_protocol import (
     TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
     TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
     TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+    TOWN05_R6_C0_PROTOCOL_VERSION,
+    TOWN05_R6_C0_EPISODE_RECORD_VERSION,
     C0_MANIFEST_VERSION,
     C0_RESOLVED_CONFIG_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
@@ -89,6 +91,7 @@ FORMAL_EXECUTABLE_C0_PROTOCOL_VERSIONS = frozenset(
         TOWN05_C0_PROTOCOL_VERSION,
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+        TOWN05_R6_C0_PROTOCOL_VERSION,
     }
 )
 
@@ -115,11 +118,18 @@ def _strict_agent_bool_map(raw: Any, *, name: str) -> Dict[int, bool]:
     return result
 
 
-def _observation(raw: Any, *, agent_id: int, context: str) -> np.ndarray:
+def _observation(
+    raw: Any,
+    *,
+    agent_id: int,
+    expected_dim: int,
+    context: str,
+) -> np.ndarray:
     array = np.asarray(raw, dtype=np.float32)
-    if array.shape != (19,) or not np.isfinite(array).all():
+    if array.shape != (expected_dim,) or not np.isfinite(array).all():
         raise C0ProtocolError(
-            f"{context}: observation agent={agent_id} must be finite shape (19,), got {array.shape}"
+            f"{context}: observation agent={agent_id} must be finite shape "
+            f"({expected_dim},), got {array.shape}"
         )
     return array
 
@@ -317,7 +327,12 @@ def _run_case(
         actions: Dict[int, np.ndarray] = {}
         with torch.no_grad():
             for agent_id in active_ids:
-                obs = _observation(observations[agent_id], agent_id=agent_id, context=f"step={step_index}")
+                obs = _observation(
+                    observations[agent_id],
+                    agent_id=agent_id,
+                    expected_dim=int(contract["checkpoint"]["obs_dim"]),
+                    context=f"step={step_index}",
+                )
                 tensor = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
                 action_tanh = actors[agent_id].get_deterministic_action(tensor).squeeze(0).cpu().numpy()
                 if action_tanh.shape != (policy_action_dim,) or not np.isfinite(action_tanh).all():
@@ -394,6 +409,7 @@ def _run_case(
     if contract["protocol_version"] in {
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+        TOWN05_R6_C0_PROTOCOL_VERSION,
     }:
         offroad_terminated = _strict_agent_bool_map(
             final_info.get("offroad_terminated"),
@@ -426,7 +442,10 @@ def _run_case(
             )
             if (
                 contract["protocol_version"]
-                == TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
+                in {
+                    TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+                    TOWN05_R6_C0_PROTOCOL_VERSION,
+                }
             ):
                 transition = lifecycle_transitions[agent_id]
                 if transition is None:
@@ -450,7 +469,10 @@ def _run_case(
                         == TOWN05_C0_PROTOCOL_VERSION
                         else (
                             (
-                                TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION
+                                TOWN05_R6_C0_EPISODE_RECORD_VERSION
+                                if contract["protocol_version"]
+                                == TOWN05_R6_C0_PROTOCOL_VERSION
+                                else TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION
                                 if contract["protocol_version"]
                                 == TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
                                 else TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION
@@ -458,6 +480,7 @@ def _run_case(
                             if contract["protocol_version"] in {
                                 TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
                                 TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+                                TOWN05_R6_C0_PROTOCOL_VERSION,
                             }
                             else C0_EPISODE_RECORD_VERSION
                         )

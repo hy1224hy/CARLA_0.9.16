@@ -2,10 +2,12 @@
 统一的 Actor-Critic 模型定义
 用于 MAPPO (CTDE) 和 单Agent PPO 训练
 """
-from typing import Tuple
+import math
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.distributions import Normal
 
 
@@ -13,7 +15,8 @@ class Actor(nn.Module):
     """2层MLP (128, Tanh) → mu_head + log_std, 用于 tanh-squashed Gaussian 策略"""
 
     def __init__(self, obs_dim: int = 19, act_dim: int = 3, hidden: int = 128,
-                 init_log_std: float = -0.5, min_log_std: float = -1.0):
+                 init_log_std: float = -0.5, min_log_std: float = -1.0,
+                 max_log_std: Optional[float] = None):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(obs_dim, hidden),
@@ -28,13 +31,70 @@ class Actor(nn.Module):
         # 破冻结(R5)：log_std 下限，防止策略过早收敛到"刹车/不动"使探索消失。
         # min_log_std=-1.0 → std≥0.37，保证持续有探索噪声逃出局部最优。
         self.min_log_std = float(min_log_std)
+        self.max_log_std = (
+            None if max_log_std is None else float(max_log_std)
+        )
+        if not math.isfinite(self.min_log_std):
+            raise ValueError("min_log_std must be finite")
+        if self.max_log_std is not None:
+            if not math.isfinite(self.max_log_std):
+                raise ValueError("max_log_std must be finite when configured")
+            if self.max_log_std <= self.min_log_std:
+                raise ValueError("max_log_std must be greater than min_log_std")
+            if not self.min_log_std <= float(init_log_std) <= self.max_log_std:
+                raise ValueError(
+                    "init_log_std must lie inside [min_log_std, max_log_std]"
+                )
+        elif float(init_log_std) < self.min_log_std:
+            raise ValueError("init_log_std must be at or above min_log_std")
+
+    @staticmethod
+    def _log_tanh_jacobian(z: torch.Tensor) -> torch.Tensor:
+        """Stable elementwise ``log(1 - tanh(z)^2)``.
+
+        The equivalent ``log(1 - tanh(z)^2 + eps)`` saturates at the chosen
+        epsilon and therefore gives the wrong density and entropy gradient for
+        large ``|z|``.  This softplus form is the change-of-variables identity
+        used by squashed-Gaussian policies.
+        """
+
+        return 2.0 * (math.log(2.0) - z - F.softplus(-2.0 * z))
+
+    def effective_log_std(self) -> torch.Tensor:
+        """Return the bounded log standard deviation used by the policy."""
+
+        if self.max_log_std is None:
+            return self.log_std.clamp(min=self.min_log_std)
+        return self.log_std.clamp(
+            min=self.min_log_std, max=self.max_log_std
+        )
+
+    @torch.no_grad()
+    def project_log_std_(self) -> None:
+        """Project the stored parameter so checkpoints cannot hide clamp drift."""
+
+        if self.max_log_std is None:
+            self.log_std.clamp_(min=self.min_log_std)
+        else:
+            self.log_std.clamp_(
+                min=self.min_log_std, max=self.max_log_std
+            )
 
     def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         h = self.net(obs)
         mu = self.mu_head(h)
-        # clamp 到下限：保证探索噪声不塌缩（上限放宽，不影响 init）
-        log_std = self.log_std.clamp(min=self.min_log_std).expand_as(mu)
+        log_std = self.effective_log_std().expand_as(mu)
         return mu, log_std
+
+    @classmethod
+    def _squashed_log_prob(
+        cls,
+        dist: Normal,
+        z: torch.Tensor,
+    ) -> torch.Tensor:
+        return (
+            dist.log_prob(z) - cls._log_tanh_jacobian(z)
+        ).sum(dim=-1)
 
     def sample_action(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         mu, log_std = self.forward(obs)
@@ -42,8 +102,7 @@ class Actor(nn.Module):
         dist = Normal(mu, std)
         z = dist.rsample()
         action_tanh = torch.tanh(z)
-        log_prob = dist.log_prob(z).sum(-1)
-        log_prob -= torch.log(1 - action_tanh.pow(2) + 1e-6).sum(-1)
+        log_prob = self._squashed_log_prob(dist, z)
         return action_tanh, log_prob
 
     def sample_action_z(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -57,8 +116,7 @@ class Actor(nn.Module):
         dist = Normal(mu, std)
         z = dist.rsample()
         action_tanh = torch.tanh(z)
-        log_prob = dist.log_prob(z).sum(-1)
-        log_prob -= torch.log(1 - action_tanh.pow(2) + 1e-6).sum(-1)
+        log_prob = self._squashed_log_prob(dist, z)
         return action_tanh, log_prob, z
 
     def evaluate_actions(self, obs: torch.Tensor, action_tanh: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -67,8 +125,7 @@ class Actor(nn.Module):
         dist = Normal(mu, std)
         clipped = torch.clamp(action_tanh, -0.999, 0.999)
         z = 0.5 * torch.log((1 + clipped) / (1 - clipped))
-        log_prob = dist.log_prob(z).sum(-1)
-        log_prob -= torch.log(1 - clipped.pow(2) + 1e-6).sum(-1)
+        log_prob = self._squashed_log_prob(dist, z)
         entropy = dist.entropy().sum(-1)
         return log_prob, entropy
 
@@ -82,10 +139,44 @@ class Actor(nn.Module):
         std = torch.exp(log_std)
         dist = Normal(mu, std)
         action_tanh = torch.tanh(z)
-        log_prob = dist.log_prob(z).sum(-1)
-        log_prob -= torch.log(1 - action_tanh.pow(2) + 1e-6).sum(-1)
+        log_prob = self._squashed_log_prob(dist, z)
         entropy = dist.entropy().sum(-1)
         return log_prob, entropy
+
+    def estimate_post_tanh_entropy(
+        self,
+        obs: torch.Tensor,
+        *,
+        sample_count: int = 1,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Estimate current squashed-policy entropy from fresh samples.
+
+        Returns one post-tanh and one analytic pre-tanh entropy value per
+        observation.  Rollout samples must not be passed here: using samples
+        from the old policy would estimate cross-entropy rather than
+        ``H[pi_current]``.
+        """
+
+        if (
+            isinstance(sample_count, bool)
+            or not isinstance(sample_count, int)
+            or sample_count <= 0
+        ):
+            raise ValueError("sample_count must be a positive integer")
+        mu, log_std = self.forward(obs)
+        std = torch.exp(log_std)
+        dist = Normal(mu, std)
+        pre_tanh_entropy = dist.entropy().sum(dim=-1)
+        if sample_count == 1:
+            z = dist.rsample()
+            post_tanh_entropy = -self._squashed_log_prob(dist, z)
+        else:
+            z = dist.rsample((int(sample_count),))
+            expanded = Normal(mu.unsqueeze(0), std.unsqueeze(0))
+            post_tanh_entropy = -self._squashed_log_prob(expanded, z).mean(
+                dim=0
+            )
+        return post_tanh_entropy, pre_tanh_entropy
 
     def get_deterministic_action(self, obs: torch.Tensor) -> torch.Tensor:
         """用于评估/推理：返回确定性动作 mu → tanh"""

@@ -20,7 +20,14 @@ from pathlib import Path
 from typing import Dict, Iterable, Mapping, MutableMapping, Sequence
 
 from training.checkpoint_protocol import atomic_write_json, sha256_file, utc_now_iso
-from environment.offroad_protocol import offroad_protocol_spec
+from environment.offroad_protocol import (
+    offroad_protocol_spec,
+    r6_offroad_protocol_spec,
+)
+from environment.base_reward_v4 import reward_v4_spec
+from environment.stall_protocol import stall_protocol_spec
+from training.mastery_curriculum import mastery_protocol_spec
+from training.policy_distribution_protocol import policy_distribution_spec
 
 
 EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_v1"
@@ -31,6 +38,7 @@ TOWN05_COMPREHENSIVE_EXPERIMENT_CONTRACT_VERSION = (
 TOWN05_OUTCOME_REPEATABILITY_EXPERIMENT_CONTRACT_VERSION = (
     "p0_base_experiment_contract_v4"
 )
+TOWN05_R6_EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_r6_v5"
 TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS = frozenset(
     {
         TOWN05_COMPREHENSIVE_EXPERIMENT_CONTRACT_VERSION,
@@ -84,6 +92,13 @@ COMPREHENSIVE_TRAINER_ARG_NAMES = CRITIC_TRAINER_ARG_NAMES[:-4] + (
     "lidar_range_m",
     "ttc_max_range_m",
 ) + CRITIC_TRAINER_ARG_NAMES[-4:]
+R6_TRAINER_ARG_NAMES = COMPREHENSIVE_TRAINER_ARG_NAMES + (
+    "ent_coef_final",
+    "entropy_anneal_updates",
+    "min_log_std",
+    "max_log_std",
+    "curriculum_protocol",
+)
 
 _TOP_LEVEL_FIELDS = frozenset(
     {
@@ -148,6 +163,8 @@ def _trainer_arg_names_for_contract(
     payload: Mapping[str, object],
 ) -> tuple[str, ...]:
     version = payload["contract_version"]
+    if version == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION:
+        return R6_TRAINER_ARG_NAMES
     if version in TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS:
         return COMPREHENSIVE_TRAINER_ARG_NAMES
     if version == CRITIC_EXPERIMENT_CONTRACT_VERSION:
@@ -239,8 +256,17 @@ def validate_experiment_contract(
         raise ExperimentContractError("experiment contract root must be an object")
     contract_version = payload.get("contract_version")
     expected_top_level_fields = set(_TOP_LEVEL_FIELDS)
-    if contract_version in TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS:
+    if contract_version in TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS or (
+        contract_version == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION
+    ):
         expected_top_level_fields.add("offroad_protocol")
+    if contract_version == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION:
+        expected_top_level_fields.update({
+            "reward_protocol",
+            "stall_protocol",
+            "mastery_protocol",
+            "policy_distribution_protocol",
+        })
     _expect_exact_fields(payload, expected_top_level_fields, "contract")
 
     if payload["contract_version"] not in {
@@ -248,6 +274,7 @@ def validate_experiment_contract(
         CRITIC_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_COMPREHENSIVE_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R6_EXPERIMENT_CONTRACT_VERSION,
     }:
         raise ExperimentContractError(
             "unsupported contract_version="
@@ -260,6 +287,17 @@ def validate_experiment_contract(
         raise ExperimentContractError(
             "offroad_protocol differs from the registered footprint safety protocol"
         )
+    if payload["contract_version"] == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION:
+        expected_protocols = {
+            "offroad_protocol": r6_offroad_protocol_spec(),
+            "reward_protocol": reward_v4_spec(),
+            "stall_protocol": stall_protocol_spec(),
+            "mastery_protocol": mastery_protocol_spec(),
+            "policy_distribution_protocol": policy_distribution_spec(),
+        }
+        for name, expected in expected_protocols.items():
+            if payload[name] != expected:
+                raise ExperimentContractError(f"{name} differs from R6 protocol")
     _require_nonempty_string(payload["contract_id"], "contract_id")
     if payload["status"] != "frozen":
         raise ExperimentContractError("formal experiment contract status must be 'frozen'")
@@ -356,6 +394,7 @@ def validate_experiment_contract(
         CRITIC_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_COMPREHENSIVE_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R6_EXPERIMENT_CONTRACT_VERSION,
     }:
         _require_number(
             trainer_args["value_norm_beta"],
@@ -375,20 +414,44 @@ def validate_experiment_contract(
                 raise ExperimentContractError(f"trainer_args.{name} must be > 0")
     if (
         payload["contract_version"] in TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS
+        or payload["contract_version"] == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION
     ):
         for name in ("lidar_range_m", "ttc_max_range_m"):
             _require_number(trainer_args[name], f"trainer_args.{name}", minimum=0.0)
             if float(trainer_args[name]) <= 0.0:
                 raise ExperimentContractError(f"trainer_args.{name} must be > 0")
     _require_number(trainer_args["init_log_std"], "trainer_args.init_log_std")
+    if payload["contract_version"] == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION:
+        for name in ("ent_coef_final", "min_log_std", "max_log_std"):
+            _require_number(trainer_args[name], f"trainer_args.{name}")
+        _require_int(
+            trainer_args["entropy_anneal_updates"],
+            "trainer_args.entropy_anneal_updates",
+            minimum=1,
+        )
+        if not (
+            trainer_args["min_log_std"] <= trainer_args["init_log_std"]
+            <= trainer_args["max_log_std"]
+        ):
+            raise ExperimentContractError("R6 log_std initialization is out of bounds")
+        if trainer_args["ent_coef_final"] > trainer_args["ent_coef"]:
+            raise ExperimentContractError("R6 entropy schedule must not increase")
     if not isinstance(trainer_args["lr_decay"], bool):
         raise ExperimentContractError("trainer_args.lr_decay must be boolean")
-    for name in ("town", "scenario_dir", "scenario_sampling_mode", "curriculum_mode"):
+    string_names = ["town", "scenario_dir", "scenario_sampling_mode", "curriculum_mode"]
+    if payload["contract_version"] == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION:
+        string_names.append("curriculum_protocol")
+    for name in string_names:
         _require_nonempty_string(trainer_args[name], f"trainer_args.{name}")
-    if trainer_args["reward_version"] not in {"v1", "v2", "v3"}:
+    if trainer_args["reward_version"] not in {"v1", "v2", "v3", "v4"}:
         raise ExperimentContractError(
-            "trainer_args.reward_version must be v1, v2 or v3"
+            "trainer_args.reward_version must be v1, v2, v3 or v4"
         )
+    if payload["contract_version"] == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION:
+        if trainer_args["reward_version"] != "v4":
+            raise ExperimentContractError("R6 contract must use reward v4")
+        if trainer_args["curriculum_protocol"] != "mastery_v2":
+            raise ExperimentContractError("R6 contract must use mastery_v2")
     if trainer_args["scenario_sampling_mode"] not in {
         "random",
         "stratified",

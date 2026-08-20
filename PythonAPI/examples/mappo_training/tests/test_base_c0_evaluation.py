@@ -40,6 +40,8 @@ from training.checkpoint_protocol import (
     ACTION_PROTOCOL_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
     LIFECYCLE_PROTOCOL_VERSION,
+    OFFROAD_CHECKPOINT_SCHEMA_VERSION,
+    OFFROAD_TRAINING_PROTOCOL_VERSION,
     PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION,
     OBSERVATION_PROTOCOL_VERSION,
     TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION,
@@ -55,6 +57,7 @@ from training.metrics_protocol import (
     ACTION_METRICS_PROTOCOL_VERSION,
     ACTION_RATE_NAMES,
     METRICS_PROTOCOL_VERSION,
+    OFFROAD_METRICS_PROTOCOL_VERSION,
     PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
     POLICY_ACTION_RATE_NAMES,
     REWARD_COMPONENTS,
@@ -112,7 +115,7 @@ def _checkpoint_payload(contract, *, formal=True):
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
     }
     metrics_protocol = (
-        METRICS_PROTOCOL_VERSION
+        OFFROAD_METRICS_PROTOCOL_VERSION
         if offroad_current
         else (
             PRE_OFFROAD_METRICS_PROTOCOL_VERSION
@@ -122,7 +125,7 @@ def _checkpoint_payload(contract, *, formal=True):
     )
     payload = {
         "checkpoint_schema_version": (
-            CHECKPOINT_SCHEMA_VERSION
+            OFFROAD_CHECKPOINT_SCHEMA_VERSION
             if offroad_current
             else (
                 VALUENORM_CHECKPOINT_SCHEMA_VERSION
@@ -131,7 +134,7 @@ def _checkpoint_payload(contract, *, formal=True):
             )
         ),
         "training_protocol_version": (
-            TRAINING_PROTOCOL_VERSION
+            OFFROAD_TRAINING_PROTOCOL_VERSION
             if offroad_current
             else (
                 VALUENORM_TRAINING_PROTOCOL_VERSION

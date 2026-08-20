@@ -15,14 +15,20 @@ from environment.base_reward_v3 import (
     REWARD_DIAGNOSTICS as REWARD_V3_DIAGNOSTICS,
     reward_v3_spec,
 )
+from environment.base_reward_v4 import (
+    REWARD_COMPONENTS as REWARD_V4_COMPONENTS,
+    REWARD_DIAGNOSTICS as REWARD_V4_DIAGNOSTICS,
+    reward_v4_spec,
+)
 from training.action_protocol import action_protocol_spec
 from training.value_normalization import value_normalization_spec
 
 LEGACY_METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v3"
 ACTION_METRICS_PROTOCOL_VERSION = "mappo_metrics_action_v2_p0_00g_v4"
 PRE_OFFROAD_METRICS_PROTOCOL_VERSION = "mappo_metrics_valuenorm_p0_00g_v5"
-METRICS_PROTOCOL_VERSION = "mappo_metrics_offroad_p0_00g_v6"
-EPISODE_RECORD_VERSION = "mappo_episode_record_offroad_v2"
+OFFROAD_METRICS_PROTOCOL_VERSION = "mappo_metrics_offroad_p0_00g_v6"
+METRICS_PROTOCOL_VERSION = "mappo_metrics_r6_p0_t05_09_v7"
+EPISODE_RECORD_VERSION = "mappo_episode_record_mission_v3"
 REWARD_AUDIT_ATOL = 1e-6
 ACTION_ZERO_THRESHOLD = 0.01
 ACTION_SATURATION_THRESHOLD = 0.99
@@ -74,6 +80,7 @@ REWARD_COMPONENTS: Dict[str, Tuple[str, ...]] = {
         "time_bonus",
     ),
     "v3": REWARD_V3_COMPONENTS,
+    "v4": REWARD_V4_COMPONENTS,
 }
 
 REWARD_DIAGNOSTICS: Dict[str, Tuple[str, ...]] = {
@@ -105,6 +112,7 @@ REWARD_DIAGNOSTICS: Dict[str, Tuple[str, ...]] = {
         "success_event",
     ),
     "v3": REWARD_V3_DIAGNOSTICS,
+    "v4": REWARD_V4_DIAGNOSTICS,
 }
 
 DISABLED_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
@@ -113,6 +121,7 @@ DISABLED_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
     # but the current v2 reward deliberately gives them no contribution.
     "v2": frozenset({"progress", "alive"}),
     "v3": frozenset(),
+    "v4": frozenset(),
 }
 
 SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
@@ -134,6 +143,15 @@ SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
             "offroad",
             "collision",
             "success",
+        }
+    ),
+    "v4": frozenset(
+        {
+            "lane_invasion",
+            "offroad",
+            "collision",
+            "success",
+            "mission_timeout",
         }
     ),
 }
@@ -579,6 +597,8 @@ def reward_schema_document(reward_version: str) -> Dict[str, object]:
     }
     if reward_version == "v3":
         document["reward_protocol"] = reward_v3_spec()
+    elif reward_version == "v4":
+        document["reward_protocol"] = reward_v4_spec()
     return document
 
 

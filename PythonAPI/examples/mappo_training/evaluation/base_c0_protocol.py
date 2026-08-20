@@ -30,12 +30,15 @@ from training.checkpoint_protocol import (
     ACTION_CHECKPOINT_SCHEMA_VERSION,
     ACTION_TRAINING_PROTOCOL_VERSION,
     CHECKPOINT_SCHEMA_VERSION,
+    OFFROAD_CHECKPOINT_SCHEMA_VERSION,
+    OFFROAD_TRAINING_PROTOCOL_VERSION,
     VALUENORM_CHECKPOINT_SCHEMA_VERSION,
     LEGACY_CHECKPOINT_SCHEMA_VERSION,
     LEGACY_TRAINING_PROTOCOL_VERSION,
     LIFECYCLE_PROTOCOL_VERSION,
     PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION,
     OBSERVATION_PROTOCOL_VERSION,
+    R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION,
     TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION,
     TRAINING_PROTOCOL_VERSION,
     VALUENORM_TRAINING_PROTOCOL_VERSION,
@@ -50,6 +53,7 @@ from training.metrics_protocol import (
     ACTION_RATE_NAMES,
     LEGACY_METRICS_PROTOCOL_VERSION,
     METRICS_PROTOCOL_VERSION,
+    OFFROAD_METRICS_PROTOCOL_VERSION,
     PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
     POLICY_ACTION_RATE_NAMES,
     REWARD_COMPONENTS,
@@ -57,12 +61,19 @@ from training.metrics_protocol import (
 )
 from environment.offroad_protocol import (
     OFFROAD_PROTOCOL_VERSION,
+    R6_OFFROAD_PROTOCOL_VERSION,
     offroad_protocol_spec,
+    r6_offroad_protocol_spec,
 )
 from training.value_normalization import (
     VALUE_LOSS_PROTOCOL_VERSION,
     VALUE_NORMALIZATION_PROTOCOL_VERSION,
 )
+from training.mastery_curriculum import CURRICULUM_PROTOCOL_VERSION
+from training.policy_distribution_protocol import (
+    POLICY_DISTRIBUTION_PROTOCOL_VERSION,
+)
+from environment.stall_protocol import STALL_PROTOCOL_VERSION
 
 
 LEGACY_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v1"
@@ -74,6 +85,7 @@ TOWN05_OFFROAD_C0_PROTOCOL_VERSION = "p0_base_c0_eval_town05_v2"
 TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION = (
     "p0_base_c0_eval_town05_v3"
 )
+TOWN05_R6_C0_PROTOCOL_VERSION = "p0_base_c0_eval_town05_r6_v4"
 LEGACY_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v2"
 ACTION_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v3"
 REWARD_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v4"
@@ -85,6 +97,7 @@ TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION = (
 TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION = (
     "p0_base_c0_town05_offroad_episode_v3"
 )
+TOWN05_R6_C0_EPISODE_RECORD_VERSION = "p0_base_c0_town05_r6_episode_v4"
 C0_SUMMARY_VERSION = "p0_base_c0_summary_v1"
 C0_MANIFEST_VERSION = "p0_base_c0_manifest_v1"
 C0_RESOLVED_CONFIG_VERSION = "p0_base_c0_resolved_v1"
@@ -329,6 +342,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         TOWN05_C0_PROTOCOL_VERSION,
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+        TOWN05_R6_C0_PROTOCOL_VERSION,
     }:
         raise C0ProtocolError("C0 protocol version mismatch")
     legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
@@ -346,6 +360,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION: (
             "P0_BASE_C0_TOWN05_V3"
         ),
+        TOWN05_R6_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN05_R6_V4",
     }[protocol_version]
     if payload["contract_id"] != expected_contract_id:
         raise C0ProtocolError("C0 contract_id mismatch")
@@ -356,7 +371,9 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     new_offroad_protocol = protocol_version in {
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+        TOWN05_R6_C0_PROTOCOL_VERSION,
     }
+    r6_protocol = protocol_version == TOWN05_R6_C0_PROTOCOL_VERSION
     environment_fields = {
         "carla_version",
         "town",
@@ -386,6 +403,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
                 TOWN05_C0_PROTOCOL_VERSION,
                 TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
                 TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+                TOWN05_R6_C0_PROTOCOL_VERSION,
             }
             and env["town"] != "Town05"
         )
@@ -395,11 +413,14 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
                 TOWN05_C0_PROTOCOL_VERSION,
                 TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
                 TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+                TOWN05_R6_C0_PROTOCOL_VERSION,
             }
             and env["town"] != "Town02"
         )
         or env["num_agents"] != 2
-        or env["reward_version"] != ("v2" if reward_v2 else "v3")
+        or env["reward_version"] != (
+            "v4" if r6_protocol else ("v2" if reward_v2 else "v3")
+        )
         or env["adversarial_agent_ids"] != []
         or env["allow_extra_traffic"] is not False
     ):
@@ -407,7 +428,10 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
             "C0 environment must match the registered two-agent town without traffic/adversary"
         )
     if new_offroad_protocol:
-        if env["offroad_protocol"] != offroad_protocol_spec():
+        expected_offroad_spec = (
+            r6_offroad_protocol_spec() if r6_protocol else offroad_protocol_spec()
+        )
+        if env["offroad_protocol"] != expected_offroad_spec:
             raise C0ProtocolError("C0 offroad protocol differs from training")
         for name in ("lidar_range_m", "ttc_max_range_m"):
             if _finite(env[name], context=f"environment.{name}") <= 0.0:
@@ -429,7 +453,9 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         expected_action = {
             "mode": "deterministic_actor_mean_tanh",
             "observation_protocol_version": (
-                TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
+                R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION
+                if r6_protocol
+                else TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
                 if new_offroad_protocol
                 else OBSERVATION_PROTOCOL_VERSION
             ),
@@ -466,9 +492,12 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     elif protocol_version in {ACTION_C0_PROTOCOL_VERSION, REWARD_C0_PROTOCOL_VERSION}:
         expected_checkpoint_schema = ACTION_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = ACTION_TRAINING_PROTOCOL_VERSION
-    elif new_offroad_protocol:
+    elif r6_protocol:
         expected_checkpoint_schema = CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = TRAINING_PROTOCOL_VERSION
+    elif new_offroad_protocol:
+        expected_checkpoint_schema = OFFROAD_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = OFFROAD_TRAINING_PROTOCOL_VERSION
     else:
         expected_checkpoint_schema = VALUENORM_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = VALUENORM_TRAINING_PROTOCOL_VERSION
@@ -483,6 +512,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION: (
             "P0_BASE_MAPPO_TOWN05_V3"
         ),
+        TOWN05_R6_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN05_R6_V4",
     }[protocol_version]
     if (
         checkpoint["schema_version"] != expected_checkpoint_schema
@@ -495,7 +525,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
             else [5, 10, 20, 30, 40, 60, 80, 100]
         )
         or checkpoint["required_agent_ids"] != [0, 1]
-        or checkpoint["obs_dim"] != 19
+        or checkpoint["obs_dim"] != (20 if r6_protocol else 19)
         or checkpoint["action_dim"] != expected_action_dim
         or checkpoint["hidden_dim"] != 128
         or checkpoint["required_training_contract_id"]
@@ -611,7 +641,10 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
 
     repeatability = payload["repeatability"]
     outcome_repeatability = (
-        protocol_version == TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
+        protocol_version in {
+            TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+            TOWN05_R6_C0_PROTOCOL_VERSION,
+        }
     )
     repeatability_fields = (
         {
@@ -773,8 +806,10 @@ def load_and_validate_c0_checkpoint(
     new_offroad_protocol = protocol_version in {
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+        TOWN05_R6_C0_PROTOCOL_VERSION,
     }
-    historical = not new_offroad_protocol
+    r6_protocol = protocol_version == TOWN05_R6_C0_PROTOCOL_VERSION
+    historical = not r6_protocol
     validate_checkpoint_header(checkpoint, allow_legacy=historical)
     policy = contract["checkpoint"]
     mismatches: list[str] = []
@@ -784,7 +819,9 @@ def load_and_validate_c0_checkpoint(
         mismatches.append("training protocol")
     expected_protocols = {
         "observation": (
-            TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
+            R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION
+            if r6_protocol
+            else TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
             if new_offroad_protocol
             else OBSERVATION_PROTOCOL_VERSION
         ),
@@ -804,6 +841,8 @@ def load_and_validate_c0_checkpoint(
             if legacy
             else (
                 METRICS_PROTOCOL_VERSION
+                if r6_protocol
+                else OFFROAD_METRICS_PROTOCOL_VERSION
                 if new_offroad_protocol
                 else (
                     PRE_OFFROAD_METRICS_PROTOCOL_VERSION
@@ -815,12 +854,22 @@ def load_and_validate_c0_checkpoint(
         ),
     }
     if new_offroad_protocol:
-        expected_protocols["offroad"] = OFFROAD_PROTOCOL_VERSION
+        expected_protocols["offroad"] = (
+            R6_OFFROAD_PROTOCOL_VERSION
+            if r6_protocol else OFFROAD_PROTOCOL_VERSION
+        )
+    if r6_protocol:
+        expected_protocols.update({
+            "policy_distribution": POLICY_DISTRIBUTION_PROTOCOL_VERSION,
+            "curriculum": CURRICULUM_PROTOCOL_VERSION,
+            "stall": STALL_PROTOCOL_VERSION,
+        })
     if protocol_version in {
         C0_PROTOCOL_VERSION,
         TOWN05_C0_PROTOCOL_VERSION,
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+        TOWN05_R6_C0_PROTOCOL_VERSION,
     }:
         expected_protocols.update(
             {
@@ -849,6 +898,7 @@ def load_and_validate_c0_checkpoint(
         TOWN05_C0_PROTOCOL_VERSION,
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+        TOWN05_R6_C0_PROTOCOL_VERSION,
     }:
         expected_gamma = float(contract["environment"]["reward_gamma"])
         training_config = checkpoint.get("training_config", {})
@@ -866,7 +916,11 @@ def load_and_validate_c0_checkpoint(
             mismatches.append("run_metadata.runtime.environment_reward_gamma")
         if new_offroad_protocol and runtime.get(
             "offroad_protocol"
-        ) != offroad_protocol_spec():
+        ) != (
+            r6_offroad_protocol_spec()
+            if r6_protocol
+            else offroad_protocol_spec()
+        ):
             mismatches.append("run_metadata.runtime.offroad_protocol")
     actors = checkpoint.get("actors")
     if not isinstance(actors, Mapping) or {int(key) for key in actors} != set(policy["required_agent_ids"]):
@@ -1026,11 +1080,14 @@ def validate_episode_record(
         TOWN05_C0_EPISODE_RECORD_VERSION,
         TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R6_C0_EPISODE_RECORD_VERSION,
     }:
         raise C0ProtocolError("episode record version mismatch")
     current_action = record_version != LEGACY_C0_EPISODE_RECORD_VERSION
     reward_version = (
-        "v3"
+        "v4"
+        if record_version == TOWN05_R6_C0_EPISODE_RECORD_VERSION
+        else "v3"
         if record_version in {
             REWARD_C0_EPISODE_RECORD_VERSION,
             C0_EPISODE_RECORD_VERSION,
@@ -1083,6 +1140,7 @@ def validate_episode_record(
     offroad_record = record_version in {
         TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R6_C0_EPISODE_RECORD_VERSION,
     }
     if offroad_record:
         expected_agent_fields.update(
@@ -1093,7 +1151,10 @@ def validate_episode_record(
                 "max_footprint_outside_fraction",
             }
         )
-    if record_version == TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION:
+    if record_version in {
+        TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R6_C0_EPISODE_RECORD_VERSION,
+    }:
         expected_agent_fields.add("lifecycle_transition")
     returns = []
     active_total = 0
@@ -1109,7 +1170,10 @@ def validate_episode_record(
             raise C0ProtocolError(f"agent {agent_id} final done semantics are invalid")
         if agent["final_terminated"] and agent["final_truncated"]:
             raise C0ProtocolError(f"agent {agent_id} cannot terminate and truncate")
-        if record_version == TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION:
+        if record_version in {
+            TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+            TOWN05_R6_C0_EPISODE_RECORD_VERSION,
+        }:
             transition = agent["lifecycle_transition"]
             if (
                 not isinstance(transition, Mapping)
@@ -1362,6 +1426,7 @@ def _aggregate_group(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     if records and records[0].get("record_version") in {
         TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R6_C0_EPISODE_RECORD_VERSION,
     }:
         result["offroad_count"] = sum(
             any(
@@ -1408,6 +1473,9 @@ def build_summary(
     elif record_version == TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION:
         eval_protocol_version = TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
         reward_version = "v3"
+    elif record_version == TOWN05_R6_C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = TOWN05_R6_C0_PROTOCOL_VERSION
+        reward_version = "v4"
     else:
         raise C0ProtocolError("cannot summarize an unknown C0 episode version")
     overall = _aggregate_group(records)
@@ -1435,6 +1503,7 @@ def build_summary(
         if record_version in {
             TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
             TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+            TOWN05_R6_C0_EPISODE_RECORD_VERSION,
         }:
             agents[agent_id]["offroad_episode_count"] = sum(
                 bool(record["agents"][agent_id]["offroad_terminated"])
@@ -1575,10 +1644,10 @@ def compare_repeatability_records(
     contract: Mapping[str, Any],
 ) -> Dict[str, Any]:
     repeatability = contract["repeatability"]
-    outcome_mode = (
-        contract["protocol_version"]
-        == TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION
-    )
+    outcome_mode = contract["protocol_version"] in {
+        TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
+        TOWN05_R6_C0_PROTOCOL_VERSION,
+    }
     if outcome_mode:
         if repeatability["comparison_mode"] != OUTCOME_REPEATABILITY_MODE:
             raise C0ProtocolError("repeatability comparison mode differs")

@@ -14,11 +14,13 @@ from typing import Dict, Sequence, Tuple
 
 
 OFFROAD_PROTOCOL_VERSION = "driving_footprint_offroad_v1"
+R6_OFFROAD_PROTOCOL_VERSION = "driving_footprint_offroad_v2_r6"
 FOOTPRINT_INSET_FRACTION = 0.90
 FOOTPRINT_BOUNDARY_SAMPLE_COUNT = 8
 FOOTPRINT_OUTSIDE_COUNT_THRESHOLD = 3
 OFFROAD_PERSISTENCE_TICKS = 3
 OFFROAD_TERMINAL_PENALTY = -20.0
+R6_OFFROAD_TERMINAL_PENALTY = -50.0
 
 
 class OffroadProtocolError(ValueError):
@@ -129,6 +131,14 @@ def offroad_protocol_spec() -> Dict[str, object]:
         "raw_rule": "center_not_driving_or_boundary_outside_count_gte_threshold",
         "membership_rule": "exact_OpenDRIVE_Driving_union_no_projection",
     }
+
+
+def r6_offroad_protocol_spec() -> Dict[str, object]:
+    """R6 detector identity with the reward-v4 terminal budget."""
+    spec = offroad_protocol_spec()
+    spec["protocol_version"] = R6_OFFROAD_PROTOCOL_VERSION
+    spec["terminal_penalty"] = R6_OFFROAD_TERMINAL_PENALTY
+    return spec
 
 
 def decision_as_dict(decision: OffroadDecision) -> Dict[str, object]:

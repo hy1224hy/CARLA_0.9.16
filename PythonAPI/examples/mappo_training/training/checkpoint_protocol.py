@@ -30,13 +30,16 @@ from training.action_protocol import (
 LEGACY_CHECKPOINT_SCHEMA_VERSION = 2
 ACTION_CHECKPOINT_SCHEMA_VERSION = 3
 VALUENORM_CHECKPOINT_SCHEMA_VERSION = 4
-CHECKPOINT_SCHEMA_VERSION = 5
+OFFROAD_CHECKPOINT_SCHEMA_VERSION = 5
+CHECKPOINT_SCHEMA_VERSION = 6
 LEGACY_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00g_v2"
 ACTION_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_action_v2_p0_00g_v3"
 VALUENORM_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_valuenorm_p0_00g_v4"
-TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_offroad_p0_00g_v5"
+OFFROAD_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_offroad_p0_00g_v5"
+TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_r6_p0_t05_09_v6"
 OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_v1"
 TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_lidar20m_v2"
+R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION = "carla_obs_20_lidar20m_time_v3"
 PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION = "agent_centric_terminated_truncated_v1"
 LIFECYCLE_PROTOCOL_VERSION = "agent_centric_offroad_terminated_truncated_v2"
 
@@ -470,6 +473,13 @@ def validate_checkpoint_header(
         == VALUENORM_TRAINING_PROTOCOL_VERSION
         and protocol_versions.get("action") == ACTION_PROTOCOL_VERSION
     )
+    is_offroad_historical = (
+        checkpoint["checkpoint_schema_version"]
+        == OFFROAD_CHECKPOINT_SCHEMA_VERSION
+        and checkpoint["training_protocol_version"]
+        == OFFROAD_TRAINING_PROTOCOL_VERSION
+        and protocol_versions.get("action") == ACTION_PROTOCOL_VERSION
+    )
     if allow_legacy and is_legacy:
         expected_schema = LEGACY_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = LEGACY_TRAINING_PROTOCOL_VERSION
@@ -479,6 +489,9 @@ def validate_checkpoint_header(
     elif allow_legacy and is_valuenorm_historical:
         expected_schema = VALUENORM_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = VALUENORM_TRAINING_PROTOCOL_VERSION
+    elif allow_legacy and is_offroad_historical:
+        expected_schema = OFFROAD_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = OFFROAD_TRAINING_PROTOCOL_VERSION
     else:
         expected_schema = CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = TRAINING_PROTOCOL_VERSION

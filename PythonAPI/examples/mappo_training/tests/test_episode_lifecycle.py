@@ -149,6 +149,10 @@ class BaseEpisodeOutcomeTests(unittest.TestCase):
             (False, False, True, False),
         )
         self.assertEqual(
+            classify_base_episode_outcome("mission_timeout"),
+            (False, False, True, False),
+        )
+        self.assertEqual(
             classify_base_episode_outcome("cooperative_offroad"),
             (False, False, False, True),
         )
@@ -414,6 +418,25 @@ class EpisodeLifecycleTests(unittest.TestCase):
         self.assertFalse(any(env.last_terminated.values()))
         self.assertTrue(all(env.last_truncated.values()))
         self.assertFalse(any(env.active_mask.values()))
+
+    def test_reward_v4_mission_timeout_is_terminal_and_not_bootstrapped(self):
+        env = _make_env(current_step=10, num_agents=2, adversarial_agent_ids=[])
+        env.reward_version = "v4"
+
+        dones = env._check_dones()
+
+        self.assertEqual(dones, {0: True, 1: True})
+        self.assertEqual(env.episode_end_reason, "mission_timeout")
+        self.assertEqual(env.last_terminated, {0: True, 1: True})
+        self.assertEqual(env.last_truncated, {0: False, 1: False})
+        self.assertIsNone(
+            bootstrap_state_for_boundary(
+                True,
+                env.last_terminated[0],
+                env.last_truncated[0],
+                np.array([1.0], dtype=np.float32),
+            )
+        )
 
     def test_natural_termination_is_not_overwritten_by_later_timeout(self):
         env = _make_env(current_step=10)

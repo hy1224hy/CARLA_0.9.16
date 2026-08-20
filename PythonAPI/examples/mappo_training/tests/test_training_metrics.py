@@ -417,6 +417,94 @@ class EnvironmentRewardDiagnosticsTests(unittest.TestCase):
         self.assertEqual(env.episode_end_reason, "cooperative_offroad")
         self.assertFalse(env.reached_target[0])
 
+    def test_v4_environment_emits_exact_mission_schema_and_timeout_failure(self):
+        class FakeLocation:
+            def __init__(self, x, y, z=0.0):
+                self.x, self.y, self.z = x, y, z
+
+            def distance(self, other):
+                return math.sqrt(
+                    (self.x - other.x) ** 2
+                    + (self.y - other.y) ** 2
+                    + (self.z - other.z) ** 2
+                )
+
+        location = FakeLocation(1.0, 0.0)
+        transform = SimpleNamespace(
+            location=location,
+            rotation=SimpleNamespace(yaw=0.0),
+        )
+        velocity = SimpleNamespace(x=0.5, y=0.0, z=0.0)
+        control = SimpleNamespace(throttle=0.2, steer=0.0, brake=0.0)
+
+        class FakeVehicle:
+            is_alive = True
+
+            get_transform = staticmethod(lambda: transform)
+            get_velocity = staticmethod(lambda: velocity)
+            get_control = staticmethod(lambda: control)
+
+        waypoint_transform = SimpleNamespace(
+            location=FakeLocation(1.0, 0.0),
+            get_right_vector=lambda: SimpleNamespace(x=0.0, y=1.0),
+        )
+        env = CarlaMultiAgentEnv.__new__(CarlaMultiAgentEnv)
+        env.reward_version = "v4"
+        env.vehicles = [FakeVehicle()]
+        env.reached_target = {0: False}
+        env.reward_gamma = 0.999
+        env.timestep = 0.1
+        env.current_step = 500
+        env.max_steps = 500
+        env.prev_distances = {0: 10.0}
+        env.initial_distances = {0: 10.0}
+        env.prev_controls = {}
+        env.previous_lidar_distances = {0: np.ones(11, dtype=np.float32)}
+        env.legal_lane_change_grace_ticks = {0: 0}
+        env.stall_states = {}
+        env.current_scenario_family = "free_flow"
+        env.lidar_range_m = 20.0
+        env.ttc_max_range_m = 20.0
+        env.collision_events = {0: False}
+        env.crosswalk_invasion_events = {0: False}
+        env.lane_invasion_events = {0: False}
+        env.lane_invasion_details = {}
+        env.offroad_terminal_events = {0: False}
+        env.offroad_consecutive_ticks = {0: 0}
+        env.last_road_occupancy = {
+            0: {
+                "offroad_raw": False,
+                "driving_center_valid": True,
+                "footprint_outside_count": 0,
+                "footprint_outside_fraction": 0.0,
+            }
+        }
+        env.goal_zone = {}
+        env.agent_goal_zones = {}
+        env.adversarial_agent_ids = []
+        env.map = SimpleNamespace(
+            name="Carla/Maps/Town05",
+            get_waypoint=lambda _location: SimpleNamespace(
+                transform=waypoint_transform
+            ),
+        )
+        env._get_target_location = lambda _agent_id: FakeLocation(10.0, 0.0)
+        env._is_in_goal_zone = lambda _location: False
+        env._get_ray_detection = lambda *_args, **_kwargs: np.ones(11)
+        env._get_relative_position_to_agents = lambda _agent_id: {}
+
+        rewards, details = env._compute_rewards_v4()
+        diagnostics = env.last_reward_diagnostics[0]
+
+        self.assertAlmostEqual(rewards[0], math.fsum(details[0].values()))
+        self.assertEqual(set(details[0]), set(reward_components("v4")))
+        self.assertEqual(set(diagnostics), set(reward_diagnostics("v4")))
+        self.assertEqual(details[0]["mission_timeout"], -19.0)
+        self.assertEqual(diagnostics["remaining_time_fraction"], 0.0)
+        self.assertEqual(diagnostics["mission_timeout_event"], 1.0)
+        self.assertEqual(details[0]["lane_deviation"], 0.0)
+        self.assertEqual(details[0]["safety_lidar"], 0.0)
+
 
 class TrainingMetricsRecorderTests(unittest.TestCase):
     def _new_recorder(self, run_dir, **overrides):

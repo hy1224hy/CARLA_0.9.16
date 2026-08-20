@@ -20,6 +20,7 @@ from evaluation.base_c0_protocol import (
     TOWN05_C0_EPISODE_RECORD_VERSION,
     TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
     TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
+    TOWN05_R6_C0_EPISODE_RECORD_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
     load_c0_contract,
 )
@@ -30,10 +31,12 @@ from training.experiment_contract import (
 from training.metrics_protocol import (
     LEGACY_METRICS_PROTOCOL_VERSION,
     METRICS_PROTOCOL_VERSION,
+    OFFROAD_METRICS_PROTOCOL_VERSION,
     PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
 )
 from training.checkpoint_protocol import (
     CHECKPOINT_SCHEMA_VERSION,
+    OFFROAD_CHECKPOINT_SCHEMA_VERSION,
     VALUENORM_CHECKPOINT_SCHEMA_VERSION,
     sha256_file,
 )
@@ -74,12 +77,19 @@ TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_REPORT_VERSION = (
 TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_CONTRACT_RELATIVE_PATH = (
     "configs/evaluation/p0_base_go_hold_town05_v3.json"
 )
+TOWN05_R6_GO_HOLD_PROTOCOL_VERSION = "p0_base_go_hold_town05_r6_v4"
+TOWN05_R6_GO_HOLD_CONTRACT_ID = "P0_BASE_GO_HOLD_TOWN05_R6_V4"
+TOWN05_R6_GO_HOLD_REPORT_VERSION = "p0_base_go_hold_town05_r6_decision_v4"
+TOWN05_R6_GO_HOLD_CONTRACT_RELATIVE_PATH = (
+    "configs/evaluation/p0_base_go_hold_town05_r6_v4.json"
+)
 GO_HOLD_V2_PROTOCOL_VERSIONS = frozenset(
     {
         GO_HOLD_PROTOCOL_VERSION,
         TOWN05_GO_HOLD_PROTOCOL_VERSION,
         TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_R6_GO_HOLD_PROTOCOL_VERSION,
     }
 )
 MILESTONE_DECISIONS = {
@@ -469,6 +479,7 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION: (
             TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_CONTRACT_ID
         ),
+        TOWN05_R6_GO_HOLD_PROTOCOL_VERSION: TOWN05_R6_GO_HOLD_CONTRACT_ID,
     }
     if (
         protocol_version not in GO_HOLD_V2_PROTOCOL_VERSIONS
@@ -500,22 +511,30 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         context="bindings",
     )
     outcome_repeatability_protocol = (
-        protocol_version
-        == TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION
+        protocol_version in {
+            TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+            TOWN05_R6_GO_HOLD_PROTOCOL_VERSION,
+        }
     )
+    r6_protocol = protocol_version == TOWN05_R6_GO_HOLD_PROTOCOL_VERSION
     new_offroad_protocol = protocol_version in {
         TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_R6_GO_HOLD_PROTOCOL_VERSION,
     }
     expected_metrics_protocol = (
         METRICS_PROTOCOL_VERSION
+        if r6_protocol
+        else OFFROAD_METRICS_PROTOCOL_VERSION
         if new_offroad_protocol
         else PRE_OFFROAD_METRICS_PROTOCOL_VERSION
     )
     if bindings["metrics_protocol_version"] != expected_metrics_protocol:
         raise GoHoldProtocolError("GO/HOLD v2 must bind the active metrics protocol")
     expected_episode_record = (
-        TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION
+        TOWN05_R6_C0_EPISODE_RECORD_VERSION
+        if r6_protocol
+        else TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION
         if outcome_repeatability_protocol
         else (
             TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION
@@ -531,6 +550,8 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         raise GoHoldProtocolError("GO/HOLD v2 must bind the active C0 episode protocol")
     expected_checkpoint_schema = (
         CHECKPOINT_SCHEMA_VERSION
+        if r6_protocol
+        else OFFROAD_CHECKPOINT_SCHEMA_VERSION
         if new_offroad_protocol
         else VALUENORM_CHECKPOINT_SCHEMA_VERSION
     )
@@ -628,18 +649,21 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         if evidence[name] is not expected:
             raise GoHoldProtocolError(f"evidence_rules.{name} must be {expected}")
 
+    health_fields = {
+        "approx_kl",
+        "clip_fraction",
+        "gradient_clip_activation",
+        "critic_explained_variance",
+        "action_saturation",
+        "actor_log_std",
+        "critic_degeneracy",
+        "value_normalizer",
+    }
+    if r6_protocol:
+        health_fields.add("policy_distribution")
     health = _exact(
         payload["training_health"],
-        {
-            "approx_kl",
-            "clip_fraction",
-            "gradient_clip_activation",
-            "critic_explained_variance",
-            "action_saturation",
-            "actor_log_std",
-            "critic_degeneracy",
-            "value_normalizer",
-        },
+        health_fields,
         context="training_health",
     )
     legacy_health_fields = {
@@ -673,6 +697,25 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
                 _positive_int(value, context=f"training_health.{name}.{key}")
             else:
                 _finite(value, context=f"training_health.{name}.{key}")
+    if r6_protocol:
+        distribution = _exact(
+            health["policy_distribution"],
+            {
+                "pre_post_entropy_gap_warning_above",
+                "deterministic_saturation_warning_above",
+                "warning_consecutive_updates",
+            },
+            context="training_health.policy_distribution",
+        )
+        _positive_int(
+            distribution["warning_consecutive_updates"],
+            context="policy_distribution.warning_consecutive_updates",
+        )
+        for name in (
+            "pre_post_entropy_gap_warning_above",
+            "deterministic_saturation_warning_above",
+        ):
+            _finite(distribution[name], context=f"policy_distribution.{name}")
     critic = _exact(
         health["critic_degeneracy"],
         {
@@ -731,21 +774,22 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
     if normalizer["normalized_target_std_warning_below"] >= normalizer["normalized_target_std_warning_above"]:
         raise GoHoldProtocolError("ValueNorm target-std warning bounds are invalid")
 
-    behavior = _exact(
-        payload["behavioral_health"],
-        {
+    behavior_fields = {
             "assessment_milestones",
             "warning_from_update",
             "hold_from_update",
             "required_consecutive_milestones",
-            "all_agents_required",
             "zero_success_required",
             "deterministic_brake_mode_rate_at_or_above",
             "mean_speed_mps_at_or_below",
             "mean_progress_m_per_episode_at_or_below",
             "timeout_rate_at_or_above",
             "previous_milestone_report_required_for_hold",
-        },
+    }
+    behavior_fields.add("collapse_scope" if r6_protocol else "all_agents_required")
+    behavior = _exact(
+        payload["behavioral_health"],
+        behavior_fields,
         context="behavioral_health",
     )
     expected_updates = training["payload"]["segment_stop_updates"]
@@ -757,13 +801,18 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         or behavior["required_consecutive_milestones"] != 2
     ):
         raise GoHoldProtocolError("early-collapse grace/persistence rules drifted")
-    for name in (
-        "all_agents_required",
-        "zero_success_required",
-        "previous_milestone_report_required_for_hold",
-    ):
+    for name in ("zero_success_required", "previous_milestone_report_required_for_hold"):
         if behavior[name] is not True:
             raise GoHoldProtocolError(f"behavioral_health.{name} cannot be disabled")
+    if r6_protocol:
+        if behavior["collapse_scope"] != "any_agent":
+            raise GoHoldProtocolError(
+                "R6 behavioral collapse must use any_agent scope"
+            )
+    elif behavior["all_agents_required"] is not True:
+        raise GoHoldProtocolError(
+            "behavioral_health.all_agents_required cannot be disabled"
+        )
     for name in (
         "deterministic_brake_mode_rate_at_or_above",
         "mean_speed_mps_at_or_below",
@@ -898,6 +947,9 @@ def _validate_go_hold_contract_v2(payload: Any, *, project_dir: Path) -> None:
         TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION: (
             TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_CONTRACT_RELATIVE_PATH
         ),
+        TOWN05_R6_GO_HOLD_PROTOCOL_VERSION: (
+            TOWN05_R6_GO_HOLD_CONTRACT_RELATIVE_PATH
+        ),
     }[protocol_version]
     expected_paths = [
         "evaluation/base_go_hold_protocol.py",
@@ -934,6 +986,8 @@ def go_hold_report_version(contract: Mapping[str, Any]) -> str:
         return TOWN05_OFFROAD_GO_HOLD_REPORT_VERSION
     if version == TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION:
         return TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_REPORT_VERSION
+    if version == TOWN05_R6_GO_HOLD_PROTOCOL_VERSION:
+        return TOWN05_R6_GO_HOLD_REPORT_VERSION
     if version == TOWN05_GO_HOLD_PROTOCOL_VERSION:
         return TOWN05_GO_HOLD_REPORT_VERSION
     return GO_HOLD_REPORT_VERSION
@@ -964,6 +1018,9 @@ def load_go_hold_contract(path: str | Path, *, project_dir: Path) -> Dict[str, A
         ),
         TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION: (
             TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_CONTRACT_RELATIVE_PATH
+        ),
+        TOWN05_R6_GO_HOLD_PROTOCOL_VERSION: (
+            TOWN05_R6_GO_HOLD_CONTRACT_RELATIVE_PATH
         ),
     }[payload["protocol_version"]]
     if relative != registered_path:
@@ -1168,6 +1225,48 @@ def evaluate_training_health(
                 warnings.append(
                     f"agent {agent_id} {channel} true saturation > "
                     f"{saturation_rule['warning_above']} for {streak} consecutive updates"
+                )
+
+        if "policy_distribution" in health:
+            distribution_rule = health["policy_distribution"]
+            entropy_gap = series(f"{prefix}/pre_post_entropy_gap")
+            deterministic_longitudinal = series(
+                f"{prefix}/deterministic_longitudinal_saturation"
+            )
+            deterministic_steer = series(
+                f"{prefix}/deterministic_steer_saturation"
+            )
+            deterministic_saturation = [
+                max(longitudinal, steer)
+                for longitudinal, steer in zip(
+                    deterministic_longitudinal, deterministic_steer
+                )
+            ]
+            divergence_streak = _max_streak(
+                list(zip(entropy_gap, deterministic_saturation)),
+                lambda pair: (
+                    pair[0]
+                    > distribution_rule["pre_post_entropy_gap_warning_above"]
+                    and pair[1]
+                    > distribution_rule[
+                        "deterministic_saturation_warning_above"
+                    ]
+                ),
+            )
+            observed[f"agent_{agent_id}/policy_distribution"] = {
+                "max_pre_post_entropy_gap": max(entropy_gap),
+                "max_deterministic_saturation": max(
+                    deterministic_saturation
+                ),
+                "divergence_warning_streak": divergence_streak,
+            }
+            if divergence_streak >= distribution_rule[
+                "warning_consecutive_updates"
+            ]:
+                warnings.append(
+                    f"agent {agent_id} has high pre/post entropy gap with "
+                    "deterministic action saturation for "
+                    f"{divergence_streak} consecutive updates"
                 )
 
     critic_grad = series("critic/grad_clip_activation_rate")
@@ -1530,6 +1629,7 @@ def evaluate_behavioral_health(
             "collapsed_now": False,
             "collapsed_previous": False,
             "persistent_collapse": False,
+            "persistent_collapsed_agents": [],
             "reason_codes": [],
             "failures": [],
             "warnings": [],
@@ -1586,10 +1686,14 @@ def evaluate_behavioral_health(
             "zero_success": int(counts["success"]) == 0,
             "timeout_dominant": timeout_rate >= rule["timeout_rate_at_or_above"],
         }
+        any_agent_scope = (
+            contract.get("protocol_version")
+            == TOWN05_R6_GO_HOLD_PROTOCOL_VERSION
+        )
         agent_collapse = (
-            all(collapsed_agents)
-            if rule["all_agents_required"]
-            else any(collapsed_agents)
+            any(collapsed_agents)
+            if any_agent_scope
+            else all(collapsed_agents)
         )
         collapsed = agent_collapse and episode_signals["timeout_dominant"]
         if rule["zero_success_required"]:
@@ -1608,13 +1712,21 @@ def evaluate_behavioral_health(
         else None
     )
     collapsed_previous = bool(previous and previous["collapsed"])
-    persistent = bool(current["collapsed"] and collapsed_previous)
+    persistent_agents = []
+    if previous is not None and current["collapsed"] and previous["collapsed"]:
+        persistent_agents = [
+            agent_id
+            for agent_id in current["agents"]
+            if current["agents"][agent_id]["collapsed"]
+            and previous["agents"][agent_id]["collapsed"]
+        ]
+    persistent = bool(persistent_agents)
     failures: list[str] = []
     warnings: list[str] = []
     reason_codes: list[str] = []
     if current["collapsed"]:
         warnings.append(
-            "deterministic C0 shows joint stopping pattern: brake-dominant, "
+            "deterministic C0 shows stopping collapse: brake-dominant, "
             "near-stationary, no route progress, and timeout-dominant"
         )
         if update >= rule["hold_from_update"]:
@@ -1626,8 +1738,8 @@ def evaluate_behavioral_health(
                 reason_codes.append("BEHAVIOR_HISTORY_MISSING")
             elif persistent:
                 failures.append(
-                    "joint deterministic stopping pattern persisted across two "
-                    "adjacent milestone checkpoints"
+                    "deterministic stopping persisted for the same agent across "
+                    "two adjacent milestone checkpoints"
                 )
                 reason_codes.append("BEHAVIORAL_COLLAPSE")
     return {
@@ -1635,6 +1747,7 @@ def evaluate_behavioral_health(
         "collapsed_now": bool(current["collapsed"]),
         "collapsed_previous": collapsed_previous,
         "persistent_collapse": persistent,
+        "persistent_collapsed_agents": persistent_agents,
         "reason_codes": reason_codes,
         "failures": failures,
         "warnings": warnings,
@@ -1683,6 +1796,7 @@ def evaluate_milestone_decision(
     if contract.get("protocol_version") in {
         TOWN05_OFFROAD_GO_HOLD_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+        TOWN05_R6_GO_HOLD_PROTOCOL_VERSION,
     }:
         offroad_count = c0_summary.get("offroad_count")
         if (
@@ -1699,8 +1813,10 @@ def evaluate_milestone_decision(
             )
     repeatability_rule = (
         "require_repeatability_gate_pass"
-        if contract.get("protocol_version")
-        == TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION
+        if contract.get("protocol_version") in {
+            TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+            TOWN05_R6_GO_HOLD_PROTOCOL_VERSION,
+        }
         else "require_repeatability_pass"
     )
     if contract["evidence_rules"][repeatability_rule] and not repeatability_pass:
@@ -1809,8 +1925,10 @@ def evaluate_validation_decision(
         )
     repeatability_rule = (
         "require_repeatability_gate_pass"
-        if contract.get("protocol_version")
-        == TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION
+        if contract.get("protocol_version") in {
+            TOWN05_OUTCOME_REPEATABILITY_GO_HOLD_PROTOCOL_VERSION,
+            TOWN05_R6_GO_HOLD_PROTOCOL_VERSION,
+        }
         else "require_repeatability_pass"
     )
     if contract["evidence_rules"][repeatability_rule] and not repeatability_pass:
