@@ -10,20 +10,20 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                      |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                  |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                             |
-| 当前工程基线    | `a33a573 / TOWN05 V3 U5 CONTINUE_WITH_WARNING`：正式 fresh u5、strict、双 32-case C0 和唯一 judge 已闭环；C0 v3 入口漏接已修复并通过 211/211。旧 u5 与旧 HOLD 不改写 |
+| 当前工程基线    | `codex/mappo-experiment-baseline`；R6 诊断 Run 的 origin Git 为 `63d62be026a8b27e67b00f8c04626db678552d38`。R6 机制链路已闭环，但 u160 因不安全车道捷径与 critic 退化进入 `DIAGNOSTIC HOLD` |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                          |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                   |
-| 当前有效自动化测试 | 211/211 全量通过（2026-08-14）；Town05 v2 32/32 真实出生点和四方向 offroad 正反例 PASS；正式 u5 strict、双 C0 v3、重复性和 CARLA 清理均 PASS |
-| 最近训练产物    | 正式 Run `P0_BASE_MAPPO_Town05V3_s42_20260814_125226`：5 updates/80 episodes，u5 checkpoint SHA `cb79242e...10a1a`；主 C0 为 0/32 success、2/32 collision、0 offroad、30 timeout；judge=`CONTINUE_WITH_WARNING`，尚不可多 seed或入池 |
+| 当前有效自动化测试 | R6 全量 249/249 无 CARLA回归、32/32 live spawn 与真实机制 smoke PASS（2026-08-20）；u160 训练共 160 次 PPO update，无 nonfinite、skipped update 或 reward residual 超容差 |
+| 最近训练产物    | 诊断 Run `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634`：u160/2,560 episodes，93 success、525 collision、363 offroad、1,579 timeout；只作失败/回归证据，禁止 resume 到新协议、选模或入池 |
 | 本文档创建日期   | 2026-07-20                                                                                                                                |
-| 最后更新日期    | 2026-08-14                                                                                                                                |
+| 最后更新日期    | 2026-08-23                                                                                                                                |
 
 ### 阶段状态
 
 | 阶段 | 状态 | 结论 |
 |---|---|---|
 | 基础 CARLA 多车环境与 MAPPO | REAL SMOKE + SUCCESS VERIFIED | P0-00G 自动链路、用户人工视觉及固定场景 success 两层真实测试通过；不代表 MAPPO 性能/收敛已验证 |
-| 基础 MAPPO 策略训练与选择 | TOWN05 V3 U5 CONTINUE_WITH_WARNING | 正式 u5 工程与证据链 PASS；策略仍 0 success、制动主导，尚未证明收敛。当前只允许同一 Run strict resume 到下一登记停点，多 seed/选模/入池仍阻塞 |
+| 基础 MAPPO 策略训练与选择 | R6 U160 DIAGNOSTIC HOLD / R7 DESIGN REVIEW | R6 已消除旧 pre-tanh entropy 奖励漏洞，但 u160 的 success 增长伴随 collision/offroad 和跨线代理恶化，critic EV 接近 0；当前无合格基础 checkpoint，多 seed/选模/入池继续阻塞 |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
 | Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
@@ -63,13 +63,13 @@
 - **自然交通效应**：`TrafficEffect = SuccessRate(C1) - SuccessRate(C0)`，避免把普通交通难度误认为对抗学习效果。
 - **互斥结局**：每个 episode 只能属于成功、碰撞、超时/其他失败中的一个；各比例之和为 1。
 - **安全约束**：蓝车自身碰撞和 kamikaze 不能成为降低红车成功率的主要方式。
-- **道路合法性**：车辆车体只能占用 OpenDRIVE `Driving` lane 的并集；经 Broken 虚线在相邻 `Driving` lane 之间并线仍合法，但驶入 Shoulder、Sidewalk、Parking、Biking、Median 等非 `Driving` 区域必须成为显式安全失败，且不能因接近目标或获得进度奖励而被记为成功。
+- **道路合法性**：车辆车体只能占用 OpenDRIVE `Driving` lane 的合法同向区域；经允许标线进入拓扑相邻、方向一致的 `Driving` lane 合法，但进入对向 `Driving` lane、持续 wrong-way，或驶入 Shoulder、Sidewalk、Parking、Biking、Median 等非 `Driving` 区域必须成为显式安全失败，且不能因接近目标或获得进度奖励而被记为成功。
 - **精确归因**：墙体碰撞、红蓝碰撞和蓝蓝碰撞必须区分；无法归因时不得发放诱导碰撞奖励。
 - **独立评估**：评估使用确定性动作、冻结权重、固定协议，且不复用训练 rollout 作为最终结果。
 - **可复现性**：开发实验至少 3 个训练 seed；论文最终实验建议 5 个 seed，并报告均值、标准差和 95% 置信区间。
 - **统计口径冻结**：最终比较开始后不得修改指标定义；如必须修改，旧结果全部标记为旧协议。
 - **检查点选择**：最佳模型必须满足安全约束，再按独立验证集上的攻击效果选取，不能按训练期 `1 - red_success` 选取。
-- **终局与截断**：按 agent-specific 回报边界判定；自身到点/碰撞及红车结局对应的蓝车对抗结果为 `terminated`，同伴红车碰撞对未碰撞红车属于外部 `truncated`，`max_steps` 对仍存活车辆同样为 `truncated`；只有合法 truncation 允许 value bootstrap。
+- **终局与截断**：按 agent-specific 回报边界判定；自身到点/碰撞、注册的 `mission_timeout` 及红车结局对应的蓝车对抗结果为 `terminated`，同伴红车碰撞对未碰撞红车属于外部 `truncated`；只有训练进程中断、纯采样 cutoff 等不改变任务 MDP 的外部截断允许 value bootstrap。
 - **失活样本隔离**：`active_mask=False` 的 agent 不得继续动作采样、写入 rollout、参与 GAE 或增加 transition 计数；全零 observation 不能被当成有效状态训练。
 - **GAE 与优化目标隔离**：每个 agent/episode 独立计算原始 GAE；同一 agent 仅在完整 rollout 上标准化一次；Actor 使用标准化 advantage，Critic return 始终为 `raw_advantage + old_value`。
 
@@ -89,9 +89,16 @@
 - [x] **P0-T05-08 停止 u50 制动局部最优并封存诊断**：同一 Run 曾按冻结身份恢复，研究者于最后完整 u50 要求停止；800 个完整 episode 为 0 success、23 collision、48 offroad、729 timeout，另保留 1 条未完成 u51 中断记录。u41–u50 的 agent0 brake mode `0.9901`、速度 `0.0101 m/s`、完成度 `0.0138`，且其平均回报 `-5.7736` 高于仍运动的 agent1 `-8.3456`，证明停车是当前目标下的稳定相对最优。50 次 PPO 无 ratio/reward/nonfinite/skipped 故障；u50 checkpoint SHA256 `20b86366...d92adba`，仅作失败对照，禁止 resume/选模。CARLA 最终 async/None、actor 0/0。下一步转为 squashed-action entropy、task horizon/reward budget、mastery curriculum 新协议，详见 [u50 局部最优诊断](./P0-BASE-Town05V3_seed42_u50局部最优诊断.md)。
 - [x] **2026-08-17 真实 CARLA 重复性/断点续训抽查**：同一 u40 checkpoint、同一 smoke case 和 seed 连续执行两次 C0，独立产物 validator 与 repeat comparator 均 `PASS`，hard fields 无差异、2-tick 容差字段无 mismatch、return 无 warning；随后诊断 Run `DIAG_RESUME_REPRO_s42_20260817_115800` 完成 `fresh u1 → u2 首 episode 后受控中断 → 从 latest 恢复并完整提交 u2`。strict validator 核对 updates `[1,2]`、每 update 4 episodes、总计 8 条记录和 PPO 指标 `PASS`；latest 为 schema-v5/u2，保存双 actor optimizer、critic optimizer、Python/NumPy/Torch RNG 与 ValueNorm `update_count=2`，CARLA 最终 async/None、车辆/传感器 0/0。裸 `--resume latest` 因回落到默认 16 场景池被 checkpoint 指纹保护拒绝；复用原 32 场景配置后恢复成功，因此正式续训必须使用冻结合同或完整原参数。此项只证明**结果级 C0 重复性和完整 update 边界续训链路**，不证明 fresh-to-fresh 逐位轨迹一致，也不改变 u50 失败结论或 P0-T05-09 的修复优先级。
 
-#### P0-T05-09 / R6 下一版基础策略修复计划（待审核后实施）
+#### P0-T05-09 / R6 实现与 u160 诊断结论
 
-> **状态：PLANNED / DESIGN REVIEW（2026-08-17）**。实现基线为分支 `codex/mappo-experiment-baseline`、提交 `2c4d088`。本阶段必须建立新协议、新合同、新 Git 提交和新 RunID；旧 u50 checkpoint 只作失败回归输入，禁止 resume、选模、进入基础策略池或追认为新版本结果。开始实现和无 CARLA 回归时不需要启动 CARLA；只有进入真实机制测试和 fresh smoke 时才提醒猹师傅启动 `127.0.0.1:2000`。
+> **状态：IMPLEMENTED / DIAGNOSTIC HOLD（2026-08-23）**。R6 已按新协议完成 249/249 无 CARLA 回归、32/32 live spawn、真实机制 smoke，并在冻结诊断合同内 fresh 训练至 u160。下文保留实施前的目标和验收设计作为历史追踪；实际性能结论以 Run `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634` 为准。R6 u160 checkpoint 禁止进入策略池，也不得在 R7/reward-v5 下 resume。
+
+**u160 结果与反证**
+
+- 完整边界为 u160、2,560 episodes：93 success、525 collision、363 offroad、1,579 timeout；160 次 PPO update 全部提交，未出现 nonfinite、skipped update 或 reward residual 超容差。
+- u151–u160 success rate 为 16.25%，但 collision+offroad 达 71.25%，明显高于 u101–u110 的 46.25%；车辆跨越虚线、进入不合理相邻/对向车道的人工观察与 lane-deviation/lane-invasion/exemption 代理一致。因此 success 上升不构成 mastery。
+- critic explained variance 从 u20 的 0.965 降至 u160 的 0.0226；target std 由 2.797 扩至 9.207，prediction std 仅 1.367。梯度没有爆炸或连续裁剪，首要假设是 outcome/reward 分布变宽与 critic LR 过早退火共同造成的欠拟合。
+- R6 的直接后继不是继续同合同到 u200，也不是扩大 seed；唯一 NEXT 改为 P0-T05-10/R7：先修复道路方向合法性、success/reward 漏洞和 critic 诊断/时序，再以新合同 fresh 验证。
 
 **目标与边界**
 
@@ -152,6 +159,56 @@
 - 单元、集成、恢复、旧证据只读兼容和真实 CARLA 机制报告。
 - fresh smoke 与 Stage-0 pilot 的 RunID、Git/config/scenario 指纹、checkpoint SHA、strict validator、双 C0/GO-HOLD（到达对应正式停点时）和 CARLA cleanup 审计。
 - 同步更新基础策略实验记录、机器 registry 与本 TODO；失败 Run 和未完成前缀同样保留，不删除、不覆盖、不冒充正式能力证据。
+
+#### P0-T05-10 / R7 道路方向合法性、reward-v5 与 critic 跟踪修复（待用户审批）
+
+> **状态：NEXT / DESIGN REVIEW（2026-08-23）**。本节只登记 u160 后继方案，尚未修改代码、协议、合同或旧实验产物。批准后仍按“无 CARLA 审计与回归 → 真实 CARLA 脚本化 smoke → fresh 长训练”执行。
+
+**已冻结的范围边界**
+
+1. actor observation 维持 R6 的 20 维，critic 继续使用现有输入定义；本轮**不向任何观测空间增加车道、lane id、标线或 wrong-way 字段**。
+2. 道路合法性只在环境/reward/终止与审计层使用 CARLA/OpenDRIVE waypoint 语义，不建立需要人工维护的“车道池”。
+3. 不同时实现共享 actor、行为克隆、PopArt 或新的对抗网络结构；这些继续留作 P1 或后续可归因消融。
+4. R6 u160 只读；R7 必须新 protocol version、reward version、metrics/checkpoint schema、training/C0/GO-HOLD 合同、RunID，并从随机初始化 fresh 训练。
+
+**A. CARLA 内置道路语义与换道状态机**
+
+- 基于当前位置的非投影/投影 waypoint、`road_id/section_id/lane_id/lane_type`、lane direction、`lane_change` 权限、左右相邻 waypoint 及拓扑连续性，区分：原车道保持、允许的同向相邻换道、换道过渡、已稳定进入新车道、对向 `Driving` lane、wrong-way 和非 `Driving` offroad。
+- 合法换道只接受“标线允许 + 目标为相邻同向 Driving lane + 航向一致 + 有限持续时间”的组合；虚线本身不是自动免责，对向车道即使也是 `Driving` 也不能被当作合法目标。
+- 原车道和合法换道后的新车道具有完全相同的驾驶地位。换道走廊只暂时免除合理横向偏差成本，不发放独立正 bonus；稳定进入新车道后，参考中心自然切换到新车道。
+- success 增加合法性门：到达目标之外，还必须满足当前占用为合法同向 Driving lane、非 wrong-way、非 pending illegal crossing，并符合目标方向/路线；违法捷径进入目标区不能记 success。
+
+**B. reward-v5 数学与对抗兼容**
+
+- 基础形式保持“任务进度 + 互斥终局 - 非正安全/控制成本”：
+  `r_t = w_p[gamma*Phi(s_{t+1})-Phi(s_t)] - c_lane - c_risk - c_control + r_terminal`。
+- `Phi` 继续表示冻结路线完成度；原车道直行、合法换道过程和新车道稳定行驶均按同一条任务路线计算 progress，不以“出生车道中心”作为唯一正奖励来源。
+- `c_lane=0` 覆盖车道内合理带宽和合法换道走廊；超出合理带宽后使用连续、有界的非正成本。取消任何按“在中心线附近停留”持续发放的正奖励，避免停车刷分。
+- 对向占用/wrong-way 使用持续 tick 去抖后进入强安全失败；其 penalty、终止优先级和 success 屏蔽必须共同冻结，不能只增加一个可被 progress 抵消的小 shaping 项。
+- 对抗阶段复用同一套不可绕过的道路合法性、碰撞/offroad/wrong-way 与 success gate。蓝车角色 bonus 必须有界且受自身安全门控，不能通过逆行、冲出道路或自撞获得主要攻击收益。
+
+**C. critic 诊断优先与训练时序**
+
+- 先增加逐 agent、逐 outcome、逐 scenario-family 的 pre/post-update EV、target/prediction std ratio、分位数、相关性、bias 与 fixed-batch train/holdout 曲线；任何一个 agent 持续退化均触发全局 HOLD。
+- TensorBoard 只保留决策所需的高信号曲线：actor/critic loss、KL/clip、post-tanh entropy/log-std、outcome/return、reward 分项、道路合法性、每 agent critic 健康和训练轮次；高维逐事件/逐 scenario 明细继续写 JSONL 供离线审计，避免再次把所有诊断字段铺成不可读曲线。
+- 用 R6 已冻结 batch 做离线拟合探针，区分“现有 critic 容量能拟合但在线 LR 太低”和“容量/优化本身不足”。在探针结论前，不先增加 critic 层数、epoch 或切换归一化算法。
+- 新长训预算建议按 u600 一次注册，LR 与 entropy schedule 的 horizon 同步注册且不得中途改。critic LR 的首选候选是前 300 update 不降至低值、随后缓慢退火至 u600；具体起点/终点必须由固定 batch 探针和无 CARLA敏感性测试冻结。
+- 初版保持 5 epochs、单 full batch 和现有 actor 架构。只有固定 batch 探针无法达到预注册拟合门槛时，才单独比较 critic capacity、critic epochs 或归一化方案，每次只改变一个变量。
+
+**D. 实施、测试与阶段门槛**
+
+1. 代码审计并冻结 R7 数学、状态机真值表、字段/schema、拟修改文件和兼容矩阵；旧产物只读测试必须通过。
+2. 无 CARLA：覆盖同向/对向 lane 拓扑、合法换道全状态、超时/终局优先级、reward 守恒与轨迹排序、success legality gate、对抗 bonus 安全门、critic 分组审计、固定 batch 拟合、checkpoint/resume 和全量回归。
+3. 需要真实 CARLA 时先提醒用户启动 2000 端口；在 Town05 四方向脚本化验证原车道直行、允许换道、进入新车道后继续行驶、越虚线进对向、原地调头/wrong-way、offroad 和“违法到目标”。合法用例不得误杀，非法用例不得 success。
+4. 精确 clean commit 上运行 fresh u1/u5 工程 smoke，只验证 PPO、reward residual、schema、checkpoint、恢复和 cleanup；不以短程 success 调参。
+5. 通过 smoke 后创建预注册 u600 seed-42 pilot，在 u20/u50/u100/u200/u400/u600 做 milestone 审计。使用最近窗口而非单 update 判断；任一 agent 持续 brake/饱和、wrong-way/对向捷径、success 与事故同步恶化或 critic 近均值退化，立即 HOLD。
+6. 只有 Stage-0 连续两个 mastery window 同时通过驾驶、道路合法性和 critic 健康门槛，才扩展课程；只有 seed-42 pilot、独立 C0 和 GO/HOLD 通过后，才讨论多 seed 与策略池。
+
+**本阶段预期交付**
+
+- R7 设计/兼容性说明、reward-v5 和道路方向合法性协议、critic 诊断协议。
+- 新版本化 training/C0/GO-HOLD 合同与严格 validator；旧 R6 checkpoint/run 的只读兼容边界。
+- 无 CARLA测试报告、真实 CARLA脚本化报告、fresh smoke 证据和分段长训台账。
 
 #### P0-T05-05 非 Driving 区域终止及证据记录（真实 CARLA 验收完成）
 
@@ -911,6 +968,7 @@ git rev-parse HEAD
 | 2026-08-13 | `DIAG_OFFROAD_TOWN05V2_U1_20260813_V2` | P0-T05-05 | 验证新 offroad 语义在 Town05 v2 真实 rollout、PPO、metrics/checkpoint 和清理链路中闭环 | uncommitted/dirty-tree diagnostic | `p0_base_town05_v2` 科学参数 / 1 update、16 episodes、500 max steps | fresh | 42 | 10 offroad、2 collision、4 timeout；不作性能结论 | N/A | 7386 transitions、PPO 未跳过；所有 offroad 有 3-tick/首证据；strict 208 required/682 TB scalar；schema-v5/SHA/清理 PASS | `diagnostics/offroad_live/DIAG_OFFROAD_TOWN05V2_U1_20260813_V2`；`diagnostics/offroad_live/20260813_town05_four_direction_v4.json` | 冻结/提交受控源码；前瞻发布新重复性协议后 fresh 正式训练 |
 | 2026-08-14 | `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` | P0-T05-07 / u5 | 验证 Town05 v3 seed-42 首里程碑的训练健康、道路语义、确定性行为和结果级重复性 | origin `5dad4d4`；C0 接线修复 `a33a573` | `p0_base_town05_v3.json` / 5 updates、16 episodes/update、500 max steps | fresh | 42 | 主/重复各 32 cases；主为 0 success、2 collision、0 offroad、30 timeout；安全/结局一致，13/32 return 容差告警 | N/A | strict、双 C0、来源和重复性 gate PASS；judge=`CONTINUE_WITH_WARNING`；8 lane invasion，多 seed未放行 | `logs/P0_BASE_MAPPO_Town05V3_s42_20260814_125226`；`evaluations/P0_BASE_C0_gate_u000005_20260814_132002`；`decisions/base_mappo/P0_BASE_GO_HOLD_u000005_20260814_134018` | 经猹师傅批准后同 Run strict resume 到 u10；绑定 u5 decision 重做双 C0/judge |
 | 2026-08-17 | `DIAG_RESUME_REPRO_s42_20260817_115800` | P0-T05 checkpoint/repeatability spot-check | 在当前真实 CARLA 上抽查结果级 C0 重复性与完整 update 边界恢复 | unregistered dirty-tree diagnostic | u40 C0 smoke×2；训练 4 episodes/update、120 max steps，fresh u1→受控中断→resume u2 | fresh diagnostic；C0 使用正式 Run u40 只读 checkpoint | 42 / C0 case seed 61001 | C0 repeat `PASS`、无 mismatch/warning；训练 strict updates `[1,2]`、8 episode records `PASS` | N/A | checkpoint 配置漂移 fail-fast；完整原配置 resume 成功；optimizer/RNG/ValueNorm 恢复链路与 cleanup PASS；不作性能或逐位复现结论 | `diagnostics/resume_repro_live/DIAG_RESUME_REPRO_s42_20260817_115800`；`evaluations/P0_BASE_C0_smoke_u000040_20260817_115219`；`evaluations/P0_BASE_C0_smoke_u000040_20260817_115301` | 保持 u50 禁止 resume；按 P0-T05-09 新协议修复后再 fresh pilot |
+| 2026-08-20—23 | `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634` | P0-T05-09/R6 u160 | 检验 post-tanh entropy、reward-v4、任务期限、mastery 与任意单 agent HOLD 是否避免 u50 制动塌缩并形成合法驾驶趋势 | `63d62be026a8b27e67b00f8c04626db678552d38` | `p0_diag_town05_r6_u50_v1.json`；冻结长期边界 u160、16 episodes/update、500 max steps | fresh；同一 Run 仅在完整边界严格恢复 | 42 | 训练内 93 success、525 collision、363 offroad、1,579 timeout；未绑定正式 C0 | N/A | 160 PPO updates 健康，但后窗 success 上升伴随 collision/offroad 和跨线代理恶化；critic EV u20 0.965→u160 0.0226；`DIAGNOSTIC HOLD` | `diagnostics/r6_long_run/P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634`；u160 periodic SHA `e918b9a0...37d40` | 冻结 R6；P0-T05-10/R7 新道路方向/reward/critic 协议，fresh 验证，禁止选模/入池 |
 | YYYY-MM-DD | `<RunID>` | `<P?>` | `<一句话可证伪假设>` | `<sha>` | `<config path>` | `<sha256/path>` | `<seeds>` | `<rates/deltas>` | `<rates>` | `<pass/fail>` | `<run path>` | `<action>` |
 
 ## 15. 代码修改记录
@@ -974,6 +1032,7 @@ git rev-parse HEAD
 | 2026-08-10 | **IMPLEMENTED R2**：基础 reward v3 冻结为路线完成度势能 + 互斥终局 + 有界风险/控制成本；取消正 speed/alive/centering/yaw 和固定 step/time bonus | PBRS 的 gamma-consistent 形式保证 progress 折扣和望远镜化；自动驾驶 reward 文献支持 route completion 主任务和安全/舒适分离。具体权重不照搬论文，而由本项目 0.1 s、1000-step 与五类轨迹预算预注册，并通过 ±25% 敏感性 | 只减小旧负权重；按 ray/marking 数求和；把控制变化称为物理 jerk；观察 pilot 后追调权重；声称离线排序等于策略性能提升 | 基础 robust_v2、环境 reward、metrics/checkpoint/C0 v3、R2 论文正文；R3 继续负责 Critic，R4/R5 负责门槛和真实行为 |
 | 2026-08-11 | 修复版 seed 42 在 u5 执行 v2 机器裁决后保留 `CONTINUE_WITH_WARNING`，不因 0 success 或两车 brake mode=1 人工改判 HOLD | 训练健康、来源、checkpoint、双 C0 和重复性全部 PASS；agent1 progress `4.713 m > 3 m`、整体 timeout `68.75% < 95%`，不满足 R4 all-agent 联合塌缩；唯一 warning 为 9/16 lane invasion | 因短训练观感直接 HOLD；忽略行为证据直接宣称模型可用；跳过 u10 或提前多 seed | 当前 Run 允许同身份 strict resume 到 u10；不等于 `PILOT_GO`，多 seed/选模/对抗训练仍阻塞；C 盘空间是启动 u10 前的主机硬前置 |
 | 2026-08-14 | Town05 v3 u5 保留机器裁决 `CONTINUE_WITH_WARNING`，不因 0 success、两车 brake mode=1 或 agent0 单车塌缩信号人工改写；同时不把 CONTINUE 解释为收敛或多 seed GO | 主 C0 的 agent1 progress `3.545 m > 3 m`，timeout `93.75% < 95%`，不满足 all-agent 联合塌缩；双 C0 安全/结局一致，return 告警 13/32=`40.625% < 50%`，无 hard failure | 看到停车观感后事后收紧 HOLD；因 v3 入口漏接而丢弃有效训练 checkpoint；直接跑长训练或多 seed | 同一 Run 只可 strict resume 到 u10；C0 入口修复 `a33a573` 不改训练算法/合同/权重，211/211 与来源校验 PASS |
+| 2026-08-23 | R6 u160 结论为 `DIAGNOSTIC HOLD`；道路方向合法性由 CARLA/OpenDRIVE 环境语义处理，R7 不向 actor 或 critic 观测增加车道字段；新奖励/critic 修复必须新合同 fresh 训练 | 2,560 episodes 中 success 后窗上升伴随 collision/offroad 和换道豁免代理恶化；对向 `Driving` lane 不会被旧 offroad 捕获；critic EV u20 0.965→u160 0.0226、target/pred std 失配，而无梯度爆炸 | 把 success 上升当收敛继续 u200；构造手工车道池；增加 actor/critic 车道观测；在 R6 权重上改奖励后 resume | P0-T05-10/R7、reward-v5、道路方向终止/success gate、critic 分组诊断与 u600 fresh pilot；共享 actor/BC 继续属于 P1 |
 | 2026-07-20 | 通信放在无通信双蓝基线之后 | 否则无法把多车数量收益与消息通信收益分离 | 直接在现有双蓝脚本加入 attention | P3-P5 |
 | 2026-07-20 | 先固定红池 PSRO，再做双边演进 | 降低非平稳性，先验证 pool 和 meta-solver 的科学有效性 | 一开始同时训练红蓝双方 | P4-P6 |
 | YYYY-MM-DD | `<decision>` | `<evidence>` | `<alternatives>` | `<scope>` |
@@ -1016,9 +1075,12 @@ git rev-parse HEAD
 - [x] 第 2 天后半：猹师傅审核后完成 P0-T05-06、Town05 v3 三合同、210/210 离线回归并提交 `69252d4`；提交后三套 critical-source preflight PASS。CARLA 关闭不影响本项。
 - [x] 第 3 天前半：Town05 v3 seed-42 fresh u5、strict validator、双 32-case C0 v3 和唯一 GO/HOLD v3 已完成；裁决 `CONTINUE_WITH_WARNING`，未启动 u6，未放行多 seed。
 - [x] 第 3 天后半：猹师傅随后批准同一 Run 长训观察；Run 最终在完整 u50 因 agent0 99% 制动局部最优人工停止，未继续浪费算力到 u100。原始 u51 单条中断记录保留，安全 checkpoint 为 u50；没有伪造 u50 C0 或机器 judge。
-- [x] 第 4 天前半：P0-T05-09/R6 实现、249/249 离线回归、32/32 live spawn 与真实机制 smoke 均通过；post-tanh entropy、reward-v4、timeout、stall/mastery/any-agent HOLD 和 cleanup 已闭环。用户授权下一步使用独立 fresh `P0_DIAG_MAPPO_TOWN05_R6_U50_V1` 跑 50 updates 观察奖励与塌缩趋势；诊断 checkpoint 禁止正式 C0 选模或进入策略池。
-- [ ] 第 2-4 天：仅在 GO 后以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
-- [ ] 第 5 天：用冻结 C0 验证全部 periodic checkpoints，生成带 SHA/manifest 的 `best_base_valid.pt`。
+- [x] 第 4 天前半：P0-T05-09/R6 实现、249/249 离线回归、32/32 live spawn 与真实机制 smoke 均通过；post-tanh entropy、reward-v4、timeout、stall/mastery/any-agent HOLD 和 cleanup 已闭环。
+- [x] 第 4 天后半：诊断 Run `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634` 在冻结合同注册边界内分段完成 u160；2,560 episodes、160 次 PPO update 健康，但道路方向合法性和 critic 退化触发 `DIAGNOSTIC HOLD`。R6 checkpoint 禁止选模、入池或跨 R7 resume。
+- [ ] NEXT 第 5 天：审核并实施 P0-T05-10/R7；先完成道路方向合法性/reward-v5/critic 分组诊断与固定 batch 探针，再跑无 CARLA 全量回归。此步不增加车道观测，不实现共享 actor/BC。
+- [ ] BLOCKED 第 5 天后：用户启动 CARLA 后运行 R7 四方向脚本化车道语义 smoke 与 fresh u1/u5；只有机制和工程门槛全过才注册 u600 seed-42 pilot。
+- [ ] BLOCKED：仅在 seed-42 u600 pilot、独立 C0 与 GO/HOLD 通过后，以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
+- [ ] BLOCKED：用冻结 C0 验证全部 periodic checkpoints，生成带 SHA/manifest 的 `best_base_valid.pt`。
 - [ ] 第 6 天：开始 P0-01/P0-02，修复对抗碰撞对象和 steer/control 解析，并补相应测试。
 - [ ] 第 7 天：继续 P0-03 至 P0-06 与 P0-05M；只有这些门槛通过后才决定是否运行单蓝车 smoke。
 
@@ -1051,4 +1113,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段，环境、MAPPO、对抗训练、鲁棒训练和 PSRO 都已有代码。R1 二维 signed-longitudinal、R2 有界 reward v3、R3 ValueNorm+Huber、R4 早期塌缩门槛和 R5 生产入口均已闭环，但 Town05 v3 正式长训给出了新的反证：同一 seed-42 Run 到 u50 仍为 0 success，agent0 已稳定到约 99% 制动、0.01 m/s，停车回报还高于尝试行驶。训练健康、Critic、checkpoint 和 CARLA 链路正确不等于任务目标正确；pre-tanh entropy 与 post-tanh 饱和、500 步折扣时域、奖励预算、独立 actor 和 update 驱动课程共同形成了制动吸引域。当前没有可用于多 seed、独立选模、基础策略池或对抗训练的合格 checkpoint。唯一 NEXT 是先审核并实现 P0-T05-09 新协议，完成无 CARLA 回归、真实机制测试和 fresh 小规模 pilot；禁止直接恢复 u50 或继续大规模训练。
+本项目已经超过“从零搭框架”的阶段。R6 已修复 pre-tanh entropy 奖励漏洞、显式任务期限、reward-v4、stall/mastery 和任意单 agent HOLD，并通过完整机制验证；但 u160 进一步证明“摆脱制动塌缩”不等于学会合法驾驶：后窗 success 增长同时伴随 collision/offroad 和跨线豁免代理恶化，现有 offroad 又无法识别对向 `Driving` lane。critic 也从 u20 的高 EV 退化为 u160 接近均值预测，说明 160-update 时域和同步退火不足以支撑当前非平稳回报分布。当前仍没有可用于多 seed、独立选模、基础策略池或对抗训练的合格 checkpoint。唯一 NEXT 是用户审批 P0-T05-10/R7 后，先在不增加车道观测的前提下实现 CARLA/OpenDRIVE 道路方向合法性、reward-v5、success gate 与 critic 诊断/时序修复，通过无 CARLA 和真实脚本化 smoke，再以新合同 fresh 运行预注册 u600 seed-42 pilot；禁止继续 R6 u160 或同时引入共享 actor/行为克隆。

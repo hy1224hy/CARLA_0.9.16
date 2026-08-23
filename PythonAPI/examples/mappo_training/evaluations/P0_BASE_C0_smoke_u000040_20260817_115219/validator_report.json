@@ -1,0 +1,66 @@
+{
+  "case_count": 1,
+  "checkpoint_sha256": "61ec2fa2ffbc3239e7fb2097f2464e52ba82110a5fa625b748c2f9543f2a3faf",
+  "checks": {
+    "cleanup_audit": "PASS",
+    "episode_schema_and_reward_conservation": "PASS",
+    "frozen_case_set_and_order": "PASS",
+    "identity_and_hashes": "PASS",
+    "summary_reconstruction": "PASS"
+  },
+  "contract_sha256": "0ddf0efa3b00f170721f35f7e32878fae67d5f6c88cb954f6edafd164de38553",
+  "episodes_sha256": "b87282d8b4fa16ed6e3bf04d9873b64b4e7ec189505004f5b0b92bbd2016a030",
+  "errors": [],
+  "eval_id": "P0_BASE_C0_smoke_u000040_20260817_115219",
+  "formal_eligible": true,
+  "profile": "smoke",
+  "repeatability": {
+    "case_count": 1,
+    "checkpoint_sha256": "61ec2fa2ffbc3239e7fb2097f2464e52ba82110a5fa625b748c2f9543f2a3faf",
+    "comparison_mode": "outcome_strict_tick_tolerant_v1",
+    "continuous_fields": [
+      "agent_0_episode_return",
+      "agent_1_episode_return"
+    ],
+    "contract_sha256": "0ddf0efa3b00f170721f35f7e32878fae67d5f6c88cb954f6edafd164de38553",
+    "gate_pass": true,
+    "hard_fields": [
+      "case_id",
+      "outcome",
+      "episode_end_reason",
+      "agent_0_reached",
+      "agent_0_collision",
+      "agent_0_offroad_terminated",
+      "agent_0_final_done",
+      "agent_0_final_terminated",
+      "agent_0_final_truncated",
+      "agent_0_first_offroad_evidence_present",
+      "agent_0_lifecycle_transition",
+      "agent_1_reached",
+      "agent_1_collision",
+      "agent_1_offroad_terminated",
+      "agent_1_final_done",
+      "agent_1_final_terminated",
+      "agent_1_final_truncated",
+      "agent_1_first_offroad_evidence_present",
+      "agent_1_lifecycle_transition"
+    ],
+    "left_eval_id": "P0_BASE_C0_smoke_u000040_20260817_115219",
+    "max_warning_case_fraction": 0.5,
+    "mismatches": [],
+    "right_eval_id": "P0_BASE_C0_smoke_u000040_20260817_115301",
+    "status": "PASS",
+    "systematic_drift_min_case_count": 8,
+    "tolerant_fields": [
+      "episode_length",
+      "agent_0_active_decision_steps",
+      "agent_1_active_decision_steps"
+    ],
+    "warning_case_fraction": 0.0,
+    "warnings": []
+  },
+  "status": "PASS",
+  "summary_csv_sha256": "5fef6a31b08d6864ada427f4834f9151f6de0a68cd4c1d1663168715a0b5455f",
+  "summary_sha256": "5394e448e6131bddedd748acdea653e43505afa217d153adde3e2471171dd689",
+  "validator_report_version": "p0_base_c0_validator_v1"
+}

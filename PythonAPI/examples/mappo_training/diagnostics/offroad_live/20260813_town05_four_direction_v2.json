@@ -1,0 +1,24 @@
+{
+  "report_version": "offroad_live_validation_v1",
+  "created_at": "2026-08-13T02:37:03.215020Z",
+  "protocol": {
+    "protocol_version": "driving_footprint_offroad_v1",
+    "footprint_inset_fraction": 0.9,
+    "sample_count": 9,
+    "boundary_sample_count": 8,
+    "outside_count_threshold": 3,
+    "persistence_ticks": 3,
+    "terminal_penalty": -20.0,
+    "raw_rule": "center_not_driving_or_boundary_outside_count_gte_threshold",
+    "membership_rule": "exact_OpenDRIVE_Driving_union_no_projection"
+  },
+  "directions": {},
+  "status": "FAIL",
+  "error": "RuntimeError: northbound/scenario_17_northbound_free_flow.json: forced non-Driving transform was not raw offroad",
+  "cleanup": {
+    "synchronous_mode": false,
+    "fixed_delta_seconds": null,
+    "vehicle_count": 0,
+    "sensor_count": 0
+  }
+}

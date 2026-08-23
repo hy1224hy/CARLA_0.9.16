@@ -1,0 +1,997 @@
+{
+  "agents": {
+    "0": {
+      "collision_episode_count": 2,
+      "mean_active_decision_steps": 469.625,
+      "mean_episode_return": -4.069612877940145,
+      "mean_reward_component_sum": {
+        "collision": -1.25,
+        "lane_deviation": -0.016284757858427416,
+        "lane_invasion": -0.125,
+        "longitudinal_rate": -0.0002741390758033294,
+        "offroad": 0.0,
+        "overspeed": -0.0009258936674719254,
+        "progress": -0.2300779386751825,
+        "safety_lidar": -2.446942681046211,
+        "steer_rate": -0.00010746761705215886,
+        "success": 0.0,
+        "ttc": 0.0
+      },
+      "offroad_episode_count": 0,
+      "reached_count": 0
+    },
+    "1": {
+      "collision_episode_count": 2,
+      "mean_active_decision_steps": 469.625,
+      "mean_episode_return": -4.951461910945407,
+      "mean_reward_component_sum": {
+        "collision": -1.25,
+        "lane_deviation": -0.81508590706226,
+        "lane_invasion": -0.5,
+        "longitudinal_rate": -0.00032098354546640376,
+        "offroad": 0.0,
+        "overspeed": -0.0013332904400648767,
+        "progress": -0.3025424760175358,
+        "safety_lidar": -2.0800804340187438,
+        "steer_rate": -0.0004823995742555063,
+        "success": 0.0,
+        "ttc": -0.0016164202870716648
+      },
+      "offroad_episode_count": 0,
+      "reached_count": 0
+    }
+  },
+  "by_family": {
+    "car_following_closing": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -4.80505874913479,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 4
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "car_following_near_gap": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.9188011359406705,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 4
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "car_following_steady": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.8686554851783423,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 4
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "free_flow": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.8005785842350215,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 4
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "parallel_rolling": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.972860840903454,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 4
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "parallel_stationary": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.60670216877997,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 4
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "required_merge": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.537301626693086,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 4
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "stagger_rear_closing": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 500,
+        "mean": 257.0,
+        "min": 14
+      },
+      "mean_team_return": -11.57434056467688,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 2,
+        "other": 0,
+        "success": 0,
+        "timeout": 2
+      },
+      "outcome_rates": {
+        "collision": 0.5,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.5
+      }
+    }
+  },
+  "by_scenario": {
+    "scenario_01_north_parallel_stationary_a0_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.6066953020450923,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_02_south_parallel_stationary_a1_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.606714156522032,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_03_east_parallel_stationary_a1_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.6066974161329295,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_04_west_parallel_stationary_a0_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.606701800419825,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_05_north_parallel_rolling_a1_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.2061808115077657,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_06_south_parallel_rolling_a0_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.9256146623759567,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_07_east_parallel_rolling_a0_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -5.474124757930814,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_08_west_parallel_rolling_a1_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.2855231317992786,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_09_north_stagger_closing_a0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.103564405487858,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_10_south_stagger_closing_a1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 14,
+        "mean": 14.0,
+        "min": 14
+      },
+      "mean_team_return": -19.280808578122063,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_11_east_stagger_closing_a1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 14,
+        "mean": 14.0,
+        "min": 14
+      },
+      "mean_team_return": -19.19072927632876,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_12_west_stagger_closing_a0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -4.722259998768843,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_13_north_required_merge_a0_merge.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -1.7627962924375595,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_14_south_required_merge_a1_merge.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.3214299202452544,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_15_east_required_merge_a1_merge.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.235851103782261,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_16_west_required_merge_a0_merge.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.8291291903072704,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_17_northbound_free_flow.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -4.03281287719266,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_18_southbound_free_flow.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.3690752243201483,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_19_eastbound_free_flow.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.6802597226925817,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_20_westbound_free_flow.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -4.120166512734697,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_21_northbound_car_following_steady_agent0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.8984222177926657,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_22_southbound_car_following_steady_agent1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.8037177401966513,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_23_eastbound_car_following_steady_agent0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.8288466213837786,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_24_westbound_car_following_steady_agent1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.9436353613402733,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_25_northbound_car_following_closing_agent0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.158908291799419,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_26_southbound_car_following_closing_agent1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -5.278306368138275,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_27_eastbound_car_following_closing_agent0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.912192281364896,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_28_westbound_car_following_closing_agent1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -6.870828055236569,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_29_northbound_car_following_near_gap_agent0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.0497546301508893,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_30_southbound_car_following_near_gap_agent1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -2.5558300528434534,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_31_eastbound_car_following_near_gap_agent0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.0331299520449218,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_32_westbound_car_following_near_gap_agent1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -3.036489908723418,
+      "offroad_count": 0,
+      "offroad_rate": 0.0,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    }
+  },
+  "case_count": 32,
+  "checkpoint_sha256": "cb79242e0a4998dfd18bcd62856cb590fe478f481b81e1101bb6f28a0c410a1a",
+  "eval_id": "P0_BASE_C0_gate_u000005_20260814_133029",
+  "eval_protocol_version": "p0_base_c0_eval_town05_v3",
+  "overall": {
+    "case_count": 32,
+    "episode_length": {
+      "max": 500,
+      "mean": 469.625,
+      "min": 14
+    },
+    "mean_team_return": -4.510537394442776,
+    "offroad_count": 0,
+    "offroad_rate": 0.0,
+    "outcome_counts": {
+      "collision": 2,
+      "other": 0,
+      "success": 0,
+      "timeout": 30
+    },
+    "outcome_rates": {
+      "collision": 0.0625,
+      "other": 0.0,
+      "success": 0.0,
+      "timeout": 0.9375
+    }
+  },
+  "profile": "gate",
+  "summary_version": "p0_base_c0_summary_v1"
+}

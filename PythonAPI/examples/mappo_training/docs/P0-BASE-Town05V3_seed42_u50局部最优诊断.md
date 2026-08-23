@@ -1,5 +1,64 @@
 # P0-BASE Town05 v3 seed 42：u50 制动局部最优诊断
 
+## P0-T05-09/R6 u160 后续追踪（2026-08-23）
+
+> 本节是对原 u50 诊断的后续追踪，不改写旧实验结论。R6 诊断 Run `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634` 已在同一冻结合同的注册边界内完成至 u160；该 Run 仍只允许作为诊断/失败回归证据，禁止进入基础策略池，也不得在新奖励或新合同下 resume。
+
+### 追踪身份与完整性
+
+| 项目 | 记录 |
+|---|---|
+| RunID | `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634` |
+| 代码身份 | `63d62be026a8b27e67b00f8c04626db678552d38` |
+| 合同 | `P0_DIAG_MAPPO_TOWN05_R6_U50_V1` |
+| 合同 SHA256 | `b50df18c2f1eac0b904c55f022efd31fac64cf1d64617900ad638cc91adf82c4` |
+| 注册训练边界 | `planned_total_updates=160`；`lr_decay_horizon=160`；`entropy_anneal_updates=160` |
+| 完整边界 | u160，2,560 个完整 episode |
+| outcome | 93 success、525 collision、363 offroad、1,579 timeout |
+| 训练健康 | 160 次 PPO update；未发现 nonfinite、skipped update 或 reward residual 超容差 |
+| u160 checkpoint SHA256 | `ckpt_000160.pt`: `e918b9a0cd84cea29eb64a7d7ac9ccc449ca3bef126127db5f957de885437d40`；`latest.pt`: `d4335279236203b45a9e5fa561c1c6c476de40168b4db808674cc4f5d24f6c5d` |
+
+### u160 暴露的两个主问题
+
+1. **策略没有重新落入 u50 的纯制动局部最优，但学到了不安全的车道捷径。** u151–u160 的 success rate 为 16.25%，高于 u101–u110 的 2.50%；与此同时，collision+offroad 从 46.25% 升至 71.25%，不能把 success 上升解释为合理驾驶收敛。agent1 的均速约从 0.85 m/s 升至 4.10 m/s、brake mode 从 0.393 降至 0.200、确定性纵向动作从 +0.105 升至 +0.443，但 legal-lane-change 代理均值约从 1.37% 升至 6.99%，lane-deviation exemption rate 从 10.84% 升至 43.43%。这说明主要矛盾已由“停车避险”转为“用跨线/豁免走捷径”。
+2. **critic 由有效拟合退化为接近均值预测器。** explained variance 从 u20 的 0.965 降至 u160 的 0.0226；同期 value target std 从 2.797 增至 9.207，而 prediction std 仅为 1.367。u160 critic grad norm 约 0.361、clip rate 为 0、relative update norm 约 0.001071，因此没有证据支持梯度爆炸；更符合“目标分布变宽、学习率已退火到底、critic 输出方差跟不上”的欠拟合/非平稳退化。
+
+### critic 退化里程碑
+
+| update | explained variance | target std | prediction std | critic loss | critic LR |
+|---:|---:|---:|---:|---:|---:|
+| 20 | 0.9650 | 2.797 | 2.741 | 0.0087 | 2.64e-4 |
+| 80 | 0.2740 | 2.313 | 1.194 | 0.0767 | 1.51e-4 |
+| 100 | 0.1030 | 4.294 | 1.351 | 0.3648 | 1.13e-4 |
+| 120 | 0.0620 | 8.384 | 1.639 | 1.3025 | 7.55e-5 |
+| 140 | -0.0086 | 9.816 | 1.520 | 1.3996 | 3.77e-5 |
+| 160 | 0.0226 | 9.207 | 1.367 | 0.9736 | 1.50e-5 |
+
+### 当前根因排序
+
+1. **reward/终止合法性缺口：** 当前 `offroad` 不能识别“仍位于 `Driving` 类型、但已进入对向车道”的状态；合法换道豁免又可能覆盖不合理横向行为，导致违规捷径仍能保留 progress/success 收益。
+2. **回报分布非平稳：** 策略由低速 timeout 转向高速 collision/offroad/跨线，value target 的尺度和混合分布在训练后半段显著扩大。
+3. **critic 学习率时序不匹配：** 160-update 线性退火恰好在 target variance 上升阶段把 critic LR 降至 1.5e-5，使其难以追踪新分布。
+4. **critic 审计不足：** 当前汇总 EV 不足以区分单 agent、scenario 与 outcome 子分布的失配，也无法判断是在线 LR 时序还是函数拟合能力不足。虽然部分 reward/终止状态未直接出现在 critic 输入中，但按用户决定，本轮不通过增加车道观测来处理；先在现有输入下完成分组诊断和固定 batch 拟合。
+5. **长任务信用分配仍然困难：** 500-step 任务配合 `gamma=0.999`、`lambda=0.95` 时，GAE 权重按 `(gamma*lambda)^l` 衰减，特征尺度约为 19.6 step；u160 对复杂任务仍只是早期诊断，不是充分收敛预算。
+
+### 拟定解决方法（待审批，尚未实施）
+
+- 新建 **R7 / reward-v5 / 新合同 / 新 RunID**，fresh 训练；R6 u160 不跨合同恢复。
+- 不构造手工“车道池”，也不向 actor 的 20 维观测增加车道字段。环境侧直接使用 CARLA waypoint 的 `road_id/section_id/lane_id/lane_type/lane_change`、航向和拓扑关系判定同向合法换道、对向占用与逆行。
+- 用有限状态机描述换道：原车道保持与合法换道完成后在新车道内行驶都获得相同的 progress/alignment 基础奖励；换道走廊内只免除合理横向偏差成本，不额外发放可刷取的正奖励；越入对向/错误方向属于强违规，并进入终止或强失败路径。
+- success 必须同时通过目标、方向、可驾驶车道及非对向占用合法性门控，防止跨线捷径换取 success。
+- critic 先增加逐 agent、逐 outcome/scenario 的 pre/post-update EV、target/prediction std 比、分位数和相关性审计，并做固定 batch 拟合探针；随后再决定是否调整容量、更新轮数、ValueNorm/PopArt。
+- 新长训练预算在合同创建时一次性注册，建议先按 u600 设计；critic LR 不再在 u160 附近提前衰减到底。建议候选为前 300 update 保持约 3e-4，再退火至 u600 的约 1e-4，最终数值须由离线拟合探针确认。
+- 本轮 actor 与 critic 的观测输入均保持现状，不增加车道、lane id、标线或 wrong-way 字段；critic 修复只从诊断、学习率时序和经拟合探针证实的优化能力入手。
+- 共享 actor 与行为克隆继续保留为 P1 消融，不与本轮 reward/critic 修复同时实施。
+
+### 下一阶段 HOLD 条件
+
+- 任一 agent 持续出现制动、饱和动作、lane/opposing-lane 违规或 critic EV 塌缩，即全局 HOLD。
+- success 若伴随 collision/offroad、对向占用、wrong-way 或 lane invasion 同步上升，不计为 mastery。
+- 在无 CARLA 数学/状态机/协议/全量回归和真实 CARLA 脚本化车道语义 smoke 全部通过前，不启动正式长训练。
+
 > 状态：`INTERRUPTED / DIAGNOSTIC HOLD`（2026-08-14）。
 > 本文记录 Run `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` 在研究者要求下停止于最后完整 update 50 的原因、证据和下一版优化边界。该 Run 不再用于能力训练、选模、基础策略池或多 seed 放行。
 

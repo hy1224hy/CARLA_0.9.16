@@ -1,0 +1,290 @@
+{
+  "acceptance": {
+    "collision_below_stopped": true,
+    "collision_event_observed": true,
+    "critic_clip_pressure_reduced": true,
+    "critic_heldout_mse_improved": true,
+    "critic_normalized_targets_unit_scale": true,
+    "environment_timing_restored": true,
+    "no_vehicle_actor_leak": true,
+    "reward_conservation": true,
+    "smooth_beats_stopped": true,
+    "stopped_is_zero": true
+  },
+  "created_at": "2026-08-11T02:39:03.321272+00:00",
+  "critic_ab": {
+    "batch": {
+      "heldout_count": 108,
+      "raw_target_max": 15.5267333984375,
+      "raw_target_mean": -0.5518948435783386,
+      "raw_target_min": -20.302879333496094,
+      "raw_target_std": 11.782036781311035,
+      "train_count": 428,
+      "transition_count": 536
+    },
+    "comparison": {
+      "clip_rate_reduction": 0.9966666666666667,
+      "heldout_ev_gain": 0.05884760618209839,
+      "heldout_mse_ratio_r3_over_baseline": 0.8956145365201523
+    },
+    "r3_valuenorm_huber": {
+      "final_training_loss": 0.21434196829795837,
+      "grad_clip_activation_rate": 0.0033333333333333335,
+      "heldout_explained_variance": 0.5897309184074402,
+      "heldout_prediction_std": 8.372218132019043,
+      "heldout_raw_mae": 5.939937114715576,
+      "heldout_raw_mse": 57.173439025878906,
+      "heldout_target_std": 11.503213882446289,
+      "initial_training_loss": 0.5016087889671326,
+      "normalized_train_target_mean": -1.0026949937014251e-08,
+      "normalized_train_target_std": 1.0,
+      "optimizer_steps": 300,
+      "preclip_grad_norm_max": 0.5652278065681458,
+      "preclip_grad_norm_mean": 0.11613472092275819,
+      "value_normalizer": {
+        "debiasing_term": 9.999999747378752e-06,
+        "mean": -0.5840154886245728,
+        "std": 11.851140975952148,
+        "update_count": 1.0,
+        "variance": 140.4495391845703
+      }
+    },
+    "raw_mse_baseline": {
+      "final_training_loss": 35.06077194213867,
+      "grad_clip_activation_rate": 1.0,
+      "heldout_explained_variance": 0.5308833122253418,
+      "heldout_prediction_std": 7.354652404785156,
+      "heldout_raw_mae": 6.451535701751709,
+      "heldout_raw_mse": 63.83710479736328,
+      "heldout_target_std": 11.503213882446289,
+      "initial_training_loss": 70.4063491821289,
+      "optimizer_steps": 300,
+      "preclip_grad_norm_max": 13.094988822937012,
+      "preclip_grad_norm_mean": 9.682219376564026
+    }
+  },
+  "diagnostic_protocol_version": "r2_reward_r3_critic_real_carla_v1",
+  "overall_pass": true,
+  "purpose": "mechanism_validation_not_policy_selection",
+  "runtime": {
+    "after_fixed_delta_seconds": null,
+    "after_synchronous_mode": false,
+    "after_vehicle_count": 0,
+    "before_fixed_delta_seconds": null,
+    "before_synchronous_mode": false,
+    "before_vehicle_count": 0,
+    "carla_client_version": "0.9.16",
+    "carla_server_version": "0.9.16",
+    "gamma": 0.997,
+    "host": "127.0.0.1",
+    "port": 2000,
+    "scenario": "data\\training_scenarios_town02_v2\\scenario_01_east_basic_launch_a0_rear.json",
+    "seed": 42
+  },
+  "trajectories": [
+    {
+      "agents": {
+        "0": {
+          "active_steps": 80,
+          "collision_events": 0,
+          "discounted_return": 0.0,
+          "reward_component_sums": {
+            "collision": 0.0,
+            "lane_deviation": 0.0,
+            "lane_invasion": 0.0,
+            "longitudinal_rate": 0.0,
+            "overspeed": 0.0,
+            "progress": 0.0,
+            "safety_lidar": 0.0,
+            "steer_rate": 0.0,
+            "success": 0.0,
+            "ttc": 0.0
+          },
+          "route_completion_end": 0.0,
+          "route_completion_start": 0.0,
+          "success_events": 0,
+          "undiscounted_return": 0.0
+        },
+        "1": {
+          "active_steps": 80,
+          "collision_events": 0,
+          "discounted_return": 0.0,
+          "reward_component_sums": {
+            "collision": 0.0,
+            "lane_deviation": 0.0,
+            "lane_invasion": 0.0,
+            "longitudinal_rate": 0.0,
+            "overspeed": 0.0,
+            "progress": 0.0,
+            "safety_lidar": 0.0,
+            "steer_rate": 0.0,
+            "success": 0.0,
+            "ttc": 0.0
+          },
+          "route_completion_end": 0.0,
+          "route_completion_start": 0.0,
+          "success_events": 0,
+          "undiscounted_return": 0.0
+        }
+      },
+      "configured_horizon": 80,
+      "episode_end_reason": "diagnostic_horizon",
+      "executed_steps": 80,
+      "reward_conservation_max_abs_residual": 0.0,
+      "trajectory": "stopped"
+    },
+    {
+      "agents": {
+        "0": {
+          "active_steps": 91,
+          "collision_events": 0,
+          "discounted_return": 13.914284499384395,
+          "reward_component_sums": {
+            "collision": 0.0,
+            "lane_deviation": 0.0,
+            "lane_invasion": 0.0,
+            "longitudinal_rate": -0.006337499535084001,
+            "overspeed": -1.3454558531895555,
+            "progress": 8.840824311696819,
+            "safety_lidar": 0.0,
+            "steer_rate": 0.0,
+            "success": 10.0,
+            "ttc": 0.0
+          },
+          "route_completion_end": 0.9761703107119868,
+          "route_completion_start": 0.0,
+          "success_events": 1,
+          "undiscounted_return": 17.489030958972183
+        },
+        "1": {
+          "active_steps": 71,
+          "collision_events": 0,
+          "discounted_return": 14.9965287580379,
+          "reward_component_sums": {
+            "collision": 0.0,
+            "lane_deviation": 0.0,
+            "lane_invasion": 0.0,
+            "longitudinal_rate": -0.006337499535084001,
+            "overspeed": -0.9455361541748052,
+            "progress": 8.883468847244545,
+            "safety_lidar": 0.0,
+            "steer_rate": 0.0,
+            "success": 10.0,
+            "ttc": 0.0
+          },
+          "route_completion_end": 0.9558309380677245,
+          "route_completion_start": 0.0,
+          "success_events": 1,
+          "undiscounted_return": 17.931595193534655
+        }
+      },
+      "configured_horizon": 320,
+      "episode_end_reason": "all_agents_reached",
+      "executed_steps": 91,
+      "reward_conservation_max_abs_residual": 0.0,
+      "trajectory": "smooth"
+    },
+    {
+      "agents": {
+        "0": {
+          "active_steps": 74,
+          "collision_events": 0,
+          "discounted_return": 0.621061082011993,
+          "reward_component_sums": {
+            "collision": 0.0,
+            "lane_deviation": -0.0782923703533587,
+            "lane_invasion": -2.0,
+            "longitudinal_rate": -0.06999999999999999,
+            "overspeed": -0.44625402446509255,
+            "progress": 3.231389420252956,
+            "safety_lidar": 0.0,
+            "steer_rate": -0.06999999999999999,
+            "success": 0.0,
+            "ttc": 0.0
+          },
+          "route_completion_end": 0.3541290999920578,
+          "route_completion_start": 0.0,
+          "success_events": 0,
+          "undiscounted_return": 0.5668430254345048
+        },
+        "1": {
+          "active_steps": 74,
+          "collision_events": 1,
+          "discounted_return": -13.881268774057492,
+          "reward_component_sums": {
+            "collision": -20.0,
+            "lane_deviation": -0.04928853868087632,
+            "lane_invasion": -2.0,
+            "longitudinal_rate": -0.06999999999999999,
+            "overspeed": -0.4481234848224444,
+            "progress": 4.98061957951153,
+            "safety_lidar": 0.0,
+            "steer_rate": -0.06999999999999999,
+            "success": 0.0,
+            "ttc": 0.0
+          },
+          "route_completion_end": 0.5458833161693091,
+          "route_completion_start": 0.0,
+          "success_events": 0,
+          "undiscounted_return": -17.656792443991787
+        }
+      },
+      "configured_horizon": 140,
+      "episode_end_reason": "cooperative_collision",
+      "executed_steps": 74,
+      "reward_conservation_max_abs_residual": 0.0,
+      "trajectory": "oscillatory"
+    },
+    {
+      "agents": {
+        "0": {
+          "active_steps": 33,
+          "collision_events": 1,
+          "discounted_return": -15.866749786103773,
+          "reward_component_sums": {
+            "collision": -20.0,
+            "lane_deviation": 0.0,
+            "lane_invasion": 0.0,
+            "longitudinal_rate": 0.0,
+            "overspeed": -0.41874978563004267,
+            "progress": 2.913873756594727,
+            "safety_lidar": 0.0,
+            "steer_rate": 0.0,
+            "success": 0.0,
+            "ttc": -0.04101687700835903
+          },
+          "route_completion_end": 0.3015297410570683,
+          "route_completion_start": 0.0,
+          "success_events": 0,
+          "undiscounted_return": -17.545892906043672
+        },
+        "1": {
+          "active_steps": 33,
+          "collision_events": 1,
+          "discounted_return": -18.165556610101607,
+          "reward_component_sums": {
+            "collision": -20.0,
+            "lane_deviation": 0.0,
+            "lane_invasion": 0.0,
+            "longitudinal_rate": 0.0,
+            "overspeed": 0.0,
+            "progress": 0.0012135192102874285,
+            "safety_lidar": 0.0,
+            "steer_rate": 0.0,
+            "success": 0.0,
+            "ttc": 0.0
+          },
+          "route_completion_end": 0.00012171707224547928,
+          "route_completion_start": 0.0,
+          "success_events": 0,
+          "undiscounted_return": -19.99878648078971
+        }
+      },
+      "configured_horizon": 240,
+      "episode_end_reason": "cooperative_collision",
+      "executed_steps": 33,
+      "reward_conservation_max_abs_residual": 0.0,
+      "trajectory": "rear_collision"
+    }
+  ]
+}

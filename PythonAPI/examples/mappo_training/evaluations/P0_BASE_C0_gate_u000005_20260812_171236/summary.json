@@ -1,0 +1,491 @@
+{
+  "agents": {
+    "0": {
+      "collision_episode_count": 4,
+      "mean_active_decision_steps": 173.25,
+      "mean_episode_return": -4.5448829988561465,
+      "mean_reward_component_sum": {
+        "collision": -5.0,
+        "lane_deviation": -0.0024945743706230182,
+        "lane_invasion": -0.125,
+        "longitudinal_rate": -6.87454895811207e-05,
+        "overspeed": -0.001298859161551039,
+        "progress": 0.5840074583315029,
+        "safety_lidar": 0.0,
+        "steer_rate": -2.8278165895066194e-05,
+        "success": 0.0,
+        "ttc": 0.0
+      },
+      "reached_count": 0
+    },
+    "1": {
+      "collision_episode_count": 12,
+      "mean_active_decision_steps": 173.25,
+      "mean_episode_return": -17.306231356200517,
+      "mean_reward_component_sum": {
+        "collision": -15.0,
+        "lane_deviation": -0.1989513160386188,
+        "lane_invasion": -4.375,
+        "longitudinal_rate": -5.265333497199141e-06,
+        "overspeed": -0.004964682306632259,
+        "progress": 2.2799639066889683,
+        "safety_lidar": 0.0,
+        "steer_rate": -9.894977874210387e-05,
+        "success": 0.0,
+        "ttc": -0.007175049431994981
+      },
+      "reached_count": 0
+    }
+  },
+  "by_family": {
+    "parallel_rolling": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 99,
+        "mean": 91.5,
+        "min": 73
+      },
+      "mean_team_return": -12.503547763688537,
+      "outcome_counts": {
+        "collision": 4,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "parallel_stationary": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -1.5072832236515617e-05,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 4
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "required_merge": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 81,
+        "mean": 53.0,
+        "min": 24
+      },
+      "mean_team_return": -15.646789257703723,
+      "outcome_counts": {
+        "collision": 4,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "stagger_rear_closing": {
+      "case_count": 4,
+      "episode_length": {
+        "max": 81,
+        "mean": 48.5,
+        "min": 15
+      },
+      "mean_team_return": -15.551876615888832,
+      "outcome_counts": {
+        "collision": 4,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    }
+  },
+  "by_scenario": {
+    "scenario_01_north_parallel_stationary_a0_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -1.6433679840707994e-05,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_02_south_parallel_stationary_a1_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -1.4753339555065647e-05,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_03_east_parallel_stationary_a1_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -1.5781150411814683e-05,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_04_west_parallel_stationary_a0_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 500,
+        "mean": 500.0,
+        "min": 500
+      },
+      "mean_team_return": -1.3323159138474145e-05,
+      "outcome_counts": {
+        "collision": 0,
+        "other": 0,
+        "success": 0,
+        "timeout": 1
+      },
+      "outcome_rates": {
+        "collision": 0.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 1.0
+      }
+    },
+    "scenario_05_north_parallel_rolling_a1_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 96,
+        "mean": 96.0,
+        "min": 96
+      },
+      "mean_team_return": -11.44413089186367,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_06_south_parallel_rolling_a0_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 99,
+        "mean": 99.0,
+        "min": 99
+      },
+      "mean_team_return": -10.30246011215567,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_07_east_parallel_rolling_a0_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 73,
+        "mean": 73.0,
+        "min": 73
+      },
+      "mean_team_return": -14.216628870472874,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_08_west_parallel_rolling_a1_left.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 98,
+        "mean": 98.0,
+        "min": 98
+      },
+      "mean_team_return": -14.050971180261941,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_09_north_stagger_closing_a0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 81,
+        "mean": 81.0,
+        "min": 81
+      },
+      "mean_team_return": -11.55718705847183,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_10_south_stagger_closing_a1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 17,
+        "mean": 17.0,
+        "min": 17
+      },
+      "mean_team_return": -18.859434224907048,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_11_east_stagger_closing_a1_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 15,
+        "mean": 15.0,
+        "min": 15
+      },
+      "mean_team_return": -18.844609320584162,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_12_west_stagger_closing_a0_rear.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 81,
+        "mean": 81.0,
+        "min": 81
+      },
+      "mean_team_return": -12.946275859592284,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_13_north_required_merge_a0_merge.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 81,
+        "mean": 81.0,
+        "min": 81
+      },
+      "mean_team_return": -11.121244378250935,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_14_south_required_merge_a1_merge.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 26,
+        "mean": 26.0,
+        "min": 26
+      },
+      "mean_team_return": -18.919257245072153,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_15_east_required_merge_a1_merge.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 24,
+        "mean": 24.0,
+        "min": 24
+      },
+      "mean_team_return": -18.856133455904033,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    },
+    "scenario_16_west_required_merge_a0_merge.json": {
+      "case_count": 1,
+      "episode_length": {
+        "max": 81,
+        "mean": 81.0,
+        "min": 81
+      },
+      "mean_team_return": -13.69052195158777,
+      "outcome_counts": {
+        "collision": 1,
+        "other": 0,
+        "success": 0,
+        "timeout": 0
+      },
+      "outcome_rates": {
+        "collision": 1.0,
+        "other": 0.0,
+        "success": 0.0,
+        "timeout": 0.0
+      }
+    }
+  },
+  "case_count": 16,
+  "checkpoint_sha256": "b1c93b14d731ffc62e57ec294e09ff9332f1b358de6f8ea7b2b9569a336eeb23",
+  "eval_id": "P0_BASE_C0_gate_u000005_20260812_171236",
+  "eval_protocol_version": "p0_base_c0_eval_town05_v1",
+  "overall": {
+    "case_count": 16,
+    "episode_length": {
+      "max": 500,
+      "mean": 173.25,
+      "min": 15
+    },
+    "mean_team_return": -10.925557177528333,
+    "outcome_counts": {
+      "collision": 12,
+      "other": 0,
+      "success": 0,
+      "timeout": 4
+    },
+    "outcome_rates": {
+      "collision": 0.75,
+      "other": 0.0,
+      "success": 0.0,
+      "timeout": 0.25
+    }
+  },
+  "profile": "gate",
+  "summary_version": "p0_base_c0_summary_v1"
+}

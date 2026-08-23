@@ -1,0 +1,495 @@
+{
+  "c0": {
+    "performance_sample_policy": "primary_only_repeat_is_reproducibility_audit",
+    "primary_output_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\evaluations\\P0_BASE_C0_gate_u000005_20260812_170923",
+    "primary_validation": {
+      "case_count": 16,
+      "checkpoint_sha256": "b1c93b14d731ffc62e57ec294e09ff9332f1b358de6f8ea7b2b9569a336eeb23",
+      "checks": {
+        "cleanup_audit": "PASS",
+        "episode_schema_and_reward_conservation": "PASS",
+        "frozen_case_set_and_order": "PASS",
+        "identity_and_hashes": "PASS",
+        "summary_reconstruction": "PASS"
+      },
+      "contract_sha256": "ea2e17f633e3b26eaedbbcf5f42cbaf9b14bc7077790e3dfcba438c0c276cab8",
+      "episodes_sha256": "071718578a8d1f559b4b23f95b9a4c1fe7dd40f9ee7edba6862003e12e02fe6a",
+      "errors": [],
+      "eval_id": "P0_BASE_C0_gate_u000005_20260812_170923",
+      "formal_eligible": true,
+      "profile": "gate",
+      "status": "PASS",
+      "summary_csv_sha256": "574fc76a1cd8ad70b8318769b5a5d033224577718099629aff922f67ce305998",
+      "summary_sha256": "e48ad44ceebc72ec704ada7b0071033bd185a71ba744c6b013dd1a6b9948ec34",
+      "validator_report_version": "p0_base_c0_validator_v1"
+    },
+    "profile": "gate",
+    "repeat_output_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\evaluations\\P0_BASE_C0_gate_u000005_20260812_171236",
+    "repeat_validation": {
+      "case_count": 16,
+      "checkpoint_sha256": "b1c93b14d731ffc62e57ec294e09ff9332f1b358de6f8ea7b2b9569a336eeb23",
+      "checks": {
+        "cleanup_audit": "PASS",
+        "episode_schema_and_reward_conservation": "PASS",
+        "frozen_case_set_and_order": "PASS",
+        "identity_and_hashes": "PASS",
+        "summary_reconstruction": "PASS"
+      },
+      "contract_sha256": "ea2e17f633e3b26eaedbbcf5f42cbaf9b14bc7077790e3dfcba438c0c276cab8",
+      "episodes_sha256": "20f1afe1532104c8ba595a7bbc2f91d0e55d77f065e59d57588d781cbf97c74c",
+      "errors": [],
+      "eval_id": "P0_BASE_C0_gate_u000005_20260812_171236",
+      "formal_eligible": true,
+      "profile": "gate",
+      "status": "PASS",
+      "summary_csv_sha256": "6469c6d076cd21c9f58045f22fac10eedefde7826750358c10256bd6c5673d46",
+      "summary_sha256": "792455a47919fccd2dbdb98e5f7f738ba599bb499d44262e7cbbfa9e7692378b",
+      "validator_report_version": "p0_base_c0_validator_v1"
+    },
+    "repeatability": {
+      "case_count": 16,
+      "checkpoint_sha256": "b1c93b14d731ffc62e57ec294e09ff9332f1b358de6f8ea7b2b9569a336eeb23",
+      "contract_sha256": "ea2e17f633e3b26eaedbbcf5f42cbaf9b14bc7077790e3dfcba438c0c276cab8",
+      "discrete_fields": [
+        "case_id",
+        "outcome",
+        "episode_end_reason",
+        "episode_length",
+        "agent_0_reached",
+        "agent_1_reached"
+      ],
+      "left_eval_id": "P0_BASE_C0_gate_u000005_20260812_170923",
+      "mismatches": [
+        {
+          "case_id": "gate:scenario_07_east_parallel_rolling_a0_left:s42001",
+          "case_ordinal": 7,
+          "left": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_07_east_parallel_rolling_a0_left:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 74,
+            "outcome": "collision"
+          },
+          "right": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_07_east_parallel_rolling_a0_left:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 73,
+            "outcome": "collision"
+          }
+        },
+        {
+          "case_id": "gate:scenario_08_west_parallel_rolling_a1_left:s42001",
+          "case_ordinal": 8,
+          "left": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_08_west_parallel_rolling_a1_left:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 99,
+            "outcome": "collision"
+          },
+          "right": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_08_west_parallel_rolling_a1_left:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 98,
+            "outcome": "collision"
+          }
+        },
+        {
+          "case_id": "gate:scenario_09_north_stagger_closing_a0_rear:s42001",
+          "case_ordinal": 9,
+          "left": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_09_north_stagger_closing_a0_rear:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 83,
+            "outcome": "collision"
+          },
+          "right": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_09_north_stagger_closing_a0_rear:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 81,
+            "outcome": "collision"
+          }
+        },
+        {
+          "case_id": "gate:scenario_10_south_stagger_closing_a1_rear:s42001",
+          "case_ordinal": 10,
+          "left": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_10_south_stagger_closing_a1_rear:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 16,
+            "outcome": "collision"
+          },
+          "right": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_10_south_stagger_closing_a1_rear:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 17,
+            "outcome": "collision"
+          }
+        },
+        {
+          "case_id": "gate:scenario_15_east_required_merge_a1_merge:s42001",
+          "case_ordinal": 15,
+          "left": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_15_east_required_merge_a1_merge:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 23,
+            "outcome": "collision"
+          },
+          "right": {
+            "agent_0_reached": false,
+            "agent_1_reached": false,
+            "case_id": "gate:scenario_15_east_required_merge_a1_merge:s42001",
+            "episode_end_reason": "cooperative_collision",
+            "episode_length": 24,
+            "outcome": "collision"
+          }
+        }
+      ],
+      "right_eval_id": "P0_BASE_C0_gate_u000005_20260812_171236",
+      "status": "HOLD"
+    },
+    "summary": {
+      "behavior": {
+        "agents": {
+          "0": {
+            "active_decision_steps": 2774,
+            "brake_mode_rate": 1.0,
+            "coast_mode_rate": 0.0,
+            "mean_progress_m_per_episode": 2.837891936302185,
+            "mean_speed_mps": 0.1587621949325741,
+            "throttle_mode_rate": 0.0
+          },
+          "1": {
+            "active_decision_steps": 2774,
+            "brake_mode_rate": 0.003604902667627974,
+            "coast_mode_rate": 0.996395097332372,
+            "mean_progress_m_per_episode": 10.256008982658386,
+            "mean_speed_mps": 0.8026044111699999,
+            "throttle_mode_rate": 0.0
+          }
+        },
+        "timeout_rate": 0.25
+      },
+      "case_count": 16,
+      "family_case_counts": {
+        "parallel_rolling": 4,
+        "parallel_stationary": 4,
+        "required_merge": 4,
+        "stagger_rear_closing": 4
+      },
+      "family_success_counts": {
+        "parallel_rolling": 0,
+        "parallel_stationary": 0,
+        "required_merge": 0,
+        "stagger_rear_closing": 0
+      },
+      "lane_invasion_episode_count": 8,
+      "outcome_counts": {
+        "collision": 12,
+        "other": 0,
+        "success": 0,
+        "timeout": 4
+      },
+      "scenario_case_counts": {
+        "scenario_01_north_parallel_stationary_a0_left.json": 1,
+        "scenario_02_south_parallel_stationary_a1_left.json": 1,
+        "scenario_03_east_parallel_stationary_a1_left.json": 1,
+        "scenario_04_west_parallel_stationary_a0_left.json": 1,
+        "scenario_05_north_parallel_rolling_a1_left.json": 1,
+        "scenario_06_south_parallel_rolling_a0_left.json": 1,
+        "scenario_07_east_parallel_rolling_a0_left.json": 1,
+        "scenario_08_west_parallel_rolling_a1_left.json": 1,
+        "scenario_09_north_stagger_closing_a0_rear.json": 1,
+        "scenario_10_south_stagger_closing_a1_rear.json": 1,
+        "scenario_11_east_stagger_closing_a1_rear.json": 1,
+        "scenario_12_west_stagger_closing_a0_rear.json": 1,
+        "scenario_13_north_required_merge_a0_merge.json": 1,
+        "scenario_14_south_required_merge_a1_merge.json": 1,
+        "scenario_15_east_required_merge_a1_merge.json": 1,
+        "scenario_16_west_required_merge_a0_merge.json": 1
+      },
+      "scenario_success_counts": {
+        "scenario_01_north_parallel_stationary_a0_left.json": 0,
+        "scenario_02_south_parallel_stationary_a1_left.json": 0,
+        "scenario_03_east_parallel_stationary_a1_left.json": 0,
+        "scenario_04_west_parallel_stationary_a0_left.json": 0,
+        "scenario_05_north_parallel_rolling_a1_left.json": 0,
+        "scenario_06_south_parallel_rolling_a0_left.json": 0,
+        "scenario_07_east_parallel_rolling_a0_left.json": 0,
+        "scenario_08_west_parallel_rolling_a1_left.json": 0,
+        "scenario_09_north_stagger_closing_a0_rear.json": 0,
+        "scenario_10_south_stagger_closing_a1_rear.json": 0,
+        "scenario_11_east_stagger_closing_a1_rear.json": 0,
+        "scenario_12_west_stagger_closing_a0_rear.json": 0,
+        "scenario_13_north_required_merge_a0_merge.json": 0,
+        "scenario_14_south_required_merge_a1_merge.json": 0,
+        "scenario_15_east_required_merge_a1_merge.json": 0,
+        "scenario_16_west_required_merge_a0_merge.json": 0
+      }
+    }
+  },
+  "checkpoint": {
+    "formal_eligible": true,
+    "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\P0_BASE_MAPPO_Town05_s42_20260812_164411\\periodic\\ckpt_update_000005.pt",
+    "sha256": "b1c93b14d731ffc62e57ec294e09ff9332f1b358de6f8ea7b2b9569a336eeb23",
+    "update": 5
+  },
+  "contract": {
+    "canonical_sha256": "35341b746438a915a16814bb8cf0a9fd05584c64ad82674cda9dee2206fa937d",
+    "id": "P0_BASE_GO_HOLD_TOWN05_V1",
+    "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\configs\\evaluation\\p0_base_go_hold_town05_v1.json",
+    "sha256": "bbe6903c1ba9fb5932eafc0ba4dd250f0f6254d2e9f9066d0da4c5d940c7e9c4"
+  },
+  "created_at": "2026-08-12T09:16:07.660791+00:00",
+  "decision_id": "P0_BASE_GO_HOLD_u000005_20260812_171550",
+  "expected_update": 5,
+  "mode": "milestone",
+  "preregistration": {
+    "critical_source_blobs_match_run_origin": true,
+    "critical_source_git_blobs": {
+      "configs/evaluation/p0_base_go_hold_town05_v1.json": "f006f3a04a2e8c2f75916cb95a497bf5defeaab9",
+      "evaluation/base_go_hold_protocol.py": "d4d36487d61142eab17f2b9e2cee70e4a2f8fe8d",
+      "evaluation/judge_base_go_hold.py": "16c6bb1745b5d4d62b0a9ee54c562040b6373767"
+    },
+    "critical_sources_clean": true,
+    "run_origin_git_commit": "6c28a9141d3ede87f7f54734cc277973381e6f05",
+    "status": "PASS",
+    "threshold_commit_is_ancestor": true,
+    "threshold_contract_git_commit": "2d18f6844c1f664d8747358a0b3feb7aff255a43"
+  },
+  "previous_milestone_evidence": null,
+  "report_version": "p0_base_go_hold_town05_decision_v1",
+  "result": {
+    "behavior_assessment": {
+      "collapsed_now": false,
+      "collapsed_previous": false,
+      "failures": [],
+      "observed": {
+        "current": {
+          "agents": {
+            "0": {
+              "collapsed": false,
+              "observed": {
+                "brake_mode_rate": 1.0,
+                "mean_progress_m_per_episode": 2.837891936302185,
+                "mean_speed_mps": 0.1587621949325741
+              },
+              "signals": {
+                "brake_dominant": true,
+                "near_stationary": false,
+                "no_route_progress": true
+              }
+            },
+            "1": {
+              "collapsed": false,
+              "observed": {
+                "brake_mode_rate": 0.003604902667627974,
+                "mean_progress_m_per_episode": 10.256008982658386,
+                "mean_speed_mps": 0.8026044111699999
+              },
+              "signals": {
+                "brake_dominant": false,
+                "near_stationary": false,
+                "no_route_progress": false
+              }
+            }
+          },
+          "collapsed": false,
+          "episode_signals": {
+            "timeout_dominant": false,
+            "zero_success": true
+          },
+          "timeout_rate": 0.25
+        },
+        "previous": null,
+        "thresholds": {
+          "all_agents_required": true,
+          "assessment_milestones": [
+            5,
+            10,
+            20,
+            30,
+            40,
+            60,
+            80,
+            100
+          ],
+          "deterministic_brake_mode_rate_at_or_above": 0.95,
+          "hold_from_update": 10,
+          "mean_progress_m_per_episode_at_or_below": 3.0,
+          "mean_speed_mps_at_or_below": 0.1,
+          "previous_milestone_report_required_for_hold": true,
+          "required_consecutive_milestones": 2,
+          "timeout_rate_at_or_above": 0.95,
+          "warning_from_update": 5,
+          "zero_success_required": true
+        }
+      },
+      "persistent_collapse": false,
+      "reason_codes": [],
+      "status": "PASS",
+      "warnings": []
+    },
+    "capability_failures": [],
+    "decision": "HOLD",
+    "hard_failures": [
+      "C0 discrete repeatability did not PASS"
+    ],
+    "multiseed_released": false,
+    "reason_codes": [
+      "EVIDENCE_OR_NUMERICAL_HOLD"
+    ],
+    "warnings": [
+      "lane invasion occurred in 8 gate episodes"
+    ]
+  },
+  "training": {
+    "health": {
+      "hard_failures": [],
+      "observed": {
+        "agent_0/approx_kl": {
+          "hold_streak": 0,
+          "max": 0.004127187235280871
+        },
+        "agent_0/brake_saturation": {
+          "max": 0.009101397256761954,
+          "warning_streak": 0
+        },
+        "agent_0/clip_fraction": {
+          "hold_streak": 0,
+          "max": 0.10292188338935375
+        },
+        "agent_0/evidence": {
+          "longitudinal_conflict_rate_max": 0.0,
+          "preupdate_ratio_error_max": 0.0
+        },
+        "agent_0/grad_clip_activation": {
+          "max": 0.0,
+          "warning_streak": 0
+        },
+        "agent_0/log_std": {
+          "high_warning_streak": 0,
+          "low_warning_streak": 0,
+          "max": 0.0060975863598287106,
+          "min": 0.0014589405618607998
+        },
+        "agent_0/steer_saturation": {
+          "max": 0.009998718113062428,
+          "warning_streak": 0
+        },
+        "agent_0/throttle_saturation": {
+          "max": 0.0030864197530864196,
+          "warning_streak": 0
+        },
+        "agent_1/approx_kl": {
+          "hold_streak": 0,
+          "max": 0.00604448881931603
+        },
+        "agent_1/brake_saturation": {
+          "max": 0.004450095359186269,
+          "warning_streak": 0
+        },
+        "agent_1/clip_fraction": {
+          "hold_streak": 0,
+          "max": 0.1637447789311409
+        },
+        "agent_1/evidence": {
+          "longitudinal_conflict_rate_max": 0.0,
+          "preupdate_ratio_error_max": 0.0
+        },
+        "agent_1/grad_clip_activation": {
+          "max": 0.0,
+          "warning_streak": 0
+        },
+        "agent_1/log_std": {
+          "high_warning_streak": 0,
+          "low_warning_streak": 0,
+          "max": 0.006976512726396322,
+          "min": 0.0014376322505995631
+        },
+        "agent_1/steer_saturation": {
+          "max": 0.008845019869247532,
+          "warning_streak": 0
+        },
+        "agent_1/throttle_saturation": {
+          "max": 0.0055941358024691355,
+          "warning_streak": 0
+        },
+        "critic/degeneracy": {
+          "all_signal_streak": 0,
+          "max_joint_signal_count": 2,
+          "prediction_target_std_ratio_min": 0.017548026500397707,
+          "relative_mae_max": 0.4974724502832936
+        },
+        "critic/explained_variance": {
+          "min": -0.009914040565490723,
+          "warning_streak": 0
+        },
+        "critic/grad_clip_activation": {
+          "max": 0.6,
+          "warning_streak": 0
+        },
+        "critic/value_normalizer": {
+          "normalized_target_std_max": 1.0042076110839844,
+          "normalized_target_std_min": 0.2963651418685913,
+          "std_min": 1.786340355873108,
+          "update_count_last": 5.0
+        },
+        "evidence": {
+          "episode_count_max": 16.0,
+          "episode_count_min": 16.0,
+          "missing_metric_count_max": 0.0,
+          "nonfinite_metric_count_max": 0.0,
+          "reward_residual_max": 0.0,
+          "skipped_update_max": 0.0
+        }
+      },
+      "reason_codes": [],
+      "status": "PASS",
+      "updates": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "warnings": []
+    },
+    "manifest_status": "SEGMENT_COMPLETED",
+    "metrics_validation": {
+      "episode_record_count": 80,
+      "episode_record_version": "mappo_episode_record_v1",
+      "required_tag_count": 197,
+      "run_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\P0_BASE_MAPPO_Town05_s42_20260812_164411",
+      "run_id": "P0_BASE_MAPPO_Town05_s42_20260812_164411",
+      "status": "PASS",
+      "tensorboard_scalar_tag_count": 575,
+      "updates": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "resolved_config_sha256": "304caa716de044a81396c60483e35aeac9b2e06c44c882ebedfa0986f78518e7",
+    "run_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\P0_BASE_MAPPO_Town05_s42_20260812_164411",
+    "run_id": "P0_BASE_MAPPO_Town05_s42_20260812_164411"
+  }
+}

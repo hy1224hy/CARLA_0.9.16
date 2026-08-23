@@ -58,14 +58,14 @@ Monitor with `tensorboard --logdir PythonAPI/examples/mappo_training/logs/`.
 `CarlaMultiAgentEnv` is the central RL environment. Key design points:
 
 - **Synchronous mode**: CARLA runs in synchronous mode with `fixed_delta_seconds=0.1`. Every `step()` calls `world.tick()`.
-- **Town02 straight road**: On init, scans waypoints to find the longest straight segment. Agents spawn distributed along it, target is the far end.
+- **Town05 formal background**: Current experiments use four balanced two-lane straight directions on Roads 44 and 3, with 16 frozen parallel/closing/required-merge scenarios under `data/training_scenarios_town05_v1/`. Town02 remains read-only historical evidence.
 - **Observation space**: 19-dim vector per agent = 8 base features (dx, dy, distance, angle_diff, speed, throttle, steer, brake) + 11 ray-cast lidar distances (180° FOV, 10m range).
 - **Action space**: 3-dim continuous `[throttle, steer, brake]`, applied via `carla.VehicleControl`. Throttle/brake ∈ [0,1], steer ∈ [-1,1].
 - **Sensors per vehicle**: RGB camera (640×480, 110° FOV), collision detector, lane invasion detector (with crosswalk detection treated as collision).
 - **Reward function**: progress (+20× meters advanced) + speed bonus (0.1 in 1-25 km/h, penalize stopped/speeding) + centering (+0.5 if within 5cm of lane center) + yaw alignment + collision (-100) + lane invasion (-5) + step penalty (-0.05) + goal success (+100 in a 6m×3.5m rectangular zone).
 - **Adversarial agent (Agent 2)**: Gets a modified reward combining down-weighted base driving reward + cutting-in bonus + blocking bonus. The training script additionally subtracts other agents' rewards (zero-sum term).
 - **Episode termination**: All agents reach goal, any severe collision, or max_steps exceeded.
-- **Custom start positions**: Via `set_custom_start_positions(dict)` or `reset_with_random_scenario()` which loads JSON from `data/training_scenarios/`.
+- **Custom scenario state**: `reset_with_random_scenario()` defaults to Town05 v1 and applies starts, speeds, a shared goal, and optional `goal_mode=preserve_start_lane`. Centering is always measured per vehicle against its current `Driving` lane centre; non-merge navigation goals also preserve the starting lane, while required-merge tasks share one narrow destination lane.
 
 ### MAPPO Implementation (`training/train_no_rllib_mappo.py`)
 

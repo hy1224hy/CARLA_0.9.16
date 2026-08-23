@@ -1,0 +1,71 @@
+{
+  "case_count": 1,
+  "cases": [
+    {
+      "case_id": "smoke:t05v_01_north_parallel_stationary_a1_left:s61001",
+      "case_ordinal": 1,
+      "episode_seed": 61001,
+      "scenario_difficulty": 1,
+      "scenario_family": "parallel_stationary",
+      "scenario_name": "t05v_01_north_parallel_stationary_a1_left.json",
+      "scenario_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\evaluation_scenarios\\town05_c0_validation_v1\\t05v_01_north_parallel_stationary_a1_left.json",
+      "scenario_sha256": "38231a58fd1a98d092cc3e10d39112a836a1092171e30952f7bf8855ead0083a"
+    }
+  ],
+  "checkpoint_formal_eligible": false,
+  "checkpoint_formal_ineligibility_reasons": [
+    "checkpoint_kind is not periodic",
+    "checkpoint update is not a registered P0-BASE milestone",
+    "training experiment contract id mismatch",
+    "training experiment contract SHA256 mismatch"
+  ],
+  "checkpoint_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\town05_migration_smoke\\T05_MIGRATION_SMOKE_20260812_121336\\latest.pt",
+  "checkpoint_sha256": "ae40b493db64f359980a84f3b3c208acffb674d3577502fc17d07196871356bc",
+  "checkpoint_update": 1,
+  "command": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\evaluation\\evaluate_base_policy_c0.py --eval-contract configs/evaluation/p0_base_c0_town05_v1.json --checkpoint diagnostics/town05_migration_smoke/T05_MIGRATION_SMOKE_20260812_121336/latest.pt --profile smoke --eval-id P0_BASE_C0_smoke_u000001_20260812_121700 --output-dir evaluations/P0_BASE_C0_smoke_u000001_20260812_121700 --host 127.0.0.1 --port 2000 --allow-diagnostic-checkpoint",
+  "contract_canonical_sha256": "42d18a1ad1dc29288f97439c5ceef1bdef7e574339efd61e709fa9f02abc9b13",
+  "contract_id": "P0_BASE_C0_TOWN05_V1",
+  "contract_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\configs\\evaluation\\p0_base_c0_town05_v1.json",
+  "contract_sha256": "ea2e17f633e3b26eaedbbcf5f42cbaf9b14bc7077790e3dfcba438c0c276cab8",
+  "created_at": "2026-08-12T04:15:21.654728+00:00",
+  "device": "cpu",
+  "eval_id": "P0_BASE_C0_smoke_u000001_20260812_121700",
+  "git": {
+    "commit": "d272ef0dc5624dc759618efc4a0923e9a7054f70",
+    "dirty": true,
+    "dirty_paths": [
+      "M Pipfile",
+      " M PythonAPI/examples/mappo_training/FILE_INDEX.md",
+      " M PythonAPI/examples/mappo_training/README.md",
+      " M PythonAPI/examples/mappo_training/docs/.obsidian/workspace.json",
+      " M PythonAPI/examples/mappo_training/environment/base_reward_v3.py",
+      " M PythonAPI/examples/mappo_training/environment/carla_multi_agent_env.py",
+      " M PythonAPI/examples/mappo_training/evaluation/base_c0_protocol.py",
+      " M PythonAPI/examples/mappo_training/evaluation/base_go_hold_protocol.py",
+      " M PythonAPI/examples/mappo_training/evaluation/evaluate_base_policy_c0.py",
+      " M PythonAPI/examples/mappo_training/evaluation/evaluate_no_rllib_mappo.py",
+      " M PythonAPI/examples/mappo_training/evaluation/smoke_test_success_logic.py",
+      " M PythonAPI/examples/mappo_training/tests/test_base_reward_v3.py",
+      " M PythonAPI/examples/mappo_training/training/train_2red_1blue_ppo.py",
+      " M PythonAPI/examples/mappo_training/training/train_no_rllib_mappo_robust_v2.py",
+      " M PythonAPI/examples/mappo_training/utils/record_manual_control.py",
+      " M PythonAPI/examples/mappo_training/utils/smoke_training_scenarios_live.py"
+    ]
+  },
+  "host": "127.0.0.1",
+  "port": 2000,
+  "profile": "smoke",
+  "resolved_config_version": "p0_base_c0_resolved_v1",
+  "runtime": {
+    "carla_client_version": "0.9.16",
+    "carla_python_module": "D:\\study\\yan2\\CARLA_0.9.16\\venv\\lib\\site-packages\\carla\\__init__.py",
+    "carla_server_version": "0.9.16",
+    "cuda_available": true,
+    "cuda_device_count": 1,
+    "cuda_version": "12.6",
+    "numpy": "2.2.6",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.10.8 (tags/v3.10.8:aaaf517, Oct 11 2022, 16:50:30) [MSC v.1933 64 bit (AMD64)]",
+    "torch": "2.9.1+cu126"
+  }
+}

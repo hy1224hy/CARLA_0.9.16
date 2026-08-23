@@ -1,0 +1,294 @@
+{
+  "case_count": 32,
+  "checkpoint_sha256": "cb79242e0a4998dfd18bcd62856cb590fe478f481b81e1101bb6f28a0c410a1a",
+  "checks": {
+    "cleanup_audit": "PASS",
+    "episode_schema_and_reward_conservation": "PASS",
+    "frozen_case_set_and_order": "PASS",
+    "identity_and_hashes": "PASS",
+    "summary_reconstruction": "PASS"
+  },
+  "contract_sha256": "0ddf0efa3b00f170721f35f7e32878fae67d5f6c88cb954f6edafd164de38553",
+  "episodes_sha256": "58eeda10b8a73f8506c33ff06540cccc14c219af3285dc911bd02dff4c1076a2",
+  "errors": [],
+  "eval_id": "P0_BASE_C0_gate_u000005_20260814_132002",
+  "formal_eligible": true,
+  "profile": "gate",
+  "repeatability": {
+    "case_count": 32,
+    "checkpoint_sha256": "cb79242e0a4998dfd18bcd62856cb590fe478f481b81e1101bb6f28a0c410a1a",
+    "comparison_mode": "outcome_strict_tick_tolerant_v1",
+    "continuous_fields": [
+      "agent_0_episode_return",
+      "agent_1_episode_return"
+    ],
+    "contract_sha256": "0ddf0efa3b00f170721f35f7e32878fae67d5f6c88cb954f6edafd164de38553",
+    "gate_pass": true,
+    "hard_fields": [
+      "case_id",
+      "outcome",
+      "episode_end_reason",
+      "agent_0_reached",
+      "agent_0_collision",
+      "agent_0_offroad_terminated",
+      "agent_0_final_done",
+      "agent_0_final_terminated",
+      "agent_0_final_truncated",
+      "agent_0_first_offroad_evidence_present",
+      "agent_0_lifecycle_transition",
+      "agent_1_reached",
+      "agent_1_collision",
+      "agent_1_offroad_terminated",
+      "agent_1_final_done",
+      "agent_1_final_terminated",
+      "agent_1_final_truncated",
+      "agent_1_first_offroad_evidence_present",
+      "agent_1_lifecycle_transition"
+    ],
+    "left_eval_id": "P0_BASE_C0_gate_u000005_20260814_132002",
+    "max_warning_case_fraction": 0.5,
+    "mismatches": [],
+    "right_eval_id": "P0_BASE_C0_gate_u000005_20260814_133029",
+    "status": "WARNING",
+    "systematic_drift_min_case_count": 8,
+    "tolerant_fields": [
+      "episode_length",
+      "agent_0_active_decision_steps",
+      "agent_1_active_decision_steps"
+    ],
+    "warning_case_fraction": 0.40625,
+    "warnings": [
+      {
+        "case_id": "gate:scenario_05_north_parallel_rolling_a1_left:s42001",
+        "case_ordinal": 5,
+        "continuous_differences": {
+          "agent_0_episode_return": {
+            "absolute_delta": 8.512915654668163e-05,
+            "hold_above": 0.1,
+            "left": -3.666820513031999,
+            "pass_at_or_below": 1e-05,
+            "right": -3.6669056421885458
+          },
+          "agent_1_episode_return": {
+            "absolute_delta": 0.00035098068016603534,
+            "hold_above": 0.1,
+            "left": -2.74510500014682,
+            "pass_at_or_below": 1e-05,
+            "right": -2.745455980826986
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_07_east_parallel_rolling_a0_left:s42001",
+        "case_ordinal": 7,
+        "continuous_differences": {
+          "agent_0_episode_return": {
+            "absolute_delta": 2.6876639923401058e-05,
+            "hold_above": 0.1,
+            "left": -3.7443808236173446,
+            "pass_at_or_below": 1e-05,
+            "right": -3.744353946977421
+          },
+          "agent_1_episode_return": {
+            "absolute_delta": 2.0476183518525204e-05,
+            "hold_above": 0.1,
+            "left": -7.203916045067725,
+            "pass_at_or_below": 1e-05,
+            "right": -7.203895568884207
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_09_north_stagger_closing_a0_rear:s42001",
+        "case_ordinal": 9,
+        "continuous_differences": {
+          "agent_0_episode_return": {
+            "absolute_delta": 0.00018882971761469136,
+            "hold_above": 0.1,
+            "left": -3.195293107850354,
+            "pass_at_or_below": 1e-05,
+            "right": -3.1954819375679686
+          },
+          "agent_1_episode_return": {
+            "absolute_delta": 0.0311513441215876,
+            "hold_above": 0.1,
+            "left": -3.0427982175293353,
+            "pass_at_or_below": 1e-05,
+            "right": -3.0116468734077477
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_10_south_stagger_closing_a1_rear:s42001",
+        "case_ordinal": 10,
+        "continuous_differences": {
+          "agent_1_episode_return": {
+            "absolute_delta": 0.0004062005103797617,
+            "hold_above": 0.1,
+            "left": -18.942441746708273,
+            "pass_at_or_below": 1e-05,
+            "right": -18.942847947218652
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_13_north_required_merge_a0_merge:s42001",
+        "case_ordinal": 13,
+        "continuous_differences": {
+          "agent_1_episode_return": {
+            "absolute_delta": 0.00533739796172239,
+            "hold_above": 0.1,
+            "left": -0.9784048187312843,
+            "pass_at_or_below": 1e-05,
+            "right": -0.9837422166930067
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_15_east_required_merge_a1_merge:s42001",
+        "case_ordinal": 15,
+        "continuous_differences": {
+          "agent_0_episode_return": {
+            "absolute_delta": 0.00038777613436247194,
+            "hold_above": 0.1,
+            "left": -2.748176211800256,
+            "pass_at_or_below": 1e-05,
+            "right": -2.7477884356658935
+          },
+          "agent_1_episode_return": {
+            "absolute_delta": 0.001504755673660707,
+            "hold_above": 0.1,
+            "left": -3.725418527572289,
+            "pass_at_or_below": 1e-05,
+            "right": -3.723913771898628
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_16_west_required_merge_a0_merge:s42001",
+        "case_ordinal": 16,
+        "continuous_differences": {
+          "agent_0_episode_return": {
+            "absolute_delta": 2.5578143756810334e-05,
+            "hold_above": 0.1,
+            "left": -2.698728465727728,
+            "pass_at_or_below": 1e-05,
+            "right": -2.6987540438714848
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_17_northbound_free_flow:s42001",
+        "case_ordinal": 17,
+        "continuous_differences": {
+          "agent_1_episode_return": {
+            "absolute_delta": 0.00018186307226031317,
+            "hold_above": 0.1,
+            "left": -5.683707828600929,
+            "pass_at_or_below": 1e-05,
+            "right": -5.68388969167319
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_19_eastbound_free_flow:s42001",
+        "case_ordinal": 19,
+        "continuous_differences": {
+          "agent_0_episode_return": {
+            "absolute_delta": 9.169449882495684e-05,
+            "hold_above": 0.1,
+            "left": -2.1728256947468187,
+            "pass_at_or_below": 1e-05,
+            "right": -2.172734000247994
+          },
+          "agent_1_episode_return": {
+            "absolute_delta": 0.03572698470702029,
+            "hold_above": 0.1,
+            "left": -5.152058460430149,
+            "pass_at_or_below": 1e-05,
+            "right": -5.18778544513717
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_21_northbound_car_following_steady_agent0_rear:s42001",
+        "case_ordinal": 21,
+        "continuous_differences": {
+          "agent_1_episode_return": {
+            "absolute_delta": 0.0007109052465561483,
+            "hold_above": 0.1,
+            "left": -3.286927956719011,
+            "pass_at_or_below": 1e-05,
+            "right": -3.286217051472455
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_22_southbound_car_following_steady_agent1_rear:s42001",
+        "case_ordinal": 22,
+        "continuous_differences": {
+          "agent_1_episode_return": {
+            "absolute_delta": 0.002199709331535793,
+            "hold_above": 0.1,
+            "left": -2.7789517722303567,
+            "pass_at_or_below": 1e-05,
+            "right": -2.7811514815618925
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_23_eastbound_car_following_steady_agent0_rear:s42001",
+        "case_ordinal": 23,
+        "continuous_differences": {
+          "agent_1_episode_return": {
+            "absolute_delta": 0.03640306692631068,
+            "hold_above": 0.1,
+            "left": -4.164073238827334,
+            "pass_at_or_below": 1e-05,
+            "right": -4.127670171901023
+          }
+        },
+        "tolerated_tick_differences": {}
+      },
+      {
+        "case_id": "gate:scenario_26_southbound_car_following_closing_agent1_rear:s42001",
+        "case_ordinal": 26,
+        "continuous_differences": {
+          "agent_0_episode_return": {
+            "absolute_delta": 0.015130699541432424,
+            "hold_above": 0.1,
+            "left": -2.35068634453392,
+            "pass_at_or_below": 1e-05,
+            "right": -2.3355556449924877
+          },
+          "agent_1_episode_return": {
+            "absolute_delta": 0.013734107846193666,
+            "hold_above": 0.1,
+            "left": -8.234791199130257,
+            "pass_at_or_below": 1e-05,
+            "right": -8.221057091284063
+          }
+        },
+        "tolerated_tick_differences": {}
+      }
+    ]
+  },
+  "status": "PASS",
+  "summary_csv_sha256": "abc26f5fa3f9b2efcf3fd9f78bf616a8a62949038e1ddba72da09e70c1fb7313",
+  "summary_sha256": "1cae0123cb8249392977a457b3507b7dce4d9ca894eadee03c115e6c08a39a8c",
+  "validator_report_version": "p0_base_c0_validator_v1",
+  "warnings": [
+    "repeatability passed the semantic gate with registered tick/continuous drift"
+  ]
+}

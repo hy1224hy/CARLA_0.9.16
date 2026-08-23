@@ -1,0 +1,1111 @@
+{
+  "report_version": "offroad_live_validation_v1",
+  "created_at": "2026-08-13T03:55:44.065144Z",
+  "protocol": {
+    "protocol_version": "driving_footprint_offroad_v1",
+    "footprint_inset_fraction": 0.9,
+    "sample_count": 9,
+    "boundary_sample_count": 8,
+    "outside_count_threshold": 3,
+    "persistence_ticks": 3,
+    "terminal_penalty": -20.0,
+    "raw_rule": "center_not_driving_or_boundary_outside_count_gte_threshold",
+    "membership_rule": "exact_OpenDRIVE_Driving_union_no_projection"
+  },
+  "directions": {
+    "northbound": {
+      "legal_adjacent_driving": {
+        "marking": "Broken",
+        "reset": {
+          "0": {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": -1,
+            "episode_step": 0,
+            "location": {
+              "x": -195.09007263183594,
+              "y": -64.58430480957031,
+              "z": 0.05610477179288864
+            },
+            "yaw": 89.97999572753906,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": 2,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          "1": {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": -1,
+            "episode_step": 0,
+            "location": {
+              "x": -191.58993530273438,
+              "y": -64.5887222290039,
+              "z": 0.056116826832294464
+            },
+            "yaw": 89.97999572753906,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": 1,
+            "nearest_driving_lane_width_m": 3.5
+          }
+        },
+        "ticks": [
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19626,
+            "episode_step": 1,
+            "location": {
+              "x": -191.58670043945312,
+              "y": -56.58107376098633,
+              "z": 0.056540220975875854
+            },
+            "yaw": 89.98419189453125,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": 1,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19627,
+            "episode_step": 2,
+            "location": {
+              "x": -191.58670043945312,
+              "y": -56.580047607421875,
+              "z": 0.056791458278894424
+            },
+            "yaw": 89.98406982421875,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": 1,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19628,
+            "episode_step": 3,
+            "location": {
+              "x": -191.58670043945312,
+              "y": -56.580047607421875,
+              "z": 0.05695457383990288
+            },
+            "yaw": 89.98406982421875,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": 1,
+            "nearest_driving_lane_width_m": 3.5
+          }
+        ]
+      },
+      "offroad_goal_shortcut": {
+        "lateral_offset_m": -14.0,
+        "search_attempts": [
+          {
+            "requested_lateral_offset_m": -14.0,
+            "actual_location": {
+              "x": -181.07302856445312,
+              "y": -64.58543395996094,
+              "z": 0.13257740437984467
+            },
+            "offroad_raw": true,
+            "outside_count": 8,
+            "collision_flush": [
+              false,
+              false,
+              false
+            ]
+          }
+        ],
+        "immediate": {
+          "driving_center_valid": false,
+          "footprint_outside_count": 8,
+          "footprint_outside_fraction": 1.0,
+          "offroad_raw": true,
+          "offroad_consecutive_ticks": 1,
+          "offroad_confirmed": false,
+          "world_frame": 19628,
+          "episode_step": 0,
+          "location": {
+            "x": -181.07302856445312,
+            "y": -64.58543395996094,
+            "z": 0.13257740437984467
+          },
+          "yaw": 89.98162078857422,
+          "nearest_driving_road_id": 44,
+          "nearest_driving_lane_id": -2,
+          "nearest_driving_lane_width_m": 3.5
+        },
+        "ticks": [
+          {
+            "tick": 1,
+            "dones": {
+              "0": false,
+              "1": false
+            },
+            "terminated": {
+              "0": false,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": false
+            },
+            "episode_end_reason": "running",
+            "offroad_terminated": {
+              "0": false,
+              "1": false
+            },
+            "reward_offroad": 0.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 1,
+              "offroad_confirmed": false,
+              "world_frame": 19646,
+              "episode_step": 1,
+              "location": {
+                "x": -181.072998046875,
+                "y": -64.58543395996094,
+                "z": 0.13295337557792664
+              },
+              "yaw": 89.98162078857422,
+              "nearest_driving_road_id": 44,
+              "nearest_driving_lane_id": -2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          },
+          {
+            "tick": 2,
+            "dones": {
+              "0": false,
+              "1": false
+            },
+            "terminated": {
+              "0": false,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": false
+            },
+            "episode_end_reason": "running",
+            "offroad_terminated": {
+              "0": false,
+              "1": false
+            },
+            "reward_offroad": 0.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 2,
+              "offroad_confirmed": false,
+              "world_frame": 19647,
+              "episode_step": 2,
+              "location": {
+                "x": -181.072998046875,
+                "y": -64.58543395996094,
+                "z": 0.13295337557792664
+              },
+              "yaw": 89.98162078857422,
+              "nearest_driving_road_id": 44,
+              "nearest_driving_lane_id": -2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          },
+          {
+            "tick": 3,
+            "dones": {
+              "0": true,
+              "1": true
+            },
+            "terminated": {
+              "0": true,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": true
+            },
+            "episode_end_reason": "cooperative_offroad",
+            "offroad_terminated": {
+              "0": true,
+              "1": false
+            },
+            "reward_offroad": -20.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 3,
+              "offroad_confirmed": true,
+              "world_frame": 19648,
+              "episode_step": 3,
+              "location": {
+                "x": -181.072998046875,
+                "y": -64.58543395996094,
+                "z": 0.13295337557792664
+              },
+              "yaw": 89.98162078857422,
+              "nearest_driving_road_id": 44,
+              "nearest_driving_lane_id": -2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          }
+        ]
+      }
+    },
+    "southbound": {
+      "legal_adjacent_driving": {
+        "marking": "Broken",
+        "reset": {
+          "0": {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19648,
+            "episode_step": 0,
+            "location": {
+              "x": -188.08004760742188,
+              "y": -19.57128143310547,
+              "z": 0.05611686408519745
+            },
+            "yaw": -90.01998138427734,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": -1,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          "1": {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19648,
+            "episode_step": 0,
+            "location": {
+              "x": -184.5799102783203,
+              "y": -19.585689544677734,
+              "z": 0.05610469728708267
+            },
+            "yaw": -90.01998138427734,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": -2,
+            "nearest_driving_lane_width_m": 3.5
+          }
+        },
+        "ticks": [
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19663,
+            "episode_step": 1,
+            "location": {
+              "x": -184.57870483398438,
+              "y": -27.58018684387207,
+              "z": 0.056542396545410156
+            },
+            "yaw": -90.01593017578125,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": -2,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19664,
+            "episode_step": 2,
+            "location": {
+              "x": -184.57870483398438,
+              "y": -27.58018684387207,
+              "z": 0.05678829178214073
+            },
+            "yaw": -90.01593017578125,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": -2,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19665,
+            "episode_step": 3,
+            "location": {
+              "x": -184.57870483398438,
+              "y": -27.58018684387207,
+              "z": 0.05695163458585739
+            },
+            "yaw": -90.01593017578125,
+            "nearest_driving_road_id": 44,
+            "nearest_driving_lane_id": -2,
+            "nearest_driving_lane_width_m": 3.5
+          }
+        ]
+      },
+      "offroad_goal_shortcut": {
+        "lateral_offset_m": -14.0,
+        "search_attempts": [
+          {
+            "requested_lateral_offset_m": -14.0,
+            "actual_location": {
+              "x": -202.0748748779297,
+              "y": -19.57459259033203,
+              "z": 0.16663368046283722
+            },
+            "offroad_raw": true,
+            "outside_count": 8,
+            "collision_flush": [
+              false,
+              false,
+              false
+            ]
+          }
+        ],
+        "immediate": {
+          "driving_center_valid": false,
+          "footprint_outside_count": 8,
+          "footprint_outside_fraction": 1.0,
+          "offroad_raw": true,
+          "offroad_consecutive_ticks": 1,
+          "offroad_confirmed": false,
+          "world_frame": 19665,
+          "episode_step": 0,
+          "location": {
+            "x": -202.0748748779297,
+            "y": -19.57459259033203,
+            "z": 0.16663368046283722
+          },
+          "yaw": -90.01017761230469,
+          "nearest_driving_road_id": 44,
+          "nearest_driving_lane_id": 2,
+          "nearest_driving_lane_width_m": 3.5
+        },
+        "ticks": [
+          {
+            "tick": 1,
+            "dones": {
+              "0": false,
+              "1": false
+            },
+            "terminated": {
+              "0": false,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": false
+            },
+            "episode_end_reason": "running",
+            "offroad_terminated": {
+              "0": false,
+              "1": false
+            },
+            "reward_offroad": 0.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 1,
+              "offroad_confirmed": false,
+              "world_frame": 19683,
+              "episode_step": 1,
+              "location": {
+                "x": -202.07485961914062,
+                "y": -19.57459259033203,
+                "z": 0.1671590805053711
+              },
+              "yaw": -90.01018524169922,
+              "nearest_driving_road_id": 44,
+              "nearest_driving_lane_id": 2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          },
+          {
+            "tick": 2,
+            "dones": {
+              "0": false,
+              "1": false
+            },
+            "terminated": {
+              "0": false,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": false
+            },
+            "episode_end_reason": "running",
+            "offroad_terminated": {
+              "0": false,
+              "1": false
+            },
+            "reward_offroad": 0.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 2,
+              "offroad_confirmed": false,
+              "world_frame": 19684,
+              "episode_step": 2,
+              "location": {
+                "x": -202.07485961914062,
+                "y": -19.57459259033203,
+                "z": 0.1671590805053711
+              },
+              "yaw": -90.01018524169922,
+              "nearest_driving_road_id": 44,
+              "nearest_driving_lane_id": 2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          },
+          {
+            "tick": 3,
+            "dones": {
+              "0": true,
+              "1": true
+            },
+            "terminated": {
+              "0": true,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": true
+            },
+            "episode_end_reason": "cooperative_offroad",
+            "offroad_terminated": {
+              "0": true,
+              "1": false
+            },
+            "reward_offroad": -20.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 3,
+              "offroad_confirmed": true,
+              "world_frame": 19685,
+              "episode_step": 3,
+              "location": {
+                "x": -202.07485961914062,
+                "y": -19.57459259033203,
+                "z": 0.1671590805053711
+              },
+              "yaw": -90.01018524169922,
+              "nearest_driving_road_id": 44,
+              "nearest_driving_lane_id": 2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          }
+        ]
+      }
+    },
+    "eastbound": {
+      "legal_adjacent_driving": {
+        "marking": "Broken",
+        "reset": {
+          "0": {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19685,
+            "episode_step": 0,
+            "location": {
+              "x": -252.34432983398438,
+              "y": 3.1600096225738525,
+              "z": 0.00035621642018668354
+            },
+            "yaw": -0.1400146335363388,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": 1,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          "1": {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19685,
+            "episode_step": 0,
+            "location": {
+              "x": -252.34872436523438,
+              "y": 6.660021781921387,
+              "z": 0.00036834715865552425
+            },
+            "yaw": -0.1400146335363388,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": 2,
+            "nearest_driving_lane_width_m": 3.5
+          }
+        },
+        "ticks": [
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19700,
+            "episode_step": 1,
+            "location": {
+              "x": -244.3328857421875,
+              "y": 6.644054889678955,
+              "z": 0.0009259795770049095
+            },
+            "yaw": -0.13958740234375,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": 2,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19701,
+            "episode_step": 2,
+            "location": {
+              "x": -244.3328857421875,
+              "y": 6.644054889678955,
+              "z": 0.0012413024669513106
+            },
+            "yaw": -0.13958740234375,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": 2,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19702,
+            "episode_step": 3,
+            "location": {
+              "x": -244.3328857421875,
+              "y": 6.644054889678955,
+              "z": 0.0014509581960737705
+            },
+            "yaw": -0.13958740234375,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": 2,
+            "nearest_driving_lane_width_m": 3.5
+          }
+        ]
+      },
+      "offroad_goal_shortcut": {
+        "lateral_offset_m": -14.0,
+        "search_attempts": [
+          {
+            "requested_lateral_offset_m": -14.0,
+            "actual_location": {
+              "x": -252.37664794921875,
+              "y": -10.837843894958496,
+              "z": 0.1534106731414795
+            },
+            "offroad_raw": true,
+            "outside_count": 8,
+            "collision_flush": [
+              false,
+              false,
+              false
+            ]
+          }
+        ],
+        "immediate": {
+          "driving_center_valid": false,
+          "footprint_outside_count": 8,
+          "footprint_outside_fraction": 1.0,
+          "offroad_raw": true,
+          "offroad_consecutive_ticks": 1,
+          "offroad_confirmed": false,
+          "world_frame": 19702,
+          "episode_step": 0,
+          "location": {
+            "x": -252.37664794921875,
+            "y": -10.837843894958496,
+            "z": 0.1534106731414795
+          },
+          "yaw": -0.1412658542394638,
+          "nearest_driving_road_id": 3,
+          "nearest_driving_lane_id": -2,
+          "nearest_driving_lane_width_m": 3.5
+        },
+        "ticks": [
+          {
+            "tick": 1,
+            "dones": {
+              "0": false,
+              "1": false
+            },
+            "terminated": {
+              "0": false,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": false
+            },
+            "episode_end_reason": "running",
+            "offroad_terminated": {
+              "0": false,
+              "1": false
+            },
+            "reward_offroad": 0.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 1,
+              "offroad_confirmed": false,
+              "world_frame": 19720,
+              "episode_step": 1,
+              "location": {
+                "x": -252.37673950195312,
+                "y": -10.837969779968262,
+                "z": 0.1537330597639084
+              },
+              "yaw": -0.1412658542394638,
+              "nearest_driving_road_id": 3,
+              "nearest_driving_lane_id": -2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          },
+          {
+            "tick": 2,
+            "dones": {
+              "0": false,
+              "1": false
+            },
+            "terminated": {
+              "0": false,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": false
+            },
+            "episode_end_reason": "running",
+            "offroad_terminated": {
+              "0": false,
+              "1": false
+            },
+            "reward_offroad": 0.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 2,
+              "offroad_confirmed": false,
+              "world_frame": 19721,
+              "episode_step": 2,
+              "location": {
+                "x": -252.37673950195312,
+                "y": -10.837969779968262,
+                "z": 0.1537330597639084
+              },
+              "yaw": -0.1412658542394638,
+              "nearest_driving_road_id": 3,
+              "nearest_driving_lane_id": -2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          },
+          {
+            "tick": 3,
+            "dones": {
+              "0": true,
+              "1": true
+            },
+            "terminated": {
+              "0": true,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": true
+            },
+            "episode_end_reason": "cooperative_offroad",
+            "offroad_terminated": {
+              "0": true,
+              "1": false
+            },
+            "reward_offroad": -20.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 3,
+              "offroad_confirmed": true,
+              "world_frame": 19722,
+              "episode_step": 3,
+              "location": {
+                "x": -252.37673950195312,
+                "y": -10.837969779968262,
+                "z": 0.1537330597639084
+              },
+              "yaw": -0.1412658542394638,
+              "nearest_driving_road_id": 3,
+              "nearest_driving_lane_id": -2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          }
+        ]
+      }
+    },
+    "westbound": {
+      "legal_adjacent_driving": {
+        "marking": "Broken",
+        "reset": {
+          "0": {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19722,
+            "episode_step": 0,
+            "location": {
+              "x": -207.34127807617188,
+              "y": -0.4500212073326111,
+              "z": 0.0003683090035337955
+            },
+            "yaw": 179.85997009277344,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": -1,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          "1": {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19722,
+            "episode_step": 0,
+            "location": {
+              "x": -207.35565185546875,
+              "y": -3.950010061264038,
+              "z": 0.00035617826506495476
+            },
+            "yaw": 179.85997009277344,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": -2,
+            "nearest_driving_lane_width_m": 3.5
+          }
+        },
+        "ticks": [
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19737,
+            "episode_step": 1,
+            "location": {
+              "x": -215.3577423095703,
+              "y": -3.9265029430389404,
+              "z": 0.0009230804280377924
+            },
+            "yaw": 179.8603973388672,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": -2,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19738,
+            "episode_step": 2,
+            "location": {
+              "x": -215.3577423095703,
+              "y": -3.9265027046203613,
+              "z": 0.0012396621750667691
+            },
+            "yaw": 179.8603973388672,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": -2,
+            "nearest_driving_lane_width_m": 3.5
+          },
+          {
+            "driving_center_valid": true,
+            "footprint_outside_count": 0,
+            "footprint_outside_fraction": 0.0,
+            "offroad_raw": false,
+            "offroad_consecutive_ticks": 0,
+            "offroad_confirmed": false,
+            "world_frame": 19739,
+            "episode_step": 3,
+            "location": {
+              "x": -215.3577423095703,
+              "y": -3.9265027046203613,
+              "z": 0.0014500808902084827
+            },
+            "yaw": 179.8603973388672,
+            "nearest_driving_road_id": 3,
+            "nearest_driving_lane_id": -2,
+            "nearest_driving_lane_width_m": 3.5
+          }
+        ]
+      },
+      "offroad_goal_shortcut": {
+        "lateral_offset_m": 14.0,
+        "search_attempts": [
+          {
+            "requested_lateral_offset_m": -14.0,
+            "actual_location": {
+              "x": -207.3559112548828,
+              "y": 13.308464050292969,
+              "z": 0.8655471801757812
+            },
+            "offroad_raw": true,
+            "outside_count": 8,
+            "collision_flush": [
+              false,
+              false,
+              true
+            ]
+          },
+          {
+            "requested_lateral_offset_m": 14.0,
+            "actual_location": {
+              "x": -207.3767852783203,
+              "y": -14.45841121673584,
+              "z": 0.1585138738155365
+            },
+            "offroad_raw": true,
+            "outside_count": 8,
+            "collision_flush": [
+              false,
+              false,
+              false
+            ]
+          }
+        ],
+        "immediate": {
+          "driving_center_valid": false,
+          "footprint_outside_count": 8,
+          "footprint_outside_fraction": 1.0,
+          "offroad_raw": true,
+          "offroad_consecutive_ticks": 1,
+          "offroad_confirmed": false,
+          "world_frame": 19739,
+          "episode_step": 0,
+          "location": {
+            "x": -207.3767852783203,
+            "y": -14.45841121673584,
+            "z": 0.1585138738155365
+          },
+          "yaw": 179.861083984375,
+          "nearest_driving_road_id": 3,
+          "nearest_driving_lane_id": -2,
+          "nearest_driving_lane_width_m": 3.5
+        },
+        "ticks": [
+          {
+            "tick": 1,
+            "dones": {
+              "0": false,
+              "1": false
+            },
+            "terminated": {
+              "0": false,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": false
+            },
+            "episode_end_reason": "running",
+            "offroad_terminated": {
+              "0": false,
+              "1": false
+            },
+            "reward_offroad": 0.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 1,
+              "offroad_confirmed": false,
+              "world_frame": 19761,
+              "episode_step": 1,
+              "location": {
+                "x": -207.37611389160156,
+                "y": -14.458349227905273,
+                "z": 0.15616481006145477
+              },
+              "yaw": 179.86009216308594,
+              "nearest_driving_road_id": 3,
+              "nearest_driving_lane_id": -2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          },
+          {
+            "tick": 2,
+            "dones": {
+              "0": false,
+              "1": false
+            },
+            "terminated": {
+              "0": false,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": false
+            },
+            "episode_end_reason": "running",
+            "offroad_terminated": {
+              "0": false,
+              "1": false
+            },
+            "reward_offroad": 0.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 2,
+              "offroad_confirmed": false,
+              "world_frame": 19762,
+              "episode_step": 2,
+              "location": {
+                "x": -207.37571716308594,
+                "y": -14.458313941955566,
+                "z": 0.1550046056509018
+              },
+              "yaw": 179.85975646972656,
+              "nearest_driving_road_id": 3,
+              "nearest_driving_lane_id": -2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          },
+          {
+            "tick": 3,
+            "dones": {
+              "0": true,
+              "1": true
+            },
+            "terminated": {
+              "0": true,
+              "1": false
+            },
+            "truncated": {
+              "0": false,
+              "1": true
+            },
+            "episode_end_reason": "cooperative_offroad",
+            "offroad_terminated": {
+              "0": true,
+              "1": false
+            },
+            "reward_offroad": -20.0,
+            "reward_success": 0.0,
+            "occupancy": {
+              "driving_center_valid": false,
+              "footprint_outside_count": 8,
+              "footprint_outside_fraction": 1.0,
+              "offroad_raw": true,
+              "offroad_consecutive_ticks": 3,
+              "offroad_confirmed": true,
+              "world_frame": 19763,
+              "episode_step": 3,
+              "location": {
+                "x": -207.37550354003906,
+                "y": -14.458295822143555,
+                "z": 0.15446773171424866
+              },
+              "yaw": 179.85963439941406,
+              "nearest_driving_road_id": 3,
+              "nearest_driving_lane_id": -2,
+              "nearest_driving_lane_width_m": 3.5
+            }
+          }
+        ]
+      }
+    }
+  },
+  "status": "PASS",
+  "cleanup": {
+    "synchronous_mode": false,
+    "fixed_delta_seconds": null,
+    "vehicle_count": 0,
+    "sensor_count": 0
+  }
+}
