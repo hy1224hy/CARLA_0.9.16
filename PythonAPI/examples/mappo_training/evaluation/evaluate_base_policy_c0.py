@@ -33,6 +33,8 @@ from evaluation.base_c0_protocol import (
     TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
     TOWN05_R6_C0_PROTOCOL_VERSION,
     TOWN05_R6_C0_EPISODE_RECORD_VERSION,
+    TOWN05_R7_C0_PROTOCOL_VERSION,
+    TOWN05_R7_C0_EPISODE_RECORD_VERSION,
     C0_MANIFEST_VERSION,
     C0_RESOLVED_CONFIG_VERSION,
     LEGACY_C0_EPISODE_RECORD_VERSION,
@@ -84,7 +86,9 @@ from training.action_protocol import (
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_CONTRACT = PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_v3.json"
+DEFAULT_CONTRACT = (
+    PROJECT_DIR / "configs" / "evaluation" / "p0_base_c0_town05_r7_v5.json"
+)
 FORMAL_EXECUTABLE_C0_PROTOCOL_VERSIONS = frozenset(
     {
         C0_PROTOCOL_VERSION,
@@ -92,6 +96,7 @@ FORMAL_EXECUTABLE_C0_PROTOCOL_VERSIONS = frozenset(
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
+        TOWN05_R7_C0_PROTOCOL_VERSION,
     }
 )
 
@@ -410,6 +415,7 @@ def _run_case(
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
+        TOWN05_R7_C0_PROTOCOL_VERSION,
     }:
         offroad_terminated = _strict_agent_bool_map(
             final_info.get("offroad_terminated"),
@@ -445,6 +451,7 @@ def _run_case(
                 in {
                     TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
                     TOWN05_R6_C0_PROTOCOL_VERSION,
+                    TOWN05_R7_C0_PROTOCOL_VERSION,
                 }
             ):
                 transition = lifecycle_transitions[agent_id]
@@ -453,6 +460,35 @@ def _run_case(
                         f"missing lifecycle transition for agent={agent_id}"
                     )
                 agents_payload[str(agent_id)]["lifecycle_transition"] = transition
+    if contract["protocol_version"] == TOWN05_R7_C0_PROTOCOL_VERSION:
+        confirmed = _strict_agent_bool_map(
+            final_info.get("road_violation_confirmed"),
+            name="final.road_violation_confirmed",
+        )
+        road_terminated = _strict_agent_bool_map(
+            final_info.get("road_rule_terminated"),
+            name="final.road_rule_terminated",
+        )
+        road_legality = final_info.get("road_legality")
+        if not isinstance(road_legality, Mapping) or {
+            int(key) for key in road_legality
+        } != set(AGENT_IDS):
+            raise C0ProtocolError(
+                f"final.road_legality must contain exactly agent ids {AGENT_IDS}"
+            )
+        for agent_id in AGENT_IDS:
+            evidence = road_legality.get(
+                agent_id, road_legality.get(str(agent_id))
+            )
+            if not isinstance(evidence, Mapping):
+                raise C0ProtocolError(
+                    f"final.road_legality[{agent_id}] must be an object"
+                )
+            agents_payload[str(agent_id)].update({
+                "road_rule_terminated": road_terminated[agent_id],
+                "road_violation_confirmed": confirmed[agent_id],
+                "road_legality": dict(evidence),
+            })
     record = {
         "record_version": (
             LEGACY_C0_EPISODE_RECORD_VERSION
@@ -469,7 +505,10 @@ def _run_case(
                         == TOWN05_C0_PROTOCOL_VERSION
                         else (
                             (
-                                TOWN05_R6_C0_EPISODE_RECORD_VERSION
+                                TOWN05_R7_C0_EPISODE_RECORD_VERSION
+                                if contract["protocol_version"]
+                                == TOWN05_R7_C0_PROTOCOL_VERSION
+                                else TOWN05_R6_C0_EPISODE_RECORD_VERSION
                                 if contract["protocol_version"]
                                 == TOWN05_R6_C0_PROTOCOL_VERSION
                                 else TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION
@@ -481,6 +520,7 @@ def _run_case(
                                 TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
                                 TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
                                 TOWN05_R6_C0_PROTOCOL_VERSION,
+                                TOWN05_R7_C0_PROTOCOL_VERSION,
                             }
                             else C0_EPISODE_RECORD_VERSION
                         )

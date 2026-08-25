@@ -32,6 +32,8 @@ from training.metrics_protocol import (
     SPARSE_REWARD_COMPONENTS,
     MetricsProtocolError,
     env_action_diagnostics,
+    episode_record_version,
+    metrics_protocol_version,
     reward_components,
     reward_diagnostics,
     reward_schema_document,
@@ -232,6 +234,8 @@ class TrainingMetricsRecorder:
             raise MetricsProtocolError("histogram_interval cannot be negative")
 
         self.reward_version = str(reward_version)
+        self.metrics_protocol_version = metrics_protocol_version(self.reward_version)
+        self.episode_record_version = episode_record_version(self.reward_version)
         self.component_names = reward_components(self.reward_version)
         self.diagnostic_names = reward_diagnostics(self.reward_version)
         self.histogram_interval = int(histogram_interval)
@@ -249,7 +253,7 @@ class TrainingMetricsRecorder:
                 "tensorboard_directory": "tb",
                 "jsonl_file": self.jsonl_path.name,
                 "episode_records": {
-                    "version": EPISODE_RECORD_VERSION,
+                    "version": self.episode_record_version,
                     "jsonl_file": self.episode_jsonl_path.name,
                     "commit_semantics": (
                         "fsync each episode before checkpoint; discard records "
@@ -404,7 +408,7 @@ class TrainingMetricsRecorder:
         return updates
 
     def _validate_payload(self, payload: Mapping[str, object]) -> Dict[str, object]:
-        if payload.get("metrics_protocol_version") != METRICS_PROTOCOL_VERSION:
+        if payload.get("metrics_protocol_version") != self.metrics_protocol_version:
             raise MetricsProtocolError("metrics payload protocol mismatch")
         if str(payload.get("run_id", "")) != self.run_id:
             raise MetricsProtocolError("metrics payload run_id mismatch")
@@ -418,13 +422,26 @@ class TrainingMetricsRecorder:
             str(tag): _finite_scalar(value, tag=str(tag))
             for tag, value in scalars.items()
         }
-        return {
-            "metrics_protocol_version": METRICS_PROTOCOL_VERSION,
+        normalized = {
+            "metrics_protocol_version": self.metrics_protocol_version,
             "run_id": self.run_id,
             "update": update,
             "created_at": str(payload.get("created_at", _utc_now_iso())),
             "scalars": normalized_scalars,
         }
+        if self.reward_version == "v5":
+            audits = payload.get("audits")
+            if not isinstance(audits, Mapping):
+                raise MetricsProtocolError("R7 metrics payload audits must be a mapping")
+            try:
+                normalized["audits"] = json.loads(
+                    json.dumps(audits, allow_nan=False, sort_keys=True)
+                )
+            except (TypeError, ValueError) as error:
+                raise MetricsProtocolError(
+                    "R7 metrics payload audits must be finite JSON"
+                ) from error
+        return normalized
 
     def _reconcile_checkpoint_metrics(
         self,
@@ -513,11 +530,13 @@ class TrainingMetricsRecorder:
         self.collision_count = 0
         self.timeout_count = 0
         self.offroad_count = 0
+        self.road_violation_count = 0
         self.end_reason_counts: Dict[str, int] = {}
         self.scenario_stats: Dict[str, Dict[str, RunningStats]] = {}
         self.max_step_reward_residual = 0.0
         self.max_episode_reward_residual = 0.0
         self.external_scalars: Dict[str, float] = {}
+        self.external_audits: Dict[str, object] = {}
         self._model_snapshots = None
 
     def record_env_step(
@@ -652,6 +671,8 @@ class TrainingMetricsRecorder:
         offroad_audit_by_agent: Optional[
             Mapping[int, Mapping[str, object]]
         ] = None,
+        road_violation: bool = False,
+        road_rule_terminated: Optional[Mapping[int, bool]] = None,
     ) -> None:
         if episode_length <= 0:
             raise MetricsProtocolError(f"{context}: episode_length must be positive")
@@ -687,6 +708,14 @@ class TrainingMetricsRecorder:
                 f"expected={sorted(expected_agent_ids)}, "
                 f"actual={sorted(offroad_audit_by_agent)}"
             )
+        if road_rule_terminated is None:
+            road_rule_terminated = {
+                agent_id: False for agent_id in self.agent_ids
+            }
+        if set(road_rule_terminated) != expected_agent_ids:
+            raise MetricsProtocolError(
+                f"{context}: road_rule_terminated agent ids differ"
+            )
 
         normalized_returns: Dict[int, float] = {}
         episode_residuals: Dict[int, float] = {}
@@ -718,9 +747,8 @@ class TrainingMetricsRecorder:
                     f"residual={residual}, atol={episode_atol}"
                 )
 
-        episode_record = validate_episode_record(
-            {
-                "episode_record_version": EPISODE_RECORD_VERSION,
+        episode_payload = {
+                "episode_record_version": self.episode_record_version,
                 "run_id": self.run_id,
                 "update": int(update),
                 "episode_index": int(episode_index),
@@ -774,7 +802,15 @@ class TrainingMetricsRecorder:
                     }
                     for agent_id in self.agent_ids
                 },
-            },
+            }
+        if self.reward_version == "v5":
+            episode_payload["road_violation"] = bool(road_violation)
+            for agent_id in self.agent_ids:
+                episode_payload["agents"][str(agent_id)][
+                    "road_rule_terminated"
+                ] = bool(road_rule_terminated[agent_id])
+        episode_record = validate_episode_record(
+            episode_payload,
             run_id=self.run_id,
             agent_ids=self.agent_ids,
             context=context,
@@ -800,6 +836,7 @@ class TrainingMetricsRecorder:
         self.collision_count += int(bool(collision))
         self.timeout_count += int(bool(timeout))
         self.offroad_count += int(bool(offroad))
+        self.road_violation_count += int(bool(road_violation))
         reason = _safe_name(end_reason)
         self.end_reason_counts[reason] = self.end_reason_counts.get(reason, 0) + 1
 
@@ -810,12 +847,16 @@ class TrainingMetricsRecorder:
                 "collision": RunningStats(),
                 "timeout": RunningStats(),
                 "offroad": RunningStats(),
+                "road_violation": RunningStats(),
                 "length": RunningStats(),
             }
         self.scenario_stats[scenario]["success"].add(float(bool(success)))
         self.scenario_stats[scenario]["collision"].add(float(bool(collision)))
         self.scenario_stats[scenario]["timeout"].add(float(bool(timeout)))
         self.scenario_stats[scenario]["offroad"].add(float(bool(offroad)))
+        self.scenario_stats[scenario]["road_violation"].add(
+            float(bool(road_violation))
+        )
         self.scenario_stats[scenario]["length"].add(float(episode_length))
 
     def _append_episode_record(self, payload: Mapping[str, object]) -> None:
@@ -853,6 +894,17 @@ class TrainingMetricsRecorder:
     def record_scalars(self, scalars: Mapping[str, object]) -> None:
         for tag, value in scalars.items():
             self.record_scalar(str(tag), value)
+
+    def record_audit(self, name: str, payload: object) -> None:
+        key = str(name).strip()
+        if not key or key in self.external_audits:
+            raise MetricsProtocolError("audit name must be unique and non-empty")
+        try:
+            self.external_audits[key] = json.loads(
+                json.dumps(payload, allow_nan=False, sort_keys=True)
+            )
+        except (TypeError, ValueError) as error:
+            raise MetricsProtocolError("audit payload must be finite JSON") from error
 
     def capture_model_snapshot(
         self,
@@ -1023,6 +1075,19 @@ class TrainingMetricsRecorder:
         self.record_scalar(
             "critic/samples_seen", ppo_metrics.get("critic_samples_seen", 0)
         )
+        for agent_id in self.agent_ids:
+            for name in (
+                "explained_variance",
+                "prediction_target_std_ratio",
+                "signed_bias",
+                "absolute_error_mean",
+            ):
+                metric_name = f"critic_{name}_agent_{agent_id}"
+                if metric_name in ppo_metrics:
+                    self.record_scalar(
+                        f"critic/agent_{agent_id}/{name}",
+                        ppo_metrics[metric_name],
+                    )
         critic_grad_values = ppo_metrics.get("grad_norm_critic", [])
         if critic_grad_values:
             self.record_scalar(
@@ -1132,6 +1197,11 @@ class TrainingMetricsRecorder:
         put("episode/collision_rate", self.collision_count / self.episode_count)
         put("episode/timeout_rate", self.timeout_count / self.episode_count)
         put("episode/offroad_rate", self.offroad_count / self.episode_count)
+        if self.reward_version == "v5":
+            put(
+                "episode/road_violation_rate",
+                self.road_violation_count / self.episode_count,
+            )
         for reason, count in sorted(self.end_reason_counts.items()):
             put(f"episode/end_reason/{reason}_count", count)
 
@@ -1211,18 +1281,25 @@ class TrainingMetricsRecorder:
             put(f"scenario/{scenario}/collision_rate", stats["collision"].mean)
             put(f"scenario/{scenario}/timeout_rate", stats["timeout"].mean)
             put(f"scenario/{scenario}/offroad_rate", stats["offroad"].mean)
+            if self.reward_version == "v5":
+                put(
+                    f"scenario/{scenario}/road_violation_rate",
+                    stats["road_violation"].mean,
+                )
             put(f"scenario/{scenario}/episode_length_mean", stats["length"].mean)
 
         for tag, value in self.external_scalars.items():
             put(tag, value)
 
         payload: Dict[str, object] = {
-            "metrics_protocol_version": METRICS_PROTOCOL_VERSION,
+            "metrics_protocol_version": self.metrics_protocol_version,
             "run_id": self.run_id,
             "update": int(update),
             "created_at": _utc_now_iso(),
             "scalars": dict(sorted(scalars.items())),
         }
+        if self.reward_version == "v5":
+            payload["audits"] = dict(sorted(self.external_audits.items()))
         self._pending_payload = payload
         return payload
 

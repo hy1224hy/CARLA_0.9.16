@@ -2,7 +2,7 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：P0-T05-09/R6 已完成 249/249 离线回归、32/32 live spawn、真实机制 smoke，以及诊断 Run `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634` 的 u1–u160 完整训练。R6 修复了“pre-tanh entropy 掩盖实际动作塌缩”的协议缺陷，训练期间未出现 nonfinite、skipped update 或 reward residual 异常；但 u160 暴露出跨线/对向车道捷径和 critic 近均值退化，结论为 `DIAGNOSTIC HOLD`。当前仍没有可进入基础策略池的 checkpoint；下一阶段必须新版本、新合同、新 RunID、fresh 训练，等待用户审批设计后实施。
+> 当前状态：P0-T05-10/R7 已完成训练数学/协议、R7 C0 五结局合同、评估/离线 validator 和四方向 live validator 的实现，282/282 无 CARLA 回归通过。2026-08-25 真实 CARLA 四方向 smoke 在修正东向验证夹具的 road-boundary 选点后 PASS，北/南/东/西均验证合法直行/换道、对向车道、持续逆行、offroad 分工和 cleanup；失败 retry 保留为夹具诊断证据。R7 actor/critic 输入仍为 R6 的 20 维观察，未加入车道特征；GO/HOLD 条件和阈值保持原样。用户已授权在冻结 u600 时序下 fresh 训练至注册分段边界 u200并定时监控，当前仍无可进入基础策略池的 checkpoint。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
 ## 1. 登记规则
@@ -28,6 +28,8 @@
 | `P0_BASE_C0_TOWN05_R6_V4` | `configs/evaluation/p0_base_c0_town05_r6_v4.json` | schema-v6、20维 time-aware R6 gate/held-out evaluation | gate 42001；validation 51001/51002/51003 | 对应 R6 登记停点 | FROZEN；SHA256 `3772d368d892f524c98b0494fa64c6f072061a8b2ec0dbcb4366c4368502866f` |
 | `P0_BASE_GO_HOLD_TOWN05_R6_V4` | `configs/evaluation/p0_base_go_hold_town05_r6_v4.json` | R6 分布审计、mastery、任意单 agent 持续塌缩与能力裁决 | 继承 R6 训练/C0 合同 | u5 首门；u10 起同一 agent 相邻里程碑持续塌缩即 HOLD；u160 才可 `PILOT_GO` | FROZEN；SHA256 `c094b6744211d455737166057deb14dde08a23913cb2550d695c5336e6f89425` |
 | `P0_DIAG_MAPPO_TOWN05_R6_U50_V1` | `configs/base_mappo/p0_diag_town05_r6_u50_v1.json` | 用户授权的 R6 fresh 奖励/塌缩趋势诊断；初始停点 u50，随后只在预注册长期边界内续至 u160 | 42 | 5/10/20/30/40/50/60/80/100/120/140/160 | FROZEN；SHA256 `b50df18c2f1eac0b904c55f022efd31fac64cf1d64617900ad638cc91adf82c4`；u160 `SEGMENT_COMPLETED / DIAGNOSTIC HOLD`，禁止跨新奖励 resume、选模或进入策略池 |
+| `P0_BASE_MAPPO_TOWN05_R7_V5` | `configs/base_mappo/p0_base_town05_r7_v5.json` | P0-T05-10/R7 seed-42 fresh u600 训练数学与协议；reward-v5、道路方向失败、critic 分组审计/探针和分离 LR | 42 | 5/10/20/40/60/80/100/120/160/200/300/400/500/600 | CONTRACT FROZEN / SOURCE COMMIT PENDING；SHA256 `d7a58901e0f4c2e5c04745b91cb5f538bda43a4666811da48f882c49b0e299df`；282/282 无 CARLA PASS；2026-08-25 四方向 road smoke PASS；用户授权 fresh 分段运行至 u200 |
+| `P0_BASE_C0_TOWN05_R7_V5` | `configs/evaluation/p0_base_c0_town05_r7_v5.json` | schema-v7/reward-v5 R7 gate 与 held-out evaluation；显式 success/collision/offroad/road_violation/timeout 五结局和道路证据 | gate 42001；validation 51001/51002/51003 | 对应 R7 登记停点 | OFFLINE CONTRACT FROZEN / SOURCE UNCOMMITTED；SHA256 `6215eecd257330f682838185ee4cfef1cc917718484600b977bce4afaadb46ec`；R6 四结局历史 schema 保持不变；GO/HOLD 本轮不改 |
 
 ## 3. Run 总表
 
@@ -46,6 +48,16 @@
 
 ## 4. 已运行记录
 
+### P0-T05-10/R7：数学/协议冻结与无 CARLA 实现
+
+- R7 保持 actor/critic 观察为 20 维，不增加 lane id、标线、wrong-way 等输入，也没有接入共享 actor 或行为克隆。道路语义只在环境、奖励、终止和审计层工作。
+- 道路状态机使用 exact `Driving` waypoint、当前合法参考 lane、左右拓扑、CARLA `lane_change` 权限、lane/vehicle 航向和 5-tick 持续门槛。Broken 传感器事件本身不能免责；合法同向相邻换道更新参考 lane 并有 10-tick 横向成本豁免，但无正 bonus；对向 `Driving`、持续 wrong-way 和未许可换道成为显式 `road_violation`，junction 歧义不误杀但禁止 success。
+- reward-v5 仍以 `20[γΦ(s')-Φ(s)]` 为唯一正稠密项；原合法 lane 与合法新 lane 地位相同。道路违规终局为 `-50`，终局优先级为 collision > offroad > road-rule > success > mission-timeout，违法到达不能获得 success。
+- critic 对同一 rollout 在 update 前后分别记录 pooled/per-agent/per-outcome/per-scenario 的 EV、target/pred std、比例、bias、MAE 与相关性。高维明细只写 JSONL；TensorBoard 只保留逐 agent 高信号。R6 checkpoint 没有原始 rollout tensor，不能伪造历史固定 batch；R7 从首个完整 update 开始保存最多 512 行确定性 probe，u1 前不发布虚假可恢复 checkpoint。
+- u600 时序一次冻结：actor LR `3e-4→1.5e-5`；critic LR 在 u1–u300 保持 `3e-4`，再退火至 u600 的 `1e-4`；entropy `0.01→0.001` 同步到 u600。该设计先修复 R6 “target 方差扩张时 critic LR 已到底”的时序冲突，不同时改变 critic 容量、epoch、ValueNorm 或网络输入。
+- mastery 协议升级为 road-rule-v3：offroad 与 road-violation 保持两个独立比例，二者任一超过 10% 都不能晋级；不再把道路方向失败暗中并入 offroad 字段。
+- 新身份为 reward-v5、checkpoint schema-v7、metrics-v8、episode road-rule-v4、C0 road-rule-v5 和独立训练协议。R7 C0 将旧 `other` 拆为显式 offroad/road_violation，并保存逐 agent 分类、参考 lane、权限、方向余弦、持续 tick、success eligibility 与 T/X 证据；R6 schema-v6/C0 四结局仍按旧协议读取，R7 严禁 resume R6。当前 282/282 无 CARLA测试和四方向真实 smoke 均通过；GO/HOLD 按用户要求暂不优化且相关文件未改。2026-08-25 用户只放行 seed-42 fresh 训练至合同已注册的 u200 分段边界，是否收敛和能否进入策略池仍须依据训练/C0 证据判断。
+
 ### P0-T05-09/R6：机制验证完成，诊断 Run 已到 u160
 
 - 新协议不加载失败 u50：训练合同 `source_mode=fresh`，新 RunID 前缀为 `P0_BASE_MAPPO_Town05R6_s42_`；共享 actor 和行为克隆均未接入。
@@ -55,7 +67,7 @@
 - 全量离线回归 `249/249 PASS`。2026-08-20 的 32/32 live spawn 及 R6 机制 smoke 全部 PASS：20 维倒计时、reward residual `0`、timeout T/X、两类 stall 豁免、LiDAR approach/projected TTC、Broken grace 和 cleanup `0/0` 均闭环。第一份 FAIL 报告只暴露验证夹具车辆重合，PPO 未启动；修正后报告为 `diagnostics/r6_live/P0_T05_09_R6_MECHANISM_SMOKE_20260820_121926/report.json`。
 - 诊断 Run 位于 `diagnostics/r6_long_run/P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634`，在同一冻结身份下分段运行到注册边界 u160，自然完成；累计 2,560 episodes，outcome 为 93 success、525 collision、363 offroad、1,579 timeout。u160 `ckpt_000160.pt` SHA256 为 `e918b9a0cd84cea29eb64a7d7ac9ccc449ca3bef126127db5f957de885437d40`，`latest.pt` SHA256 为 `d4335279236203b45a9e5fa561c1c6c476de40168b4db808674cc4f5d24f6c5d`。
 - u101–u110 到 u151–u160，success rate 从 2.50% 升到 16.25%，但 collision+offroad 从 46.25% 升到 71.25%；agent1 加速、减刹车的同时，legal-lane-change 代理和 lane-deviation exemption 显著上升。现合同没有 opposing-lane occupancy 字段，且 `offroad` 不捕获对向 `Driving` 车道，所以该变化被判为不安全捷径而不是 mastery。
-- critic explained variance 从 u20 的 0.965 降至 u160 的 0.0226；target std 从 2.797 扩大到 9.207，而 prediction std 只有 1.367。梯度没有爆炸或持续裁剪，主因假设是 reward/outcome 分布变宽与 critic LR 在 u160 前衰减至 1.5e-5 的组合欠拟合。本轮不向 actor 或 critic 观测增加车道字段；先用固定 batch 拟合探针和分组诊断决定学习率时序及现有 value 模型的最小优化。
+- critic explained variance 从 u20 的 0.965 降至 u160 的 0.0226；target std 从 2.797 扩大到 9.207，而 prediction std 只有 1.367。梯度没有爆炸或持续裁剪，主因假设是 reward/outcome 分布变宽与 critic LR 在 u160 前衰减至 1.5e-5 的组合欠拟合。本轮不向 actor 或 critic 观测增加车道字段。R6 产物未保存原始 rollout tensor，不能事后执行真实固定 batch 重放；R7 改为每个完整 checkpoint 保存确定性 critic probe，并增加在线 pre/post-update 分组诊断。
 - 研究结论：R6 u160 只作为失败/回归证据，不执行选模、不进入策略池、不跨 reward-v5 resume。拟定的 R7 方案保持 actor observation 为 20 维，不增加车道观测；环境侧直接用 CARLA waypoint 语义判定合法同向换道、对向占用和 wrong-way，并同步修复 success gate、reward 与 critic 诊断。完整证据和待审批方案见 [u50 诊断的 R6 u160 后续追踪](./P0-BASE-Town05V3_seed42_u50局部最优诊断.md)。
 
 ### `P0_BASE_MAPPO_Town05V3_s42_20260814_125226`：u50 人工停止与局部最优诊断

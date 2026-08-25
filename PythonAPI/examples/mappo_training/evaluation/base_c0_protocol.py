@@ -39,6 +39,8 @@ from training.checkpoint_protocol import (
     PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION,
     OBSERVATION_PROTOCOL_VERSION,
     R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION,
+    R7_CHECKPOINT_SCHEMA_VERSION,
+    R7_TRAINING_PROTOCOL_VERSION,
     TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION,
     TRAINING_PROTOCOL_VERSION,
     VALUENORM_TRAINING_PROTOCOL_VERSION,
@@ -58,6 +60,7 @@ from training.metrics_protocol import (
     POLICY_ACTION_RATE_NAMES,
     REWARD_COMPONENTS,
     REWARD_DIAGNOSTICS,
+    R7_METRICS_PROTOCOL_VERSION,
 )
 from environment.offroad_protocol import (
     OFFROAD_PROTOCOL_VERSION,
@@ -69,11 +72,24 @@ from training.value_normalization import (
     VALUE_LOSS_PROTOCOL_VERSION,
     VALUE_NORMALIZATION_PROTOCOL_VERSION,
 )
-from training.mastery_curriculum import CURRICULUM_PROTOCOL_VERSION
+from training.mastery_curriculum import (
+    CURRICULUM_PROTOCOL_VERSION,
+    R7_CURRICULUM_PROTOCOL_VERSION,
+)
 from training.policy_distribution_protocol import (
     POLICY_DISTRIBUTION_PROTOCOL_VERSION,
+    R7_POLICY_DISTRIBUTION_PROTOCOL_VERSION,
 )
 from environment.stall_protocol import STALL_PROTOCOL_VERSION
+from environment.road_legality_protocol import (
+    ROAD_LEGALITY_PROTOCOL_VERSION,
+    road_legality_protocol_spec,
+)
+from training.critic_diagnostics import (
+    CRITIC_DIAGNOSTICS_PROTOCOL_VERSION,
+    validate_critic_probe_batch,
+)
+from training.learning_rate_protocol import LEARNING_RATE_PROTOCOL_VERSION
 
 
 LEGACY_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v1"
@@ -86,6 +102,7 @@ TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION = (
     "p0_base_c0_eval_town05_v3"
 )
 TOWN05_R6_C0_PROTOCOL_VERSION = "p0_base_c0_eval_town05_r6_v4"
+TOWN05_R7_C0_PROTOCOL_VERSION = "p0_base_c0_eval_town05_r7_v5"
 LEGACY_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v2"
 ACTION_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v3"
 REWARD_C0_EPISODE_RECORD_VERSION = "p0_base_c0_episode_v4"
@@ -98,12 +115,21 @@ TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION = (
     "p0_base_c0_town05_offroad_episode_v3"
 )
 TOWN05_R6_C0_EPISODE_RECORD_VERSION = "p0_base_c0_town05_r6_episode_v4"
+TOWN05_R7_C0_EPISODE_RECORD_VERSION = "p0_base_c0_town05_r7_episode_v5"
 C0_SUMMARY_VERSION = "p0_base_c0_summary_v1"
+TOWN05_R7_C0_SUMMARY_VERSION = "p0_base_c0_town05_r7_summary_v2"
 C0_MANIFEST_VERSION = "p0_base_c0_manifest_v1"
 C0_RESOLVED_CONFIG_VERSION = "p0_base_c0_resolved_v1"
 C0_VALIDATOR_REPORT_VERSION = "p0_base_c0_validator_v1"
 AGENT_IDS = (0, 1)
 OUTCOMES = ("success", "collision", "timeout", "other")
+R7_OUTCOMES = (
+    "success",
+    "collision",
+    "offroad",
+    "road_violation",
+    "timeout",
+)
 REPEATABILITY_FIELDS = (
     "case_id",
     "outcome",
@@ -178,10 +204,73 @@ SUMMARY_CSV_FIELDS = (
     "mean_episode_length",
     "mean_team_return",
 )
+R7_SUMMARY_CSV_FIELDS = (
+    "scope",
+    "name",
+    "case_count",
+    "success_count",
+    "collision_count",
+    "offroad_count",
+    "road_violation_count",
+    "timeout_count",
+    "success_rate",
+    "collision_rate",
+    "offroad_rate",
+    "road_violation_rate",
+    "timeout_rate",
+    "mean_episode_length",
+    "mean_team_return",
+)
+
+ROAD_LEGALITY_EVIDENCE_FIELDS = {
+    "classification",
+    "reference_lane",
+    "legal_lane_change",
+    "lane_deviation_exempted",
+    "violation_reason",
+    "violation_raw",
+    "consecutive_violation_ticks",
+    "violation_confirmed",
+    "legal_transition_grace_remaining",
+    "success_eligible",
+    "update_reference_lane",
+    "same_reference_lane",
+    "adjacent_to_reference",
+    "lane_change_permitted",
+    "current_to_reference_cosine",
+    "vehicle_to_current_cosine",
+    "in_junction",
+}
 
 
 class C0ProtocolError(RuntimeError):
     """Raised when a C0 input or artifact violates the frozen protocol."""
+
+
+def outcome_names_for_protocol(protocol_version: str) -> tuple[str, ...]:
+    """Select the frozen outcome vocabulary without changing historical runs."""
+
+    return (
+        R7_OUTCOMES
+        if str(protocol_version) == TOWN05_R7_C0_PROTOCOL_VERSION
+        else OUTCOMES
+    )
+
+
+def outcome_names_for_record(record_version: str) -> tuple[str, ...]:
+    return (
+        R7_OUTCOMES
+        if str(record_version) == TOWN05_R7_C0_EPISODE_RECORD_VERSION
+        else OUTCOMES
+    )
+
+
+def outcome_names_for_mapping(outcomes: Mapping[str, Any]) -> tuple[str, ...]:
+    return (
+        R7_OUTCOMES
+        if "road_violation_reasons" in outcomes
+        else OUTCOMES
+    )
 
 
 def canonical_json_sha256(payload: Any) -> str:
@@ -343,6 +432,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
+        TOWN05_R7_C0_PROTOCOL_VERSION,
     }:
         raise C0ProtocolError("C0 protocol version mismatch")
     legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
@@ -361,6 +451,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
             "P0_BASE_C0_TOWN05_V3"
         ),
         TOWN05_R6_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN05_R6_V4",
+        TOWN05_R7_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN05_R7_V5",
     }[protocol_version]
     if payload["contract_id"] != expected_contract_id:
         raise C0ProtocolError("C0 contract_id mismatch")
@@ -372,8 +463,10 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
+        TOWN05_R7_C0_PROTOCOL_VERSION,
     }
     r6_protocol = protocol_version == TOWN05_R6_C0_PROTOCOL_VERSION
+    r7_protocol = protocol_version == TOWN05_R7_C0_PROTOCOL_VERSION
     environment_fields = {
         "carla_version",
         "town",
@@ -390,6 +483,8 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         environment_fields.update(
             {"lidar_range_m", "ttc_max_range_m", "offroad_protocol"}
         )
+    if r7_protocol:
+        environment_fields.add("road_legality_protocol")
     _require_exact_fields(
         env,
         environment_fields,
@@ -404,6 +499,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
                 TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
                 TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
                 TOWN05_R6_C0_PROTOCOL_VERSION,
+                TOWN05_R7_C0_PROTOCOL_VERSION,
             }
             and env["town"] != "Town05"
         )
@@ -414,12 +510,17 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
                 TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
                 TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
                 TOWN05_R6_C0_PROTOCOL_VERSION,
+                TOWN05_R7_C0_PROTOCOL_VERSION,
             }
             and env["town"] != "Town02"
         )
         or env["num_agents"] != 2
         or env["reward_version"] != (
-            "v4" if r6_protocol else ("v2" if reward_v2 else "v3")
+            "v5"
+            if r7_protocol
+            else "v4"
+            if r6_protocol
+            else ("v2" if reward_v2 else "v3")
         )
         or env["adversarial_agent_ids"] != []
         or env["allow_extra_traffic"] is not False
@@ -429,13 +530,17 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         )
     if new_offroad_protocol:
         expected_offroad_spec = (
-            r6_offroad_protocol_spec() if r6_protocol else offroad_protocol_spec()
+            r6_offroad_protocol_spec()
+            if (r6_protocol or r7_protocol)
+            else offroad_protocol_spec()
         )
         if env["offroad_protocol"] != expected_offroad_spec:
             raise C0ProtocolError("C0 offroad protocol differs from training")
         for name in ("lidar_range_m", "ttc_max_range_m"):
             if _finite(env[name], context=f"environment.{name}") <= 0.0:
                 raise C0ProtocolError(f"environment.{name} must be positive")
+    if r7_protocol and env["road_legality_protocol"] != road_legality_protocol_spec():
+        raise C0ProtocolError("C0 road-legality protocol differs from R7 training")
     _positive_int(env["max_steps"], context="environment.max_steps")
     for name in ("straight_road_length", "timestep", "reward_gamma"):
         if _finite(env[name], context=f"environment.{name}") <= 0:
@@ -454,7 +559,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
             "mode": "deterministic_actor_mean_tanh",
             "observation_protocol_version": (
                 R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION
-                if r6_protocol
+                if (r6_protocol or r7_protocol)
                 else TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
                 if new_offroad_protocol
                 else OBSERVATION_PROTOCOL_VERSION
@@ -470,20 +575,23 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         raise C0ProtocolError("C0 action policy differs from the frozen deterministic protocol")
 
     checkpoint = payload["checkpoint"]
+    checkpoint_fields = {
+        "schema_version",
+        "training_protocol_version",
+        "required_training_contract_id",
+        "required_training_contract_sha256",
+        "allowed_checkpoint_kinds",
+        "allowed_checkpoint_updates",
+        "required_agent_ids",
+        "obs_dim",
+        "action_dim",
+        "hidden_dim",
+    }
+    if r7_protocol:
+        checkpoint_fields.add("state_dim")
     _require_exact_fields(
         checkpoint,
-        {
-            "schema_version",
-            "training_protocol_version",
-            "required_training_contract_id",
-            "required_training_contract_sha256",
-            "allowed_checkpoint_kinds",
-            "allowed_checkpoint_updates",
-            "required_agent_ids",
-            "obs_dim",
-            "action_dim",
-            "hidden_dim",
-        },
+        checkpoint_fields,
         context="checkpoint",
     )
     if legacy:
@@ -492,6 +600,9 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     elif protocol_version in {ACTION_C0_PROTOCOL_VERSION, REWARD_C0_PROTOCOL_VERSION}:
         expected_checkpoint_schema = ACTION_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = ACTION_TRAINING_PROTOCOL_VERSION
+    elif r7_protocol:
+        expected_checkpoint_schema = R7_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = R7_TRAINING_PROTOCOL_VERSION
     elif r6_protocol:
         expected_checkpoint_schema = CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = TRAINING_PROTOCOL_VERSION
@@ -513,6 +624,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
             "P0_BASE_MAPPO_TOWN05_V3"
         ),
         TOWN05_R6_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN05_R6_V4",
+        TOWN05_R7_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN05_R7_V5",
     }[protocol_version]
     if (
         checkpoint["schema_version"] != expected_checkpoint_schema
@@ -520,17 +632,20 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         or checkpoint["allowed_checkpoint_kinds"] != ["periodic"]
         or checkpoint["allowed_checkpoint_updates"]
         != (
-            [5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160]
+            [5, 10, 20, 40, 60, 80, 100, 120, 160, 200, 300, 400, 500, 600]
+            if r7_protocol
+            else [5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160]
             if new_offroad_protocol
             else [5, 10, 20, 30, 40, 60, 80, 100]
         )
         or checkpoint["required_agent_ids"] != [0, 1]
-        or checkpoint["obs_dim"] != (20 if r6_protocol else 19)
+        or checkpoint["obs_dim"] != (20 if (r6_protocol or r7_protocol) else 19)
         or checkpoint["action_dim"] != expected_action_dim
         or checkpoint["hidden_dim"] != 128
         or checkpoint["required_training_contract_id"]
         != expected_training_contract_id
         or not SHA256_RE.fullmatch(str(checkpoint["required_training_contract_sha256"]))
+        or (r7_protocol and checkpoint["state_dim"] != 12)
     ):
         raise C0ProtocolError("checkpoint compatibility policy differs from the frozen baseline")
 
@@ -602,25 +717,26 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         raise C0ProtocolError("validation scenarios must not duplicate training scenarios by content hash")
 
     outcomes = payload["outcomes"]
+    outcome_names = outcome_names_for_protocol(protocol_version)
+    expected_outcome_fields = {
+        *(f"{name}_reasons" for name in outcome_names),
+        "require_mutual_exclusivity",
+        "allow_unclassified" if r7_protocol else "allow_other_for_go",
+    }
     _require_exact_fields(
         outcomes,
-        {
-            "success_reasons",
-            "collision_reasons",
-            "timeout_reasons",
-            "other_reasons",
-            "require_mutual_exclusivity",
-            "allow_other_for_go",
-        },
+        expected_outcome_fields,
         context="outcomes",
     )
-    reason_lists = [outcomes[f"{name}_reasons"] for name in OUTCOMES]
+    reason_lists = [outcomes[f"{name}_reasons"] for name in outcome_names]
     if any(not isinstance(values, list) or not values for values in reason_lists):
         raise C0ProtocolError("each outcome must have at least one terminal reason")
     flat = [reason for values in reason_lists for reason in values]
     if len(flat) != len(set(flat)) or outcomes["require_mutual_exclusivity"] is not True:
         raise C0ProtocolError("outcome terminal reasons must be mutually exclusive")
-    if outcomes["allow_other_for_go"] is not False:
+    if r7_protocol and outcomes["allow_unclassified"] is not False:
+        raise C0ProtocolError("R7 formal outcomes cannot leave a terminal reason unclassified")
+    if not r7_protocol and outcomes["allow_other_for_go"] is not False:
         raise C0ProtocolError("other outcome cannot qualify for GO")
 
     outputs = payload["outputs"]
@@ -644,6 +760,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         protocol_version in {
             TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
             TOWN05_R6_C0_PROTOCOL_VERSION,
+            TOWN05_R7_C0_PROTOCOL_VERSION,
         }
     )
     repeatability_fields = (
@@ -775,7 +892,11 @@ def expand_profile_cases(
 
 
 def classify_outcome(episode_end_reason: str, outcomes: Mapping[str, Any]) -> str:
-    matches = [name for name in OUTCOMES if episode_end_reason in outcomes[f"{name}_reasons"]]
+    matches = [
+        name
+        for name in outcome_names_for_mapping(outcomes)
+        if episode_end_reason in outcomes[f"{name}_reasons"]
+    ]
     if len(matches) != 1:
         raise C0ProtocolError(
             f"episode_end_reason must map to exactly one outcome: {episode_end_reason!r}"
@@ -807,9 +928,11 @@ def load_and_validate_c0_checkpoint(
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
+        TOWN05_R7_C0_PROTOCOL_VERSION,
     }
     r6_protocol = protocol_version == TOWN05_R6_C0_PROTOCOL_VERSION
-    historical = not r6_protocol
+    r7_protocol = protocol_version == TOWN05_R7_C0_PROTOCOL_VERSION
+    historical = not (r6_protocol or r7_protocol)
     validate_checkpoint_header(checkpoint, allow_legacy=historical)
     policy = contract["checkpoint"]
     mismatches: list[str] = []
@@ -820,7 +943,7 @@ def load_and_validate_c0_checkpoint(
     expected_protocols = {
         "observation": (
             R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION
-            if r6_protocol
+            if (r6_protocol or r7_protocol)
             else TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION
             if new_offroad_protocol
             else OBSERVATION_PROTOCOL_VERSION
@@ -840,7 +963,9 @@ def load_and_validate_c0_checkpoint(
             LEGACY_METRICS_PROTOCOL_VERSION
             if legacy
             else (
-                METRICS_PROTOCOL_VERSION
+                R7_METRICS_PROTOCOL_VERSION
+                if r7_protocol
+                else METRICS_PROTOCOL_VERSION
                 if r6_protocol
                 else OFFROAD_METRICS_PROTOCOL_VERSION
                 if new_offroad_protocol
@@ -856,7 +981,7 @@ def load_and_validate_c0_checkpoint(
     if new_offroad_protocol:
         expected_protocols["offroad"] = (
             R6_OFFROAD_PROTOCOL_VERSION
-            if r6_protocol else OFFROAD_PROTOCOL_VERSION
+            if (r6_protocol or r7_protocol) else OFFROAD_PROTOCOL_VERSION
         )
     if r6_protocol:
         expected_protocols.update({
@@ -864,12 +989,22 @@ def load_and_validate_c0_checkpoint(
             "curriculum": CURRICULUM_PROTOCOL_VERSION,
             "stall": STALL_PROTOCOL_VERSION,
         })
+    if r7_protocol:
+        expected_protocols.update({
+            "policy_distribution": R7_POLICY_DISTRIBUTION_PROTOCOL_VERSION,
+            "curriculum": R7_CURRICULUM_PROTOCOL_VERSION,
+            "stall": STALL_PROTOCOL_VERSION,
+            "road_legality": ROAD_LEGALITY_PROTOCOL_VERSION,
+            "critic_diagnostics": CRITIC_DIAGNOSTICS_PROTOCOL_VERSION,
+            "learning_rate": LEARNING_RATE_PROTOCOL_VERSION,
+        })
     if protocol_version in {
         C0_PROTOCOL_VERSION,
         TOWN05_C0_PROTOCOL_VERSION,
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
+        TOWN05_R7_C0_PROTOCOL_VERSION,
     }:
         expected_protocols.update(
             {
@@ -892,6 +1027,8 @@ def load_and_validate_c0_checkpoint(
     }
     if not historical:
         expected_model["critic_output_semantics"] = "normalized_value"
+    if r7_protocol:
+        expected_model["state_dim"] = int(policy["state_dim"])
     if not isinstance(model_spec, Mapping) or any(model_spec.get(key) != value for key, value in expected_model.items()):
         mismatches.append("model_spec")
     if protocol_version in {
@@ -899,6 +1036,7 @@ def load_and_validate_c0_checkpoint(
         TOWN05_OFFROAD_C0_PROTOCOL_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
+        TOWN05_R7_C0_PROTOCOL_VERSION,
     }:
         expected_gamma = float(contract["environment"]["reward_gamma"])
         training_config = checkpoint.get("training_config", {})
@@ -918,15 +1056,34 @@ def load_and_validate_c0_checkpoint(
             "offroad_protocol"
         ) != (
             r6_offroad_protocol_spec()
-            if r6_protocol
+            if (r6_protocol or r7_protocol)
             else offroad_protocol_spec()
         ):
             mismatches.append("run_metadata.runtime.offroad_protocol")
+        if r7_protocol and runtime.get(
+            "road_legality_protocol"
+        ) != road_legality_protocol_spec():
+            mismatches.append("run_metadata.runtime.road_legality_protocol")
     actors = checkpoint.get("actors")
     if not isinstance(actors, Mapping) or {int(key) for key in actors} != set(policy["required_agent_ids"]):
         mismatches.append("actors")
     if mismatches:
         raise C0ProtocolError("checkpoint is incompatible with C0: " + ", ".join(mismatches))
+    if r7_protocol:
+        probe = checkpoint.get("critic_probe_batch")
+        if not isinstance(probe, Mapping):
+            raise C0ProtocolError(
+                "checkpoint is incompatible with C0: critic_probe_batch"
+            )
+        try:
+            validate_critic_probe_batch(
+                probe,
+                expected_state_dim=int(policy["state_dim"]),
+            )
+        except ValueError as error:
+            raise C0ProtocolError(
+                f"checkpoint is incompatible with C0: critic_probe_batch: {error}"
+            ) from error
     for agent_id in policy["required_agent_ids"]:
         state = actors.get(agent_id, actors.get(str(agent_id)))
         try:
@@ -1042,6 +1199,54 @@ def _validate_stats(payload: Any, *, expected_count: int, context: str) -> None:
             raise C0ProtocolError(f"{context} min/mean/max are inconsistent")
 
 
+def _validate_road_legality_evidence(payload: Any, *, context: str) -> None:
+    _require_exact_fields(payload, ROAD_LEGALITY_EVIDENCE_FIELDS, context=context)
+    if not str(payload["classification"]).strip():
+        raise C0ProtocolError(f"{context}.classification cannot be empty")
+    if not isinstance(payload["violation_reason"], str):
+        raise C0ProtocolError(f"{context}.violation_reason must be a string")
+    lane = payload["reference_lane"]
+    if lane is not None and (
+        not isinstance(lane, list)
+        or len(lane) != 2
+        or any(isinstance(value, bool) or not isinstance(value, int) for value in lane)
+    ):
+        raise C0ProtocolError(
+            f"{context}.reference_lane must be null or [road_id, lane_id]"
+        )
+    bool_fields = ROAD_LEGALITY_EVIDENCE_FIELDS - {
+        "classification",
+        "reference_lane",
+        "violation_reason",
+        "consecutive_violation_ticks",
+        "legal_transition_grace_remaining",
+        "current_to_reference_cosine",
+        "vehicle_to_current_cosine",
+    }
+    if any(not isinstance(payload[name], bool) for name in bool_fields):
+        raise C0ProtocolError(f"{context} boolean evidence is invalid")
+    for name in (
+        "consecutive_violation_ticks",
+        "legal_transition_grace_remaining",
+    ):
+        value = payload[name]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise C0ProtocolError(f"{context}.{name} must be a non-negative integer")
+    for name in (
+        "current_to_reference_cosine",
+        "vehicle_to_current_cosine",
+    ):
+        value = _finite(payload[name], context=f"{context}.{name}")
+        if not -1.0 <= value <= 1.0:
+            raise C0ProtocolError(f"{context}.{name} must be in [-1,1]")
+    if payload["violation_raw"] != bool(payload["violation_reason"]):
+        raise C0ProtocolError(f"{context} violation reason/raw flag mismatch")
+    if payload["violation_confirmed"] and not payload["violation_raw"]:
+        raise C0ProtocolError(f"{context} confirmed violation must still be raw")
+    if payload["success_eligible"] and payload["violation_raw"]:
+        raise C0ProtocolError(f"{context} raw violation cannot be success-eligible")
+
+
 def validate_episode_record(
     record: Any,
     *,
@@ -1081,11 +1286,14 @@ def validate_episode_record(
         TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
         TOWN05_R6_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R7_C0_EPISODE_RECORD_VERSION,
     }:
         raise C0ProtocolError("episode record version mismatch")
     current_action = record_version != LEGACY_C0_EPISODE_RECORD_VERSION
     reward_version = (
-        "v4"
+        "v5"
+        if record_version == TOWN05_R7_C0_EPISODE_RECORD_VERSION
+        else "v4"
         if record_version == TOWN05_R6_C0_EPISODE_RECORD_VERSION
         else "v3"
         if record_version in {
@@ -1104,7 +1312,10 @@ def validate_episode_record(
     if not SHA256_RE.fullmatch(str(record["scenario_sha256"])):
         raise C0ProtocolError("episode scenario SHA256 is invalid")
     episode_length = _positive_int(record["episode_length"], context="episode_length")
-    if record["outcome"] not in OUTCOMES or not str(record["episode_end_reason"]).strip():
+    if (
+        record["outcome"] not in outcome_names_for_record(record_version)
+        or not str(record["episode_end_reason"]).strip()
+    ):
         raise C0ProtocolError("episode outcome/end reason is invalid")
     if not str(record["started_at"]).strip() or not str(record["finished_at"]).strip():
         raise C0ProtocolError("episode timestamps cannot be empty")
@@ -1141,6 +1352,7 @@ def validate_episode_record(
         TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
         TOWN05_R6_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R7_C0_EPISODE_RECORD_VERSION,
     }
     if offroad_record:
         expected_agent_fields.update(
@@ -1151,9 +1363,19 @@ def validate_episode_record(
                 "max_footprint_outside_fraction",
             }
         )
+    road_record = record_version == TOWN05_R7_C0_EPISODE_RECORD_VERSION
+    if road_record:
+        expected_agent_fields.update(
+            {
+                "road_rule_terminated",
+                "road_violation_confirmed",
+                "road_legality",
+            }
+        )
     if record_version in {
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
         TOWN05_R6_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R7_C0_EPISODE_RECORD_VERSION,
     }:
         expected_agent_fields.add("lifecycle_transition")
     returns = []
@@ -1173,6 +1395,7 @@ def validate_episode_record(
         if record_version in {
             TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
             TOWN05_R6_C0_EPISODE_RECORD_VERSION,
+            TOWN05_R7_C0_EPISODE_RECORD_VERSION,
         }:
             transition = agent["lifecycle_transition"]
             if (
@@ -1215,6 +1438,19 @@ def validate_episode_record(
             "collision_event",
             "lane_invasion_sensor_event",
             "success_event",
+            *(
+                (
+                    "road_same_reference_lane",
+                    "road_adjacent_to_reference",
+                    "road_lane_change_permitted",
+                    "road_in_junction",
+                    "road_violation_raw",
+                    "road_violation_terminated",
+                    "road_success_eligible",
+                )
+                if road_record
+                else ()
+            ),
         ):
             stats = diagnostics[name]
             if stats["min"] is not None and (
@@ -1377,6 +1613,35 @@ def validate_episode_record(
                     },
                     context="first_offroad_evidence",
                 )
+        if road_record:
+            if not isinstance(agent["road_rule_terminated"], bool):
+                raise C0ProtocolError("road_rule_terminated must be boolean")
+            if not isinstance(agent["road_violation_confirmed"], bool):
+                raise C0ProtocolError("road_violation_confirmed must be boolean")
+            _validate_road_legality_evidence(
+                agent["road_legality"],
+                context=f"agent {agent_id}.road_legality",
+            )
+            evidence = agent["road_legality"]
+            terminal_from_diagnostics = (
+                diagnostics["road_violation_terminated"]["max"] is not None
+                and diagnostics["road_violation_terminated"]["max"] > 0.0
+            )
+            if agent["road_rule_terminated"] != terminal_from_diagnostics:
+                raise C0ProtocolError(
+                    f"agent {agent_id} road-rule flag differs from diagnostics"
+                )
+            if agent["road_violation_confirmed"] != evidence["violation_confirmed"]:
+                raise C0ProtocolError(
+                    f"agent {agent_id} confirmed road-violation evidence differs"
+                )
+            if agent["road_rule_terminated"] and (
+                not agent["final_terminated"]
+                or not agent["road_violation_confirmed"]
+            ):
+                raise C0ProtocolError(
+                    f"agent {agent_id} road-rule termination lacks confirmed terminal evidence"
+                )
 
     team = record["team"]
     _require_exact_fields(team, {"mean_episode_return", "total_active_decision_steps"}, context="team")
@@ -1401,16 +1666,55 @@ def validate_episode_record(
             raise C0ProtocolError(
                 "offroad end reason must match per-agent offroad termination"
             )
+        if road_record and record["outcome"] == "offroad" and not any(offroad_flags):
+            raise C0ProtocolError("offroad outcome requires an offroad termination")
+        if road_record and record["outcome"] != "offroad" and any(offroad_flags):
+            raise C0ProtocolError(
+                "R7 offroad termination cannot appear under another outcome"
+            )
+    if road_record:
+        road_flags = [agent["road_rule_terminated"] for agent in agents.values()]
+        end_is_road = record["episode_end_reason"] in {
+            "cooperative_road_violation",
+            "adversary_road_violation",
+        }
+        if end_is_road != any(road_flags):
+            raise C0ProtocolError(
+                "road-violation end reason must match per-agent road-rule termination"
+            )
+        if record["outcome"] == "road_violation" and not any(road_flags):
+            raise C0ProtocolError(
+                "road_violation outcome requires a road-rule termination"
+            )
+        if record["outcome"] != "road_violation" and any(road_flags):
+            raise C0ProtocolError(
+                "road-rule termination cannot appear under another R7 outcome"
+            )
+        if record["outcome"] == "success" and not all(
+            agent["road_legality"]["success_eligible"]
+            for agent in agents.values()
+        ):
+            raise C0ProtocolError(
+                "R7 success requires final road-legality eligibility for both agents"
+            )
 
 
 def _aggregate_group(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     count = len(records)
     outcome_counts = Counter(record["outcome"] for record in records)
+    outcome_names = (
+        outcome_names_for_record(str(records[0].get("record_version", "")))
+        if records
+        else OUTCOMES
+    )
     result = {
         "case_count": count,
-        "outcome_counts": {name: outcome_counts.get(name, 0) for name in OUTCOMES},
+        "outcome_counts": {
+            name: outcome_counts.get(name, 0) for name in outcome_names
+        },
         "outcome_rates": {
-            name: outcome_counts.get(name, 0) / count if count else 0.0 for name in OUTCOMES
+            name: outcome_counts.get(name, 0) / count if count else 0.0
+            for name in outcome_names
         },
         "episode_length": {
             "min": min(record["episode_length"] for record in records) if count else None,
@@ -1427,6 +1731,7 @@ def _aggregate_group(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
         TOWN05_R6_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R7_C0_EPISODE_RECORD_VERSION,
     }:
         result["offroad_count"] = sum(
             any(
@@ -1476,6 +1781,9 @@ def build_summary(
     elif record_version == TOWN05_R6_C0_EPISODE_RECORD_VERSION:
         eval_protocol_version = TOWN05_R6_C0_PROTOCOL_VERSION
         reward_version = "v4"
+    elif record_version == TOWN05_R7_C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = TOWN05_R7_C0_PROTOCOL_VERSION
+        reward_version = "v5"
     else:
         raise C0ProtocolError("cannot summarize an unknown C0 episode version")
     overall = _aggregate_group(records)
@@ -1504,13 +1812,23 @@ def build_summary(
             TOWN05_OFFROAD_C0_EPISODE_RECORD_VERSION,
             TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
             TOWN05_R6_C0_EPISODE_RECORD_VERSION,
+            TOWN05_R7_C0_EPISODE_RECORD_VERSION,
         }:
             agents[agent_id]["offroad_episode_count"] = sum(
                 bool(record["agents"][agent_id]["offroad_terminated"])
                 for record in records
             )
+        if record_version == TOWN05_R7_C0_EPISODE_RECORD_VERSION:
+            agents[agent_id]["road_violation_episode_count"] = sum(
+                bool(record["agents"][agent_id]["road_rule_terminated"])
+                for record in records
+            )
     return {
-        "summary_version": C0_SUMMARY_VERSION,
+        "summary_version": (
+            TOWN05_R7_C0_SUMMARY_VERSION
+            if record_version == TOWN05_R7_C0_EPISODE_RECORD_VERSION
+            else C0_SUMMARY_VERSION
+        ),
         "eval_protocol_version": eval_protocol_version,
         "eval_id": eval_id,
         "profile": profile,
@@ -1531,23 +1849,33 @@ def summary_csv_rows(summary: Mapping[str, Any]) -> list[Dict[str, str]]:
     for scope, name, group in groups:
         counts = group["outcome_counts"]
         rates = group["outcome_rates"]
-        rows.append(
-            {
+        base = {
                 "scope": scope,
                 "name": name,
                 "case_count": str(group["case_count"]),
                 "success_count": str(counts["success"]),
                 "collision_count": str(counts["collision"]),
                 "timeout_count": str(counts["timeout"]),
-                "other_count": str(counts["other"]),
                 "success_rate": format(rates["success"], ".12g"),
                 "collision_rate": format(rates["collision"], ".12g"),
                 "timeout_rate": format(rates["timeout"], ".12g"),
-                "other_rate": format(rates["other"], ".12g"),
                 "mean_episode_length": format(group["episode_length"]["mean"], ".12g"),
                 "mean_team_return": format(group["mean_team_return"], ".12g"),
             }
-        )
+        if summary["eval_protocol_version"] == TOWN05_R7_C0_PROTOCOL_VERSION:
+            base.update({
+                "offroad_count": str(counts["offroad"]),
+                "road_violation_count": str(counts["road_violation"]),
+                "offroad_rate": format(rates["offroad"], ".12g"),
+                "road_violation_rate": format(rates["road_violation"], ".12g"),
+            })
+            rows.append({name: base[name] for name in R7_SUMMARY_CSV_FIELDS})
+        else:
+            base.update({
+                "other_count": str(counts["other"]),
+                "other_rate": format(rates["other"], ".12g"),
+            })
+            rows.append({name: base[name] for name in SUMMARY_CSV_FIELDS})
     return rows
 
 
@@ -1559,7 +1887,14 @@ def atomic_write_csv(path: str | Path, rows: Sequence[Mapping[str, str]]) -> Non
     temporary = Path(temp_name)
     try:
         with temporary.open("w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=SUMMARY_CSV_FIELDS)
+            fieldnames = (
+                R7_SUMMARY_CSV_FIELDS
+                if rows and set(rows[0]) == set(R7_SUMMARY_CSV_FIELDS)
+                else SUMMARY_CSV_FIELDS
+            )
+            if any(set(row) != set(fieldnames) for row in rows):
+                raise C0ProtocolError("summary CSV row schema mismatch")
+            writer = csv.DictWriter(handle, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
             handle.flush()
@@ -1573,7 +1908,10 @@ def atomic_write_csv(path: str | Path, rows: Sequence[Mapping[str, str]]) -> Non
 def read_summary_csv(path: str | Path) -> list[Dict[str, str]]:
     with Path(path).open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
-        if tuple(reader.fieldnames or ()) != SUMMARY_CSV_FIELDS:
+        if tuple(reader.fieldnames or ()) not in {
+            SUMMARY_CSV_FIELDS,
+            R7_SUMMARY_CSV_FIELDS,
+        }:
             raise C0ProtocolError("summary CSV schema mismatch")
         return [dict(row) for row in reader]
 
@@ -1647,6 +1985,7 @@ def compare_repeatability_records(
     outcome_mode = contract["protocol_version"] in {
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
+        TOWN05_R7_C0_PROTOCOL_VERSION,
     }
     if outcome_mode:
         if repeatability["comparison_mode"] != OUTCOME_REPEATABILITY_MODE:

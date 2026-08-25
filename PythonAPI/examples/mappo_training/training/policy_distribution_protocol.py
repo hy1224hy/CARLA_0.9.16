@@ -6,6 +6,7 @@ from typing import Dict
 
 
 POLICY_DISTRIBUTION_PROTOCOL_VERSION = "tanh_squashed_gaussian_entropy_v2_r6"
+R7_POLICY_DISTRIBUTION_PROTOCOL_VERSION = "tanh_squashed_gaussian_entropy_v3_r7"
 
 
 def policy_distribution_spec() -> Dict[str, object]:
@@ -29,3 +30,17 @@ def policy_distribution_spec() -> Dict[str, object]:
         },
         "deterministic_action_saturation_threshold": 0.99,
     }
+
+
+def r7_policy_distribution_spec() -> Dict[str, object]:
+    spec = policy_distribution_spec()
+    spec["policy_distribution_protocol_version"] = (
+        R7_POLICY_DISTRIBUTION_PROTOCOL_VERSION
+    )
+    spec["entropy_coefficient_schedule"] = {
+        "kind": "linear",
+        "start": 0.01,
+        "final": 0.001,
+        "final_update": 600,
+    }
+    return spec

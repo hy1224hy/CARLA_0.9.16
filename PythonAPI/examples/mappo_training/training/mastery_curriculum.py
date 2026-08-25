@@ -1,13 +1,14 @@
-"""Capability-gated curriculum state machine for P0-T05-09/R6."""
+"""Capability-gated curriculum state machine for R6 and R7."""
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import math
-from typing import Dict, Mapping, Sequence
+from typing import Dict, Mapping, Optional, Sequence
 
 
 CURRICULUM_PROTOCOL_VERSION = "town05_mastery_curriculum_v2"
+R7_CURRICULUM_PROTOCOL_VERSION = "town05_mastery_curriculum_road_rule_v3"
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ class MasteryWindow:
     team_timeout_rate: float
     team_collision_rate: float
     team_offroad_rate: float
+    team_road_violation_rate: float = 0.0
 
 
 class MasteryGate:
@@ -45,6 +47,7 @@ class MasteryGate:
         stage_count: int,
         agent_ids: Sequence[int],
         config: MasteryConfig = DEFAULT_MASTERY_CONFIG,
+        maximum_team_road_violation_rate: Optional[float] = None,
     ):
         _validate_config(config)
         if isinstance(stage_count, bool) or int(stage_count) <= 0:
@@ -55,6 +58,19 @@ class MasteryGate:
         self.stage_count = int(stage_count)
         self.agent_ids = normalized_ids
         self.config = config
+        if maximum_team_road_violation_rate is not None:
+            maximum_team_road_violation_rate = float(
+                maximum_team_road_violation_rate
+            )
+            if not math.isfinite(maximum_team_road_violation_rate) or not (
+                0.0 <= maximum_team_road_violation_rate <= 1.0
+            ):
+                raise ValueError(
+                    "maximum_team_road_violation_rate must be in [0,1]"
+                )
+        self.maximum_team_road_violation_rate = (
+            maximum_team_road_violation_rate
+        )
         self.stage_index = 0
         self.consecutive_passes = 0
         self.last_update = 0
@@ -72,12 +88,18 @@ class MasteryGate:
                 failures.append(f"agent{agent_id}.mean_completion")
             if window.agent_brake_mode_rate[agent_id] > self.config.maximum_agent_brake_mode_rate:
                 failures.append(f"agent{agent_id}.brake_mode")
-        team_checks = (
+        team_checks = [
             ("team.success_rate", window.team_success_rate >= self.config.minimum_team_success_rate),
             ("team.timeout_rate", window.team_timeout_rate <= self.config.maximum_team_timeout_rate),
             ("team.collision_rate", window.team_collision_rate <= self.config.maximum_team_collision_rate),
             ("team.offroad_rate", window.team_offroad_rate <= self.config.maximum_team_offroad_rate),
-        )
+        ]
+        if self.maximum_team_road_violation_rate is not None:
+            team_checks.append((
+                "team.road_violation_rate",
+                window.team_road_violation_rate
+                <= self.maximum_team_road_violation_rate,
+            ))
         failures.extend(name for name, passed in team_checks if not passed)
         passed = not failures
         self.consecutive_passes = (
@@ -106,17 +128,32 @@ class MasteryGate:
             "stage_index": self.stage_index,
             "promoted": promoted,
             "consecutive_passes": self.consecutive_passes,
-            "window": _window_as_dict(window, self.agent_ids),
+            "window": _window_as_dict(
+                window,
+                self.agent_ids,
+                include_road_violation=(
+                    self.maximum_team_road_violation_rate is not None
+                ),
+            ),
         }
         self.last_evidence = evidence
         return dict(evidence)
 
     def state_dict(self) -> Dict[str, object]:
+        r7 = self.maximum_team_road_violation_rate is not None
+        config = asdict(self.config)
+        if r7:
+            config["maximum_team_road_violation_rate"] = (
+                self.maximum_team_road_violation_rate
+            )
         return {
-            "curriculum_protocol_version": CURRICULUM_PROTOCOL_VERSION,
+            "curriculum_protocol_version": (
+                R7_CURRICULUM_PROTOCOL_VERSION if r7
+                else CURRICULUM_PROTOCOL_VERSION
+            ),
             "stage_count": self.stage_count,
             "agent_ids": list(self.agent_ids),
-            "config": asdict(self.config),
+            "config": config,
             "stage_index": self.stage_index,
             "consecutive_passes": self.consecutive_passes,
             "last_update": self.last_update,
@@ -169,6 +206,7 @@ class MasteryGate:
             window.team_timeout_rate,
             window.team_collision_rate,
             window.team_offroad_rate,
+            window.team_road_violation_rate,
             *window.agent_brake_mode_rate.values(),
             *window.agent_mean_completion.values(),
         ):
@@ -180,19 +218,43 @@ class MasteryGate:
 
 def mastery_protocol_spec(
     config: MasteryConfig = DEFAULT_MASTERY_CONFIG,
+    *,
+    maximum_team_road_violation_rate: Optional[float] = None,
 ) -> Dict[str, object]:
     _validate_config(config)
+    if maximum_team_road_violation_rate is not None:
+        maximum_team_road_violation_rate = float(
+            maximum_team_road_violation_rate
+        )
+        if not math.isfinite(maximum_team_road_violation_rate) or not (
+            0.0 <= maximum_team_road_violation_rate <= 1.0
+        ):
+            raise ValueError("maximum road-violation rate must be in [0,1]")
+    parameters = asdict(config)
+    if maximum_team_road_violation_rate is not None:
+        parameters["maximum_team_road_violation_rate"] = (
+            maximum_team_road_violation_rate
+        )
     return {
-        "curriculum_protocol_version": CURRICULUM_PROTOCOL_VERSION,
-        "parameters": asdict(config),
+        "curriculum_protocol_version": (
+            R7_CURRICULUM_PROTOCOL_VERSION
+            if maximum_team_road_violation_rate is not None
+            else CURRICULUM_PROTOCOL_VERSION
+        ),
+        "parameters": parameters,
         "promotion_scope": "all_agents_and_team_outcomes",
         "promotion_rule": "consecutive_frozen_windows",
         "automatic_update_schedule": False,
     }
 
 
-def _window_as_dict(window: MasteryWindow, agent_ids: Sequence[int]) -> Dict[str, object]:
-    return {
+def _window_as_dict(
+    window: MasteryWindow,
+    agent_ids: Sequence[int],
+    *,
+    include_road_violation: bool = False,
+) -> Dict[str, object]:
+    result = {
         "update": window.update,
         "episode_count": window.episode_count,
         "agent_mean_speed_mps": {
@@ -212,6 +274,11 @@ def _window_as_dict(window: MasteryWindow, agent_ids: Sequence[int]) -> Dict[str
         "team_collision_rate": float(window.team_collision_rate),
         "team_offroad_rate": float(window.team_offroad_rate),
     }
+    if include_road_violation:
+        result["team_road_violation_rate"] = float(
+            window.team_road_violation_rate
+        )
+    return result
 
 
 def _validate_config(config: MasteryConfig) -> None:

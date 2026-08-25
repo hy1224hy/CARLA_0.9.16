@@ -39,7 +39,7 @@
 1. **reward/终止合法性缺口：** 当前 `offroad` 不能识别“仍位于 `Driving` 类型、但已进入对向车道”的状态；合法换道豁免又可能覆盖不合理横向行为，导致违规捷径仍能保留 progress/success 收益。
 2. **回报分布非平稳：** 策略由低速 timeout 转向高速 collision/offroad/跨线，value target 的尺度和混合分布在训练后半段显著扩大。
 3. **critic 学习率时序不匹配：** 160-update 线性退火恰好在 target variance 上升阶段把 critic LR 降至 1.5e-5，使其难以追踪新分布。
-4. **critic 审计不足：** 当前汇总 EV 不足以区分单 agent、scenario 与 outcome 子分布的失配，也无法判断是在线 LR 时序还是函数拟合能力不足。虽然部分 reward/终止状态未直接出现在 critic 输入中，但按用户决定，本轮不通过增加车道观测来处理；先在现有输入下完成分组诊断和固定 batch 拟合。
+4. **critic 审计不足：** 当前汇总 EV 不足以区分单 agent、scenario 与 outcome 子分布的失配，也无法判断是在线 LR 时序还是函数拟合能力不足。虽然部分 reward/终止状态未直接出现在 critic 输入中，但按用户决定，本轮不通过增加车道观测来处理。R6 checkpoint/JSONL 没有保存原始 rollout state/target，不能事后伪造 R6 固定 batch 重放；R7 应在现有输入下记录在线 pre/post-update 分组诊断，并从首个完整 checkpoint 开始保存可重放 probe。
 5. **长任务信用分配仍然困难：** 500-step 任务配合 `gamma=0.999`、`lambda=0.95` 时，GAE 权重按 `(gamma*lambda)^l` 衰减，特征尺度约为 19.6 step；u160 对复杂任务仍只是早期诊断，不是充分收敛预算。
 
 ### 拟定解决方法（待审批，尚未实施）
@@ -48,7 +48,7 @@
 - 不构造手工“车道池”，也不向 actor 的 20 维观测增加车道字段。环境侧直接使用 CARLA waypoint 的 `road_id/section_id/lane_id/lane_type/lane_change`、航向和拓扑关系判定同向合法换道、对向占用与逆行。
 - 用有限状态机描述换道：原车道保持与合法换道完成后在新车道内行驶都获得相同的 progress/alignment 基础奖励；换道走廊内只免除合理横向偏差成本，不额外发放可刷取的正奖励；越入对向/错误方向属于强违规，并进入终止或强失败路径。
 - success 必须同时通过目标、方向、可驾驶车道及非对向占用合法性门控，防止跨线捷径换取 success。
-- critic 先增加逐 agent、逐 outcome/scenario 的 pre/post-update EV、target/prediction std 比、分位数和相关性审计，并做固定 batch 拟合探针；随后再决定是否调整容量、更新轮数、ValueNorm/PopArt。
+- critic 先增加逐 agent、逐 outcome/scenario 的 pre/post-update EV、target/prediction std 比、bias、MAE 和相关性审计；R7 checkpoint 保存有界确定性 probe，供后续同输入回放比较。R6 只能保留历史汇总证据，不能声称做过原始 fixed-batch 拟合。得到 R7 probe 后再决定是否调整容量、更新轮数、ValueNorm/PopArt。
 - 新长训练预算在合同创建时一次性注册，建议先按 u600 设计；critic LR 不再在 u160 附近提前衰减到底。建议候选为前 300 update 保持约 3e-4，再退火至 u600 的约 1e-4，最终数值须由离线拟合探针确认。
 - 本轮 actor 与 critic 的观测输入均保持现状，不增加车道、lane id、标线或 wrong-way 字段；critic 修复只从诊断、学习率时序和经拟合探针证实的优化能力入手。
 - 共享 actor 与行为克隆继续保留为 P1 消融，不与本轮 reward/critic 修复同时实施。

@@ -20,6 +20,11 @@ from environment.base_reward_v4 import (
     REWARD_DIAGNOSTICS as REWARD_V4_DIAGNOSTICS,
     reward_v4_spec,
 )
+from environment.base_reward_v5 import (
+    REWARD_COMPONENTS as REWARD_V5_COMPONENTS,
+    REWARD_DIAGNOSTICS as REWARD_V5_DIAGNOSTICS,
+    reward_v5_spec,
+)
 from training.action_protocol import action_protocol_spec
 from training.value_normalization import value_normalization_spec
 
@@ -27,8 +32,14 @@ LEGACY_METRICS_PROTOCOL_VERSION = "mappo_metrics_p0_00g_v3"
 ACTION_METRICS_PROTOCOL_VERSION = "mappo_metrics_action_v2_p0_00g_v4"
 PRE_OFFROAD_METRICS_PROTOCOL_VERSION = "mappo_metrics_valuenorm_p0_00g_v5"
 OFFROAD_METRICS_PROTOCOL_VERSION = "mappo_metrics_offroad_p0_00g_v6"
-METRICS_PROTOCOL_VERSION = "mappo_metrics_r6_p0_t05_09_v7"
-EPISODE_RECORD_VERSION = "mappo_episode_record_mission_v3"
+R6_METRICS_PROTOCOL_VERSION = "mappo_metrics_r6_p0_t05_09_v7"
+R7_METRICS_PROTOCOL_VERSION = "mappo_metrics_r7_p0_t05_10_v8"
+R6_EPISODE_RECORD_VERSION = "mappo_episode_record_mission_v3"
+R7_EPISODE_RECORD_VERSION = "mappo_episode_record_road_rule_v4"
+# Backward-compatible names remain the frozen R6 defaults.  R7 callers select
+# versions through the reward-version functions below.
+METRICS_PROTOCOL_VERSION = R6_METRICS_PROTOCOL_VERSION
+EPISODE_RECORD_VERSION = R6_EPISODE_RECORD_VERSION
 REWARD_AUDIT_ATOL = 1e-6
 ACTION_ZERO_THRESHOLD = 0.01
 ACTION_SATURATION_THRESHOLD = 0.99
@@ -81,6 +92,7 @@ REWARD_COMPONENTS: Dict[str, Tuple[str, ...]] = {
     ),
     "v3": REWARD_V3_COMPONENTS,
     "v4": REWARD_V4_COMPONENTS,
+    "v5": REWARD_V5_COMPONENTS,
 }
 
 REWARD_DIAGNOSTICS: Dict[str, Tuple[str, ...]] = {
@@ -113,6 +125,7 @@ REWARD_DIAGNOSTICS: Dict[str, Tuple[str, ...]] = {
     ),
     "v3": REWARD_V3_DIAGNOSTICS,
     "v4": REWARD_V4_DIAGNOSTICS,
+    "v5": REWARD_V5_DIAGNOSTICS,
 }
 
 DISABLED_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
@@ -122,6 +135,7 @@ DISABLED_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
     "v2": frozenset({"progress", "alive"}),
     "v3": frozenset(),
     "v4": frozenset(),
+    "v5": frozenset(),
 }
 
 SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
@@ -154,7 +168,33 @@ SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
             "mission_timeout",
         }
     ),
+    "v5": frozenset(
+        {
+            "lane_invasion",
+            "offroad",
+            "road_rule",
+            "collision",
+            "success",
+            "mission_timeout",
+        }
+    ),
 }
+
+
+def metrics_protocol_version(reward_version: str) -> str:
+    return (
+        R7_METRICS_PROTOCOL_VERSION
+        if str(reward_version) == "v5"
+        else R6_METRICS_PROTOCOL_VERSION
+    )
+
+
+def episode_record_version(reward_version: str) -> str:
+    return (
+        R7_EPISODE_RECORD_VERSION
+        if str(reward_version) == "v5"
+        else R6_EPISODE_RECORD_VERSION
+    )
 
 
 class MetricsProtocolError(RuntimeError):
@@ -269,6 +309,13 @@ def validate_episode_record(
     if not isinstance(payload, Mapping):
         raise MetricsProtocolError(f"{context}: episode record must be a mapping")
 
+    record_version = str(payload.get("episode_record_version", ""))
+    if record_version not in {
+        R6_EPISODE_RECORD_VERSION,
+        R7_EPISODE_RECORD_VERSION,
+    }:
+        raise MetricsProtocolError(f"{context}: episode record protocol mismatch")
+    is_r7 = record_version == R7_EPISODE_RECORD_VERSION
     expected_top_level = {
         "episode_record_version",
         "run_id",
@@ -284,6 +331,8 @@ def validate_episode_record(
         "offroad",
         "agents",
     }
+    if is_r7:
+        expected_top_level.add("road_violation")
     actual_top_level = set(payload)
     if actual_top_level != expected_top_level:
         raise MetricsProtocolError(
@@ -291,8 +340,6 @@ def validate_episode_record(
             f"missing={sorted(expected_top_level - actual_top_level)}, "
             f"unknown={sorted(actual_top_level - expected_top_level)}"
         )
-    if payload["episode_record_version"] != EPISODE_RECORD_VERSION:
-        raise MetricsProtocolError(f"{context}: episode record protocol mismatch")
     if str(payload["run_id"]) != str(run_id):
         raise MetricsProtocolError(f"{context}: episode record run_id mismatch")
 
@@ -322,9 +369,16 @@ def validate_episode_record(
     )
     timeout = _strict_bool(payload["timeout"], field="timeout", context=context)
     offroad = _strict_bool(payload["offroad"], field="offroad", context=context)
-    if sum((success, collision, timeout, offroad)) != 1:
+    road_violation = (
+        _strict_bool(
+            payload["road_violation"], field="road_violation", context=context
+        )
+        if is_r7
+        else False
+    )
+    if sum((success, collision, timeout, offroad, road_violation)) != 1:
         raise MetricsProtocolError(
-            f"{context}: success/collision/timeout/offroad must contain exactly "
+            f"{context}: terminal outcomes must contain exactly "
             "one terminal outcome"
         )
 
@@ -352,6 +406,8 @@ def validate_episode_record(
         "max_offroad_consecutive_ticks",
         "max_footprint_outside_fraction",
     }
+    if is_r7:
+        expected_agent_fields.add("road_rule_terminated")
     normalized_agents: Dict[str, Dict[str, object]] = {}
     for agent_id in normalized_agent_ids:
         key = str(agent_id)
@@ -399,6 +455,15 @@ def validate_episode_record(
             field="offroad_terminated",
             context=agent_context,
         )
+        road_rule_terminated = (
+            _strict_bool(
+                agent_payload["road_rule_terminated"],
+                field="road_rule_terminated",
+                context=agent_context,
+            )
+            if is_r7
+            else False
+        )
         if terminated and truncated:
             raise MetricsProtocolError(
                 f"{agent_context}: terminated and truncated cannot both be true"
@@ -414,6 +479,10 @@ def validate_episode_record(
         if offroad_terminated and not terminated:
             raise MetricsProtocolError(
                 f"{agent_context}: offroad_terminated requires terminated=True"
+            )
+        if road_rule_terminated and not terminated:
+            raise MetricsProtocolError(
+                f"{agent_context}: road_rule_terminated requires terminated=True"
             )
         max_offroad_ticks = _nonnegative_int(
             agent_payload["max_offroad_consecutive_ticks"],
@@ -503,7 +572,7 @@ def validate_episode_record(
                 "footprint_outside_count": outside_count,
                 "footprint_outside_fraction": first_fraction,
             }
-        normalized_agents[key] = {
+        normalized_agent = {
             "episode_return": _finite_float(
                 agent_payload["episode_return"],
                 field="episode_return",
@@ -520,6 +589,9 @@ def validate_episode_record(
             "max_offroad_consecutive_ticks": max_offroad_ticks,
             "max_footprint_outside_fraction": max_outside_fraction,
         }
+        if is_r7:
+            normalized_agent["road_rule_terminated"] = road_rule_terminated
+        normalized_agents[key] = normalized_agent
 
     if offroad != any(
         agent["offroad_terminated"] for agent in normalized_agents.values()
@@ -527,9 +599,16 @@ def validate_episode_record(
         raise MetricsProtocolError(
             f"{context}: top-level offroad must match per-agent offroad termination"
         )
+    if road_violation != any(
+        agent.get("road_rule_terminated", False)
+        for agent in normalized_agents.values()
+    ):
+        raise MetricsProtocolError(
+            f"{context}: top-level road_violation must match per-agent road termination"
+        )
 
-    return {
-        "episode_record_version": EPISODE_RECORD_VERSION,
+    normalized_record = {
+        "episode_record_version": record_version,
         "run_id": str(run_id),
         "update": update,
         "episode_index": episode_index,
@@ -543,6 +622,9 @@ def validate_episode_record(
         "offroad": offroad,
         "agents": normalized_agents,
     }
+    if is_r7:
+        normalized_record["road_violation"] = road_violation
+    return normalized_record
 
 
 def reward_components(reward_version: str) -> Tuple[str, ...]:
@@ -569,7 +651,7 @@ def reward_schema_document(reward_version: str) -> Dict[str, object]:
     disabled = DISABLED_REWARD_COMPONENTS[reward_version]
     sparse = SPARSE_REWARD_COMPONENTS[reward_version]
     document = {
-        "metrics_protocol_version": METRICS_PROTOCOL_VERSION,
+        "metrics_protocol_version": metrics_protocol_version(reward_version),
         "action_protocol": action_protocol_spec(),
         "critic_protocol": value_normalization_spec(),
         "reward_version": reward_version,
@@ -599,6 +681,8 @@ def reward_schema_document(reward_version: str) -> Dict[str, object]:
         document["reward_protocol"] = reward_v3_spec()
     elif reward_version == "v4":
         document["reward_protocol"] = reward_v4_spec()
+    elif reward_version == "v5":
+        document["reward_protocol"] = reward_v5_spec()
     return document
 
 

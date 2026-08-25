@@ -19,7 +19,7 @@ import os
 import re
 import random
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Mapping, Tuple, Optional
 
 import numpy as np
@@ -46,16 +46,33 @@ from training.action_protocol import (
     action_protocol_spec,
     action_tanh_to_env,
 )
-from training.metrics_protocol import METRICS_PROTOCOL_VERSION
+from training.metrics_protocol import metrics_protocol_version
 from training.mastery_curriculum import (
     CURRICULUM_PROTOCOL_VERSION,
+    R7_CURRICULUM_PROTOCOL_VERSION,
     MasteryGate,
     MasteryWindow,
 )
 from training.policy_distribution_protocol import (
     POLICY_DISTRIBUTION_PROTOCOL_VERSION,
+    R7_POLICY_DISTRIBUTION_PROTOCOL_VERSION,
 )
 from environment.stall_protocol import STALL_PROTOCOL_VERSION
+from environment.road_legality_protocol import (
+    ROAD_LEGALITY_PROTOCOL_VERSION,
+    road_legality_protocol_spec,
+)
+from training.critic_diagnostics import (
+    CRITIC_DIAGNOSTICS_PROTOCOL_VERSION,
+    build_critic_probe_batch,
+    critic_fit_statistics,
+    grouped_critic_fit_statistics,
+)
+from training.learning_rate_protocol import (
+    LEARNING_RATE_PROTOCOL_VERSION,
+    R7LearningRateConfig,
+    r7_learning_rates,
+)
 from training.value_normalization import (
     VALUE_LOSS_PROTOCOL_VERSION,
     VALUE_NORMALIZATION_PROTOCOL_VERSION,
@@ -103,6 +120,8 @@ from training.checkpoint_protocol import (
     utc_now_iso,
     validate_checkpoint_header,
     validate_checkpoint_payload,
+    checkpoint_schema_version_for_reward,
+    training_protocol_version_for_reward,
 )
 
 
@@ -114,6 +133,8 @@ VALID_EPISODE_END_REASONS = frozenset({
     "adversary_collision",
     "cooperative_offroad",
     "adversary_offroad",
+    "cooperative_road_violation",
+    "adversary_road_violation",
     "max_steps",
     "mission_timeout",
     "all_agents_terminated",
@@ -125,6 +146,9 @@ BASE_COLLISION_END_REASONS = frozenset(
 BASE_OFFROAD_END_REASONS = frozenset(
     {"cooperative_offroad", "adversary_offroad"}
 )
+BASE_ROAD_VIOLATION_END_REASONS = frozenset(
+    {"cooperative_road_violation", "adversary_road_violation"}
+)
 
 OBS_DIM = 19
 R6_OBS_DIM = 20
@@ -132,7 +156,25 @@ ACTION_DIM = POLICY_ACTION_DIM
 
 
 def observation_dim_for_reward(reward_version: str) -> int:
-    return R6_OBS_DIM if str(reward_version) == "v4" else OBS_DIM
+    return R6_OBS_DIM if str(reward_version) in {"v4", "v5"} else OBS_DIM
+
+
+def classify_base_episode_outcome_r7(
+    episode_end_reason: str,
+) -> Tuple[bool, bool, bool, bool, bool]:
+    """R7 mutually-exclusive outcome including explicit road-rule failure."""
+
+    reason = str(episode_end_reason)
+    success = reason in BASE_SUCCESS_END_REASONS
+    collision = reason in BASE_COLLISION_END_REASONS
+    timeout = reason in {"max_steps", "mission_timeout"}
+    offroad = reason in BASE_OFFROAD_END_REASONS
+    road_violation = reason in BASE_ROAD_VIOLATION_END_REASONS
+    if sum((success, collision, timeout, offroad, road_violation)) != 1:
+        raise RuntimeError(
+            f"R7 base episode ended with non-classifiable reason={reason!r}"
+        )
+    return success, collision, timeout, offroad, road_violation
 
 
 def entropy_coefficient_for_update(
@@ -268,6 +310,20 @@ RESUME_IMMUTABLE_ARG_NAMES = (
     "log_interval",
     "tb_histogram_interval",
 )
+R7_RESUME_IMMUTABLE_ARG_NAMES = RESUME_IMMUTABLE_ARG_NAMES + (
+    "lr_actor_final",
+    "lr_critic_final",
+    "critic_lr_hold_updates",
+    "critic_probe_batch_size",
+)
+
+
+def _resume_immutable_arg_names(args) -> Tuple[str, ...]:
+    return (
+        R7_RESUME_IMMUTABLE_ARG_NAMES
+        if str(getattr(args, "reward_version", "")) == "v5"
+        else RESUME_IMMUTABLE_ARG_NAMES
+    )
 
 
 def set_seed(seed: int):
@@ -286,7 +342,7 @@ def observation_protocol_version(
 ) -> str:
     """Bind normalized ray values to their physical range in checkpoints."""
     lidar_range = float(lidar_range_m)
-    if str(reward_version) == "v4":
+    if str(reward_version) in {"v4", "v5"}:
         if lidar_range != 20.0:
             raise ValueError(
                 "reward v4 registers only the 20m time-aware observation"
@@ -314,26 +370,34 @@ def checkpoint_protocol_versions(
         "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
         "offroad": (
             R6_OFFROAD_PROTOCOL_VERSION
-            if str(reward_version) == "v4"
+            if str(reward_version) in {"v4", "v5"}
             else OFFROAD_PROTOCOL_VERSION
         ),
         "reward": str(reward_version),
-        "metrics": METRICS_PROTOCOL_VERSION,
+        "metrics": metrics_protocol_version(reward_version),
         "value_normalization": VALUE_NORMALIZATION_PROTOCOL_VERSION,
         "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
     }
-    if str(reward_version) == "v4":
+    if str(reward_version) in {"v4", "v5"}:
         versions.update({
             "policy_distribution": POLICY_DISTRIBUTION_PROTOCOL_VERSION,
             "curriculum": CURRICULUM_PROTOCOL_VERSION,
             "stall": STALL_PROTOCOL_VERSION,
+        })
+    if str(reward_version) == "v5":
+        versions.update({
+            "policy_distribution": R7_POLICY_DISTRIBUTION_PROTOCOL_VERSION,
+            "curriculum": R7_CURRICULUM_PROTOCOL_VERSION,
+            "road_legality": ROAD_LEGALITY_PROTOCOL_VERSION,
+            "critic_diagnostics": CRITIC_DIAGNOSTICS_PROTOCOL_VERSION,
+            "learning_rate": LEARNING_RATE_PROTOCOL_VERSION,
         })
     return versions
 
 
 def checkpoint_training_config(args) -> Dict[str, object]:
     return {
-        name: getattr(args, name) for name in RESUME_IMMUTABLE_ARG_NAMES
+        name: getattr(args, name) for name in _resume_immutable_arg_names(args)
     }
 
 
@@ -363,7 +427,7 @@ def _argument_was_explicit(args, name: str) -> bool:
 def apply_resume_configuration(args, checkpoint: Dict[str, object]) -> None:
     """Restore frozen run configuration while rejecting explicit drift."""
     saved_config = checkpoint["training_config"]
-    for name in RESUME_IMMUTABLE_ARG_NAMES:
+    for name in _resume_immutable_arg_names(args):
         if name not in saved_config:
             raise CheckpointProtocolError(
                 f"saved training_config missing field: {name}"
@@ -467,9 +531,11 @@ def runtime_metadata_with_carla(env) -> Dict[str, object]:
     metadata["environment_reward_gamma"] = float(env.reward_gamma)
     metadata["offroad_protocol"] = (
         r6_offroad_protocol_spec()
-        if getattr(env, "reward_version", "v3") == "v4"
+        if getattr(env, "reward_version", "v3") in {"v4", "v5"}
         else offroad_protocol_spec()
     )
+    if getattr(env, "reward_version", "v3") == "v5":
+        metadata["road_legality_protocol"] = road_legality_protocol_spec()
     try:
         metadata["carla_client"] = env.client.get_client_version()
         metadata["carla_server"] = env.client.get_server_version()
@@ -529,6 +595,7 @@ class Transition:
     terminated: float             # 真正终止（切断 value bootstrap）；截断时为 0
     value: float                  # 该 agent 的 V(s, aid)
     scenario_name: str
+    episode_outcome: str = "pending"
 
 
 class RolloutBuffer:
@@ -1313,6 +1380,8 @@ class PreparedMAPPOUpdateBatch:
     critic_returns: torch.Tensor
     critic_agent_ids: torch.Tensor
     transition_counts: Dict[int, int]
+    critic_scenario_labels: Tuple[str, ...]
+    critic_outcome_labels: Tuple[str, ...]
 
 
 @dataclass
@@ -1320,6 +1389,7 @@ class MAPPOUpdateResult:
     metrics: Dict[str, object]
     agent_stop_epoch: Dict[int, int]
     preupdate_ratio_errors: Dict[int, float]
+    critic_audit: Dict[str, object] = field(default_factory=dict)
 
 
 def _stack_transition_vectors(
@@ -1457,6 +1527,12 @@ def validate_prepared_mappo_batch(
             f"{context}: centralized critic shapes mismatch: "
             f"actual={critic_shapes}, expected={expected_critic_shapes}"
         )
+    for name, labels in (
+        ("critic_scenario_labels", prepared.critic_scenario_labels),
+        ("critic_outcome_labels", prepared.critic_outcome_labels),
+    ):
+        if len(labels) != total_rows or any(not str(value).strip() for value in labels):
+            raise ValueError(f"{context}: {name} are misaligned or empty")
     ensure_finite_tensor(
         prepared.critic_states, name="critic_states", context=context
     )
@@ -1511,6 +1587,8 @@ def prepare_mappo_update_batch(
     critic_states = []
     critic_returns = []
     critic_agent_ids = []
+    critic_scenario_labels = []
+    critic_outcome_labels = []
 
     for aid in agent_ids:
         data = buffer.get_agent_data(aid)
@@ -1642,6 +1720,8 @@ def prepare_mappo_update_batch(
         critic_states.append(state_arr)
         critic_returns.append(ret_arr)
         critic_agent_ids.append(np.full(len(data), aid, dtype=np.int64))
+        critic_scenario_labels.extend(str(item.scenario_name) for item in data)
+        critic_outcome_labels.extend(str(item.episode_outcome) for item in data)
 
     if critic_states:
         critic_state_tensor = torch.as_tensor(
@@ -1673,6 +1753,8 @@ def prepare_mappo_update_batch(
         critic_returns=critic_return_tensor,
         critic_agent_ids=critic_agent_id_tensor,
         transition_counts=transition_counts,
+        critic_scenario_labels=tuple(critic_scenario_labels),
+        critic_outcome_labels=tuple(critic_outcome_labels),
     )
     validate_prepared_mappo_batch(
         prepared,
@@ -1932,6 +2014,12 @@ def run_mappo_ppo_update(
     critic_ret_t = prepared.critic_returns
     critic_aid_t = prepared.critic_agent_ids
     if value_normalizer is not None:
+        # Capture the pre-update prediction on the original return scale before
+        # this rollout changes ValueNorm moments.  This keeps the pre/post
+        # comparison about critic fitting, not a moving normalization frame.
+        critic_preupdate_values = value_normalizer.denormalize(
+            critic_preflight_values
+        ).detach()
         value_normalizer.update(critic_ret_t)
         critic_target_t = value_normalizer.normalize(critic_ret_t)
         metrics.update({
@@ -1939,6 +2027,7 @@ def run_mappo_ppo_update(
             for name, value in value_normalizer.statistics().items()
         })
     else:
+        critic_preupdate_values = critic_preflight_values.detach()
         critic_target_t = critic_ret_t
 
     for epoch in range(ppo_epochs):
@@ -2172,11 +2261,56 @@ def run_mappo_ppo_update(
         metrics["normalized_return_target_std"] = float(
             critic_target_t.std(unbiased=False).item()
         )
+        target_values = critic_ret_t.detach().cpu().numpy()
+        preupdate_prediction_values = (
+            critic_preupdate_values.detach().cpu().numpy()
+        )
+        prediction_values = value_predictions.detach().cpu().numpy()
+        agent_labels = [
+            f"agent_{int(value)}"
+            for value in critic_aid_t.detach().cpu().tolist()
+        ]
+        def _grouped_snapshot(values):
+            return {
+                "pooled": critic_fit_statistics(target_values, values),
+                "per_agent": grouped_critic_fit_statistics(
+                    target_values, values, agent_labels
+                ),
+                "per_outcome": grouped_critic_fit_statistics(
+                    target_values,
+                    values,
+                    prepared.critic_outcome_labels,
+                ),
+                "per_scenario": grouped_critic_fit_statistics(
+                    target_values,
+                    values,
+                    prepared.critic_scenario_labels,
+                ),
+            }
+        critic_audit = {
+            "protocol_version": CRITIC_DIAGNOSTICS_PROTOCOL_VERSION,
+            "pre_update": _grouped_snapshot(preupdate_prediction_values),
+            "post_update": _grouped_snapshot(prediction_values),
+        }
+        for agent_id in agent_ids:
+            stats = critic_audit["post_update"]["per_agent"].get(
+                f"agent_{agent_id}"
+            )
+            if stats is None:
+                continue
+            for name in (
+                "explained_variance",
+                "prediction_target_std_ratio",
+                "signed_bias",
+                "absolute_error_mean",
+            ):
+                metrics[f"critic_{name}_agent_{agent_id}"] = float(stats[name])
 
     return MAPPOUpdateResult(
         metrics=metrics,
         agent_stop_epoch=agent_stop_epoch,
         preupdate_ratio_errors=preupdate_ratio_errors,
+        critic_audit=critic_audit,
     )
 
 
@@ -2415,6 +2549,7 @@ class CurriculumLearning:
         mode: str = "classic",
         mastery_enabled: bool = False,
         mastery_agent_ids: Tuple[int, ...] = (0, 1),
+        maximum_team_road_violation_rate: Optional[float] = None,
     ):
         self.scenario_dir = scenario_dir
         self.warmup_updates = warmup_updates
@@ -2455,6 +2590,9 @@ class CurriculumLearning:
             MasteryGate(
                 stage_count=len(self.curriculum_stages),
                 agent_ids=mastery_agent_ids,
+                maximum_team_road_violation_rate=(
+                    maximum_team_road_violation_rate
+                ),
             )
             if self.mastery_enabled else None
         )
@@ -2714,6 +2852,12 @@ def train(args):
         args, "_experiment_contract_metadata", None
     ):
         apply_experiment_contract(args, project_dir=project_dir)
+    active_checkpoint_schema_version = checkpoint_schema_version_for_reward(
+        args.reward_version
+    )
+    active_training_protocol_version = training_protocol_version_for_reward(
+        args.reward_version
+    )
 
     if args.resume and args.pretrained_checkpoint:
         raise ValueError(
@@ -2729,6 +2873,13 @@ def train(args):
         raise ValueError("--tb-histogram-interval must be non-negative")
     if args.lr_decay_horizon < 0:
         raise ValueError("--lr-decay-horizon must be non-negative")
+    if args.reward_version == "v5":
+        if args.lr_actor_final is None or args.lr_critic_final is None:
+            raise ValueError("reward v5 requires frozen final actor/critic learning rates")
+        if args.critic_lr_hold_updates < 0:
+            raise ValueError("--critic-lr-hold-updates must be non-negative")
+        if args.critic_probe_batch_size <= 0:
+            raise ValueError("reward v5 requires a positive critic probe batch size")
     if not 0.0 <= args.value_norm_beta < 1.0:
         raise ValueError("--value-norm-beta must be in [0, 1)")
     if args.value_norm_epsilon <= 0.0:
@@ -2766,9 +2917,13 @@ def train(args):
         Path(__file__).resolve().with_name("mastery_curriculum.py"),
         Path(__file__).resolve().with_name("policy_distribution_protocol.py"),
         Path(__file__).resolve().with_name("value_normalization.py"),
+        Path(__file__).resolve().with_name("critic_diagnostics.py"),
+        Path(__file__).resolve().with_name("learning_rate_protocol.py"),
         project_dir / "utils" / "training_metrics_recorder.py",
         project_dir / "models" / "actor_critic.py",
         project_dir / "environment" / "carla_multi_agent_env.py",
+        project_dir / "environment" / "base_reward_v5.py",
+        project_dir / "environment" / "road_legality_protocol.py",
     ]
     experiment_contract_metadata = getattr(
         args, "_experiment_contract_metadata", None
@@ -2929,6 +3084,9 @@ def train(args):
         mode=args.curriculum_mode,
         mastery_enabled=args.curriculum_protocol == "mastery_v2",
         mastery_agent_ids=(0, 1),
+        maximum_team_road_violation_rate=(
+            0.10 if args.reward_version == "v5" else None
+        ),
     )
 
     # R6 adds the observable remaining-time fraction; historical rewards keep
@@ -2971,8 +3129,29 @@ def train(args):
     init_lr_actor = args.lr_actor
     init_lr_critic = args.lr_critic
     lr_decay_horizon = int(args.lr_decay_horizon)
+    r7_lr_config = (
+        R7LearningRateConfig(
+            actor_initial_lr=float(args.lr_actor),
+            actor_final_lr=float(args.lr_actor_final),
+            actor_decay_updates=lr_decay_horizon,
+            critic_initial_lr=float(args.lr_critic),
+            critic_hold_updates=int(args.critic_lr_hold_updates),
+            critic_final_lr=float(args.lr_critic_final),
+            critic_decay_updates=lr_decay_horizon,
+        )
+        if args.reward_version == "v5"
+        else None
+    )
 
     def _apply_lr_decay(cur_update: int):
+        if r7_lr_config is not None:
+            rates = r7_learning_rates(cur_update, r7_lr_config)
+            for aid in agent_ids:
+                for group in actor_optims[aid].param_groups:
+                    group["lr"] = rates["actor_lr"]
+            for group in critic_optim.param_groups:
+                group["lr"] = rates["critic_lr"]
+            return rates["actor_lr"], rates["critic_lr"]
         if not args.lr_decay:
             return init_lr_actor, init_lr_critic
         frac = max(
@@ -3005,6 +3184,7 @@ def train(args):
     total_collisions = 0
     total_timeouts = 0
     total_offroads = 0
+    total_road_violations = 0
     completed_update = 0
     start_update = 1
 
@@ -3106,6 +3286,9 @@ def train(args):
         total_collisions = int(resume_checkpoint["total_collisions"])
         total_timeouts = int(resume_checkpoint["total_timeouts"])
         total_offroads = int(resume_checkpoint["total_offroads"])
+        total_road_violations = int(
+            resume_checkpoint.get("total_road_violations", 0)
+        )
         curriculum.scenario_success_history = {
             str(name): list(values)
             for name, values in saved_curriculum["success_history"].items()
@@ -3256,8 +3439,8 @@ def train(args):
             ),
         }
         manifest = {
-            "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
-            "training_protocol_version": TRAINING_PROTOCOL_VERSION,
+            "checkpoint_schema_version": active_checkpoint_schema_version,
+            "training_protocol_version": active_training_protocol_version,
             "run_id": args.run_id,
             "created_at": utc_now_iso(),
             "latest": None,
@@ -3273,6 +3456,11 @@ def train(args):
     last_metrics_payload = (
         copy.deepcopy(resume_checkpoint.get("last_metrics"))
         if resume_checkpoint is not None
+        else None
+    )
+    latest_critic_probe_batch = (
+        copy.deepcopy(resume_checkpoint.get("critic_probe_batch"))
+        if resume_checkpoint is not None and args.reward_version == "v5"
         else None
     )
     try:
@@ -3349,9 +3537,9 @@ def train(args):
         )
         checkpoint_run_metadata = copy.deepcopy(run_metadata)
         checkpoint_run_metadata["last_saved_at"] = utc_now_iso()
-        return {
-            "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
-            "training_protocol_version": TRAINING_PROTOCOL_VERSION,
+        payload = {
+            "checkpoint_schema_version": active_checkpoint_schema_version,
+            "training_protocol_version": active_training_protocol_version,
             "protocol_versions": protocol_versions,
             "action_spec": current_action_spec,
             "checkpoint_kind": kind,
@@ -3377,6 +3565,12 @@ def train(args):
                 "initial_critic_lr": init_lr_critic,
                 "current_actor_lrs": current_actor_lrs,
                 "current_critic_lr": current_critic_lr,
+                **({
+                    "protocol_version": LEARNING_RATE_PROTOCOL_VERSION,
+                    "actor_final_lr": float(args.lr_actor_final),
+                    "critic_hold_updates": int(args.critic_lr_hold_updates),
+                    "critic_final_lr": float(args.lr_critic_final),
+                } if args.reward_version == "v5" else {}),
             },
             "run_metadata": checkpoint_run_metadata,
             "curriculum_state": {
@@ -3390,7 +3584,9 @@ def train(args):
                     "protocol": args.curriculum_protocol,
                 },
                 "curriculum_protocol_version": (
-                    CURRICULUM_PROTOCOL_VERSION
+                    curriculum.mastery_gate.state_dict()[
+                        "curriculum_protocol_version"
+                    ]
                     if curriculum.mastery_gate is not None
                     else "update_schedule_v1"
                 ),
@@ -3427,6 +3623,16 @@ def train(args):
                 )
             },
         }
+        if args.reward_version == "v5":
+            payload["total_road_violations"] = int(total_road_violations)
+            if latest_critic_probe_batch is None:
+                raise CheckpointProtocolError(
+                    "R7 completed checkpoint is missing critic probe evidence"
+                )
+            payload["critic_probe_batch"] = copy.deepcopy(
+                latest_critic_probe_batch
+            )
+        return payload
 
     def _manifest_record(
         checkpoint_path: Path, digest: str
@@ -3480,7 +3686,10 @@ def train(args):
     experiment_status = "RUNNING"
     experiment_notes = ""
     try:
-        if resume_checkpoint is None:
+        # R7's critic probe needs real rollout targets.  Do not fabricate an
+        # update-0 probe or publish an apparently resumable checkpoint before
+        # the first complete update has been committed.
+        if resume_checkpoint is None and args.reward_version != "v5":
             _save_safe_checkpoint(include_periodic=False)
         for update in range(start_update, args.updates + 1):
             update_started_at = time.perf_counter()
@@ -3502,6 +3711,7 @@ def train(args):
             window_collisions: List[float] = []         # 任一 agent 发生碰撞
             window_timeouts: List[float] = []           # max_steps 截断且未成功未碰撞
             window_offroads: List[float] = []           # 车体进入非 Driving 区域
+            window_road_violations: List[float] = []    # 对向/逆行/非法换道
 
             # ── 场景采样（分层/加权） ──
             available_scenarios = curriculum.get_available_scenarios(update)
@@ -3571,6 +3781,7 @@ def train(args):
                 "timeout": 0,
                 "collision": 0,
                 "offroad": 0,
+                "road_violation": 0,
             }
             for rollout_episode in range(args.rollout_episodes):
                 scenario_name = sampled_scenarios[rollout_episode]
@@ -3614,6 +3825,10 @@ def train(args):
                     agent_ids,
                     context=f"robust_v2 reset episode={rollout_episode}",
                 )
+                final_road_rule_terminated = {
+                    aid: bool((info.get("road_rule_terminated", {}) or {}).get(aid, False))
+                    for aid in agent_ids
+                }
                 final_global_state = env.get_global_state().astype(np.float32)
 
                 for step in range(args.max_steps):
@@ -3677,6 +3892,12 @@ def train(args):
                             f"robust_v2 episode={rollout_episode} step={step}"
                         ),
                     )
+                    final_road_rule_terminated = {
+                        aid: bool(
+                            (info.get("road_rule_terminated", {}) or {}).get(aid, False)
+                        )
+                        for aid in agent_ids
+                    }
                     # 直接从 env.step() 返回的 observation 固化该 transition 的 s_(t+1)，
                     # 避免后续 despawn 改变重新读取的全局状态。只有合法 X 边界会使用。
                     final_global_state = np.concatenate(
@@ -3752,12 +3973,37 @@ def train(args):
                 # 严格互斥三类终局只服从环境发布的全局 end reason。这样即使
                 # success/collision sticky 信号在同一 tick 同时出现，也不会把一个
                 # episode 同时计入两个 outcome；逐 agent 事件仍保留在 diagnostics。
-                (
-                    ep_success,
-                    ep_collision,
-                    ep_timeout,
-                    ep_offroad,
-                ) = classify_base_episode_outcome(episode_end_reason)
+                if args.reward_version == "v5":
+                    (
+                        ep_success,
+                        ep_collision,
+                        ep_timeout,
+                        ep_offroad,
+                        ep_road_violation,
+                    ) = classify_base_episode_outcome_r7(episode_end_reason)
+                else:
+                    (
+                        ep_success,
+                        ep_collision,
+                        ep_timeout,
+                        ep_offroad,
+                    ) = classify_base_episode_outcome(episode_end_reason)
+                    ep_road_violation = False
+                outcome_name = next(
+                    name
+                    for name, matched in (
+                        ("success", ep_success),
+                        ("collision", ep_collision),
+                        ("timeout", ep_timeout),
+                        ("offroad", ep_offroad),
+                        ("road_violation", ep_road_violation),
+                    )
+                    if matched
+                )
+                for aid in agent_ids:
+                    start_index = episode_buffer_starts[aid]
+                    for transition in buffer.get_agent_data(aid)[start_index:]:
+                        transition.episode_outcome = outcome_name
 
                 if ep_success:
                     total_successes += 1
@@ -3771,6 +4017,9 @@ def train(args):
                 elif ep_offroad:
                     total_offroads += 1
                     mastery_outcomes["offroad"] += 1
+                elif ep_road_violation:
+                    total_road_violations += 1
+                    mastery_outcomes["road_violation"] += 1
                 if curriculum.mastery_gate is not None:
                     for aid in agent_ids:
                         mastery_completion_samples[aid].append(
@@ -3804,6 +4053,9 @@ def train(args):
                 window_collisions.append(1.0 if ep_collision else 0.0)
                 window_timeouts.append(1.0 if ep_timeout else 0.0)
                 window_offroads.append(1.0 if ep_offroad else 0.0)
+                window_road_violations.append(
+                    1.0 if ep_road_violation else 0.0
+                )
                 metrics_recorder.finish_episode(
                     update=update,
                     episode_index=rollout_episode,
@@ -3820,6 +4072,8 @@ def train(args):
                     timeout=ep_timeout,
                     offroad=ep_offroad,
                     offroad_audit_by_agent=final_offroad_audit,
+                    road_violation=ep_road_violation,
+                    road_rule_terminated=final_road_rule_terminated,
                     end_reason=episode_end_reason,
                     scenario_name=scenario_name,
                     context=(
@@ -3873,6 +4127,9 @@ def train(args):
                         team_offroad_rate=(
                             mastery_outcomes["offroad"] / episode_count
                         ),
+                        team_road_violation_rate=(
+                            mastery_outcomes["road_violation"] / episode_count
+                        ),
                     )
                 )
                 metrics_recorder.record_scalars({
@@ -3916,6 +4173,7 @@ def train(args):
             advantage_stats: Dict[int, Dict[str, float]] = {}
             agent_stop_epoch: Dict[int, int] = {}
             preupdate_ratio_errors: Dict[int, float] = {}
+            critic_audit: Dict[str, object] = {}
             metrics_recorder.capture_model_snapshot(actors, critic)
             ppo_started_at = time.perf_counter()
 
@@ -3936,6 +4194,15 @@ def train(args):
                     value_normalizer=value_normalizer,
                 )
                 advantage_stats = prepared_batch.advantage_stats
+                if args.reward_version == "v5":
+                    latest_critic_probe_batch = build_critic_probe_batch(
+                        states=prepared_batch.critic_states.detach().cpu().numpy(),
+                        agent_ids=(
+                            prepared_batch.critic_agent_ids.detach().cpu().numpy()
+                        ),
+                        targets=prepared_batch.critic_returns.detach().cpu().numpy(),
+                        maximum_rows=args.critic_probe_batch_size,
+                    )
 
                 update_result = run_mappo_ppo_update(
                     prepared=prepared_batch,
@@ -3961,6 +4228,7 @@ def train(args):
                 ppo_metrics = update_result.metrics
                 agent_stop_epoch = update_result.agent_stop_epoch
                 preupdate_ratio_errors = update_result.preupdate_ratio_errors
+                critic_audit = update_result.critic_audit
             ppo_seconds = time.perf_counter() - ppo_started_at
             metrics_recorder.record_model_update(actors, critic)
             metrics_recorder.record_scalar(
@@ -3985,8 +4253,9 @@ def train(args):
                 skipped=skip_update,
                 max_grad_norm=args.max_grad_norm,
             )
-            metrics_recorder.record_scalars(
-                {
+            if args.reward_version == "v5" and critic_audit:
+                metrics_recorder.record_audit("critic_groups", critic_audit)
+            cumulative_scalars = {
                     "episode/success_rate_cumulative": (
                         total_successes / max(total_episodes, 1)
                     ),
@@ -4023,7 +4292,11 @@ def train(args):
                         time.perf_counter() - update_started_at
                     ),
                 }
-            )
+            if args.reward_version == "v5":
+                cumulative_scalars[
+                    "episode/road_violation_rate_cumulative"
+                ] = total_road_violations / max(total_episodes, 1)
+            metrics_recorder.record_scalars(cumulative_scalars)
 
             if update % args.log_interval == 0 and len(window_episode_returns) > 0:
                 avg_r = float(np.mean(window_episode_returns))
@@ -4031,6 +4304,11 @@ def train(args):
                 win_coll = float(np.mean(window_collisions))
                 win_to = float(np.mean(window_timeouts))
                 win_offroad = float(np.mean(window_offroads))
+                win_road_violation = float(np.mean(window_road_violations))
+                road_outcome_text = (
+                    f"road_violation={win_road_violation:.2%}, "
+                    if args.reward_version == "v5" else ""
+                )
 
                 def _mean_comp(name):
                     if name not in metrics_recorder.component_names:
@@ -4040,11 +4318,12 @@ def train(args):
                 print(f"更新 {update}: avg_return={avg_r:.2f}, "
                       f"success={win_succ:.2%}, collision={win_coll:.2%}, "
                       f"offroad={win_offroad:.2%}, timeout={win_to:.2%}, "
+                      f"{road_outcome_text}"
                       f"cum_success={total_successes/max(total_episodes,1):.2%}, "
                       f"avg_ep_len={float(np.mean(window_episode_lengths)):.0f}, "
                       f"n_trans={n_transitions_per_agent} (total={n_transitions}), "
                       f"lr_a={cur_lr_a:.2e}")
-                if args.reward_version in {"v3", "v4"}:
+                if args.reward_version in {"v3", "v4", "v5"}:
                     print(
                         f"   reward-{args.reward_version}分量(均值/有效步): "
                         f"progress={_mean_comp('progress'):.4f}, "
@@ -4054,6 +4333,7 @@ def train(args):
                         f"safety+ttc={(_mean_comp('safety_lidar') + _mean_comp('ttc')):.4f}, "
                         f"lane={(_mean_comp('lane_deviation') + _mean_comp('lane_invasion')):.4f}, "
                         f"offroad={_mean_comp('offroad'):.4f}, "
+                        f"road_rule={_mean_comp('road_rule'):.4f}, "
                         f"collision={_mean_comp('collision'):.4f}, "
                         f"success={_mean_comp('success'):.4f}, "
                         f"mission_timeout={_mean_comp('mission_timeout'):.4f}"
@@ -4172,6 +4452,22 @@ def build_parser():
     # 学习率
     parser.add_argument("--lr-actor", type=float, default=3e-4)
     parser.add_argument("--lr-critic", type=float, default=3e-4)
+    parser.add_argument(
+        "--lr-actor-final", type=float, default=None,
+        help="R7 actor linear-decay floor; reward v5 requires an explicit value",
+    )
+    parser.add_argument(
+        "--lr-critic-final", type=float, default=None,
+        help="R7 critic post-hold decay floor; reward v5 requires an explicit value",
+    )
+    parser.add_argument(
+        "--critic-lr-hold-updates", type=int, default=0,
+        help="R7 updates that hold critic lr at its initial value",
+    )
+    parser.add_argument(
+        "--critic-probe-batch-size", type=int, default=0,
+        help="R7 bounded rollout rows saved for reproducible critic fit probes",
+    )
     parser.add_argument("--gamma", type=float, default=0.997,
                         help="折扣因子（0.997 的有效视野约 330 步；reward v3 的路线势能"
                              "必须使用与 PPO 相同的 gamma 才能保持望远镜性质）")
@@ -4345,8 +4641,11 @@ def build_parser():
         "--reward-version",
         type=str,
         default="v3",
-        choices=["v1", "v2", "v3", "v4"],
-        help="奖励函数版本；P0-T05-09/R6 使用 v4 mission 预算",
+        choices=["v1", "v2", "v3", "v4", "v5"],
+        help=(
+            "奖励函数版本；R6 使用 v4 mission 预算，"
+            "P0-T05-10/R7 使用 v5 road-rule 预算"
+        ),
     )
 
     return parser

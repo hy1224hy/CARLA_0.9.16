@@ -13,6 +13,7 @@ from evaluation.base_c0_protocol import (
     C0_VALIDATOR_REPORT_VERSION,
     C0ProtocolError,
     build_summary,
+    classify_outcome,
     compare_repeatability_records,
     ensure_completed_prefix,
     expand_profile_cases,
@@ -198,11 +199,9 @@ def _validate_impl(
             checkpoint_sha256=checkpoint_sha256,
             expected_case=cases[index],
         )
-        expected_outcome = None
-        reason = record["episode_end_reason"]
-        for name in ("success", "collision", "timeout", "other"):
-            if reason in contract["outcomes"][f"{name}_reasons"]:
-                expected_outcome = name
+        expected_outcome = classify_outcome(
+            record["episode_end_reason"], contract["outcomes"]
+        )
         _require_equal(record["outcome"], expected_outcome, context=f"case {record['case_id']} outcome")
 
     _require_equal(manifest.get("completed_cases"), len(cases), context="manifest completed cases")

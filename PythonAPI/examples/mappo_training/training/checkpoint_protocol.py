@@ -26,22 +26,33 @@ from training.action_protocol import (
     ACTION_PROTOCOL_VERSION,
     LEGACY_ACTION_PROTOCOL_VERSION,
 )
+from training.critic_diagnostics import validate_critic_probe_batch
 
 LEGACY_CHECKPOINT_SCHEMA_VERSION = 2
 ACTION_CHECKPOINT_SCHEMA_VERSION = 3
 VALUENORM_CHECKPOINT_SCHEMA_VERSION = 4
 OFFROAD_CHECKPOINT_SCHEMA_VERSION = 5
 CHECKPOINT_SCHEMA_VERSION = 6
+R7_CHECKPOINT_SCHEMA_VERSION = 7
 LEGACY_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_p0_00g_v2"
 ACTION_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_action_v2_p0_00g_v3"
 VALUENORM_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_valuenorm_p0_00g_v4"
 OFFROAD_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_offroad_p0_00g_v5"
 TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_r6_p0_t05_09_v6"
+R7_TRAINING_PROTOCOL_VERSION = "mappo_robust_v2_r7_p0_t05_10_v7"
 OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_v1"
 TOWN05_BASE_OBSERVATION_PROTOCOL_VERSION = "carla_obs_19_lidar20m_v2"
 R6_TIME_AWARE_OBSERVATION_PROTOCOL_VERSION = "carla_obs_20_lidar20m_time_v3"
 PRE_OFFROAD_LIFECYCLE_PROTOCOL_VERSION = "agent_centric_terminated_truncated_v1"
 LIFECYCLE_PROTOCOL_VERSION = "agent_centric_offroad_terminated_truncated_v2"
+
+
+def checkpoint_schema_version_for_reward(reward_version: str) -> int:
+    return R7_CHECKPOINT_SCHEMA_VERSION if str(reward_version) == "v5" else CHECKPOINT_SCHEMA_VERSION
+
+
+def training_protocol_version_for_reward(reward_version: str) -> str:
+    return R7_TRAINING_PROTOCOL_VERSION if str(reward_version) == "v5" else TRAINING_PROTOCOL_VERSION
 
 LATEST_CHECKPOINT_NAME = "latest.pt"
 INTERRUPTED_CHECKPOINT_NAME = "interrupted.pt"
@@ -378,6 +389,8 @@ def validate_checkpoint_payload(
         "total_timeouts",
         "total_offroads",
     }
+    if checkpoint.get("checkpoint_schema_version") == R7_CHECKPOINT_SCHEMA_VERSION:
+        required.add("total_road_violations")
     missing = required - set(checkpoint)
     if missing:
         raise CheckpointProtocolError(
@@ -427,6 +440,16 @@ def validate_checkpoint_payload(
         raise CheckpointProtocolError("value_normalizer must be a state mapping")
     if not isinstance(checkpoint["critic_spec"], Mapping):
         raise CheckpointProtocolError("critic_spec must be a mapping")
+    if checkpoint["checkpoint_schema_version"] == R7_CHECKPOINT_SCHEMA_VERSION:
+        probe = checkpoint.get("critic_probe_batch")
+        if not isinstance(probe, Mapping):
+            raise CheckpointProtocolError("R7 checkpoint is missing critic_probe_batch")
+        try:
+            validate_critic_probe_batch(
+                probe, expected_state_dim=int(expected_model_spec["state_dim"])
+            )
+        except ValueError as error:
+            raise CheckpointProtocolError(f"invalid R7 critic probe: {error}") from error
 
 
 def validate_checkpoint_header(
@@ -480,6 +503,11 @@ def validate_checkpoint_header(
         == OFFROAD_TRAINING_PROTOCOL_VERSION
         and protocol_versions.get("action") == ACTION_PROTOCOL_VERSION
     )
+    is_r7 = (
+        checkpoint["checkpoint_schema_version"] == R7_CHECKPOINT_SCHEMA_VERSION
+        and checkpoint["training_protocol_version"] == R7_TRAINING_PROTOCOL_VERSION
+        and protocol_versions.get("reward") == "v5"
+    )
     if allow_legacy and is_legacy:
         expected_schema = LEGACY_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = LEGACY_TRAINING_PROTOCOL_VERSION
@@ -492,6 +520,9 @@ def validate_checkpoint_header(
     elif allow_legacy and is_offroad_historical:
         expected_schema = OFFROAD_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = OFFROAD_TRAINING_PROTOCOL_VERSION
+    elif is_r7:
+        expected_schema = R7_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = R7_TRAINING_PROTOCOL_VERSION
     else:
         expected_schema = CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = TRAINING_PROTOCOL_VERSION

@@ -52,6 +52,16 @@ from environment.base_reward_v4 import (
     terminal_rewards as v4_terminal_rewards,
     ttc_risk_penalty as v4_ttc_risk_penalty,
 )
+from environment.base_reward_v5 import (
+    DEFAULT_REWARD_V5_CONFIG,
+    REWARD_COMPONENTS as REWARD_V5_COMPONENTS,
+    REWARD_DIAGNOSTICS as REWARD_V5_DIAGNOSTICS,
+    lane_change_event_penalty as v5_lane_change_event_penalty,
+    lane_deviation_penalty as v5_lane_deviation_penalty,
+    lateral_distance_to_lane_center as v5_lateral_distance_to_lane_center,
+    mission_timeout_reward as v5_mission_timeout_reward,
+    road_rule_terminal_reward,
+)
 from environment.stall_protocol import (
     DEFAULT_STALL_CONFIG,
     StallState,
@@ -65,6 +75,13 @@ from environment.offroad_protocol import (
     footprint_local_offsets,
     offroad_protocol_spec,
     r6_offroad_protocol_spec,
+)
+from environment.road_legality_protocol import (
+    RoadLegalityObservation,
+    RoadLegalityState,
+    decision_as_dict as road_legality_decision_as_dict,
+    road_legality_protocol_spec,
+    update_road_legality,
 )
 
 
@@ -130,14 +147,16 @@ class CarlaMultiAgentEnv:
         self.timestep = timestep
         self.max_steps = max_steps
         self.adversarial_agent_ids = adversarial_agent_ids if adversarial_agent_ids is not None else []
-        if reward_version not in {"v1", "v2", "v3", "v4"}:
+        if reward_version not in {"v1", "v2", "v3", "v4", "v5"}:
             raise ValueError(f"unsupported reward_version: {reward_version!r}")
-        if reward_version in {"v3", "v4"} and self.adversarial_agent_ids:
+        if reward_version in {"v3", "v4", "v5"} and self.adversarial_agent_ids:
             raise ValueError(
                 f"reward {reward_version} is base-policy only"
             )
         self.reward_version = reward_version
-        self.observation_dim = 20 if reward_version == "v4" else 19
+        # R7 deliberately keeps the exact R6 observation contract.  Road
+        # legality is environment-side reward/termination evidence only.
+        self.observation_dim = 20 if reward_version in {"v4", "v5"} else 19
         self.lidar_range_m = float(lidar_range_m)
         if not math.isfinite(self.lidar_range_m) or self.lidar_range_m <= 0.0:
             raise ValueError("lidar_range_m must be finite and positive")
@@ -235,6 +254,15 @@ class CarlaMultiAgentEnv:
         self.prev_controls: Dict[int, Dict[str, float]] = {}
         self.previous_lidar_distances: Dict[int, np.ndarray] = {}
         self.legal_lane_change_grace_ticks: Dict[int, int] = {}
+        self.road_legality_states: Dict[int, RoadLegalityState] = {}
+        self.road_legality_decisions: Dict[int, Dict] = {}
+        self.road_reference_waypoints: Dict[int, object] = {}
+        self.road_violation_confirmed_events: Dict[int, bool] = {
+            i: False for i in range(self.num_agents)
+        }
+        self.road_violation_terminal_events: Dict[int, bool] = {
+            i: False for i in range(self.num_agents)
+        }
         self.stall_states: Dict[int, StallState] = {}
         self.current_scenario_family = ""
 
@@ -840,7 +868,7 @@ class CarlaMultiAgentEnv:
         return {
             "protocol": (
                 r6_offroad_protocol_spec()
-                if getattr(self, "reward_version", "v3") == "v4"
+                if getattr(self, "reward_version", "v3") in {"v4", "v5"}
                 else offroad_protocol_spec()
             ),
             "road_occupancy": {
@@ -861,6 +889,202 @@ class CarlaMultiAgentEnv:
             "max_footprint_outside_fraction": dict(
                 self.max_footprint_outside_fraction
             ),
+        }
+
+    @staticmethod
+    def _road_lane_key(waypoint) -> Optional[Tuple[int, int]]:
+        if waypoint is None:
+            return None
+        return int(waypoint.road_id), int(waypoint.lane_id)
+
+    @staticmethod
+    def _road_direction_cosine(first, second) -> float:
+        if first is None or second is None:
+            return 0.0
+        first_forward = first.transform.get_forward_vector()
+        second_forward = second.transform.get_forward_vector()
+        value = float(
+            first_forward.x * second_forward.x
+            + first_forward.y * second_forward.y
+            + first_forward.z * second_forward.z
+        )
+        return max(-1.0, min(1.0, value))
+
+    @staticmethod
+    def _lane_change_permission_contains(waypoint, direction: str) -> bool:
+        lane_change = str(getattr(waypoint, "lane_change", "None")).split(".")[-1]
+        return lane_change in {direction, "Both"}
+
+    def _road_adjacent_evidence(self, reference, current) -> Tuple[bool, bool]:
+        """Return (adjacent, permitted) using CARLA waypoint topology."""
+
+        if reference is None or current is None:
+            return False, False
+        current_key = self._road_lane_key(current)
+        for direction, getter_name in (
+            ("Left", "get_left_lane"),
+            ("Right", "get_right_lane"),
+        ):
+            getter = getattr(reference, getter_name, None)
+            candidate = getter() if callable(getter) else None
+            if candidate is None or self._road_lane_key(candidate) != current_key:
+                continue
+            lane_type = getattr(candidate, "lane_type", carla.LaneType.Driving)
+            is_driving = lane_type == carla.LaneType.Driving
+            permitted = bool(
+                is_driving
+                and self._lane_change_permission_contains(reference, direction)
+            )
+            return True, permitted
+        return False, False
+
+    def _reset_road_legality_tracking(self) -> None:
+        self.road_legality_states = {}
+        self.road_legality_decisions = {}
+        self.road_reference_waypoints = {}
+        self.road_violation_confirmed_events = {
+            i: False for i in range(self.num_agents)
+        }
+        self.road_violation_terminal_events = {
+            i: False for i in range(self.num_agents)
+        }
+        if getattr(self, "reward_version", "v2") != "v5":
+            return
+        for agent_id, vehicle in enumerate(self.vehicles):
+            if vehicle is None or not vehicle.is_alive:
+                continue
+            waypoint = self._get_exact_driving_waypoint(vehicle.get_location())
+            if waypoint is None:
+                raise RuntimeError(
+                    f"R7 road-legality reference missing at spawn for agent={agent_id}"
+                )
+            lane_key = self._road_lane_key(waypoint)
+            self.road_reference_waypoints[agent_id] = waypoint
+            self.road_legality_states[agent_id] = RoadLegalityState(
+                reference_lane=lane_key
+            )
+            self.road_legality_decisions[agent_id] = {
+                "classification": "reference_initialized",
+                "reference_lane": list(lane_key),
+                "legal_lane_change": False,
+                "lane_deviation_exempted": False,
+                "violation_reason": "",
+                "violation_raw": False,
+                "consecutive_violation_ticks": 0,
+                "violation_confirmed": False,
+                "legal_transition_grace_remaining": 0,
+                "success_eligible": not bool(getattr(waypoint, "is_junction", False)),
+                "update_reference_lane": True,
+                "same_reference_lane": True,
+                "adjacent_to_reference": False,
+                "lane_change_permitted": False,
+                "current_to_reference_cosine": 1.0,
+                "vehicle_to_current_cosine": 1.0,
+                "in_junction": bool(getattr(waypoint, "is_junction", False)),
+            }
+
+    def _update_road_legality_states(self) -> None:
+        if getattr(self, "reward_version", "v2") != "v5":
+            return
+        for agent_id, vehicle in enumerate(self.vehicles):
+            if (
+                vehicle is None
+                or not vehicle.is_alive
+                or self.reached_target.get(agent_id, False)
+                or not self.active_mask.get(agent_id, True)
+            ):
+                continue
+            transform = vehicle.get_transform()
+            current = self._get_exact_driving_waypoint(transform.location)
+            reference = self.road_reference_waypoints.get(agent_id)
+            state = self.road_legality_states.get(agent_id, RoadLegalityState())
+            current_key = self._road_lane_key(current)
+            same_reference = bool(
+                current_key is not None and current_key == state.reference_lane
+            )
+            adjacent, permitted = self._road_adjacent_evidence(reference, current)
+            lane_cosine = self._road_direction_cosine(current, reference)
+            vehicle_forward = transform.get_forward_vector()
+            if current is None:
+                heading_cosine = 0.0
+            else:
+                lane_forward = current.transform.get_forward_vector()
+                heading_cosine = max(
+                    -1.0,
+                    min(
+                        1.0,
+                        float(
+                            vehicle_forward.x * lane_forward.x
+                            + vehicle_forward.y * lane_forward.y
+                            + vehicle_forward.z * lane_forward.z
+                        ),
+                    ),
+                )
+            velocity = vehicle.get_velocity()
+            speed = math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2)
+            invasion = getattr(self, "lane_invasion_details", {}).get(agent_id, {})
+            broken_event = bool(
+                self.lane_invasion_events.get(agent_id, False)
+                and invasion.get("marking_types")
+                and all(value == "Broken" for value in invasion.get("marking_types", []))
+            )
+            observation = RoadLegalityObservation(
+                current_lane=current_key,
+                exact_driving=current is not None,
+                same_reference_lane=same_reference,
+                adjacent_to_reference=adjacent,
+                lane_change_permitted=permitted,
+                current_to_reference_cosine=lane_cosine,
+                vehicle_to_current_cosine=heading_cosine,
+                speed_mps=speed,
+                in_junction=bool(getattr(current, "is_junction", False)),
+                broken_marking_event=broken_event,
+            )
+            decision = update_road_legality(state, observation)
+            self.road_legality_states[agent_id] = decision.state
+            if decision.update_reference_lane and current is not None:
+                self.road_reference_waypoints[agent_id] = current
+            if decision.violation_confirmed:
+                self.road_violation_confirmed_events[agent_id] = True
+            evidence = road_legality_decision_as_dict(decision)
+            evidence.update({
+                "same_reference_lane": same_reference,
+                "adjacent_to_reference": adjacent,
+                "lane_change_permitted": permitted,
+                "current_to_reference_cosine": lane_cosine,
+                "vehicle_to_current_cosine": heading_cosine,
+                "in_junction": bool(getattr(current, "is_junction", False)),
+            })
+            self.road_legality_decisions[agent_id] = evidence
+
+    def _finalize_road_legality_terminal_events(self) -> None:
+        confirmed_events = getattr(
+            self, "road_violation_confirmed_events", {}
+        )
+        self.road_violation_terminal_events = {
+            i: bool(
+                confirmed_events.get(i, False)
+                and not self.collision_events.get(i, False)
+                and not self.crosswalk_invasion_events.get(i, False)
+                and not self.offroad_terminal_events.get(i, False)
+                and not self.reached_target.get(i, False)
+            )
+            for i in range(self.num_agents)
+        }
+
+    def _road_legality_info(self) -> Dict:
+        if getattr(self, "reward_version", "v2") != "v5":
+            return {}
+        return {
+            "road_legality_protocol": road_legality_protocol_spec(),
+            "road_legality": {
+                int(agent_id): dict(values)
+                for agent_id, values in self.road_legality_decisions.items()
+            },
+            "road_violation_confirmed": dict(
+                self.road_violation_confirmed_events
+            ),
+            "road_rule_terminated": dict(self.road_violation_terminal_events),
         }
 
     def _get_target_location(self, agent_id: int) -> carla.Location:
@@ -1610,6 +1834,7 @@ class CarlaMultiAgentEnv:
         self.last_truncated = {i: False for i in range(self.num_agents)}
         self.episode_end_reason = "running"
         self._reset_offroad_tracking()
+        self._reset_road_legality_tracking()
         
         # 获取初始观察
         observations = self._get_observations()
@@ -1622,6 +1847,7 @@ class CarlaMultiAgentEnv:
             'pre_collision_kinematics': {},
         }
         info.update(self._offroad_info())
+        info.update(self._road_legality_info())
         
         return observations, info
     
@@ -1692,7 +1918,7 @@ class CarlaMultiAgentEnv:
 
             # Reward-v4 把自然任务期限显式放入状态，避免同一物理状态在
             # 不同剩余时间下具有不同最优动作却对策略不可辨认。
-            if self.reward_version == "v4":
+            if self.reward_version in {"v4", "v5"}:
                 remaining_time = max(
                     0.0, (self.max_steps - self.current_step) / self.max_steps
                 )
@@ -1837,10 +2063,12 @@ class CarlaMultiAgentEnv:
         # before reward/termination, so all consumers see the same simulator
         # frame.  Persistence is agent-specific and reset only by a legal tick.
         self._update_offroad_states()
+        self._update_road_legality_states()
 
         # 必须在 _check_dones() 可能 despawn 到点车辆之前固化碰撞标志。
         step_collisions = self._check_collisions()
         self._finalize_offroad_terminal_events()
+        self._finalize_road_legality_terminal_events()
         pre_collision_kinematics = (
             pre_tick_kinematics if any(step_collisions.values()) else {}
         )
@@ -1887,6 +2115,7 @@ class CarlaMultiAgentEnv:
             'pre_collision_kinematics': pre_collision_kinematics,
         }
         info.update(self._offroad_info())
+        info.update(self._road_legality_info())
 
         # 修改1：对抗车(蓝)自撞且回合不全局终止时，移除该蓝车（避免撞毁残骸停在单车道里
         # 变成"自杀路障"，那等于换个形式恢复漏洞）。此处在 info 已记录本步 collisions/terminated
@@ -1894,7 +2123,8 @@ class CarlaMultiAgentEnv:
         if not self.adversary_collision_ends_episode:
             for i in self.adversarial_agent_ids:
                 if (self.collision_events.get(i, False) or self.crosswalk_invasion_events.get(i, False)
-                        or self.offroad_terminal_events.get(i, False)) \
+                        or self.offroad_terminal_events.get(i, False)
+                        or self.road_violation_terminal_events.get(i, False)) \
                         and not self.reached_target.get(i, False):
                     if i < len(self.vehicles) and self.vehicles[i] is not None and self.vehicles[i].is_alive:
                         self._despawn_reached_vehicle(i)  # 通用 despawn（不标记 reached_target）
@@ -1930,6 +2160,8 @@ class CarlaMultiAgentEnv:
             return self._compute_rewards_v3()
         if self.reward_version == 'v4':
             return self._compute_rewards_v4()
+        if self.reward_version == 'v5':
+            return self._compute_rewards_v5()
         raise RuntimeError(f"unsupported reward_version: {self.reward_version!r}")
 
     def _compute_rewards_v1(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
@@ -3240,6 +3472,139 @@ class CarlaMultiAgentEnv:
 
         self.last_reward_diagnostics = reward_diagnostics
         return rewards, reward_details
+
+    def _compute_rewards_v5(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
+        """R7 reward: R6 mission math plus topology-frozen road legality."""
+
+        if self.adversarial_agent_ids:
+            raise RuntimeError("reward v5 cannot score adversarial agents")
+        base_rewards, base_details = self._compute_rewards_v4()
+        base_diagnostics = {
+            agent_id: dict(values)
+            for agent_id, values in self.last_reward_diagnostics.items()
+        }
+        config = DEFAULT_REWARD_V5_CONFIG
+        rewards: Dict[int, float] = {}
+        details_by_agent: Dict[int, Dict[str, float]] = {}
+        diagnostics_by_agent: Dict[int, Dict[str, float]] = {}
+
+        for agent_id, vehicle in enumerate(self.vehicles):
+            details = {name: 0.0 for name in REWARD_V5_COMPONENTS}
+            details.update(base_details.get(agent_id, {}))
+            diagnostics = {name: 0.0 for name in REWARD_V5_DIAGNOSTICS}
+            diagnostics.update(base_diagnostics.get(agent_id, {}))
+            evidence = self.road_legality_decisions.get(agent_id, {})
+
+            if vehicle is not None and vehicle.is_alive:
+                transform = vehicle.get_transform()
+                reference = self.road_reference_waypoints.get(agent_id)
+                lateral_distance = 0.0
+                if reference is not None:
+                    reference_location = reference.transform.location
+                    right = reference.transform.get_right_vector()
+                    lateral_distance = v5_lateral_distance_to_lane_center(
+                        vehicle_x=transform.location.x,
+                        vehicle_y=transform.location.y,
+                        lane_center_x=reference_location.x,
+                        lane_center_y=reference_location.y,
+                        lane_right_x=right.x,
+                        lane_right_y=right.y,
+                    )
+                exempted = bool(evidence.get("lane_deviation_exempted", False))
+                lane_cost, lane_risk = v5_lane_deviation_penalty(
+                    lateral_distance, exempt=exempted, config=config
+                )
+                crosswalk = bool(self.crosswalk_invasion_events.get(agent_id, False))
+                sensor_event = bool(
+                    self.lane_invasion_events.get(agent_id, False) and not crosswalk
+                )
+                legal_change = bool(evidence.get("legal_lane_change", False))
+                details["lane_deviation"] = lane_cost
+                details["lane_invasion"] = v5_lane_change_event_penalty(
+                    sensor_event=sensor_event,
+                    legal_lane_change=legal_change,
+                    config=config,
+                )
+                diagnostics["lateral_distance_m"] = lateral_distance
+                diagnostics["lane_deviation_risk"] = lane_risk
+                diagnostics["legal_lane_change_event"] = float(legal_change)
+                diagnostics["legal_lane_change_grace_remaining"] = float(
+                    evidence.get("legal_transition_grace_remaining", 0)
+                )
+                diagnostics["lane_deviation_exempted"] = float(exempted)
+                diagnostics["lane_invasion_sensor_event"] = float(sensor_event)
+
+            collision_event = bool(diagnostics.get("collision_event", 0.0))
+            offroad_event = bool(diagnostics.get("offroad_terminated", 0.0))
+            road_terminal = bool(
+                self.road_violation_terminal_events.get(agent_id, False)
+            )
+            success_eligible = bool(evidence.get("success_eligible", False))
+            success_event = bool(
+                diagnostics.get("success_event", 0.0)
+                and success_eligible
+                and not road_terminal
+            )
+            details["success"] = config.success_bonus if success_event else 0.0
+            details["road_rule"] = road_rule_terminal_reward(
+                road_violation=road_terminal,
+                collision=collision_event,
+                offroad=offroad_event,
+                config=config,
+            )
+            timeout_event = bool(
+                diagnostics.get("mission_timeout_event", 0.0)
+                and not road_terminal
+                and not success_event
+            )
+            details["mission_timeout"] = v5_mission_timeout_reward(
+                diagnostics.get("remaining_route_fraction", 1.0),
+                mission_timeout=timeout_event,
+                collision=collision_event,
+                offroad=offroad_event,
+                road_violation=road_terminal,
+                success=success_event,
+                config=config,
+            )
+
+            diagnostics.update({
+                "road_same_reference_lane": float(
+                    evidence.get("same_reference_lane", False)
+                ),
+                "road_adjacent_to_reference": float(
+                    evidence.get("adjacent_to_reference", False)
+                ),
+                "road_lane_change_permitted": float(
+                    evidence.get("lane_change_permitted", False)
+                ),
+                "road_current_to_reference_cosine": float(
+                    evidence.get("current_to_reference_cosine", 0.0)
+                ),
+                "road_vehicle_to_current_cosine": float(
+                    evidence.get("vehicle_to_current_cosine", 0.0)
+                ),
+                "road_in_junction": float(evidence.get("in_junction", False)),
+                "road_violation_raw": float(evidence.get("violation_raw", False)),
+                "road_violation_consecutive_ticks": float(
+                    evidence.get("consecutive_violation_ticks", 0)
+                ),
+                "road_violation_terminated": float(road_terminal),
+                "road_success_eligible": float(success_eligible),
+                "success_event": float(success_event),
+                "mission_timeout_event": float(timeout_event),
+            })
+            # Schema construction above prevents a v4 field from silently
+            # surviving under an unknown name if either protocol changes.
+            details = {name: float(details[name]) for name in REWARD_V5_COMPONENTS}
+            diagnostics = {
+                name: float(diagnostics[name]) for name in REWARD_V5_DIAGNOSTICS
+            }
+            rewards[agent_id] = math.fsum(details.values())
+            details_by_agent[agent_id] = details
+            diagnostics_by_agent[agent_id] = diagnostics
+
+        self.last_reward_diagnostics = diagnostics_by_agent
+        return rewards, details_by_agent
     
     def _check_dones(self) -> Dict[int, bool]:
         """检查是否完成。
@@ -3274,6 +3639,16 @@ class CarlaMultiAgentEnv:
                 .get(i, {})
                 .get("offroad_raw", False)
             )
+            road_evidence = getattr(self, "road_legality_decisions", {}).get(i, {})
+            is_road_violation = bool(
+                getattr(self, "road_violation_terminal_events", {}).get(i, False)
+            )
+            is_road_violation_raw = bool(
+                road_evidence.get("violation_raw", False)
+            )
+            road_success_eligible = bool(
+                road_evidence.get("success_eligible", False)
+            ) if getattr(self, "reward_version", "v2") == "v5" else True
 
             # 检查是否到达终点区域（矩形判定）
             if self._goal_zone_for_agent(i) is not None:
@@ -3301,7 +3676,7 @@ class CarlaMultiAgentEnv:
             # outcome when goal and collision occur on the same simulator tick.
             # Keep legacy v1/v2 evidence semantics unchanged.
             collision_has_priority = bool(
-                getattr(self, "reward_version", "v2") in {"v3", "v4"}
+                getattr(self, "reward_version", "v2") in {"v3", "v4", "v5"}
                 and is_collided
                 and not already_reached
             )
@@ -3309,13 +3684,24 @@ class CarlaMultiAgentEnv:
                 is_offroad
                 and not already_reached
             )
+            road_rule_has_priority = bool(
+                is_road_violation and not already_reached
+            )
             if collision_has_priority:
                 dones[i] = True
                 terminated[i] = True
             elif offroad_has_priority:
                 dones[i] = True
                 terminated[i] = True
-            elif (in_goal_region and not is_offroad_raw) or already_reached:
+            elif road_rule_has_priority:
+                dones[i] = True
+                terminated[i] = True
+            elif (
+                in_goal_region
+                and not is_offroad_raw
+                and not is_road_violation_raw
+                and road_success_eligible
+            ) or already_reached:
                 if not already_reached:
                     # disappear-at-target（MAPF）：到达即从场景移除该车，避免它停在终点
                     # 物理阻挡后到的车，导致"会车被判碰撞"。原 ignore_vehicles_percentage
@@ -3331,7 +3717,7 @@ class CarlaMultiAgentEnv:
                 dones[i] = True
                 # v4 的 mission timeout 是 MDP 内自然失败终态，且剩余时间
                 # 已进入观察；旧版本的外部 max_steps 截断语义保持不变。
-                terminated[i] = getattr(self, "reward_version", "v2") == "v4"
+                terminated[i] = getattr(self, "reward_version", "v2") in {"v4", "v5"}
             else:
                 dones[i] = False
                 terminated[i] = False
@@ -3364,6 +3750,12 @@ class CarlaMultiAgentEnv:
                 and not self.reached_target.get(i, False)
             )
 
+        def _is_road_violation(i: int) -> bool:
+            return bool(
+                getattr(self, "road_violation_terminal_events", {}).get(i, False)
+                and not self.reached_target.get(i, False)
+            )
+
         cooperative_ids = [
             i for i in range(self.num_agents) if i not in self.adversarial_agent_ids
         ]
@@ -3377,6 +3769,9 @@ class CarlaMultiAgentEnv:
 
         severe_ids = [i for i in trigger_ids if _is_severe(i)]
         offroad_ids = [i for i in trigger_ids if _is_offroad(i)]
+        road_violation_ids = [
+            i for i in trigger_ids if _is_road_violation(i)
+        ]
         all_outcome_reached = bool(outcome_ids) and all(
             self.reached_target.get(i, False) for i in outcome_ids
         )
@@ -3396,6 +3791,13 @@ class CarlaMultiAgentEnv:
             else:
                 episode_end_reason = "adversary_offroad"
                 print("检测到蓝车驶入非 Driving 区域，结束本回合")
+        elif road_violation_ids:
+            if any(i in cooperative_ids for i in road_violation_ids):
+                episode_end_reason = "cooperative_road_violation"
+                print("检测到红车持续违反车道方向/换道规则，结束本回合")
+            else:
+                episode_end_reason = "adversary_road_violation"
+                print("检测到蓝车持续违反车道方向/换道规则，结束本回合")
         elif all_outcome_reached:
             episode_end_reason = (
                 "all_agents_reached"
@@ -3406,7 +3808,7 @@ class CarlaMultiAgentEnv:
         elif self.current_step >= self.max_steps:
             episode_end_reason = (
                 "mission_timeout"
-                if getattr(self, "reward_version", "v2") == "v4"
+                if getattr(self, "reward_version", "v2") in {"v4", "v5"}
                 else "max_steps"
             )
         elif dones and all(dones.values()):
@@ -3425,6 +3827,7 @@ class CarlaMultiAgentEnv:
             "cooperative_success",
             "cooperative_collision",
             "cooperative_offroad",
+            "cooperative_road_violation",
         }:
             for i in self.adversarial_agent_ids:
                 terminated[i] = True
