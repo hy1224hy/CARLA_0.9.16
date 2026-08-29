@@ -66,6 +66,7 @@ def validate_scenario_pool(
     xodr_path: Path,
     expected_town: str = "Town02",
     expected_count: int | None = None,
+    require_balanced_pool: bool = True,
 ) -> List[str]:
     errors: List[str] = []
     road_map = carla.Map(
@@ -105,6 +106,17 @@ def validate_scenario_pool(
             difficulty_counts[difficulty] += 1
         except Exception:
             errors.append(f"{prefix}: 缺少合法 difficulty")
+
+        if "episode_max_steps" in config:
+            episode_max_steps = config["episode_max_steps"]
+            if (
+                isinstance(episode_max_steps, bool)
+                or not isinstance(episode_max_steps, int)
+                or episode_max_steps <= 0
+            ):
+                errors.append(
+                    f"{prefix}: episode_max_steps 必须为正整数"
+                )
 
         family = config.get("family")
         if not isinstance(family, str) or not family.strip():
@@ -249,7 +261,11 @@ def validate_scenario_pool(
         if "rear_faster" in tags and rear_speed <= front_speed:
             errors.append(f"{prefix}: rear_faster 与前后车初始速度不一致")
 
-    if len(difficulty_counts) > 1 and len(set(difficulty_counts.values())) != 1:
+    if (
+        require_balanced_pool
+        and len(difficulty_counts) > 1
+        and len(set(difficulty_counts.values())) != 1
+    ):
         errors.append(f"difficulty 场景数不均衡: {dict(difficulty_counts)}")
     if (
         longitudinal_rear_role_counts
@@ -259,7 +275,7 @@ def validate_scenario_pool(
         errors.append(
             f"跟车前后角色不均衡: {dict(longitudinal_rear_role_counts)}"
         )
-    if schema_versions and set(schema_versions) == {3}:
+    if require_balanced_pool and schema_versions and set(schema_versions) == {3}:
         if len(set(family_counts.values())) != 1:
             errors.append(f"family 场景数不均衡: {dict(family_counts)}")
         if len(direction_counts) != 4 or len(set(direction_counts.values())) != 1:
@@ -305,6 +321,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         help="必须存在且四方向平衡的 family；可重复给出",
     )
+    parser.add_argument(
+        "--allow-curriculum-imbalance",
+        action="store_true",
+        help="允许版本化微课程的 stage/family/direction 数量不等；几何仍严格校验",
+    )
     return parser
 
 
@@ -315,6 +336,7 @@ def main() -> int:
         args.xodr.resolve(),
         expected_town=args.town,
         expected_count=args.expected_count,
+        require_balanced_pool=not args.allow_curriculum_imbalance,
     )
     if not errors and args.require_family:
         family_counts: Counter = Counter()

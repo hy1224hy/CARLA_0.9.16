@@ -13,6 +13,7 @@ import weakref
 from carla import ColorConverter as cc
 from torch.utils.tensorboard import SummaryWriter
 import os
+from numbers import Integral
 from datetime import datetime
 
 from environment.base_reward_v3 import (
@@ -145,7 +146,12 @@ class CarlaMultiAgentEnv:
         self.num_agents = num_agents
         self.straight_road_length = straight_road_length
         self.timestep = timestep
-        self.max_steps = max_steps
+        if isinstance(max_steps, bool) or not isinstance(max_steps, Integral) or max_steps <= 0:
+            raise ValueError("max_steps must be a positive integer")
+        # The formal contract owns this outer bound.  Versioned scenarios may
+        # select a shorter per-episode horizon, but can never exceed it.
+        self.default_max_steps = int(max_steps)
+        self.max_steps = self.default_max_steps
         self.adversarial_agent_ids = adversarial_agent_ids if adversarial_agent_ids is not None else []
         if reward_version not in {"v1", "v2", "v3", "v4", "v5"}:
             raise ValueError(f"unsupported reward_version: {reward_version!r}")
@@ -1194,6 +1200,7 @@ class CarlaMultiAgentEnv:
                 "agent0": { ... }, "agent1": { ... }
             },
             "goal_mode": "preserve_start_lane",  # 可选，自动生成逐车同车道目标
+            "episode_max_steps": 200,  # 可选，不得超过合同 max_steps
             "agents": {                # 可选
                 "agent0": {
                     "x": ..., "y": ..., "z": 0.5, "yaw": 90.0,
@@ -1221,6 +1228,24 @@ class CarlaMultiAgentEnv:
         self.agent_goal_zones = {}
         self.custom_start_transforms = None
         self.custom_initial_speeds_mps = {}
+        contract_max_steps = int(
+            getattr(self, "default_max_steps", getattr(self, "max_steps", 0))
+        )
+        if contract_max_steps <= 0:
+            raise ValueError("environment default max_steps must be positive")
+        episode_max_steps = config.get("episode_max_steps", contract_max_steps)
+        if (
+            isinstance(episode_max_steps, bool)
+            or not isinstance(episode_max_steps, Integral)
+        ):
+            raise ValueError("episode_max_steps must be a positive integer")
+        episode_max_steps = int(episode_max_steps)
+        if not 1 <= episode_max_steps <= contract_max_steps:
+            raise ValueError(
+                "episode_max_steps must be within [1, contract max_steps]: "
+                f"{episode_max_steps} not in [1, {contract_max_steps}]"
+            )
+        self.max_steps = episode_max_steps
 
         # 1. 终点区域
         if "goal_zone" in config:

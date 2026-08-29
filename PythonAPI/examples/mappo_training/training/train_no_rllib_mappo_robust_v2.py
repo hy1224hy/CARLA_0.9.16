@@ -52,6 +52,15 @@ from training.mastery_curriculum import (
     R7_CURRICULUM_PROTOCOL_VERSION,
     MasteryGate,
     MasteryWindow,
+    R8AMasteryGate,
+)
+from training.r8a_curriculum import (
+    R8A_MASTERY_PROTOCOL_VERSION,
+    R8A_SAMPLING_PROTOCOL_VERSION,
+    r8a_sampler_state,
+    sample_r8a_balanced,
+    validate_r8a_sampler_state,
+    validate_r8a_stages,
 )
 from training.policy_distribution_protocol import (
     POLICY_DISTRIBUTION_PROTOCOL_VERSION,
@@ -361,6 +370,7 @@ def observation_protocol_version(
 def checkpoint_protocol_versions(
     reward_version: str,
     lidar_range_m: float = 4.0,
+    curriculum_protocol: str = "",
 ) -> Dict[str, str]:
     versions = {
         "observation": observation_protocol_version(
@@ -391,6 +401,11 @@ def checkpoint_protocol_versions(
             "road_legality": ROAD_LEGALITY_PROTOCOL_VERSION,
             "critic_diagnostics": CRITIC_DIAGNOSTICS_PROTOCOL_VERSION,
             "learning_rate": LEARNING_RATE_PROTOCOL_VERSION,
+        })
+    if str(curriculum_protocol) == "r8a_mastery_v1":
+        versions.update({
+            "curriculum": R8A_MASTERY_PROTOCOL_VERSION,
+            "scenario_sampling": R8A_SAMPLING_PROTOCOL_VERSION,
         })
     return versions
 
@@ -2548,6 +2563,7 @@ class CurriculumLearning:
         transition_window: int = 10,
         mode: str = "classic",
         mastery_enabled: bool = False,
+        r8a_enabled: bool = False,
         mastery_agent_ids: Tuple[int, ...] = (0, 1),
         maximum_team_road_violation_rate: Optional[float] = None,
     ):
@@ -2557,6 +2573,9 @@ class CurriculumLearning:
         self.transition_window = transition_window
         self.mode = mode
         self.mastery_enabled = bool(mastery_enabled)
+        self.r8a_enabled = bool(r8a_enabled)
+        if self.r8a_enabled and not self.mastery_enabled:
+            raise ValueError("R8-A curriculum requires mastery to be enabled")
 
         all_scenario_files = []
         if os.path.exists(scenario_dir):
@@ -2586,16 +2605,19 @@ class CurriculumLearning:
         else:
             self.curriculum_stages = curriculum_stages
 
-        self.mastery_gate = (
-            MasteryGate(
+        if self.r8a_enabled:
+            validate_r8a_stages(self.curriculum_stages)
+
+        self.mastery_gate = None
+        if self.mastery_enabled:
+            gate_type = R8AMasteryGate if self.r8a_enabled else MasteryGate
+            self.mastery_gate = gate_type(
                 stage_count=len(self.curriculum_stages),
                 agent_ids=mastery_agent_ids,
                 maximum_team_road_violation_rate=(
                     maximum_team_road_violation_rate
                 ),
             )
-            if self.mastery_enabled else None
-        )
 
         self.scenario_success_history: Dict[str, List[float]] = {f: [] for f in all_scenario_files}
         self.scenario_total_sample_counts: Dict[str, int] = {
@@ -2818,9 +2840,20 @@ class CurriculumLearning:
     def get_scenario_total_sample_count(self, scenario_name: str) -> int:
         return int(self.scenario_total_sample_counts.get(scenario_name, 0))
 
-    def record_mastery_window(self, window: MasteryWindow) -> Dict[str, object]:
+    def record_mastery_window(
+        self,
+        window: MasteryWindow,
+        *,
+        scenario_windows: Optional[Mapping[str, MasteryWindow]] = None,
+    ) -> Dict[str, object]:
         if self.mastery_gate is None:
             raise RuntimeError("mastery curriculum is not enabled")
+        if self.r8a_enabled:
+            if scenario_windows is None:
+                raise RuntimeError("R8-A mastery requires scenario windows")
+            return self.mastery_gate.evaluate(
+                window, scenario_windows=scenario_windows
+            )
         return self.mastery_gate.evaluate(window)
 
 
@@ -2880,6 +2913,19 @@ def train(args):
             raise ValueError("--critic-lr-hold-updates must be non-negative")
         if args.critic_probe_batch_size <= 0:
             raise ValueError("reward v5 requires a positive critic probe batch size")
+    if args.curriculum_protocol == "r8a_mastery_v1":
+        if args.reward_version != "v5":
+            raise ValueError("R8-A curriculum requires frozen reward v5")
+        if args.scenario_sampling_mode != "r8a_balanced":
+            raise ValueError("R8-A curriculum requires r8a_balanced sampling")
+        if args.rollout_episodes != 16:
+            raise ValueError("R8-A curriculum requires 16 episodes per update")
+        if args.curriculum_mode != "metadata":
+            raise ValueError("R8-A curriculum requires metadata stages")
+    elif args.scenario_sampling_mode == "r8a_balanced":
+        raise ValueError(
+            "r8a_balanced sampling requires r8a_mastery_v1 curriculum"
+        )
     if not 0.0 <= args.value_norm_beta < 1.0:
         raise ValueError("--value-norm-beta must be in [0, 1)")
     if args.value_norm_epsilon <= 0.0:
@@ -3082,7 +3128,10 @@ def train(args):
         full_scenario_updates=args.full_scenario_updates,
         transition_window=args.curriculum_transition_window,
         mode=args.curriculum_mode,
-        mastery_enabled=args.curriculum_protocol == "mastery_v2",
+        mastery_enabled=args.curriculum_protocol in {
+            "mastery_v2", "r8a_mastery_v1"
+        },
+        r8a_enabled=args.curriculum_protocol == "r8a_mastery_v1",
         mastery_agent_ids=(0, 1),
         maximum_team_road_violation_rate=(
             0.10 if args.reward_version == "v5" else None
@@ -3191,6 +3240,7 @@ def train(args):
     protocol_versions = checkpoint_protocol_versions(
         args.reward_version,
         args.lidar_range_m,
+        args.curriculum_protocol,
     )
     current_action_spec = action_protocol_spec()
     model_spec = checkpoint_model_spec(
@@ -3255,6 +3305,17 @@ def train(args):
             raise CheckpointProtocolError(
                 "curriculum stages differ from checkpoint"
             )
+        if args.curriculum_protocol == "r8a_mastery_v1":
+            sampler_state = saved_curriculum.get("sampler_state")
+            try:
+                validate_r8a_sampler_state(
+                    sampler_state,
+                    expected_completed_update=int(resume_checkpoint["update"]),
+                )
+            except ValueError as error:
+                raise CheckpointProtocolError(
+                    f"R8-A sampler phase differs from checkpoint: {error}"
+                ) from error
 
         try:
             for aid in agent_ids:
@@ -3582,6 +3643,7 @@ def train(args):
                     ),
                     "mode": args.curriculum_mode,
                     "protocol": args.curriculum_protocol,
+                    "scenario_sampling_mode": args.scenario_sampling_mode,
                 },
                 "curriculum_protocol_version": (
                     curriculum.mastery_gate.state_dict()[
@@ -3607,6 +3669,11 @@ def train(args):
                 "mastery_state": (
                     curriculum.mastery_gate.state_dict()
                     if curriculum.mastery_gate is not None else None
+                ),
+                "sampler_state": (
+                    r8a_sampler_state(completed_update)
+                    if args.curriculum_protocol == "r8a_mastery_v1"
+                    else None
                 ),
             },
             "rng_state": capture_rng_state(),
@@ -3721,7 +3788,15 @@ def train(args):
             sample_counts = None
             coverage_counts = None
             soft_weights = None
-            if args.scenario_sampling_mode == "weighted":
+            if args.scenario_sampling_mode == "r8a_balanced":
+                weighted_scenarios = list(available_scenarios)
+                sampled_scenarios = sample_r8a_balanced(
+                    weighted_scenarios,
+                    args.rollout_episodes,
+                    phase=update - 1,
+                )
+                sampling_priorities = {}
+            elif args.scenario_sampling_mode == "weighted":
                 soft_weights = curriculum.get_scenario_sampling_weights(update)
                 weighted_scenarios = [
                     scenario for scenario, weight in soft_weights.items()
@@ -3742,30 +3817,31 @@ def train(args):
             else:
                 weighted_scenarios = available_scenarios
 
-            sampled_scenarios = sample_scenarios_stratified(
-                available_scenarios=weighted_scenarios,
-                n_episodes=args.rollout_episodes,
-                success_rates=success_rates,
-                sample_counts=sample_counts,
-                coverage_counts=coverage_counts,
-                mode=args.scenario_sampling_mode,
-                external_weights=soft_weights,
-                coverage_groups=(
-                    curriculum.get_scenario_coverage_groups(weighted_scenarios)
-                    if args.scenario_sampling_mode == "weighted"
-                    else None
-                ),
-            )
-            sampling_priorities = (
-                compute_scenario_sampling_priorities(
+            if args.scenario_sampling_mode != "r8a_balanced":
+                sampled_scenarios = sample_scenarios_stratified(
                     available_scenarios=weighted_scenarios,
+                    n_episodes=args.rollout_episodes,
                     success_rates=success_rates,
                     sample_counts=sample_counts,
+                    coverage_counts=coverage_counts,
+                    mode=args.scenario_sampling_mode,
                     external_weights=soft_weights,
+                    coverage_groups=(
+                        curriculum.get_scenario_coverage_groups(weighted_scenarios)
+                        if args.scenario_sampling_mode == "weighted"
+                        else None
+                    ),
                 )
-                if args.scenario_sampling_mode == "weighted"
-                else {}
-            )
+                sampling_priorities = (
+                    compute_scenario_sampling_priorities(
+                        available_scenarios=weighted_scenarios,
+                        success_rates=success_rates,
+                        sample_counts=sample_counts,
+                        external_weights=soft_weights,
+                    )
+                    if args.scenario_sampling_mode == "weighted"
+                    else {}
+                )
 
             print(f"\n更新 {update}/{args.updates}, 可用场景数: {len(available_scenarios)}, "
                   f"采样分布: {len(set(sampled_scenarios))} 种/{len(sampled_scenarios)} 个 episode")
@@ -3783,6 +3859,23 @@ def train(args):
                 "offroad": 0,
                 "road_violation": 0,
             }
+            r8a_scenario_mastery_stats = {
+                scenario: {
+                    "episode_count": 0,
+                    "speed_sums": {aid: 0.0 for aid in agent_ids},
+                    "active_counts": {aid: 0 for aid in agent_ids},
+                    "brake_sums": {aid: 0.0 for aid in agent_ids},
+                    "completion_samples": {aid: [] for aid in agent_ids},
+                    "outcomes": {
+                        "success": 0,
+                        "timeout": 0,
+                        "collision": 0,
+                        "offroad": 0,
+                        "road_violation": 0,
+                    },
+                }
+                for scenario in sorted(set(sampled_scenarios))
+            } if args.curriculum_protocol == "r8a_mastery_v1" else {}
             for rollout_episode in range(args.rollout_episodes):
                 scenario_name = sampled_scenarios[rollout_episode]
                 scenario_config = env.load_scenario_by_name(scenario_name, scenario_dir)
@@ -3870,6 +3963,18 @@ def train(args):
                                 environment_action[2] > 0.01
                                 and environment_action[0] <= 0.01
                             )
+                            if r8a_scenario_mastery_stats:
+                                scenario_stats = r8a_scenario_mastery_stats[
+                                    scenario_name
+                                ]
+                                scenario_stats["speed_sums"][aid] += float(
+                                    diagnostics.get("speed_mps", 0.0)
+                                )
+                                scenario_stats["active_counts"][aid] += 1
+                                scenario_stats["brake_sums"][aid] += float(
+                                    environment_action[2] > 0.01
+                                    and environment_action[0] <= 0.01
+                                )
                     episode_end_reason = info['episode_end_reason']
                     (
                         next_active_mask,
@@ -4025,6 +4130,16 @@ def train(args):
                         mastery_completion_samples[aid].append(
                             episode_last_completion[aid]
                         )
+                    if r8a_scenario_mastery_stats:
+                        scenario_stats = r8a_scenario_mastery_stats[
+                            scenario_name
+                        ]
+                        scenario_stats["episode_count"] += 1
+                        scenario_stats["outcomes"][outcome_name] += 1
+                        for aid in agent_ids:
+                            scenario_stats["completion_samples"][aid].append(
+                                episode_last_completion[aid]
+                            )
 
                 # P0-00B：bootstrap 类型只服从环境发布的最终 T/X 协议，不再根据
                 # reached_target 或碰撞 sticky 标志二次猜测。X 可来自 max_steps，
@@ -4097,41 +4212,103 @@ def train(args):
 
             if curriculum.mastery_gate is not None:
                 episode_count = int(args.rollout_episodes)
-                mastery_evidence = curriculum.record_mastery_window(
-                    MasteryWindow(
+                pooled_mastery_window = MasteryWindow(
+                    update=update,
+                    episode_count=episode_count,
+                    agent_mean_speed_mps={
+                        aid: mastery_speed_sums[aid]
+                        / max(1, mastery_active_counts[aid])
+                        for aid in agent_ids
+                    },
+                    agent_mean_completion={
+                        aid: float(np.mean(mastery_completion_samples[aid]))
+                        for aid in agent_ids
+                    },
+                    agent_brake_mode_rate={
+                        aid: mastery_brake_mode_sums[aid]
+                        / max(1, mastery_active_counts[aid])
+                        for aid in agent_ids
+                    },
+                    team_success_rate=(
+                        mastery_outcomes["success"] / episode_count
+                    ),
+                    team_timeout_rate=(
+                        mastery_outcomes["timeout"] / episode_count
+                    ),
+                    team_collision_rate=(
+                        mastery_outcomes["collision"] / episode_count
+                    ),
+                    team_offroad_rate=(
+                        mastery_outcomes["offroad"] / episode_count
+                    ),
+                    team_road_violation_rate=(
+                        mastery_outcomes["road_violation"] / episode_count
+                    ),
+                )
+                scenario_mastery_windows: Dict[str, MasteryWindow] = {}
+                for scenario_name, scenario_stats in (
+                    r8a_scenario_mastery_stats.items()
+                ):
+                    scenario_episode_count = int(
+                        scenario_stats["episode_count"]
+                    )
+                    if scenario_episode_count <= 0:
+                        raise RuntimeError(
+                            "R8-A sampled scenario has no completed episodes: "
+                            f"{scenario_name}"
+                        )
+                    scenario_mastery_windows[scenario_name] = MasteryWindow(
                         update=update,
-                        episode_count=episode_count,
+                        episode_count=scenario_episode_count,
                         agent_mean_speed_mps={
-                            aid: mastery_speed_sums[aid]
-                            / max(1, mastery_active_counts[aid])
+                            aid: scenario_stats["speed_sums"][aid]
+                            / max(1, scenario_stats["active_counts"][aid])
                             for aid in agent_ids
                         },
                         agent_mean_completion={
-                            aid: float(np.mean(mastery_completion_samples[aid]))
+                            aid: float(np.mean(
+                                scenario_stats["completion_samples"][aid]
+                            ))
                             for aid in agent_ids
                         },
                         agent_brake_mode_rate={
-                            aid: mastery_brake_mode_sums[aid]
-                            / max(1, mastery_active_counts[aid])
+                            aid: scenario_stats["brake_sums"][aid]
+                            / max(1, scenario_stats["active_counts"][aid])
                             for aid in agent_ids
                         },
                         team_success_rate=(
-                            mastery_outcomes["success"] / episode_count
+                            scenario_stats["outcomes"]["success"]
+                            / scenario_episode_count
                         ),
                         team_timeout_rate=(
-                            mastery_outcomes["timeout"] / episode_count
+                            scenario_stats["outcomes"]["timeout"]
+                            / scenario_episode_count
                         ),
                         team_collision_rate=(
-                            mastery_outcomes["collision"] / episode_count
+                            scenario_stats["outcomes"]["collision"]
+                            / scenario_episode_count
                         ),
                         team_offroad_rate=(
-                            mastery_outcomes["offroad"] / episode_count
+                            scenario_stats["outcomes"]["offroad"]
+                            / scenario_episode_count
                         ),
                         team_road_violation_rate=(
-                            mastery_outcomes["road_violation"] / episode_count
+                            scenario_stats["outcomes"]["road_violation"]
+                            / scenario_episode_count
                         ),
                     )
+                mastery_evidence = curriculum.record_mastery_window(
+                    pooled_mastery_window,
+                    scenario_windows=(
+                        scenario_mastery_windows
+                        if args.curriculum_protocol == "r8a_mastery_v1"
+                        else None
+                    ),
                 )
+                if args.curriculum_protocol == "r8a_mastery_v1":
+                    metrics_recorder.record_audit(
+                        "r8a_scenario_mastery", mastery_evidence
+                    )
                 metrics_recorder.record_scalars({
                     "curriculum/stage_index": mastery_evidence["stage_index"],
                     "curriculum/mastery_passed": float(
@@ -4543,8 +4720,10 @@ def build_parser():
         ),
     )
     parser.add_argument("--scenario-sampling-mode", type=str, default="weighted",
-                        choices=["random", "stratified", "weighted"],
-                        help="场景采样模式: random=随机, stratified=分层轮询, weighted=分层+失败率加权")
+                        choices=["random", "stratified", "weighted", "r8a_balanced"],
+                        help=("场景采样模式: random=随机, stratified=分层轮询, "
+                              "weighted=分层+失败率加权, "
+                              "r8a_balanced=R8-A确定性精确平衡"))
 
     # 课程学习
     parser.add_argument("--warmup-updates", type=int, default=10, help="基础场景预热次数")
@@ -4560,8 +4739,9 @@ def build_parser():
         "--curriculum-protocol",
         type=str,
         default="update_schedule_v1",
-        choices=["update_schedule_v1", "mastery_v2"],
-        help="课程推进协议；P0-T05-09/R6 必须使用 mastery_v2",
+        choices=["update_schedule_v1", "mastery_v2", "r8a_mastery_v1"],
+        help=("课程推进协议；P0-T05-09/R6 使用 mastery_v2；"
+              "R8-A 使用 r8a_mastery_v1"),
     )
     parser.add_argument(
         "--lidar-range-m",
