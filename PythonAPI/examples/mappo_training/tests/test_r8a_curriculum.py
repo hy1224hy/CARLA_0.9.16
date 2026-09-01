@@ -35,6 +35,8 @@ from training.train_no_rllib_mappo_robust_v2 import (
 )
 from utils.build_town05_r8a_scenarios import write_payloads
 from utils.validate_r8a_scenarios import validate_r8a_scenario_pool
+from utils.validate_tensorboard_run import SUPPORTED_METRICS_PROTOCOL_VERSIONS
+from training.metrics_protocol import R7_METRICS_PROTOCOL_VERSION
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -151,6 +153,16 @@ class R8AContractTests(unittest.TestCase):
         self.assertIn("R8A_STAGE_NEW_SCENARIOS[:2]", source)
         self.assertIn("max_abs_reward_residual", source)
         self.assertIn("CARLA cleanup invariant failed", source)
+
+    def test_strict_metrics_validator_registers_the_frozen_r7_schema(self):
+        self.assertIn(
+            R7_METRICS_PROTOCOL_VERSION,
+            SUPPORTED_METRICS_PROTOCOL_VERSIONS,
+        )
+        self.assertIn(
+            "utils/validate_tensorboard_run.py",
+            self.r8a["critical_source_paths"],
+        )
 
     def test_r7_scenario_pool_is_unchanged_and_r8a_is_distinct(self):
         self.assertEqual(

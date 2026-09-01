@@ -13,13 +13,39 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 from training.metrics_protocol import (
     ACTION_RATE_NAMES,
     ACTION_METRICS_PROTOCOL_VERSION,
-    EPISODE_RECORD_VERSION,
     LEGACY_METRICS_PROTOCOL_VERSION,
-    METRICS_PROTOCOL_VERSION,
+    OFFROAD_METRICS_PROTOCOL_VERSION,
     POLICY_ACTION_RATE_NAMES,
+    PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
+    R6_METRICS_PROTOCOL_VERSION,
+    R7_METRICS_PROTOCOL_VERSION,
     MetricsProtocolError,
+    episode_record_version,
     validate_episode_record,
 )
+
+
+SUPPORTED_METRICS_PROTOCOL_VERSIONS = frozenset({
+    LEGACY_METRICS_PROTOCOL_VERSION,
+    ACTION_METRICS_PROTOCOL_VERSION,
+    PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
+    OFFROAD_METRICS_PROTOCOL_VERSION,
+    R6_METRICS_PROTOCOL_VERSION,
+    R7_METRICS_PROTOCOL_VERSION,
+})
+POLICY_ACTION_METRICS_PROTOCOL_VERSIONS = frozenset({
+    ACTION_METRICS_PROTOCOL_VERSION,
+    PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
+    OFFROAD_METRICS_PROTOCOL_VERSION,
+    R6_METRICS_PROTOCOL_VERSION,
+    R7_METRICS_PROTOCOL_VERSION,
+})
+VALUE_NORM_METRICS_PROTOCOL_VERSIONS = frozenset({
+    PRE_OFFROAD_METRICS_PROTOCOL_VERSION,
+    OFFROAD_METRICS_PROTOCOL_VERSION,
+    R6_METRICS_PROTOCOL_VERSION,
+    R7_METRICS_PROTOCOL_VERSION,
+})
 
 
 def _required_tags(schema: Mapping[str, object]) -> List[str]:
@@ -74,10 +100,10 @@ def _required_tags(schema: Mapping[str, object]) -> List[str]:
             f"action/agent_{agent_id}/{name}_rate"
             for name in ACTION_RATE_NAMES
         )
-        if schema.get("metrics_protocol_version") in {
-            ACTION_METRICS_PROTOCOL_VERSION,
-            METRICS_PROTOCOL_VERSION,
-        }:
+        if (
+            schema.get("metrics_protocol_version")
+            in POLICY_ACTION_METRICS_PROTOCOL_VERSIONS
+        ):
             tags.extend(
                 f"action/agent_{agent_id}/{name}/mean"
                 for name in ("policy_signed_longitudinal", "policy_steer")
@@ -95,7 +121,10 @@ def _ppo_required_tags(schema: Mapping[str, object]) -> List[str]:
         "critic/grad_norm_critic",
         "model/critic/update_norm",
     ]
-    if schema.get("metrics_protocol_version") == METRICS_PROTOCOL_VERSION:
+    if (
+        schema.get("metrics_protocol_version")
+        in VALUE_NORM_METRICS_PROTOCOL_VERSIONS
+    ):
         tags.extend(
             [
                 "critic/explained_variance",
@@ -220,11 +249,7 @@ def validate_metrics_run(
         raise FileNotFoundError(f"metrics schema not found: {schema_path}")
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     schema_protocol = str(schema.get("metrics_protocol_version", ""))
-    if schema_protocol not in {
-        LEGACY_METRICS_PROTOCOL_VERSION,
-        ACTION_METRICS_PROTOCOL_VERSION,
-        METRICS_PROTOCOL_VERSION,
-    }:
+    if schema_protocol not in SUPPORTED_METRICS_PROTOCOL_VERSIONS:
         raise MetricsProtocolError("metrics schema protocol mismatch")
     records = _load_jsonl(
         run_dir / "metrics.jsonl",
@@ -312,10 +337,7 @@ def validate_metrics_run(
                     f"update {record['update']} agent {agent_id} violates "
                     "mutually exclusive longitudinal control"
                 )
-            if schema_protocol in {
-                ACTION_METRICS_PROTOCOL_VERSION,
-                METRICS_PROTOCOL_VERSION,
-            }:
+            if schema_protocol in POLICY_ACTION_METRICS_PROTOCOL_VERSIONS:
                 for name in POLICY_ACTION_RATE_NAMES:
                     action_rate(name)
         if expected_episodes_per_update is not None and int(
@@ -334,7 +356,10 @@ def validate_metrics_run(
     episode_schema = schema.get("episode_records")
     if not isinstance(episode_schema, Mapping):
         raise MetricsProtocolError("metrics schema has no episode_records protocol")
-    if episode_schema.get("version") != EPISODE_RECORD_VERSION:
+    expected_episode_record_version = episode_record_version(
+        str(schema.get("reward_version", ""))
+    )
+    if episode_schema.get("version") != expected_episode_record_version:
         raise MetricsProtocolError("episode record schema protocol mismatch")
     agent_ids = [int(agent_id) for agent_id in schema["agent_ids"]]
     episode_records = _load_episode_jsonl(
@@ -506,7 +531,7 @@ def validate_metrics_run(
         "run_dir": str(run_dir),
         "run_id": schema["run_id"],
         "updates": actual_updates,
-        "episode_record_version": EPISODE_RECORD_VERSION,
+        "episode_record_version": expected_episode_record_version,
         "episode_record_count": len(episode_records),
         "required_tag_count": len(required_tags),
         "tensorboard_scalar_tag_count": len(tensorboard_tags),
