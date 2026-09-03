@@ -63,6 +63,13 @@ from environment.base_reward_v5 import (
     mission_timeout_reward as v5_mission_timeout_reward,
     road_rule_terminal_reward,
 )
+from environment.base_reward_v6 import (
+    DEFAULT_REWARD_V6_CONFIG,
+    PACE_COMPONENT as REWARD_V6_PACE_COMPONENT,
+    REWARD_COMPONENTS as REWARD_V6_COMPONENTS,
+    REWARD_DIAGNOSTICS as REWARD_V6_DIAGNOSTICS,
+    free_flow_pace_deficit,
+)
 from environment.stall_protocol import (
     DEFAULT_STALL_CONFIG,
     StallState,
@@ -153,16 +160,16 @@ class CarlaMultiAgentEnv:
         self.default_max_steps = int(max_steps)
         self.max_steps = self.default_max_steps
         self.adversarial_agent_ids = adversarial_agent_ids if adversarial_agent_ids is not None else []
-        if reward_version not in {"v1", "v2", "v3", "v4", "v5"}:
+        if reward_version not in {"v1", "v2", "v3", "v4", "v5", "v6"}:
             raise ValueError(f"unsupported reward_version: {reward_version!r}")
-        if reward_version in {"v3", "v4", "v5"} and self.adversarial_agent_ids:
+        if reward_version in {"v3", "v4", "v5", "v6"} and self.adversarial_agent_ids:
             raise ValueError(
                 f"reward {reward_version} is base-policy only"
             )
         self.reward_version = reward_version
         # R7 deliberately keeps the exact R6 observation contract.  Road
         # legality is environment-side reward/termination evidence only.
-        self.observation_dim = 20 if reward_version in {"v4", "v5"} else 19
+        self.observation_dim = 20 if reward_version in {"v4", "v5", "v6"} else 19
         self.lidar_range_m = float(lidar_range_m)
         if not math.isfinite(self.lidar_range_m) or self.lidar_range_m <= 0.0:
             raise ValueError("lidar_range_m must be finite and positive")
@@ -271,6 +278,7 @@ class CarlaMultiAgentEnv:
         }
         self.stall_states: Dict[int, StallState] = {}
         self.current_scenario_family = ""
+        self.current_scenario_tags: frozenset[str] = frozenset()
 
         # 自定义起始位置（优先级高于start_waypoints）
         self.custom_start_transforms: Optional[List[carla.Transform]] = None
@@ -874,7 +882,7 @@ class CarlaMultiAgentEnv:
         return {
             "protocol": (
                 r6_offroad_protocol_spec()
-                if getattr(self, "reward_version", "v3") in {"v4", "v5"}
+                if getattr(self, "reward_version", "v3") in {"v4", "v5", "v6"}
                 else offroad_protocol_spec()
             ),
             "road_occupancy": {
@@ -954,7 +962,7 @@ class CarlaMultiAgentEnv:
         self.road_violation_terminal_events = {
             i: False for i in range(self.num_agents)
         }
-        if getattr(self, "reward_version", "v2") != "v5":
+        if getattr(self, "reward_version", "v2") not in {"v5", "v6"}:
             return
         for agent_id, vehicle in enumerate(self.vehicles):
             if vehicle is None or not vehicle.is_alive:
@@ -990,7 +998,7 @@ class CarlaMultiAgentEnv:
             }
 
     def _update_road_legality_states(self) -> None:
-        if getattr(self, "reward_version", "v2") != "v5":
+        if getattr(self, "reward_version", "v2") not in {"v5", "v6"}:
             return
         for agent_id, vehicle in enumerate(self.vehicles):
             if (
@@ -1079,7 +1087,7 @@ class CarlaMultiAgentEnv:
         }
 
     def _road_legality_info(self) -> Dict:
-        if getattr(self, "reward_version", "v2") != "v5":
+        if getattr(self, "reward_version", "v2") not in {"v5", "v6"}:
             return {}
         return {
             "road_legality_protocol": road_legality_protocol_spec(),
@@ -1213,6 +1221,14 @@ class CarlaMultiAgentEnv:
         """
         configured_town = config.get("town")
         self.current_scenario_family = str(config.get("family", "")).strip()
+        scenario_tags = config.get("tags", [])
+        if not isinstance(scenario_tags, list) or not all(
+            isinstance(tag, str) and tag.strip() for tag in scenario_tags
+        ):
+            raise ValueError("scenario tags must be a list of non-empty strings")
+        self.current_scenario_tags = frozenset(
+            tag.strip().lower() for tag in scenario_tags
+        )
         if configured_town:
             current_town = self.map.name.rsplit("/", 1)[-1]
             if str(configured_town) != current_town:
@@ -1943,7 +1959,7 @@ class CarlaMultiAgentEnv:
 
             # Reward-v4 把自然任务期限显式放入状态，避免同一物理状态在
             # 不同剩余时间下具有不同最优动作却对策略不可辨认。
-            if self.reward_version in {"v4", "v5"}:
+            if self.reward_version in {"v4", "v5", "v6"}:
                 remaining_time = max(
                     0.0, (self.max_steps - self.current_step) / self.max_steps
                 )
@@ -2187,6 +2203,8 @@ class CarlaMultiAgentEnv:
             return self._compute_rewards_v4()
         if self.reward_version == 'v5':
             return self._compute_rewards_v5()
+        if self.reward_version == 'v6':
+            return self._compute_rewards_v6()
         raise RuntimeError(f"unsupported reward_version: {self.reward_version!r}")
 
     def _compute_rewards_v1(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
@@ -3630,6 +3648,113 @@ class CarlaMultiAgentEnv:
 
         self.last_reward_diagnostics = diagnostics_by_agent
         return rewards, details_by_agent
+
+    def _pace_has_front_blocker(self, agent_id: int) -> bool:
+        """Return the instantaneous v6 pace exemption for a nearby lead car.
+
+        The record-only stall protocol intentionally waits for a persistent
+        no-progress window before setting its exemption flags.  Pace shaping
+        starts much earlier, so it must use the same geometry directly rather
+        than inherit the stall diagnostic's temporal gate.
+        """
+
+        if (
+            agent_id < 0
+            or agent_id >= len(self.vehicles)
+            or self.vehicles[agent_id] is None
+            or not self.vehicles[agent_id].is_alive
+        ):
+            return False
+        for other_id, relative in self._get_relative_position_to_agents(
+            agent_id
+        ).items():
+            other_vehicle = self.vehicles[other_id]
+            longitudinal_distance = float(relative["longitudinal_dist"])
+            lateral_distance = float(relative["lateral_dist"])
+            if (
+                other_vehicle is not None
+                and other_vehicle.is_alive
+                and abs(lateral_distance) < 2.0
+                and 0.0 < longitudinal_distance
+                <= DEFAULT_STALL_CONFIG.front_blocker_gap_m
+            ):
+                return True
+        return False
+
+    def _compute_rewards_v6(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
+        """R8-C1 reward: frozen v5 plus one gated free-flow pace cost."""
+
+        if self.adversarial_agent_ids:
+            raise RuntimeError("reward v6 cannot score adversarial agents")
+        _base_rewards, base_details = self._compute_rewards_v5()
+        base_diagnostics = {
+            agent_id: dict(values)
+            for agent_id, values in self.last_reward_diagnostics.items()
+        }
+        scenario_tags = frozenset(
+            str(tag).strip().lower()
+            for tag in getattr(self, "current_scenario_tags", frozenset())
+        )
+        free_flow_tag = "free_flow" in scenario_tags
+        non_interactive_tag = "non_interactive" in scenario_tags
+        rewards: Dict[int, float] = {}
+        details_by_agent: Dict[int, Dict[str, float]] = {}
+        diagnostics_by_agent: Dict[int, Dict[str, float]] = {}
+
+        for agent_id in range(self.num_agents):
+            details = {name: 0.0 for name in REWARD_V6_COMPONENTS}
+            details.update(base_details.get(agent_id, {}))
+            diagnostics = {name: 0.0 for name in REWARD_V6_DIAGNOSTICS}
+            diagnostics.update(base_diagnostics.get(agent_id, {}))
+            front_blocker = self._pace_has_front_blocker(agent_id)
+            complex_interaction = is_complex_interaction_family(
+                self.current_scenario_family
+            )
+            terminal_event = any(
+                bool(diagnostics.get(name, 0.0))
+                for name in (
+                    "collision_event",
+                    "offroad_terminated",
+                    "road_violation_terminated",
+                    "success_event",
+                    "mission_timeout_event",
+                )
+            )
+            decision = free_flow_pace_deficit(
+                diagnostics.get("remaining_route_fraction", 1.0),
+                diagnostics.get("remaining_time_fraction", 1.0),
+                current_step=int(self.current_step),
+                free_flow=free_flow_tag,
+                non_interactive=non_interactive_tag,
+                front_blocker=front_blocker,
+                complex_interaction=complex_interaction,
+                terminal_event=terminal_event,
+                config=DEFAULT_REWARD_V6_CONFIG,
+            )
+            details[REWARD_V6_PACE_COMPONENT] = decision.reward
+            diagnostics.update({
+                "pace_free_flow_tag": float(free_flow_tag),
+                "pace_non_interactive_tag": float(non_interactive_tag),
+                "pace_grace_exempt": float(decision.grace_exempt),
+                "pace_front_blocker_exempt": float(front_blocker),
+                "pace_complex_interaction_exempt": float(complex_interaction),
+                "pace_near_goal_exempt": float(decision.near_goal_exempt),
+                "pace_terminal_exempt": float(decision.terminal_exempt),
+                "pace_deficit_raw": decision.raw_deficit,
+                "pace_deficit_risk": decision.risk,
+                "pace_deficit_eligible": float(decision.eligible),
+                "pace_deficit_reward": decision.reward,
+            })
+            details = {name: float(details[name]) for name in REWARD_V6_COMPONENTS}
+            diagnostics = {
+                name: float(diagnostics[name]) for name in REWARD_V6_DIAGNOSTICS
+            }
+            rewards[agent_id] = math.fsum(details.values())
+            details_by_agent[agent_id] = details
+            diagnostics_by_agent[agent_id] = diagnostics
+
+        self.last_reward_diagnostics = diagnostics_by_agent
+        return rewards, details_by_agent
     
     def _check_dones(self) -> Dict[int, bool]:
         """检查是否完成。
@@ -3673,7 +3798,7 @@ class CarlaMultiAgentEnv:
             )
             road_success_eligible = bool(
                 road_evidence.get("success_eligible", False)
-            ) if getattr(self, "reward_version", "v2") == "v5" else True
+            ) if getattr(self, "reward_version", "v2") in {"v5", "v6"} else True
 
             # 检查是否到达终点区域（矩形判定）
             if self._goal_zone_for_agent(i) is not None:
@@ -3701,7 +3826,7 @@ class CarlaMultiAgentEnv:
             # outcome when goal and collision occur on the same simulator tick.
             # Keep legacy v1/v2 evidence semantics unchanged.
             collision_has_priority = bool(
-                getattr(self, "reward_version", "v2") in {"v3", "v4", "v5"}
+                getattr(self, "reward_version", "v2") in {"v3", "v4", "v5", "v6"}
                 and is_collided
                 and not already_reached
             )
@@ -3742,7 +3867,7 @@ class CarlaMultiAgentEnv:
                 dones[i] = True
                 # v4 的 mission timeout 是 MDP 内自然失败终态，且剩余时间
                 # 已进入观察；旧版本的外部 max_steps 截断语义保持不变。
-                terminated[i] = getattr(self, "reward_version", "v2") in {"v4", "v5"}
+                terminated[i] = getattr(self, "reward_version", "v2") in {"v4", "v5", "v6"}
             else:
                 dones[i] = False
                 terminated[i] = False
@@ -3833,7 +3958,7 @@ class CarlaMultiAgentEnv:
         elif self.current_step >= self.max_steps:
             episode_end_reason = (
                 "mission_timeout"
-                if getattr(self, "reward_version", "v2") in {"v4", "v5"}
+                if getattr(self, "reward_version", "v2") in {"v4", "v5", "v6"}
                 else "max_steps"
             )
         elif dones and all(dones.values()):

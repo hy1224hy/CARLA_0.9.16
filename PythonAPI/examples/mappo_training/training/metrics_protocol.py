@@ -25,6 +25,11 @@ from environment.base_reward_v5 import (
     REWARD_DIAGNOSTICS as REWARD_V5_DIAGNOSTICS,
     reward_v5_spec,
 )
+from environment.base_reward_v6 import (
+    REWARD_COMPONENTS as REWARD_V6_COMPONENTS,
+    REWARD_DIAGNOSTICS as REWARD_V6_DIAGNOSTICS,
+    reward_v6_spec,
+)
 from training.action_protocol import action_protocol_spec
 from training.value_normalization import value_normalization_spec
 
@@ -34,6 +39,7 @@ PRE_OFFROAD_METRICS_PROTOCOL_VERSION = "mappo_metrics_valuenorm_p0_00g_v5"
 OFFROAD_METRICS_PROTOCOL_VERSION = "mappo_metrics_offroad_p0_00g_v6"
 R6_METRICS_PROTOCOL_VERSION = "mappo_metrics_r6_p0_t05_09_v7"
 R7_METRICS_PROTOCOL_VERSION = "mappo_metrics_r7_p0_t05_10_v8"
+R8C1_METRICS_PROTOCOL_VERSION = "mappo_metrics_r8c1_pace_p0_t05_v9"
 R6_EPISODE_RECORD_VERSION = "mappo_episode_record_mission_v3"
 R7_EPISODE_RECORD_VERSION = "mappo_episode_record_road_rule_v4"
 # Backward-compatible names remain the frozen R6 defaults.  R7 callers select
@@ -93,6 +99,7 @@ REWARD_COMPONENTS: Dict[str, Tuple[str, ...]] = {
     "v3": REWARD_V3_COMPONENTS,
     "v4": REWARD_V4_COMPONENTS,
     "v5": REWARD_V5_COMPONENTS,
+    "v6": REWARD_V6_COMPONENTS,
 }
 
 REWARD_DIAGNOSTICS: Dict[str, Tuple[str, ...]] = {
@@ -126,6 +133,7 @@ REWARD_DIAGNOSTICS: Dict[str, Tuple[str, ...]] = {
     "v3": REWARD_V3_DIAGNOSTICS,
     "v4": REWARD_V4_DIAGNOSTICS,
     "v5": REWARD_V5_DIAGNOSTICS,
+    "v6": REWARD_V6_DIAGNOSTICS,
 }
 
 DISABLED_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
@@ -136,6 +144,7 @@ DISABLED_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
     "v3": frozenset(),
     "v4": frozenset(),
     "v5": frozenset(),
+    "v6": frozenset(),
 }
 
 SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
@@ -178,21 +187,32 @@ SPARSE_REWARD_COMPONENTS: Dict[str, frozenset[str]] = {
             "mission_timeout",
         }
     ),
+    "v6": frozenset(
+        {
+            "lane_invasion",
+            "offroad",
+            "road_rule",
+            "collision",
+            "success",
+            "mission_timeout",
+        }
+    ),
 }
 
 
 def metrics_protocol_version(reward_version: str) -> str:
-    return (
-        R7_METRICS_PROTOCOL_VERSION
-        if str(reward_version) == "v5"
-        else R6_METRICS_PROTOCOL_VERSION
-    )
+    version = str(reward_version)
+    if version == "v6":
+        return R8C1_METRICS_PROTOCOL_VERSION
+    if version == "v5":
+        return R7_METRICS_PROTOCOL_VERSION
+    return R6_METRICS_PROTOCOL_VERSION
 
 
 def episode_record_version(reward_version: str) -> str:
     return (
         R7_EPISODE_RECORD_VERSION
-        if str(reward_version) == "v5"
+        if str(reward_version) in {"v5", "v6"}
         else R6_EPISODE_RECORD_VERSION
     )
 
@@ -683,6 +703,8 @@ def reward_schema_document(reward_version: str) -> Dict[str, object]:
         document["reward_protocol"] = reward_v4_spec()
     elif reward_version == "v5":
         document["reward_protocol"] = reward_v5_spec()
+    elif reward_version == "v6":
+        document["reward_protocol"] = reward_v6_spec()
     return document
 
 

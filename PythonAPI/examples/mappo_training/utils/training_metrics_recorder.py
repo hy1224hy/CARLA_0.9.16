@@ -197,6 +197,56 @@ def _parameter_delta_norm(
     return math.sqrt(total_sq)
 
 
+def _parameter_pair_statistics(
+    first: torch.nn.Module, second: torch.nn.Module
+) -> Dict[str, float]:
+    first_parameters = dict(first.named_parameters())
+    second_parameters = dict(second.named_parameters())
+    if set(first_parameters) != set(second_parameters):
+        raise MetricsProtocolError("actor parameter names differ across agents")
+
+    distance_sq = 0.0
+    first_norm_sq = 0.0
+    second_norm_sq = 0.0
+    dot_product = 0.0
+    maximum_abs_difference = 0.0
+    for name, first_parameter in first_parameters.items():
+        second_parameter = second_parameters[name]
+        if first_parameter.shape != second_parameter.shape:
+            raise MetricsProtocolError(
+                f"actor parameter shape differs across agents for {name!r}"
+            )
+        first_values = first_parameter.detach()
+        second_values = second_parameter.detach()
+        difference = first_values - second_values
+        distance_sq += float(torch.sum(difference * difference).item())
+        first_norm_sq += float(torch.sum(first_values * first_values).item())
+        second_norm_sq += float(torch.sum(second_values * second_values).item())
+        dot_product += float(torch.sum(first_values * second_values).item())
+        if difference.numel():
+            maximum_abs_difference = max(
+                maximum_abs_difference,
+                float(torch.max(torch.abs(difference)).item()),
+            )
+
+    distance = math.sqrt(distance_sq)
+    first_norm = math.sqrt(first_norm_sq)
+    second_norm = math.sqrt(second_norm_sq)
+    norm_product = first_norm * second_norm
+    cosine_similarity = (
+        dot_product / norm_product
+        if norm_product > 0.0
+        else (1.0 if distance == 0.0 else 0.0)
+    )
+    mean_norm = 0.5 * (first_norm + second_norm)
+    return {
+        "parameter_distance": distance,
+        "relative_parameter_distance": distance / max(mean_norm, 1e-12),
+        "parameter_cosine_similarity": max(-1.0, min(1.0, cosine_similarity)),
+        "maximum_abs_parameter_difference": maximum_abs_difference,
+    }
+
+
 class TrainingMetricsRecorder:
     """Aggregate one complete update and persist it after checkpoint commit."""
 
@@ -429,7 +479,7 @@ class TrainingMetricsRecorder:
             "created_at": str(payload.get("created_at", _utc_now_iso())),
             "scalars": normalized_scalars,
         }
-        if self.reward_version == "v5":
+        if self.reward_version in {"v5", "v6"}:
             audits = payload.get("audits")
             if not isinstance(audits, Mapping):
                 raise MetricsProtocolError("R7 metrics payload audits must be a mapping")
@@ -803,7 +853,7 @@ class TrainingMetricsRecorder:
                     for agent_id in self.agent_ids
                 },
             }
-        if self.reward_version == "v5":
+        if self.reward_version in {"v5", "v6"}:
             episode_payload["road_violation"] = bool(road_violation)
             for agent_id in self.agent_ids:
                 episode_payload["agents"][str(agent_id)][
@@ -1006,6 +1056,34 @@ class TrainingMetricsRecorder:
         )
         self._pending_histogram_modules = (dict(actors), critic)
 
+    def record_actor_pairwise_diagnostics(
+        self,
+        actors: Mapping[int, torch.nn.Module],
+        *,
+        phase: str,
+    ) -> None:
+        phase_name = str(phase).strip()
+        if phase_name not in {"pre_update", "post_update"}:
+            raise MetricsProtocolError(
+                "actor pairwise diagnostic phase must be pre_update or post_update"
+            )
+        missing = set(self.agent_ids) - set(actors)
+        if missing:
+            raise MetricsProtocolError(
+                f"actor pairwise diagnostics missing agents={sorted(missing)}"
+            )
+        for first_index, first_agent_id in enumerate(self.agent_ids):
+            for second_agent_id in self.agent_ids[first_index + 1:]:
+                statistics = _parameter_pair_statistics(
+                    actors[first_agent_id], actors[second_agent_id]
+                )
+                prefix = (
+                    f"model/actor_pair_{first_agent_id}_{second_agent_id}/"
+                    f"{phase_name}"
+                )
+                for name, value in statistics.items():
+                    self.record_scalar(f"{prefix}/{name}", value)
+
     @staticmethod
     def _mean_metric(metrics: Mapping[str, object], key: str) -> Optional[float]:
         values = metrics.get(key)
@@ -1197,7 +1275,7 @@ class TrainingMetricsRecorder:
         put("episode/collision_rate", self.collision_count / self.episode_count)
         put("episode/timeout_rate", self.timeout_count / self.episode_count)
         put("episode/offroad_rate", self.offroad_count / self.episode_count)
-        if self.reward_version == "v5":
+        if self.reward_version in {"v5", "v6"}:
             put(
                 "episode/road_violation_rate",
                 self.road_violation_count / self.episode_count,
@@ -1281,7 +1359,7 @@ class TrainingMetricsRecorder:
             put(f"scenario/{scenario}/collision_rate", stats["collision"].mean)
             put(f"scenario/{scenario}/timeout_rate", stats["timeout"].mean)
             put(f"scenario/{scenario}/offroad_rate", stats["offroad"].mean)
-            if self.reward_version == "v5":
+            if self.reward_version in {"v5", "v6"}:
                 put(
                     f"scenario/{scenario}/road_violation_rate",
                     stats["road_violation"].mean,
@@ -1298,7 +1376,7 @@ class TrainingMetricsRecorder:
             "created_at": _utc_now_iso(),
             "scalars": dict(sorted(scalars.items())),
         }
-        if self.reward_version == "v5":
+        if self.reward_version in {"v5", "v6"}:
             payload["audits"] = dict(sorted(self.external_audits.items()))
         self._pending_payload = payload
         return payload

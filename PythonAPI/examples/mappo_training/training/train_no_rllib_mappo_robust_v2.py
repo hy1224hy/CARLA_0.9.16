@@ -165,7 +165,7 @@ ACTION_DIM = POLICY_ACTION_DIM
 
 
 def observation_dim_for_reward(reward_version: str) -> int:
-    return R6_OBS_DIM if str(reward_version) in {"v4", "v5"} else OBS_DIM
+    return R6_OBS_DIM if str(reward_version) in {"v4", "v5", "v6"} else OBS_DIM
 
 
 def classify_base_episode_outcome_r7(
@@ -302,6 +302,7 @@ RESUME_IMMUTABLE_ARG_NAMES = (
     "target_kl",
     "lr_decay",
     "init_log_std",
+    "actor_init_mode",
     "min_log_std",
     "max_log_std",
     "ent_coef_final",
@@ -330,7 +331,7 @@ R7_RESUME_IMMUTABLE_ARG_NAMES = RESUME_IMMUTABLE_ARG_NAMES + (
 def _resume_immutable_arg_names(args) -> Tuple[str, ...]:
     return (
         R7_RESUME_IMMUTABLE_ARG_NAMES
-        if str(getattr(args, "reward_version", "")) == "v5"
+        if str(getattr(args, "reward_version", "")) in {"v5", "v6"}
         else RESUME_IMMUTABLE_ARG_NAMES
     )
 
@@ -345,13 +346,78 @@ def set_seed(seed: int):
     torch.backends.cudnn.benchmark = False
 
 
+ACTOR_INIT_MODES = ("independent", "identical")
+
+
+@torch.no_grad()
+def apply_actor_initialization_mode(
+    actors: Mapping[int, Actor], mode: str
+) -> Dict[str, object]:
+    """Apply the fresh-run actor initialization ablation without sharing parameters.
+
+    All actors are constructed before copying so ``identical`` consumes the same RNG
+    stream as ``independent``. This keeps critic initialization and subsequent
+    rollout sampling aligned; only the non-source actor's initial weights change.
+    """
+    actor_ids = sorted(int(agent_id) for agent_id in actors)
+    if not actor_ids:
+        raise ValueError("actor initialization requires at least one actor")
+    if mode not in ACTOR_INIT_MODES:
+        raise ValueError(
+            f"actor_init_mode must be one of {ACTOR_INIT_MODES}, got {mode!r}"
+        )
+
+    source_id = actor_ids[0]
+    if mode == "identical":
+        source_state = copy.deepcopy(actors[source_id].state_dict())
+        for agent_id in actor_ids[1:]:
+            actors[agent_id].load_state_dict(source_state, strict=True)
+
+    source_parameters = dict(actors[source_id].named_parameters())
+    maximum_abs_difference = 0.0
+    all_exactly_equal = True
+    for agent_id in actor_ids[1:]:
+        candidate_parameters = dict(actors[agent_id].named_parameters())
+        if set(candidate_parameters) != set(source_parameters):
+            raise ValueError("actors do not expose the same parameter names")
+        for name, source_parameter in source_parameters.items():
+            candidate_parameter = candidate_parameters[name]
+            if source_parameter.shape != candidate_parameter.shape:
+                raise ValueError(
+                    f"actor parameter shape mismatch for {name!r}: "
+                    f"{source_parameter.shape} != {candidate_parameter.shape}"
+                )
+            all_exactly_equal = all_exactly_equal and torch.equal(
+                source_parameter, candidate_parameter
+            )
+            if source_parameter.numel():
+                maximum_abs_difference = max(
+                    maximum_abs_difference,
+                    float(torch.max(torch.abs(
+                        source_parameter - candidate_parameter
+                    )).item()),
+                )
+
+    if mode == "identical" and not all_exactly_equal:
+        raise RuntimeError("identical actor initialization was not bitwise exact")
+    return {
+        "mode": mode,
+        "source_agent_id": source_id if mode == "identical" else None,
+        "actor_ids": actor_ids,
+        "all_exactly_equal": bool(all_exactly_equal),
+        "maximum_abs_parameter_difference": maximum_abs_difference,
+        "parameters_shared": False,
+        "optimizers_shared": False,
+    }
+
+
 def observation_protocol_version(
     lidar_range_m: float,
     reward_version: str = "v3",
 ) -> str:
     """Bind normalized ray values to their physical range in checkpoints."""
     lidar_range = float(lidar_range_m)
-    if str(reward_version) in {"v4", "v5"}:
+    if str(reward_version) in {"v4", "v5", "v6"}:
         if lidar_range != 20.0:
             raise ValueError(
                 "reward v4 registers only the 20m time-aware observation"
@@ -380,7 +446,7 @@ def checkpoint_protocol_versions(
         "lifecycle": LIFECYCLE_PROTOCOL_VERSION,
         "offroad": (
             R6_OFFROAD_PROTOCOL_VERSION
-            if str(reward_version) in {"v4", "v5"}
+            if str(reward_version) in {"v4", "v5", "v6"}
             else OFFROAD_PROTOCOL_VERSION
         ),
         "reward": str(reward_version),
@@ -388,13 +454,13 @@ def checkpoint_protocol_versions(
         "value_normalization": VALUE_NORMALIZATION_PROTOCOL_VERSION,
         "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
     }
-    if str(reward_version) in {"v4", "v5"}:
+    if str(reward_version) in {"v4", "v5", "v6"}:
         versions.update({
             "policy_distribution": POLICY_DISTRIBUTION_PROTOCOL_VERSION,
             "curriculum": CURRICULUM_PROTOCOL_VERSION,
             "stall": STALL_PROTOCOL_VERSION,
         })
-    if str(reward_version) == "v5":
+    if str(reward_version) in {"v5", "v6"}:
         versions.update({
             "policy_distribution": R7_POLICY_DISTRIBUTION_PROTOCOL_VERSION,
             "curriculum": R7_CURRICULUM_PROTOCOL_VERSION,
@@ -546,10 +612,10 @@ def runtime_metadata_with_carla(env) -> Dict[str, object]:
     metadata["environment_reward_gamma"] = float(env.reward_gamma)
     metadata["offroad_protocol"] = (
         r6_offroad_protocol_spec()
-        if getattr(env, "reward_version", "v3") in {"v4", "v5"}
+        if getattr(env, "reward_version", "v3") in {"v4", "v5", "v6"}
         else offroad_protocol_spec()
     )
-    if getattr(env, "reward_version", "v3") == "v5":
+    if getattr(env, "reward_version", "v3") in {"v5", "v6"}:
         metadata["road_legality_protocol"] = road_legality_protocol_spec()
     try:
         metadata["carla_client"] = env.client.get_client_version()
@@ -2896,6 +2962,15 @@ def train(args):
         raise ValueError(
             "--resume and --pretrained-checkpoint are mutually exclusive"
         )
+    if args.actor_init_mode not in ACTOR_INIT_MODES:
+        raise ValueError(
+            f"--actor-init-mode must be one of {ACTOR_INIT_MODES}"
+        )
+    if args.actor_init_mode == "identical" and args.pretrained_checkpoint:
+        raise ValueError(
+            "--actor-init-mode identical is a fresh-run ablation and cannot be "
+            "combined with --pretrained-checkpoint"
+        )
     if args.updates <= 0:
         raise ValueError("--updates must be positive")
     if args.save_interval <= 0:
@@ -2906,16 +2981,18 @@ def train(args):
         raise ValueError("--tb-histogram-interval must be non-negative")
     if args.lr_decay_horizon < 0:
         raise ValueError("--lr-decay-horizon must be non-negative")
-    if args.reward_version == "v5":
+    if args.reward_version in {"v5", "v6"}:
         if args.lr_actor_final is None or args.lr_critic_final is None:
-            raise ValueError("reward v5 requires frozen final actor/critic learning rates")
+            raise ValueError(
+                "reward v5/v6 requires frozen final actor/critic learning rates"
+            )
         if args.critic_lr_hold_updates < 0:
             raise ValueError("--critic-lr-hold-updates must be non-negative")
         if args.critic_probe_batch_size <= 0:
             raise ValueError("reward v5 requires a positive critic probe batch size")
     if args.curriculum_protocol == "r8a_mastery_v1":
-        if args.reward_version != "v5":
-            raise ValueError("R8-A curriculum requires frozen reward v5")
+        if args.reward_version not in {"v5", "v6"}:
+            raise ValueError("R8-A curriculum requires reward v5 or v6")
         if args.scenario_sampling_mode != "r8a_balanced":
             raise ValueError("R8-A curriculum requires r8a_balanced sampling")
         if args.rollout_episodes != 16:
@@ -2969,6 +3046,7 @@ def train(args):
         project_dir / "models" / "actor_critic.py",
         project_dir / "environment" / "carla_multi_agent_env.py",
         project_dir / "environment" / "base_reward_v5.py",
+        project_dir / "environment" / "base_reward_v6.py",
         project_dir / "environment" / "road_legality_protocol.py",
     ]
     experiment_contract_metadata = getattr(
@@ -3134,7 +3212,7 @@ def train(args):
         r8a_enabled=args.curriculum_protocol == "r8a_mastery_v1",
         mastery_agent_ids=(0, 1),
         maximum_team_road_violation_rate=(
-            0.10 if args.reward_version == "v5" else None
+            0.10 if args.reward_version in {"v5", "v6"} else None
         ),
     )
 
@@ -3156,6 +3234,9 @@ def train(args):
         ).to(device)
         for aid in agent_ids
     }
+    actor_initialization_report = apply_actor_initialization_mode(
+        actors, args.actor_init_mode
+    )
     actor_optims: Dict[int, optim.Optimizer] = {
         aid: optim.Adam(actors[aid].parameters(), lr=args.lr_actor)
         for aid in agent_ids
@@ -3188,7 +3269,7 @@ def train(args):
             critic_final_lr=float(args.lr_critic_final),
             critic_decay_updates=lr_decay_horizon,
         )
-        if args.reward_version == "v5"
+        if args.reward_version in {"v5", "v6"}
         else None
     )
 
@@ -3498,6 +3579,7 @@ def train(args):
                 if experiment_contract_metadata
                 else int(args.updates)
             ),
+            "actor_initialization": actor_initialization_report,
         }
         manifest = {
             "checkpoint_schema_version": active_checkpoint_schema_version,
@@ -3521,7 +3603,7 @@ def train(args):
     )
     latest_critic_probe_batch = (
         copy.deepcopy(resume_checkpoint.get("critic_probe_batch"))
-        if resume_checkpoint is not None and args.reward_version == "v5"
+        if resume_checkpoint is not None and args.reward_version in {"v5", "v6"}
         else None
     )
     try:
@@ -3560,6 +3642,12 @@ def train(args):
         env.close()
         raise
     print(f"RunID: {args.run_id}")
+    print(
+        "Actor 初始化: "
+        f"mode={args.actor_init_mode}, "
+        f"exact_equal={actor_initialization_report['all_exactly_equal']}, "
+        "shared_parameters=False, shared_optimizers=False"
+    )
     print(f"TensorBoard 日志: {metrics_recorder.tb_dir}")
     print(f"结构化指标: {metrics_recorder.jsonl_path}")
 
@@ -3631,7 +3719,7 @@ def train(args):
                     "actor_final_lr": float(args.lr_actor_final),
                     "critic_hold_updates": int(args.critic_lr_hold_updates),
                     "critic_final_lr": float(args.lr_critic_final),
-                } if args.reward_version == "v5" else {}),
+                } if args.reward_version in {"v5", "v6"} else {}),
             },
             "run_metadata": checkpoint_run_metadata,
             "curriculum_state": {
@@ -3690,7 +3778,7 @@ def train(args):
                 )
             },
         }
-        if args.reward_version == "v5":
+        if args.reward_version in {"v5", "v6"}:
             payload["total_road_violations"] = int(total_road_violations)
             if latest_critic_probe_batch is None:
                 raise CheckpointProtocolError(
@@ -3756,7 +3844,7 @@ def train(args):
         # R7's critic probe needs real rollout targets.  Do not fabricate an
         # update-0 probe or publish an apparently resumable checkpoint before
         # the first complete update has been committed.
-        if resume_checkpoint is None and args.reward_version != "v5":
+        if resume_checkpoint is None and args.reward_version not in {"v5", "v6"}:
             _save_safe_checkpoint(include_periodic=False)
         for update in range(start_update, args.updates + 1):
             update_started_at = time.perf_counter()
@@ -4078,7 +4166,7 @@ def train(args):
                 # 严格互斥三类终局只服从环境发布的全局 end reason。这样即使
                 # success/collision sticky 信号在同一 tick 同时出现，也不会把一个
                 # episode 同时计入两个 outcome；逐 agent 事件仍保留在 diagnostics。
-                if args.reward_version == "v5":
+                if args.reward_version in {"v5", "v6"}:
                     (
                         ep_success,
                         ep_collision,
@@ -4352,6 +4440,9 @@ def train(args):
             preupdate_ratio_errors: Dict[int, float] = {}
             critic_audit: Dict[str, object] = {}
             metrics_recorder.capture_model_snapshot(actors, critic)
+            metrics_recorder.record_actor_pairwise_diagnostics(
+                actors, phase="pre_update"
+            )
             ppo_started_at = time.perf_counter()
 
             if skip_update:
@@ -4371,7 +4462,7 @@ def train(args):
                     value_normalizer=value_normalizer,
                 )
                 advantage_stats = prepared_batch.advantage_stats
-                if args.reward_version == "v5":
+                if args.reward_version in {"v5", "v6"}:
                     latest_critic_probe_batch = build_critic_probe_batch(
                         states=prepared_batch.critic_states.detach().cpu().numpy(),
                         agent_ids=(
@@ -4408,6 +4499,9 @@ def train(args):
                 critic_audit = update_result.critic_audit
             ppo_seconds = time.perf_counter() - ppo_started_at
             metrics_recorder.record_model_update(actors, critic)
+            metrics_recorder.record_actor_pairwise_diagnostics(
+                actors, phase="post_update"
+            )
             metrics_recorder.record_scalar(
                 "policy/entropy_coefficient", current_ent_coef
             )
@@ -4430,7 +4524,7 @@ def train(args):
                 skipped=skip_update,
                 max_grad_norm=args.max_grad_norm,
             )
-            if args.reward_version == "v5" and critic_audit:
+            if args.reward_version in {"v5", "v6"} and critic_audit:
                 metrics_recorder.record_audit("critic_groups", critic_audit)
             cumulative_scalars = {
                     "episode/success_rate_cumulative": (
@@ -4469,7 +4563,7 @@ def train(args):
                         time.perf_counter() - update_started_at
                     ),
                 }
-            if args.reward_version == "v5":
+            if args.reward_version in {"v5", "v6"}:
                 cumulative_scalars[
                     "episode/road_violation_rate_cumulative"
                 ] = total_road_violations / max(total_episodes, 1)
@@ -4484,7 +4578,7 @@ def train(args):
                 win_road_violation = float(np.mean(window_road_violations))
                 road_outcome_text = (
                     f"road_violation={win_road_violation:.2%}, "
-                    if args.reward_version == "v5" else ""
+                    if args.reward_version in {"v5", "v6"} else ""
                 )
 
                 def _mean_comp(name):
@@ -4500,7 +4594,7 @@ def train(args):
                       f"avg_ep_len={float(np.mean(window_episode_lengths)):.0f}, "
                       f"n_trans={n_transitions_per_agent} (total={n_transitions}), "
                       f"lr_a={cur_lr_a:.2e}")
-                if args.reward_version in {"v3", "v4", "v5"}:
+                if args.reward_version in {"v3", "v4", "v5", "v6"}:
                     print(
                         f"   reward-{args.reward_version}分量(均值/有效步): "
                         f"progress={_mean_comp('progress'):.4f}, "
@@ -4513,7 +4607,8 @@ def train(args):
                         f"road_rule={_mean_comp('road_rule'):.4f}, "
                         f"collision={_mean_comp('collision'):.4f}, "
                         f"success={_mean_comp('success'):.4f}, "
-                        f"mission_timeout={_mean_comp('mission_timeout'):.4f}"
+                        f"mission_timeout={_mean_comp('mission_timeout'):.4f}, "
+                        f"pace_deficit={_mean_comp('free_flow_pace_deficit'):.4f}"
                     )
                 else:
                     print(
@@ -4701,6 +4796,17 @@ def build_parser():
     parser.add_argument("--init-log-std", type=float, default=0.0,
                         help="Actor log_std 初始值（std=1.0），配合 target-kl 早停，给足初期探索空间")
     parser.add_argument(
+        "--actor-init-mode",
+        type=str,
+        default="independent",
+        choices=ACTOR_INIT_MODES,
+        help=(
+            "Actor 初始化消融：independent=各自随机初始化；"
+            "identical=先各自构造再把 agent_0 参数逐位复制给其他 Actor。"
+            "两种模式始终保持独立参数和独立优化器"
+        ),
+    )
+    parser.add_argument(
         "--min-log-std", type=float, default=-1.0,
         help="Actor 有效 log_std 下界",
     )
@@ -4821,10 +4927,11 @@ def build_parser():
         "--reward-version",
         type=str,
         default="v3",
-        choices=["v1", "v2", "v3", "v4", "v5"],
+        choices=["v1", "v2", "v3", "v4", "v5", "v6"],
         help=(
             "奖励函数版本；R6 使用 v4 mission 预算，"
-            "P0-T05-10/R7 使用 v5 road-rule 预算"
+            "P0-T05-10/R7 使用 v5 road-rule 预算；"
+            "R8-C1 使用 v6 free-flow pace-deficit 消融"
         ),
     )
 

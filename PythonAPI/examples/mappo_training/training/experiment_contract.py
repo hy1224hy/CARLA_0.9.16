@@ -26,6 +26,7 @@ from environment.offroad_protocol import (
 )
 from environment.base_reward_v4 import reward_v4_spec
 from environment.base_reward_v5 import reward_v5_spec
+from environment.base_reward_v6 import reward_v6_spec
 from environment.road_legality_protocol import road_legality_protocol_spec
 from environment.stall_protocol import stall_protocol_spec
 from training.critic_diagnostics import critic_diagnostics_protocol_spec
@@ -52,6 +53,7 @@ TOWN05_OUTCOME_REPEATABILITY_EXPERIMENT_CONTRACT_VERSION = (
 TOWN05_R6_EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_r6_v5"
 TOWN05_R7_EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_r7_v6"
 TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_r8a_v7"
+TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION = "p0_base_experiment_contract_r8c1_v8"
 TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS = frozenset(
     {
         TOWN05_COMPREHENSIVE_EXPERIMENT_CONTRACT_VERSION,
@@ -118,6 +120,7 @@ R7_TRAINER_ARG_NAMES = R6_TRAINER_ARG_NAMES + (
     "critic_lr_hold_updates",
     "critic_probe_batch_size",
 )
+R8C1_TRAINER_ARG_NAMES = R7_TRAINER_ARG_NAMES + ("actor_init_mode",)
 
 _TOP_LEVEL_FIELDS = frozenset(
     {
@@ -187,6 +190,8 @@ def _trainer_arg_names_for_contract(
         TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
     }:
         return R7_TRAINER_ARG_NAMES
+    if version == TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION:
+        return R8C1_TRAINER_ARG_NAMES
     if version == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION:
         return R6_TRAINER_ARG_NAMES
     if version in TOWN05_COMPREHENSIVE_CONTRACT_VERSIONS:
@@ -285,6 +290,7 @@ def validate_experiment_contract(
             TOWN05_R6_EXPERIMENT_CONTRACT_VERSION,
             TOWN05_R7_EXPERIMENT_CONTRACT_VERSION,
             TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+            TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
         }
     ):
         expected_top_level_fields.add("offroad_protocol")
@@ -292,6 +298,7 @@ def validate_experiment_contract(
         TOWN05_R6_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R7_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
     }:
         expected_top_level_fields.update({
             "reward_protocol",
@@ -302,13 +309,17 @@ def validate_experiment_contract(
     if contract_version in {
         TOWN05_R7_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
     }:
         expected_top_level_fields.update({
             "road_legality_protocol",
             "critic_diagnostics_protocol",
             "learning_rate_protocol",
         })
-    if contract_version == TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION:
+    if contract_version in {
+        TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
+    }:
         expected_top_level_fields.add("r8a_curriculum_protocol")
     _expect_exact_fields(payload, expected_top_level_fields, "contract")
 
@@ -320,6 +331,7 @@ def validate_experiment_contract(
         TOWN05_R6_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R7_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
     }:
         raise ExperimentContractError(
             "unsupported contract_version="
@@ -377,6 +389,25 @@ def validate_experiment_contract(
             if payload[name] != expected:
                 raise ExperimentContractError(
                     f"{name} differs from frozen R8-A protocol"
+                )
+    if payload["contract_version"] == TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION:
+        expected_protocols = {
+            "offroad_protocol": r6_offroad_protocol_spec(),
+            "reward_protocol": reward_v6_spec(),
+            "stall_protocol": stall_protocol_spec(),
+            "mastery_protocol": r8a_mastery_protocol_spec(
+                maximum_team_road_violation_rate=0.10
+            ),
+            "policy_distribution_protocol": r7_policy_distribution_spec(),
+            "road_legality_protocol": road_legality_protocol_spec(),
+            "critic_diagnostics_protocol": critic_diagnostics_protocol_spec(),
+            "learning_rate_protocol": learning_rate_protocol_spec(),
+            "r8a_curriculum_protocol": r8a_curriculum_protocol_spec(),
+        }
+        for name, expected in expected_protocols.items():
+            if payload[name] != expected:
+                raise ExperimentContractError(
+                    f"{name} differs from frozen R8-C1 protocol"
                 )
     _require_nonempty_string(payload["contract_id"], "contract_id")
     if payload["status"] != "frozen":
@@ -477,6 +508,7 @@ def validate_experiment_contract(
         TOWN05_R6_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R7_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
     }:
         _require_number(
             trainer_args["value_norm_beta"],
@@ -500,6 +532,7 @@ def validate_experiment_contract(
             TOWN05_R6_EXPERIMENT_CONTRACT_VERSION,
             TOWN05_R7_EXPERIMENT_CONTRACT_VERSION,
             TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+            TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
         }
     ):
         for name in ("lidar_range_m", "ttc_max_range_m"):
@@ -511,6 +544,7 @@ def validate_experiment_contract(
         TOWN05_R6_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R7_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
     }:
         for name in ("ent_coef_final", "min_log_std", "max_log_std"):
             _require_number(trainer_args[name], f"trainer_args.{name}")
@@ -533,13 +567,16 @@ def validate_experiment_contract(
         TOWN05_R6_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R7_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
     }:
         string_names.append("curriculum_protocol")
     for name in string_names:
         _require_nonempty_string(trainer_args[name], f"trainer_args.{name}")
-    if trainer_args["reward_version"] not in {"v1", "v2", "v3", "v4", "v5"}:
+    if trainer_args["reward_version"] not in {
+        "v1", "v2", "v3", "v4", "v5", "v6"
+    }:
         raise ExperimentContractError(
-            "trainer_args.reward_version must be v1, v2, v3, v4 or v5"
+            "trainer_args.reward_version must be v1, v2, v3, v4, v5 or v6"
         )
     if payload["contract_version"] == TOWN05_R6_EXPERIMENT_CONTRACT_VERSION:
         if trainer_args["reward_version"] != "v4":
@@ -549,13 +586,27 @@ def validate_experiment_contract(
     if payload["contract_version"] in {
         TOWN05_R7_EXPERIMENT_CONTRACT_VERSION,
         TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
     }:
-        if trainer_args["reward_version"] != "v5":
-            raise ExperimentContractError("R7/R8-A contract must use reward v5")
+        expected_reward_version = (
+            "v6"
+            if payload["contract_version"]
+            == TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION
+            else "v5"
+        )
+        if trainer_args["reward_version"] != expected_reward_version:
+            raise ExperimentContractError(
+                "formal reward version mismatch: "
+                f"{trainer_args['reward_version']!r} != "
+                f"{expected_reward_version!r}"
+            )
         expected_curriculum = (
             "r8a_mastery_v1"
             if payload["contract_version"]
-            == TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION
+            in {
+                TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+                TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
+            }
             else "mastery_v2"
         )
         if trainer_args["curriculum_protocol"] != expected_curriculum:
@@ -579,8 +630,10 @@ def validate_experiment_contract(
             minimum=1,
         )
         if (
-            payload["contract_version"]
-            != TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION
+            payload["contract_version"] not in {
+                TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+                TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
+            }
             and trainer_args["critic_lr_hold_updates"] >= planned_updates
         ):
             raise ExperimentContractError(
@@ -597,35 +650,44 @@ def validate_experiment_contract(
         "r8a_balanced",
     }:
         raise ExperimentContractError("invalid trainer_args.scenario_sampling_mode")
-    if payload["contract_version"] == TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION:
+    is_r8_short_curriculum = payload["contract_version"] in {
+        TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION,
+        TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION,
+    }
+    if is_r8_short_curriculum:
         if trainer_args["scenario_sampling_mode"] != "r8a_balanced":
             raise ExperimentContractError(
-                "R8-A contract must use r8a_balanced sampling"
+                "R8-A/R8-C1 contract must use r8a_balanced sampling"
             )
         if trainer_args["rollout_episodes"] != 16:
             raise ExperimentContractError(
-                "R8-A contract must use 16 episodes per update"
+                "R8-A/R8-C1 contract must use 16 episodes per update"
             )
     elif trainer_args["scenario_sampling_mode"] == "r8a_balanced":
         raise ExperimentContractError(
-            "r8a_balanced sampling is reserved for the R8-A contract"
+            "r8a_balanced sampling is reserved for R8-A/R8-C1 contracts"
         )
     if trainer_args["curriculum_mode"] not in {"metadata", "classic", "distance"}:
         raise ExperimentContractError("invalid trainer_args.curriculum_mode")
     if trainer_args["seed"] not in allowed_seeds:
         raise ExperimentContractError("trainer_args.seed is not present in allowed_seeds")
-    if payload["contract_version"] == TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION:
+    if is_r8_short_curriculum:
         if trainer_args["lr_decay_horizon"] != 600:
             raise ExperimentContractError(
-                "R8-A must retain the frozen R7 600-update LR horizon"
+                "R8-A/R8-C1 must retain the frozen R7 600-update LR horizon"
             )
         if (
             trainer_args["warmup_updates"],
             trainer_args["full_scenario_updates"],
         ) != (40, 200):
             raise ExperimentContractError(
-                "R8-A must retain frozen R7 schedule placeholders 40/200"
+                "R8-A/R8-C1 must retain frozen R7 schedule placeholders 40/200"
             )
+        if payload["contract_version"] == TOWN05_R8C1_EXPERIMENT_CONTRACT_VERSION:
+            if trainer_args["actor_init_mode"] != "independent":
+                raise ExperimentContractError(
+                    "R8-C1 must use independent actors for a reward-only ablation"
+                )
     else:
         if trainer_args["lr_decay_horizon"] != planned_updates:
             raise ExperimentContractError(
@@ -646,13 +708,12 @@ def validate_experiment_contract(
     ]
     allowed_unaligned_stops = (
         [1]
-        if payload["contract_version"]
-        == TOWN05_R8A_EXPERIMENT_CONTRACT_VERSION
+        if is_r8_short_curriculum
         else []
     )
     if unaligned_stops != allowed_unaligned_stops:
         raise ExperimentContractError(
-            "segment stops must align with save_interval; R8-A only registers "
+            "segment stops must align with save_interval; R8-A/R8-C1 only register "
             "update 1 via the always-written latest checkpoint"
         )
     maximum_critic_batch = (
