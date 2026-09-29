@@ -3658,6 +3658,8 @@ def train(args):
                 width=getattr(args, "monitor_width", 960),
                 jpeg_quality=getattr(args, "monitor_jpeg_quality", 65),
                 record_dir=getattr(args, "monitor_record_dir", ""),
+                view=getattr(args, "monitor_view", "vehicle"),
+                overhead_height=getattr(args, "monitor_overhead_height", 35.0),
             )
             web_monitor.start()
             print(f"Web 训练监控已启动: {web_monitor.url}")
@@ -4031,6 +4033,8 @@ def train(args):
                 if scenario_config:
                     env.set_scenario(scenario_config)
 
+                if web_monitor is not None:
+                    web_monitor.reset_camera()
                 obs_dict, info = env.reset()
                 total_episodes += 1
 
@@ -4087,6 +4091,8 @@ def train(args):
                     for aid in step_cache:
                         active_decision_steps[aid] += 1
 
+                    if web_monitor is not None:
+                        web_monitor.prepare_camera(env)
                     next_obs, rewards, dones, info = env.step(action_dict)
                     step_reward_diagnostics = (
                         info.get("reward_diagnostics", {}) or {}
@@ -4971,6 +4977,14 @@ def build_parser():
     parser.add_argument("--monitor-fps", type=float, default=5.0)
     parser.add_argument("--monitor-width", type=int, default=960)
     parser.add_argument("--monitor-jpeg-quality", type=int, default=65)
+    parser.add_argument(
+        "--monitor-view", choices=["vehicle", "overhead"], default="vehicle",
+        help="Web camera view: vehicle cameras or one overhead camera following all vehicles",
+    )
+    parser.add_argument(
+        "--monitor-overhead-height", type=float, default=35.0,
+        help="Minimum overhead height above the vehicles in meters; auto-zooms out when needed",
+    )
     parser.add_argument(
         "--monitor-record-dir",
         default="",

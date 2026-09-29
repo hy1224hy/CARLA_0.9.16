@@ -1,14 +1,16 @@
 """Non-blocking browser monitor for headless CARLA training.
 
-The training thread only copies references into a size-one queue.  Image
-composition, JPEG encoding, HTTP clients, and optional recording all run away
-from CARLA's synchronous ``world.tick()`` loop.
+Image submission only copies references into a size-one queue. Composition,
+JPEG encoding, HTTP clients, and recording run in background threads. The
+optional overhead camera is positioned before the training tick and never
+waits for an image, though the extra sensor does add rendering/RPC work.
 """
 
 from __future__ import annotations
 
 import io
 import json
+import math
 import queue
 import threading
 import time
@@ -71,10 +73,10 @@ class _LatestFrameStore:
                 0, int(self._status.get("clients", 0)) + delta
             )
 
-    def set_error(self, error: Exception) -> None:
+    def set_error(self, error: Exception, state: str = "encode_error") -> None:
         with self._condition:
             self._status.update(
-                state="encode_error",
+                state=state,
                 error=f"{type(error).__name__}: {error}",
             )
 
@@ -96,15 +98,19 @@ class WebTrainingMonitor:
         width: int = 960,
         jpeg_quality: int = 65,
         record_dir: str = "",
+        view: str = "vehicle",
+        overhead_height: float = 35.0,
     ) -> None:
         if not 0 <= port < 65536:
             raise ValueError("monitor port must be in [0, 65535]")
-        if fps <= 0:
+        if not math.isfinite(fps) or fps <= 0:
             raise ValueError("monitor fps must be positive")
         if width < 160:
             raise ValueError("monitor width must be at least 160 pixels")
         if not 1 <= jpeg_quality <= 95:
             raise ValueError("monitor JPEG quality must be in [1, 95]")
+        if view not in {"vehicle", "overhead"}:
+            raise ValueError("monitor view must be vehicle or overhead")
 
         self.host = host
         self.port = port
@@ -112,6 +118,15 @@ class WebTrainingMonitor:
         self.width = int(width)
         self.jpeg_quality = int(jpeg_quality)
         self.record_dir = Path(record_dir).resolve() if record_dir else None
+        self.view = view
+        self._camera = None
+        self._camera_failed = False
+        if view == "overhead":
+            from visualization.overhead_training_camera import OverheadTrainingCamera
+
+            self._camera = OverheadTrainingCamera(
+                width=width, fps=fps, height=overhead_height
+            )
         self._pending: queue.Queue[MonitorFrame] = queue.Queue(maxsize=1)
         self._store = _LatestFrameStore()
         self._stop = threading.Event()
@@ -158,6 +173,12 @@ class WebTrainingMonitor:
         now = time.monotonic()
         if now - self._last_submit < 1.0 / self.fps:
             return False
+        metadata = dict(status or {})
+        metadata.update(view=self.view, agents=sorted(int(aid) for aid in images))
+        if self._camera is not None:
+            overhead, camera_frame = self._camera.latest
+            images = {-1: overhead}
+            metadata["camera_frame"] = camera_frame
         available = {
             int(agent_id): image
             for agent_id, image in images.items()
@@ -165,7 +186,7 @@ class WebTrainingMonitor:
         }
         if not available:
             return False
-        frame = MonitorFrame(available, dict(status or {}), time.time())
+        frame = MonitorFrame(available, metadata, time.time())
         try:
             self._pending.put_nowait(frame)
         except queue.Full:
@@ -178,10 +199,37 @@ class WebTrainingMonitor:
         self._last_submit = now
         return True
 
+    def prepare_camera(self, env) -> None:
+        """Called before env.step; sensor failures must not interrupt training."""
+        if self._camera is None or self._camera_failed:
+            return
+        try:
+            self._camera.update(env)
+        except Exception as error:
+            self._camera_failed = True
+            self._store.set_error(error, state="camera_error")
+            print(f"[monitor] Overhead camera unavailable; training continues: {error}")
+            try:
+                self._camera.close()
+            except Exception:
+                pass
+
+    def reset_camera(self) -> None:
+        """Called before env.reset and shutdown; no extra world ticks."""
+        self._camera_failed = False
+        if self._camera is not None:
+            try:
+                self._camera.close()
+            except Exception as error:
+                self._camera_failed = True
+                self._store.set_error(error, state="camera_error")
+                print(f"[monitor] Overhead camera cleanup failed: {error}")
+
     def close(self) -> None:
         if self._stop.is_set():
             return
         self._stop.set()
+        self.reset_camera()
         self._store.close()
         if self._server is not None:
             self._server.shutdown()
@@ -211,7 +259,6 @@ class WebTrainingMonitor:
                 status.update(
                     submitted_at=frame.submitted_at,
                     dropped_frames=self._dropped,
-                    agents=sorted(frame.images),
                 )
                 self._store.publish(jpeg, status)
                 if self.record_dir:
@@ -258,8 +305,9 @@ class WebTrainingMonitor:
             y = header_height + (index // columns) * panel_height
             resized = panel.resize((panel_width, panel_height), Image.Resampling.BILINEAR)
             canvas.paste(resized, (x, y))
-            draw.rectangle((x + 6, y + 6, x + 82, y + 28), fill="#111827")
-            draw.text((x + 12, y + 10), f"Agent {agent_id}", fill="white")
+            label = "Overhead" if agent_id == -1 else f"Agent {agent_id}"
+            draw.rectangle((x + 6, y + 6, x + 92, y + 28), fill="#111827")
+            draw.text((x + 12, y + 10), label, fill="white")
         return canvas
 
     def _handler_class(self):

@@ -220,6 +220,31 @@ class ExperimentContractValidationTests(unittest.TestCase):
 
 
 class ExperimentContractApplicationTests(unittest.TestCase):
+    def test_monitor_options_preserve_frozen_scientific_config(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            save_dir = Path(temp_dir) / "P0_BASE_MAPPO_Town02_s42_20260804_210000"
+            baseline = _formal_args(save_dir)
+            args = build_parser().parse_args([
+                "--monitor-mode", "web", "--monitor-view", "overhead",
+                "--monitor-overhead-height", "50", "--monitor-host", "127.0.0.1",
+                "--monitor-port", "8081", "--monitor-fps", "2",
+                "--monitor-width", "640", "--monitor-jpeg-quality", "50",
+                "--monitor-record-dir", str(Path(temp_dir) / "frames"),
+            ], namespace=copy.deepcopy(baseline))
+            args._explicit_cli_options.update({
+                "--monitor-mode", "--monitor-view", "--monitor-overhead-height",
+                "--monitor-host", "--monitor-port", "--monitor-fps",
+                "--monitor-width", "--monitor-jpeg-quality", "--monitor-record-dir",
+            })
+            apply_experiment_contract(baseline, project_dir=PROJECT_DIR)
+            apply_experiment_contract(args, project_dir=PROJECT_DIR)
+            self.assertEqual(args.monitor_view, "overhead")
+            self.assertEqual(args.monitor_overhead_height, 50)
+            self.assertEqual(
+                {name: getattr(args, name) for name in TRAINER_ARG_NAMES},
+                {name: getattr(baseline, name) for name in TRAINER_ARG_NAMES},
+            )
+
     def test_town05_contract_drives_both_ppo_and_environment_reward_gamma(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             run_id = "P0_BASE_MAPPO_Town05_s42_20260812_120000"
