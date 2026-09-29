@@ -4,7 +4,7 @@
 > 目标环境：矩池云或其他带 NVIDIA GPU 的 Linux 服务器
 > 本机环境：Windows
 > 推荐方式：服务器离屏运行 CARLA 和训练，浏览器通过 SSH 隧道查看画面与 TensorBoard
-> 文档状态：实施计划；尚未在代码中加入 Web 直播模块
+> 文档状态：Web 直播模块已实现；操作命令见 `docs/server_remote_monitor_usage.md`
 
 ## 1. 最终目标与推荐结论
 

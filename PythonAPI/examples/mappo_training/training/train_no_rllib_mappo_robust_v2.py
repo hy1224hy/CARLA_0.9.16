@@ -3635,6 +3635,8 @@ def train(args):
         if args.render
         else None
     )
+    web_monitor = None
+    monitor_warning_shown = False
     last_metrics_payload = (
         copy.deepcopy(resume_checkpoint.get("last_metrics"))
         if resume_checkpoint is not None
@@ -3646,6 +3648,19 @@ def train(args):
         else None
     )
     try:
+        if getattr(args, "monitor_mode", "off") == "web":
+            from visualization.web_training_monitor import WebTrainingMonitor
+
+            web_monitor = WebTrainingMonitor(
+                host=getattr(args, "monitor_host", "127.0.0.1"),
+                port=getattr(args, "monitor_port", 8080),
+                fps=getattr(args, "monitor_fps", 5.0),
+                width=getattr(args, "monitor_width", 960),
+                jpeg_quality=getattr(args, "monitor_jpeg_quality", 65),
+                record_dir=getattr(args, "monitor_record_dir", ""),
+            )
+            web_monitor.start()
+            print(f"Web 训练监控已启动: {web_monitor.url}")
         metrics_recorder = TrainingMetricsRecorder(
             run_dir=save_dir,
             run_id=args.run_id,
@@ -3678,6 +3693,8 @@ def train(args):
             print(f"  [警告] 实验台账错误状态写入失败: {evidence_error}")
         if visualizer is not None:
             visualizer.close()
+        if web_monitor is not None:
+            web_monitor.close()
         if "metrics_recorder" in locals():
             metrics_recorder.close()
         env.close()
@@ -4168,6 +4185,31 @@ def train(args):
                             f"episode={rollout_episode} step={step}"
                         ),
                     )
+
+                    if web_monitor is not None:
+                        try:
+                            web_monitor.submit(
+                                env.get_camera_images(),
+                                {
+                                    "run_id": args.run_id,
+                                    "update": update,
+                                    "episode": rollout_episode,
+                                    "step": step + 1,
+                                    "scenario": scenario_name,
+                                    "rewards": {
+                                        str(aid): round(float(value), 4)
+                                        for aid, value in rewards.items()
+                                    },
+                                    "episode_end_reason": episode_end_reason,
+                                },
+                            )
+                        except Exception as monitor_error:
+                            if not monitor_warning_shown:
+                                print(
+                                    "  [警告] Web 监控提交失败；训练继续运行: "
+                                    f"{monitor_error}"
+                                )
+                                monitor_warning_shown = True
 
                     if visualizer is not None:
                         visualizer.handle_events()
@@ -4700,6 +4742,11 @@ def train(args):
     finally:
         active_exception = sys.exc_info()[0] is not None
         cleanup_errors = []
+        if web_monitor is not None:
+            try:
+                web_monitor.close()
+            except Exception as error:
+                cleanup_errors.append(f"web_monitor.close: {error}")
         if visualizer is not None:
             try:
                 visualizer.close()
@@ -4909,6 +4956,26 @@ def build_parser():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--render", action="store_true")
+    parser.add_argument(
+        "--monitor-mode",
+        choices=["off", "web"],
+        default="off",
+        help="Headless monitoring mode; web publishes camera frames over HTTP",
+    )
+    parser.add_argument(
+        "--monitor-host",
+        default="127.0.0.1",
+        help="Web monitor bind address; keep 127.0.0.1 and use an SSH tunnel",
+    )
+    parser.add_argument("--monitor-port", type=int, default=8080)
+    parser.add_argument("--monitor-fps", type=float, default=5.0)
+    parser.add_argument("--monitor-width", type=int, default=960)
+    parser.add_argument("--monitor-jpeg-quality", type=int, default=65)
+    parser.add_argument(
+        "--monitor-record-dir",
+        default="",
+        help="Optional directory for sampled JPEG frames; empty disables recording",
+    )
     parser.add_argument("--continuation-contract", default="", help="Pinned budget-only full-state continuation record")
     parser.add_argument("--stop-request-file", default="", help="Stop safely after a complete update when this file exists")
     parser.add_argument(
