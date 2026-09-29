@@ -2,16 +2,23 @@
 
 > 本文是人工可读实验台账；机器可读索引为 [`experiments/base_mappo_registry.csv`](../experiments/base_mappo_registry.csv)。
 > 科学参数真值为对应版本化 JSON 契约，不在本文复制后手工改值。
-> 当前状态：P0-T05-10/R7 已完成训练数学/协议、R7 C0 五结局合同、评估/离线 validator 和四方向 live validator 的实现，282/282 无 CARLA 回归通过。2026-08-25 真实 CARLA 四方向 smoke 在修正东向验证夹具的 road-boundary 选点后 PASS，北/南/东/西均验证合法直行/换道、对向车道、持续逆行、offroad 分工和 cleanup；失败 retry 保留为夹具诊断证据。R7 actor/critic 输入仍为 R6 的 20 维观察，未加入车道特征；GO/HOLD 条件和阈值保持原样。用户已授权在冻结 u600 时序下 fresh 训练至注册分段边界 u200并定时监控，当前仍无可进入基础策略池的 checkpoint。
+> 当前状态（2026-09-07 更新）：R8-C1 Run `P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224` 已于 9 月 3 日完成 u100/1600 episodes，registry 为 `SEGMENT_COMPLETED`。训练内 614 success、87 collision、279 offroad、190 road_violation、430 timeout；最后 20 updates 成功率 72.8125%，安全失败率 27.1875%。全部仍为 S0-A 两镜像 15 m rolling；尚无独立 C0/能力 GO，不能选模或入池。R7 u153 与 R8-A u20 原 `DIAGNOSTIC HOLD` 不变。
+> 当前动作（2026-09-15）：已完成2smoke+40诊断，全部42条记录独立完整性PASS，重复性HOLD。主/重复均为u20短0/4、u60短3/4、u100短4/4成功；u100长4/8成功、3offroad、1collision。发现事件奖励及轨迹重复性问题，能力裁决NOT_EVALUATED，原训练registry状态不变。见 [真实评估与指标诊断](./P0-EVAL-R8C1_20260915_真实评估与指标诊断.md)。
 > 运行约束（2026-08-09）：CARLA 服务由用户手动启动并维护，训练程序仅访问 `127.0.0.1:2000`；发现无响应时停止实验并通知用户重启。此前零 episode/update 的无效启动记录已按用户要求从日志和 registry 删除，不进入实验统计。
 
+> 2026-09-15 续训追加：用户确认后，原R8-C1 Run采用独立预算扩展记录续至全局u600；原合同及u1–u100证据保留。u101未完成回合受控中断后精确回到u100，再恢复完成u101/1616唯一完整回合，348项离线测试通过。18:11:33启动后台长训练，首巡检u110/1760回合，仍S0-A。启动/恢复命令、源码与checkpoint身份、监控和停止方法见 [续训记录](./P0-R8C1_长训练续训与监控计划_20260915.md)。这属于获批预算扩展，不把原u100合同改写为预注册u600；原评估HOLD保留。
+
 ## 1. 登记规则
+
+2026-09-07 审查补记：315/315 离线回归通过，不等于 R8-C1 strict/C0/能力验收通过。R8-C1 首次成功在 u25；它与 R8-A 的共同 u1–20 均为 0/320 success，u100 对 u20 的不等预算比较不能证明奖励消融胜出。R8B 目录实际是 identical-init 诊断，不是旧 TODO 中设想的 gated-stall 分支。完整代码缺口、实验设计与文献核验见 [项目审查](./2026-09-06_项目进度与实验可扩展性审查.md)。
 
 每次 fresh Run 在启动前增加一行，失败 Run 也不得删除。恢复训练继续使用同一 RunID，在“分段记录”追加一行。人工记录至少回答：执行了什么、输入身份是什么、得到什么、是否触发 HOLD、下一步是什么。
 
 自动 registry 负责 RunID、契约/Git/源码/场景指纹、当前停点和状态；本文补充运行环境异常、CARLA 人工观察、C0 结论和研究决策。日志、checkpoint、视频等大文件只记录路径与 SHA，不提交到 Git。
 
 ## 2. 契约登记
+
+2026-09-07 新增登记：`P0_BASE_MAPPO_TOWN05_R8C1_PACE_V1`，文件 `configs/base_mappo/p0_base_town05_r8c1_pace_v1.json`，seed 42、fresh、计划 u100；合同 SHA `88bdb9dcac5b238d371d5718d346dc7e43b287b8cb725292ddb25b8862d053f4`。训练段已完成，但其评估字段为 `interface_reserved_external_p0_base_02`，不是已实现的评估协议或已冻结的能力门槛。2026-09-14 补充：独立诊断合同 `P0_BASE_C0_TOWN05_R8C1_PROBE_V1` 已按用户批准实现并冻结，SHA256 `0654a931a0387ffdbf3884bf83ef5ae63899fcf0aa5ba922a9acc6f4748e736d`，原训练 reserved 字段未改；它属于训练完成后的诊断，不是训练前预注册或 GO 门槛。
 
 | 契约 ID | 配置 | 用途 | seed | 计划停点 | 状态 |
 |---|---|---|---:|---|---|
@@ -28,13 +35,19 @@
 | `P0_BASE_C0_TOWN05_R6_V4` | `configs/evaluation/p0_base_c0_town05_r6_v4.json` | schema-v6、20维 time-aware R6 gate/held-out evaluation | gate 42001；validation 51001/51002/51003 | 对应 R6 登记停点 | FROZEN；SHA256 `3772d368d892f524c98b0494fa64c6f072061a8b2ec0dbcb4366c4368502866f` |
 | `P0_BASE_GO_HOLD_TOWN05_R6_V4` | `configs/evaluation/p0_base_go_hold_town05_r6_v4.json` | R6 分布审计、mastery、任意单 agent 持续塌缩与能力裁决 | 继承 R6 训练/C0 合同 | u5 首门；u10 起同一 agent 相邻里程碑持续塌缩即 HOLD；u160 才可 `PILOT_GO` | FROZEN；SHA256 `c094b6744211d455737166057deb14dde08a23913cb2550d695c5336e6f89425` |
 | `P0_DIAG_MAPPO_TOWN05_R6_U50_V1` | `configs/base_mappo/p0_diag_town05_r6_u50_v1.json` | 用户授权的 R6 fresh 奖励/塌缩趋势诊断；初始停点 u50，随后只在预注册长期边界内续至 u160 | 42 | 5/10/20/30/40/50/60/80/100/120/140/160 | FROZEN；SHA256 `b50df18c2f1eac0b904c55f022efd31fac64cf1d64617900ad638cc91adf82c4`；u160 `SEGMENT_COMPLETED / DIAGNOSTIC HOLD`，禁止跨新奖励 resume、选模或进入策略池 |
-| `P0_BASE_MAPPO_TOWN05_R7_V5` | `configs/base_mappo/p0_base_town05_r7_v5.json` | P0-T05-10/R7 seed-42 fresh u600 训练数学与协议；reward-v5、道路方向失败、critic 分组审计/探针和分离 LR | 42 | 5/10/20/40/60/80/100/120/160/200/300/400/500/600 | CONTRACT FROZEN / SOURCE COMMIT PENDING；SHA256 `d7a58901e0f4c2e5c04745b91cb5f538bda43a4666811da48f882c49b0e299df`；282/282 无 CARLA PASS；2026-08-25 四方向 road smoke PASS；用户授权 fresh 分段运行至 u200 |
-| `P0_BASE_C0_TOWN05_R7_V5` | `configs/evaluation/p0_base_c0_town05_r7_v5.json` | schema-v7/reward-v5 R7 gate 与 held-out evaluation；显式 success/collision/offroad/road_violation/timeout 五结局和道路证据 | gate 42001；validation 51001/51002/51003 | 对应 R7 登记停点 | OFFLINE CONTRACT FROZEN / SOURCE UNCOMMITTED；SHA256 `6215eecd257330f682838185ee4cfef1cc917718484600b977bce4afaadb46ec`；R6 四结局历史 schema 保持不变；GO/HOLD 本轮不改 |
+| `P0_BASE_MAPPO_TOWN05_R7_V5` | `configs/base_mappo/p0_base_town05_r7_v5.json` | P0-T05-10/R7 seed-42 fresh u600 训练数学与协议；reward-v5、道路方向失败、critic 分组审计/探针和分离 LR | 42 | 5/10/20/40/60/80/100/120/160/200/300/400/500/600 | FROZEN HISTORICAL；SHA256 `d7a58901e0f4c2e5c04745b91cb5f538bda43a4666811da48f882c49b0e299df`；source `5c489f82d4b0a38579b1d3a684201c1d4c3f0ea4`；真实 Run 按用户要求停在最后完整 u153，`DIAGNOSTIC HOLD`，禁止 resume/选模/入池 |
+| `P0_BASE_C0_TOWN05_R7_V5` | `configs/evaluation/p0_base_c0_town05_r7_v5.json` | schema-v7/reward-v5 R7 gate 与 held-out evaluation；显式 success/collision/offroad/road_violation/timeout 五结局和道路证据 | gate 42001；validation 51001/51002/51003 | 对应 R7 登记停点 | FROZEN HISTORICAL；SHA256 `6215eecd257330f682838185ee4cfef1cc917718484600b977bce4afaadb46ec`；R7 u153 未运行正式 C0，亦不得事后伪造；R6 四结局历史 schema 保持不变；GO/HOLD 未改 |
+| `P0_BASE_MAPPO_TOWN05_R8A_V1` | `configs/base_mappo/p0_base_town05_r8a_v1.json` | P0-T05-11/R8-A 两镜像短课程-only fresh 消融 | 42 | 1/5/10/20/40/60/80/100/120/150 | FROZEN DIAGNOSTIC HOLD；SHA256 `06a1acac...0da08`；source `0ef7261...84ee`；正式 Run 停在 u20，不继续 u40–u150 |
+| `P0_BASE_C0_TOWN05_R8C1_PROBE_V1` | `configs/evaluation/p0_base_c0_town05_r8c1_probe_v1.json` | R8-C1 确定性诊断；短 rolling/起步迁移/长 probe 分层 | smoke61002；probe61001 | u20/u60/u100，固定 42 次含重复 | FROZEN DIAGNOSTIC / OFFLINE PASS；337 项回归与原始输入预检通过；WAITING USER-STARTED CARLA，不授予 GO/选模/入池资格 |
 
 ## 3. Run 总表
 
 | 日期 | RunID | Git SHA | 契约 SHA256 | 当前 update | 训练状态 | strict validator | C0 | GO/HOLD | 下一动作 |
 |---|---|---|---|---:|---|---|---|---|---|
+| 2026-09-03；9/7 补记 | `P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224` | `050fe9fc72b9639b3048f56384cc48ad0d8d0214` | `88bdb9dcac5b238d371d5718d346dc7e43b287b8cb725292ddb25b8862d053f4` | 100 | `SEGMENT_COMPLETED`；1600 完整 episodes；全程 stage 0、两镜像各 800 | 本次只读核对数值：100 次 ratio error/reward residual/skipped update 均为 0；未据此冒称重跑 strict PASS | 未运行；现有 C0 仅支持至 R7，R8C1 评估合同为 reserved | 未产生独立能力裁决；训练后窗 233/320 success、13 collision、48 offroad、26 road_violation，不能解释为 `PILOT_GO` | 审核 `P0-EVAL-R8C1` 后修复并运行独立诊断；不自动续训/选模/入池 |
+| 2026-09-02；9/7 补记 | `P0_DIAG_IDENTICAL_INIT_Town05R8A_s42_20260902_190944` | 诊断 Run，本文不补造正式来源资格 | N/A；非 registry 正式合同 Run | 10 | 160/160 timeout；same-init 机制诊断 | 只读核对 episodes/metrics/checkpoint manifest，未重跑 strict | 未运行 | 仅诊断，不具备基础能力证据；latest SHA `409c3ffd0f2c7f05934421850eb93baf02370093e4f72ad104cc5e3ded01a43e` | 保留历史，不把此 Run 当 gated-stall 或有效策略 |
+| 2026-09-01 | `P0_BASE_MAPPO_Town05R8A_s42_20260901_153548` | `0ef726113e4b46c25b89f49434c7fe1ce94484ee` | `06a1acac...0da08` | 20 | `SEGMENT_COMPLETED / DIAGNOSTIC HOLD`；320 完整 episodes；每 update 镜像 8/8 | PASS：20 updates、320 episodes、230 required tags、918 scalar tags；PPO/ratio/reward/finite/checkpoint/cleanup 均健康 | 未运行；训练内 0 success、3 collision、19 offroad、29 road_violation、269 timeout | 人工 `HOLD`：u13 后速度/进度上升伴随 offroad/road violation；u11–u20 北/南安全终止 34/16，stage 0、mastery 0 | 冻结 u20；禁止 resume/选模/入池；先归因，再以新合同审议 R8-B 或 R8-C |
+| 2026-08-25—27 | `P0_BASE_MAPPO_Town05R7_s42_20260825_164133` | `5c489f82d4b0a38579b1d3a684201c1d4c3f0ea4` | `d7a58901...99df` | 153 | `USER_STOPPED / DIAGNOSTIC HOLD`；2,448 完整 episodes；u154 仅有中断前缀，排除完整统计 | u1–u153 的 PPO、checkpoint/manifest、preupdate ratio、reward residual 与 finite 审计健康；无 skipped update | 未运行正式 C0；训练内 0 success、41 collision、50 offroad、8 road_violation、2,349 timeout | 人工 `HOLD`：最近 20 update 为 0 success、97.19% timeout；两 agent 低速/高制动、确定性纵向动作为负，完成度停滞；critic 对 timeout 窄分布可拟合但没有成功支持 | 冻结 R7；P0-T05-11/R8-A 只做两场景对称短课程消融，新合同、新 RunID、fresh；不先调 reward |
 | 2026-08-20—23 | `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634` | `63d62be026a8b27e67b00f8c04626db678552d38` | `b50df18...82c4` | 160 | `SEGMENT_COMPLETED / DIAGNOSTIC HOLD`；2,560 完整 episodes | 160 次 PPO update 完整；无 nonfinite、skipped update、reward residual 超容差；u160 periodic/latest SHA 已登记 | 未绑定正式 C0；诊断合同不得伪造能力 gate | 人工 `HOLD`：93 success、525 collision、363 offroad、1,579 timeout；后窗 success 上升伴随 collision/offroad 与跨线代理恶化，critic EV 降至 0.0226 | 冻结为 R6 失败/诊断证据；设计 R7 reward-v5、车道合法性与 critic 修复，新合同 fresh 训练 |
 | 2026-08-14 | `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` | origin `5dad4d4`；C0 入口修复 `a33a573` | `d39956e0...a08e92` | 50 | `INTERRUPTED / DIAGNOSTIC HOLD`；800 完整 episodes，另保留 1 条未完成 u51 中断记录 | u1–u50 PPO/ratio/reward/finite/checkpoint 健康；原目录 strict 如实因 u51 单条 episode 无对应 metrics 而拒绝；u50 checkpoint schema/SHA PASS | u5 双 C0 原结论保留；没有伪造 u50 C0。训练窗口 u41–u50 为 0 success、2 collision、0 offroad、158 timeout，A0 brake mode 99.01% | u5 机器输出仍为 `CONTINUE_WITH_WARNING`；u50 研究结论为局部最优 `DIAGNOSTIC HOLD`，不续训、不放行多 seed | 设计 squashed-action entropy、奖励时域/预算和 mastery curriculum 新协议；fresh 小规模验证 |
 | 2026-08-12 | `P0_BASE_MAPPO_Town05_s42_20260812_164411` | `6c28a9141d3ede87f7f54734cc277973381e6f05` | `eeb12304...84bde` | 5 | `SEGMENT_COMPLETED / EVIDENCE_HOLD`；80 episodes、65178 transitions，未启动 u6 | PASS：updates 1–5、197 required tags、575 scalar tags；PPO/ratio/reward/finite/ValueNorm/checkpoint/gamma/cleanup 均通过 | 两轮各 0 success、12 collision、4 timeout；各自 validator PASS；5/16 碰撞 case 的长度相差 1–2 tick，repeatability HOLD | `HOLD`：唯一 hard failure 为 C0 离散重复性；训练健康和 R4 行为评估 PASS；8/16 lane-invasion warning | 冻结本 Run；诊断 collision callback/world frame/episode step 的 1–2 tick 漂移，禁止 resume、多 seed和调参 |
@@ -48,7 +61,7 @@
 
 ## 4. 已运行记录
 
-### P0-T05-10/R7：数学/协议冻结与无 CARLA 实现
+### P0-T05-10/R7：工程修复通过，fresh Run 在 u153 进入低速超时局部最优
 
 - R7 保持 actor/critic 观察为 20 维，不增加 lane id、标线、wrong-way 等输入，也没有接入共享 actor 或行为克隆。道路语义只在环境、奖励、终止和审计层工作。
 - 道路状态机使用 exact `Driving` waypoint、当前合法参考 lane、左右拓扑、CARLA `lane_change` 权限、lane/vehicle 航向和 5-tick 持续门槛。Broken 传感器事件本身不能免责；合法同向相邻换道更新参考 lane 并有 10-tick 横向成本豁免，但无正 bonus；对向 `Driving`、持续 wrong-way 和未许可换道成为显式 `road_violation`，junction 歧义不误杀但禁止 success。
@@ -56,7 +69,24 @@
 - critic 对同一 rollout 在 update 前后分别记录 pooled/per-agent/per-outcome/per-scenario 的 EV、target/pred std、比例、bias、MAE 与相关性。高维明细只写 JSONL；TensorBoard 只保留逐 agent 高信号。R6 checkpoint 没有原始 rollout tensor，不能伪造历史固定 batch；R7 从首个完整 update 开始保存最多 512 行确定性 probe，u1 前不发布虚假可恢复 checkpoint。
 - u600 时序一次冻结：actor LR `3e-4→1.5e-5`；critic LR 在 u1–u300 保持 `3e-4`，再退火至 u600 的 `1e-4`；entropy `0.01→0.001` 同步到 u600。该设计先修复 R6 “target 方差扩张时 critic LR 已到底”的时序冲突，不同时改变 critic 容量、epoch、ValueNorm 或网络输入。
 - mastery 协议升级为 road-rule-v3：offroad 与 road-violation 保持两个独立比例，二者任一超过 10% 都不能晋级；不再把道路方向失败暗中并入 offroad 字段。
-- 新身份为 reward-v5、checkpoint schema-v7、metrics-v8、episode road-rule-v4、C0 road-rule-v5 和独立训练协议。R7 C0 将旧 `other` 拆为显式 offroad/road_violation，并保存逐 agent 分类、参考 lane、权限、方向余弦、持续 tick、success eligibility 与 T/X 证据；R6 schema-v6/C0 四结局仍按旧协议读取，R7 严禁 resume R6。当前 282/282 无 CARLA测试和四方向真实 smoke 均通过；GO/HOLD 按用户要求暂不优化且相关文件未改。2026-08-25 用户只放行 seed-42 fresh 训练至合同已注册的 u200 分段边界，是否收敛和能否进入策略池仍须依据训练/C0 证据判断。
+- 新身份为 reward-v5、checkpoint schema-v7、metrics-v8、episode road-rule-v4、C0 road-rule-v5 和独立训练协议。R7 C0 将旧 `other` 拆为显式 offroad/road_violation，并保存逐 agent 分类、参考 lane、权限、方向余弦、持续 tick、success eligibility 与 T/X 证据；R6 schema-v6/C0 四结局仍按旧协议读取，R7 严禁 resume R6。282/282 无 CARLA 测试和四方向真实 smoke 均通过；GO/HOLD 按用户要求未优化且相关文件未改。
+- fresh Run `P0_BASE_MAPPO_Town05R7_s42_20260825_164133` 在同一冻结 u600 时序内多次从完整边界严格恢复，最终按用户要求停在 u153。`metrics.jsonl`/`latest.pt` 的最后完整边界均为 u153；中断的 u154 episode 前缀保留作故障现场，不计入完整 update 统计，也不得伪装成可恢复边界。
+- u1–u153 共 2,448 个完整 episode：0 success、41 collision、50 offroad、8 road_violation、2,349 timeout。最近 20 update（u134–u153）为 0 success、5 collision、4 offroad、0 road_violation、311 timeout；timeout rate 97.19%。agent0/1 的窗口均值分别为完成度 0.154/0.133、速度 0.149/0.132 m/s、brake mode 0.610/0.564、确定性纵向动作 -0.226/-0.163，说明行驶距离停滞不是单轮观感。
+- 两个课程家族都失败：截至 u153，`free_flow` 1,244 episodes 仍为 0 success、93.73% timeout；`parallel_stationary` 1,204 episodes 仍为 0 success、98.26% timeout。因此“只有双车交互太难”不足以解释失败；当前 Stage-0 同时包含 4 个约 40–45 m 的 free-flow 和 4 个 parallel-stationary 长任务，mastery 只能阻止升级，不能把任务自动降到可学习的短程子问题。
+- reward-v5 成功阻断了 R6 的违规捷径：R7 累计 road violation 只有 8/2,448，未出现 success 随 collision/offroad/road violation 一同上升。但在没有合法成功样本时，移动会先暴露 lane/risk 成本，而 stall 仍为 `record_only`；策略最终学到低速/制动规避风险。post-tanh entropy、KL、ratio、finite 和 reward 守恒均健康，故不是数值崩溃或熵过早归零。
+- u153 critic EV 为 0.967、prediction/target std 约 0.95，但该批几乎全是同质 timeout；混入 collision 的 u151 EV 为 0.573，说明分组拟合仍受 outcome 分布影响。与 R6 的严重欠拟合相比，R7 critic 对当前窄 timeout 分布已经可用；真正的首要瓶颈是 rollout 中没有安全成功分布，继续只调 critic 不能产生缺失的成功样本。
+- 结论：R7 的 road-rule/success gate、critic 审计、checkpoint/恢复和数值协议有效，但策略学习结果为低速超时局部最优。R7 冻结为失败证据，不继续 u200/u600、不运行事后 C0 冒充能力证据、不选模、不进入策略池。
+
+### P0-T05-11/R8-A：两个严格镜像短场景的课程可达性消融（u20 DIAGNOSTIC HOLD）
+
+- **冻结身份与验收**：课程实现 `6596f048...b477f`，validator 修复/正式 Run 来源 `0ef7261...84ee`；合同 SHA256 `06a1acac...0da08`，场景池 SHA256 `1bc00134...65232`。300/300 离线回归和四短场景 live smoke 均 PASS。
+- **单一可证伪假设**：R7 的主要障碍是初始课程无法在随机探索下产生足够的“合法前进并到达”样本，而不是 reward-v5 组件数量不足。R8-A 只改变课程支持集、短任务时限、确定性采样身份和分镜像 mastery 证据；reward-v5、20 维 actor/critic 观察、网络结构、二维动作、PPO/ValueNorm、LR/entropy 时序、mastery 数值门槛与现有 GO/HOLD 全部保持不变。
+- **严格两场景，而非加权随机八场景**：选择同一道路上一对几何严格镜像的短程无交互场景（优先北/南镜像），交换 agent/车道角色，保持目标几何、路线长度、初速度和 episode 时限一致。每个 16-episode update 精确各采样 8 次；禁止 required merge、blocker、closing 或让行冲突，避免采样噪声和交互难度破坏归因。
+- **课程微阶段**：S0-A 为 10–15 m、150–200 tick、约 2 m/s rolling start 的镜像对，先学习“不主动刹停、合法保持车道并到达”；S0-B 使用同一镜像对和短路线，但从静止开始学习主动加速；S1 再恢复四方向 40–45 m free-flow；S2 才恢复 parallel-stationary，之后再进入 rolling/following/closing/merge。只能由连续 mastery window 升级，不按 update 编号强制升级。
+- **R8-A 不改奖励**：现有奖励已含 PBRS progress、车道/风险/控制成本和互斥终局；直接继续加 speed bonus、正 alive/centering 奖励或降低 collision/offroad/road-rule 的 `-50`，会重新打开停车刷分或违规捷径。纯调权重也无法创造当前 rollout 中不存在的短程成功支持，因此先做课程-only A/B 归因。
+- **pilot 结果**：正式 Run 分段完成 u1/u5/u10/u20；320 episodes 精确 160/160 镜像，0 success、3 collision、19 offroad、29 road_violation、269 timeout。u13–u20 的连续安全退化和 agent 0 动作边界率上升证明并非“u20 样本太少”的单点波动；stage 未晋级，mastery pass=0。
+- **失败后的受控分支**：若两场景短课程仍没有前进样本，R8-B 才考虑仅对 free-flow 的“宽限期后低速 + 无进展 + 无 blocker”使用现有 mission-timeout 提前失败，不添加正速度奖励，并对 yielding/merge/following 保持禁用；若已能前进但 lane risk 偏高，R8-C 才单独消融 lane soft-cost deadzone/weight。共享 actor、行为克隆继续保留为 P1，不与 R8-A 混入。
+- **裁决与协议边界**：R8-A 工程健康 PASS、能力 `DIAGNOSTIC HOLD`；u20 为最后完整证据边界，不继续 u40–u150，不运行能力 C0，不 resume/pretrained/选模/入池。旧 R7/R8-A 诊断目录均原样保留；后继改动必须新合同 fresh。
 
 ### P0-T05-09/R6：机制验证完成，诊断 Run 已到 u160
 

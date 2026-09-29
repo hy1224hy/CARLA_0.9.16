@@ -76,6 +76,10 @@ from environment.stall_protocol import (
     is_complex_interaction_family,
     update_stall_diagnostic,
 )
+from environment.route_pace_reward import (
+    CONFIG as ROUTE_PACE_CONFIG, PROFILE as ROUTE_PACE_PROFILE,
+    route_pace_deficit,
+)
 from environment.offroad_protocol import (
     OFFROAD_PERSISTENCE_TICKS,
     classify_offroad_tick,
@@ -129,6 +133,7 @@ class CarlaMultiAgentEnv:
         follow_spectator: bool = False,
         lidar_range_m: float = 4.0,
         ttc_max_range_m: float = 10.0,
+        pace_profile: str = "frozen_v6",
     ):
         """
         初始化CARLA多智能体环境
@@ -167,6 +172,12 @@ class CarlaMultiAgentEnv:
                 f"reward {reward_version} is base-policy only"
             )
         self.reward_version = reward_version
+        if pace_profile not in {"frozen_v6", ROUTE_PACE_PROFILE}:
+            raise ValueError(f"unsupported pace profile: {pace_profile}")
+        if pace_profile != "frozen_v6" and reward_version != "v6":
+            raise ValueError("route pace profile requires reward v6")
+        self.pace_profile = pace_profile
+        self._route_pace_clocks = {}
         # R7 deliberately keeps the exact R6 observation contract.  Road
         # legality is environment-side reward/termination evidence only.
         self.observation_dim = 20 if reward_version in {"v4", "v5", "v6"} else 19
@@ -1832,6 +1843,7 @@ class CarlaMultiAgentEnv:
         self.episode_step += 1
         self._episode_count += 1
         self.current_step = 0
+        self._route_pace_clocks = {}
         
         # 重新生成车辆
         self._spawn_vehicles()
@@ -3731,6 +3743,35 @@ class CarlaMultiAgentEnv:
                 terminal_event=terminal_event,
                 config=DEFAULT_REWARD_V6_CONFIG,
             )
+            if getattr(self, "pace_profile", "frozen_v6") == ROUTE_PACE_PROFILE:
+                # Long free_flow/parallel_stationary lack the old pair of tags.
+                # Use an explicit family allowlist, never all untagged traffic.
+                scene_eligible = (
+                    (free_flow_tag and non_interactive_tag)
+                    or self.current_scenario_family in {"free_flow", "parallel_stationary"}
+                ) and not complex_interaction
+                terminal_event = terminal_event or bool(
+                    self.reached_target.get(agent_id, False)
+                ) or not self.vehicles[agent_id].is_alive
+                previous_step, free_seconds = self._route_pace_clocks.get(
+                    agent_id, (0, 0.0)
+                )
+                dt = float(self.timestep)
+                elapsed = int(self.current_step) * dt
+                free_delta = max(
+                    0.0, elapsed - max(previous_step * dt, ROUTE_PACE_CONFIG.grace_seconds)
+                )
+                if scene_eligible and not front_blocker and not terminal_event:
+                    free_seconds += free_delta
+                self._route_pace_clocks[agent_id] = (int(self.current_step), free_seconds)
+                decision = route_pace_deficit(
+                    diagnostics.get("remaining_route_fraction", 1.0),
+                    initial_distance_m=max(float(self.initial_distances[agent_id]), 1e-6),
+                    free_seconds=free_seconds, timestep=dt,
+                    grace_exempt=elapsed <= ROUTE_PACE_CONFIG.grace_seconds,
+                    eligible=scene_eligible and not front_blocker,
+                    terminal_event=terminal_event,
+                )
             details[REWARD_V6_PACE_COMPONENT] = decision.reward
             diagnostics.update({
                 "pace_free_flow_tag": float(free_flow_tag),

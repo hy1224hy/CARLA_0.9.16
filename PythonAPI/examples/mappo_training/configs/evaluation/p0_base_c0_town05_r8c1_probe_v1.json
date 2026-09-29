@@ -1,0 +1,423 @@
+{
+  "protocol_version": "p0_base_c0_diag_town05_r8c1_v1",
+  "contract_id": "P0_BASE_C0_TOWN05_R8C1_PROBE_V1",
+  "status": "frozen",
+  "purpose": "Post-training deterministic diagnostic of the frozen R8-C1 seed-42 u100 endpoint with u20/u60 temporal references; integrity PASS never grants capability, model selection, resume, pool admission or GO.",
+  "environment": {
+    "carla_version": "0.9.16",
+    "town": "Town05",
+    "num_agents": 2,
+    "straight_road_length": 50.0,
+    "timestep": 0.1,
+    "max_steps": 500,
+    "reward_version": "v6",
+    "reward_gamma": 0.999,
+    "adversarial_agent_ids": [],
+    "allow_extra_traffic": false,
+    "lidar_range_m": 20.0,
+    "ttc_max_range_m": 20.0,
+    "offroad_protocol": {
+      "protocol_version": "driving_footprint_offroad_v2_r6",
+      "footprint_inset_fraction": 0.9,
+      "sample_count": 9,
+      "boundary_sample_count": 8,
+      "outside_count_threshold": 3,
+      "persistence_ticks": 3,
+      "terminal_penalty": -50.0,
+      "raw_rule": "center_not_driving_or_boundary_outside_count_gte_threshold",
+      "membership_rule": "exact_OpenDRIVE_Driving_union_no_projection"
+    },
+    "road_legality_protocol": {
+      "road_legality_protocol_version": "town05_road_legality_r7_v1",
+      "parameters": {
+        "same_direction_min_cosine": 0.5,
+        "opposing_direction_max_cosine": -0.5,
+        "wrong_way_heading_max_cosine": -0.1736481776669303,
+        "wrong_way_min_speed_mps": 0.5,
+        "violation_persistence_ticks": 5,
+        "legal_transition_grace_ticks": 10
+      },
+      "observation_space_change": false,
+      "reference_lane_key": [
+        "road_id",
+        "lane_id"
+      ],
+      "legal_lane_change_evidence": [
+        "adjacent_waypoint_topology",
+        "carla_lane_change_permission",
+        "same_direction_alignment"
+      ],
+      "broken_marking_semantics": "audit_only_never_sufficient_or_required",
+      "junction_semantics": "nonterminal_ambiguous_but_success_ineligible",
+      "terminal_rule": "same_reason_persists_for_frozen_tick_threshold",
+      "offroad_delegation": "exact_driving_footprint_protocol"
+    }
+  },
+  "action": {
+    "mode": "deterministic_actor_mean_tanh",
+    "observation_protocol_version": "carla_obs_20_lidar20m_time_v3",
+    "action_protocol_version": "tanh_gaussian_signed_longitudinal_2d_pre_tanh_z_v2",
+    "mapping_version": "signed_longitudinal_deadzone_v2",
+    "policy_action_dim": 2,
+    "environment_action_dim": 3,
+    "longitudinal_deadzone": 0.05
+  },
+  "checkpoint": {
+    "schema_version": 8,
+    "training_protocol_version": "mappo_robust_v2_r8c1_pace_p0_t05_v8",
+    "required_training_contract_id": "P0_BASE_MAPPO_TOWN05_R8C1_PACE_V1",
+    "required_training_contract_sha256": "88bdb9dcac5b238d371d5718d346dc7e43b287b8cb725292ddb25b8862d053f4",
+    "allowed_checkpoint_kinds": [
+      "periodic"
+    ],
+    "allowed_checkpoint_updates": [
+      20,
+      60,
+      100
+    ],
+    "required_agent_ids": [
+      0,
+      1
+    ],
+    "obs_dim": 20,
+    "action_dim": 2,
+    "state_dim": 40,
+    "hidden_dim": 128,
+    "required_protocol_versions": {
+      "observation": "carla_obs_20_lidar20m_time_v3",
+      "action": "tanh_gaussian_signed_longitudinal_2d_pre_tanh_z_v2",
+      "lifecycle": "agent_centric_offroad_terminated_truncated_v2",
+      "offroad": "driving_footprint_offroad_v2_r6",
+      "reward": "v6",
+      "metrics": "mappo_metrics_r8c1_pace_p0_t05_v9",
+      "value_normalization": "mappo_valuenorm_v1",
+      "value_loss": "normalized_huber_delta_10_v1",
+      "policy_distribution": "tanh_squashed_gaussian_entropy_v3_r7",
+      "curriculum": "town05_r8a_stratified_mastery_v1",
+      "stall": "stall_diagnostic_v1_record_only",
+      "road_legality": "town05_road_legality_r7_v1",
+      "critic_diagnostics": "agent_outcome_scenario_critic_r7_v1",
+      "learning_rate": "separate_actor_critic_lr_r7_v1",
+      "scenario_sampling": "town05_r8a_exact_balanced_v1"
+    }
+  },
+  "profiles": {
+    "smoke": {
+      "purpose": "One independent production-entry case, excluded from main diagnostic summaries.",
+      "scenario_dir": "data/training_scenarios_town05_r8a_v1",
+      "scenario_pool_sha256": "1bc0013442f2f6107089fdd5c5829d991f9cdd3bd1e862c6a657cc8eb0965232",
+      "scenario_names": [
+        "scenario_01_north_short_rolling_a0_left.json"
+      ],
+      "episode_seeds": [
+        61002
+      ],
+      "formal_use": "diagnostic_only"
+    },
+    "short_probe": {
+      "purpose": "Report trained short rolling (01-02) separately from untrained stationary-start transfer (03-04); u100 primary, u20/u60 temporal references.",
+      "scenario_dir": "data/training_scenarios_town05_r8a_v1",
+      "scenario_pool_sha256": "1bc0013442f2f6107089fdd5c5829d991f9cdd3bd1e862c6a657cc8eb0965232",
+      "scenario_names": [
+        "scenario_01_north_short_rolling_a0_left.json",
+        "scenario_02_south_short_rolling_a1_left.json",
+        "scenario_03_north_short_stationary_a0_left.json",
+        "scenario_04_south_short_stationary_a1_left.json"
+      ],
+      "episode_seeds": [
+        61001
+      ],
+      "formal_use": "diagnostic_only"
+    },
+    "long_probe": {
+      "purpose": "u100 next-curriculum probe: separate long free-flow (05-08, directions and asymmetric speed) from stationary (09-12, pace gate exempt); no length-only causal claim.",
+      "scenario_dir": "data/training_scenarios_town05_r8a_v1",
+      "scenario_pool_sha256": "1bc0013442f2f6107089fdd5c5829d991f9cdd3bd1e862c6a657cc8eb0965232",
+      "scenario_names": [
+        "scenario_05_northbound_free_flow.json",
+        "scenario_06_southbound_free_flow.json",
+        "scenario_07_eastbound_free_flow.json",
+        "scenario_08_westbound_free_flow.json",
+        "scenario_09_north_parallel_stationary_a0_left.json",
+        "scenario_10_south_parallel_stationary_a1_left.json",
+        "scenario_11_east_parallel_stationary_a1_left.json",
+        "scenario_12_west_parallel_stationary_a0_left.json"
+      ],
+      "episode_seeds": [
+        61001
+      ],
+      "formal_use": "diagnostic_only"
+    }
+  },
+  "outcomes": {
+    "success_reasons": [
+      "cooperative_success",
+      "all_agents_reached"
+    ],
+    "collision_reasons": [
+      "cooperative_collision",
+      "adversary_collision"
+    ],
+    "offroad_reasons": [
+      "cooperative_offroad",
+      "adversary_offroad"
+    ],
+    "road_violation_reasons": [
+      "cooperative_road_violation",
+      "adversary_road_violation"
+    ],
+    "timeout_reasons": [
+      "mission_timeout",
+      "max_steps",
+      "all_agents_terminated"
+    ],
+    "require_mutual_exclusivity": true,
+    "allow_unclassified": false
+  },
+  "outputs": {
+    "evaluation_root": "evaluations",
+    "manifest": "evaluation_manifest.json",
+    "resolved_config": "resolved_eval_config.json",
+    "episodes_jsonl": "episodes.jsonl",
+    "summary_json": "summary.json",
+    "summary_csv": "summary.csv",
+    "validator_report": "validator_report.json"
+  },
+  "repeatability": {
+    "required_repeats": 2,
+    "comparison_mode": "r8c1_road_outcome_strict_tick_tolerant_v1",
+    "hard_fields": [
+      "case_id",
+      "outcome",
+      "episode_end_reason",
+      "agent_0_reached",
+      "agent_0_collision",
+      "agent_0_offroad_terminated",
+      "agent_0_final_done",
+      "agent_0_final_terminated",
+      "agent_0_final_truncated",
+      "agent_0_first_offroad_evidence_present",
+      "agent_0_lifecycle_transition",
+      "agent_1_reached",
+      "agent_1_collision",
+      "agent_1_offroad_terminated",
+      "agent_1_final_done",
+      "agent_1_final_terminated",
+      "agent_1_final_truncated",
+      "agent_1_first_offroad_evidence_present",
+      "agent_1_lifecycle_transition",
+      "agent_0_road_rule_terminated",
+      "agent_0_road_violation_confirmed",
+      "agent_0_road_classification",
+      "agent_0_road_violation_reason",
+      "agent_0_road_reference_lane",
+      "agent_0_road_success_eligible",
+      "agent_1_road_rule_terminated",
+      "agent_1_road_violation_confirmed",
+      "agent_1_road_classification",
+      "agent_1_road_violation_reason",
+      "agent_1_road_reference_lane",
+      "agent_1_road_success_eligible"
+    ],
+    "tolerant_fields": [
+      "episode_length",
+      "agent_0_active_decision_steps",
+      "agent_1_active_decision_steps"
+    ],
+    "absolute_tolerance_ticks": {
+      "episode_length": 2,
+      "agent_0_active_decision_steps": 2,
+      "agent_1_active_decision_steps": 2
+    },
+    "continuous_fields": [
+      "agent_0_episode_return",
+      "agent_1_episode_return"
+    ],
+    "continuous_pass_abs_tolerance": {
+      "agent_0_episode_return": 1e-05,
+      "agent_1_episode_return": 1e-05
+    },
+    "continuous_hold_abs_tolerance": {
+      "agent_0_episode_return": 0.1,
+      "agent_1_episode_return": 0.1
+    },
+    "max_warning_case_fraction": 0.5,
+    "systematic_drift_min_case_count": 8
+  },
+  "run_id_prefix": "P0_BASE_C0_",
+  "critical_source_paths": [
+    "evaluation/base_c0_protocol.py",
+    "evaluation/evaluate_base_policy_c0.py",
+    "evaluation/validate_base_c0_run.py",
+    "evaluation/r8c1_diagnostic_protocol.py",
+    "configs/evaluation/p0_base_c0_town05_r8c1_probe_v1.json",
+    "configs/base_mappo/p0_base_town05_r8c1_pace_v1.json",
+    "data/town05_parallel_routes_v1.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_01_north_short_rolling_a0_left.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_02_south_short_rolling_a1_left.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_03_north_short_stationary_a0_left.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_04_south_short_stationary_a1_left.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_05_northbound_free_flow.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_06_southbound_free_flow.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_07_eastbound_free_flow.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_08_westbound_free_flow.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_09_north_parallel_stationary_a0_left.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_10_south_parallel_stationary_a1_left.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_11_east_parallel_stationary_a1_left.json",
+    "data/training_scenarios_town05_r8a_v1/scenario_12_west_parallel_stationary_a0_left.json",
+    "environment/base_reward_v3.py",
+    "environment/base_reward_v4.py",
+    "environment/base_reward_v5.py",
+    "environment/base_reward_v6.py",
+    "environment/carla_multi_agent_env.py",
+    "environment/offroad_protocol.py",
+    "environment/road_legality_protocol.py",
+    "environment/stall_protocol.py",
+    "models/actor_critic.py",
+    "training/action_protocol.py",
+    "training/checkpoint_protocol.py",
+    "training/critic_diagnostics.py",
+    "training/experiment_contract.py",
+    "training/learning_rate_protocol.py",
+    "training/lifecycle_semantics.py",
+    "training/mastery_curriculum.py",
+    "training/metrics_protocol.py",
+    "training/policy_distribution_protocol.py",
+    "training/r8a_curriculum.py",
+    "training/train_no_rllib_mappo_robust_v2.py",
+    "training/value_normalization.py",
+    "utils/training_metrics_recorder.py",
+    "utils/validate_r8a_scenarios.py",
+    "utils/validate_tensorboard_run.py",
+    "utils/validate_training_scenarios.py"
+  ],
+  "diagnostic_policy": {
+    "evaluation_purpose": "diagnostic_only",
+    "selection_allowed": false,
+    "performance_decision": "NOT_EVALUATED",
+    "registration_timing": "post_training_diagnostic",
+    "primary_checkpoint_update": 100,
+    "profile_checkpoint_updates": {
+      "smoke": [
+        100
+      ],
+      "short_probe": [
+        20,
+        60,
+        100
+      ],
+      "long_probe": [
+        100
+      ]
+    },
+    "total_execution_episodes": 42,
+    "training_run_id": "P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224",
+    "training_run_path": "logs/P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224",
+    "training_git_sha": "050fe9fc72b9639b3048f56384cc48ad0d8d0214",
+    "training_contract_path": "configs/base_mappo/p0_base_town05_r8c1_pace_v1.json",
+    "training_contract_sha256": "88bdb9dcac5b238d371d5718d346dc7e43b287b8cb725292ddb25b8862d053f4",
+    "training_code_fingerprint": "16e3a2ba1bc7d7ba09fde469de93c11d1de311f2a7651347af47fae597e31701",
+    "training_fingerprint_paths": [
+      "training/train_no_rllib_mappo_robust_v2.py",
+      "training/action_protocol.py",
+      "environment/base_reward_v3.py",
+      "environment/base_reward_v4.py",
+      "environment/offroad_protocol.py",
+      "environment/stall_protocol.py",
+      "training/experiment_contract.py",
+      "training/checkpoint_protocol.py",
+      "training/lifecycle_semantics.py",
+      "training/metrics_protocol.py",
+      "training/mastery_curriculum.py",
+      "training/policy_distribution_protocol.py",
+      "training/value_normalization.py",
+      "training/critic_diagnostics.py",
+      "training/learning_rate_protocol.py",
+      "utils/training_metrics_recorder.py",
+      "models/actor_critic.py",
+      "environment/carla_multi_agent_env.py",
+      "environment/base_reward_v5.py",
+      "environment/base_reward_v6.py",
+      "environment/road_legality_protocol.py",
+      "configs/base_mappo/p0_base_town05_r8c1_pace_v1.json"
+    ],
+    "training_source_sha256": {
+      "configs/base_mappo/p0_base_town05_r8c1_pace_v1.json": "88bdb9dcac5b238d371d5718d346dc7e43b287b8cb725292ddb25b8862d053f4",
+      "data/town05_parallel_routes_v1.json": "ebbbfa0bf3f7ea190c89627370aa6ebd80d85e6c34480a98b8c85704a45e6b1f",
+      "data/training_scenarios_town05_r8a_v1/scenario_01_north_short_rolling_a0_left.json": "1496f0764c5c1112c484d2fdf98a491ab3566286f0c49c7642154ef3092b6cb0",
+      "data/training_scenarios_town05_r8a_v1/scenario_02_south_short_rolling_a1_left.json": "2ec1297a5aa5e6b70c926ddd1e145a0e3c0e99cc9992d4c382382b08c4b6a58a",
+      "data/training_scenarios_town05_r8a_v1/scenario_03_north_short_stationary_a0_left.json": "b377efaa41b099a9240bc249dd633188aaac0f419d12f894df1bfb9c21d8cc03",
+      "data/training_scenarios_town05_r8a_v1/scenario_04_south_short_stationary_a1_left.json": "d4793adf90f588db389dc1a7599ab4cefaee42bbfb836785d0871d46a2a749ad",
+      "data/training_scenarios_town05_r8a_v1/scenario_05_northbound_free_flow.json": "223ec843c6eb4652f7338d145d874a2d6557ef6e8417d4c4b32754453b7a24b7",
+      "data/training_scenarios_town05_r8a_v1/scenario_06_southbound_free_flow.json": "0fd0fc0b0c6030e3b03ad30f7a0f225f834fe3bff2f8c2db35b3485bd89a44c1",
+      "data/training_scenarios_town05_r8a_v1/scenario_07_eastbound_free_flow.json": "fefb17c3b163b190b9dc49f699b4a2e94de926bb9f5f63306695c625798459d4",
+      "data/training_scenarios_town05_r8a_v1/scenario_08_westbound_free_flow.json": "4afaeb80af8124136b9d676b4e3b6f642bd73aa14b018fd378374fdeb35613ad",
+      "data/training_scenarios_town05_r8a_v1/scenario_09_north_parallel_stationary_a0_left.json": "c60e73426faf7a0f6d129097f4f685cd65155c1d12227da3229e9fb1043dddd2",
+      "data/training_scenarios_town05_r8a_v1/scenario_10_south_parallel_stationary_a1_left.json": "1b5c2a9b668e2baf0bfb05584c85308d87da79c42f2314b6419a1741cc516a56",
+      "data/training_scenarios_town05_r8a_v1/scenario_11_east_parallel_stationary_a1_left.json": "4542c2de5918a01ae986e59f2c31444d385724dbbef869040fcc70681c7bc770",
+      "data/training_scenarios_town05_r8a_v1/scenario_12_west_parallel_stationary_a0_left.json": "32419f45c7f3d52e8e595e50569e17a99c72df8379f85e564b311d6fff62d5a3",
+      "environment/base_reward_v3.py": "4bc07ceff98429e1c5f23cbf710523092d1f72f233c46b751a87db0f02c20478",
+      "environment/base_reward_v4.py": "57ddbf702ced7b98fb33d6175143644936744859964c2def4a26a717b631850e",
+      "environment/base_reward_v5.py": "3e3032bfca75fdb8acfa6b59878e57b8dbd3665d4826a3c7a1733e140627665f",
+      "environment/base_reward_v6.py": "f39af641933a12f3cfac92589dcad402c07390bf1fbc2ad29afd109a088f8bbf",
+      "environment/carla_multi_agent_env.py": "2f21c24d2fd7dd7f760553e3338e00b59d3d11292c061c2d43837725524f6d9c",
+      "environment/offroad_protocol.py": "9ecc3e864f0e45d198b7eb68dc6f3f552d09c7368b19e4d0e0fa8a114baacc6f",
+      "environment/road_legality_protocol.py": "ba570d7c35ce976e99448e3d7f94aabf5500d0ac4aabe23f195b52cef5ac3f6c",
+      "environment/stall_protocol.py": "b33054a5fa9fe9a1d6d5721a3719c19b134a14872b228efb5aa38c864f8c8c8a",
+      "models/actor_critic.py": "f37b7358a77d682b010b3e75c267390b22a7cee6b5106bb01559295386bfaf80",
+      "training/action_protocol.py": "7135ebfd5960ce3826beba63f9ae62d66bc89eb6b41fc2992c10f721562472f5",
+      "training/checkpoint_protocol.py": "a591832ffaf3aac439287c485702061a77de18d27cf22323017aa331e1e59e3b",
+      "training/critic_diagnostics.py": "adbf6701c4da3931f8acc25dc5f2ab58515bcbd9f7a909f919f02f112027e631",
+      "training/experiment_contract.py": "1dbbf436ef5b0ba0d8b59c16cccfc08531c99a939278b861190c12180c12902d",
+      "training/learning_rate_protocol.py": "8bcc40d3d8f435d572e45fe1b3d04e305c9a6b96031fe0a907fe48e1d2f031ed",
+      "training/lifecycle_semantics.py": "d20ccdbae6563f4e113134308559e1269f91569587bddbfaddb455804fdda3af",
+      "training/mastery_curriculum.py": "2dbd0bd562e0ba11ef0f5c5958534d033810c9ffac8891d8f7791b0515aa2e8d",
+      "training/metrics_protocol.py": "59b373f4a1486e0a91e2a778422f4903a0ec80717e92b268ec898d7f02f693a7",
+      "training/policy_distribution_protocol.py": "4fea2ce93fe321baa2925443cd98bf9afadc4918b6d0890c2e810fcb1eb7772c",
+      "training/r8a_curriculum.py": "d7ffb082b08954498a186eb80a2173211d3ec7b5d553d0ad657e2bd1d8ec551f",
+      "training/train_no_rllib_mappo_robust_v2.py": "714cac887d53ffc4e54fc202c02114c7e4b977d04ce9d88f08f182fd971cc22f",
+      "training/value_normalization.py": "46f16d1b937eedcafb8489d90f061b709b86ac76ab71200a50c4a463640e5aa1",
+      "utils/training_metrics_recorder.py": "9a8e3475e2337665ec163ad4ebc57cdae09406da97e13d8b6d63df818f9648c0",
+      "utils/validate_r8a_scenarios.py": "3feacd38f427b58e9e8f5087ca2f9395393b2e3e4f2242a07d8466e93a19e2e4",
+      "utils/validate_tensorboard_run.py": "e14cb3153270faa9613e2ceaace8e0fa91fb4cf5c91766b99fac4ac4881c5ac1",
+      "utils/validate_training_scenarios.py": "e749fa8a2b4ed0005b355b9032d2de39e4581993d7fb1849dbe63acc653a7e49"
+    },
+    "checkpoint_manifest_path": "logs/P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224/checkpoint_manifest.json",
+    "checkpoint_manifest_sha256": "6c4e6cddfa585f42f60c2de729af70a810ddc9c8d203b58cab7fe126678eabb0",
+    "checkpoints": {
+      "20": {
+        "path": "logs/P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224/periodic/ckpt_update_000020.pt",
+        "sha256": "1cfd66872171427ecf68eddb530df5defe976503d5b172549dbb8291c5ec51be"
+      },
+      "60": {
+        "path": "logs/P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224/periodic/ckpt_update_000060.pt",
+        "sha256": "8d702aae3a292553c2254aec22480a689e4b17df3930afa1b326f45561b9d280"
+      },
+      "100": {
+        "path": "logs/P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224/periodic/ckpt_update_000100.pt",
+        "sha256": "c3519fb3ccb0b55f4b14f735849dd0093bc28914feee8ece60c556dbb417d1d6"
+      }
+    },
+    "scenario_sha256": {
+      "scenario_01_north_short_rolling_a0_left.json": "1496f0764c5c1112c484d2fdf98a491ab3566286f0c49c7642154ef3092b6cb0",
+      "scenario_02_south_short_rolling_a1_left.json": "2ec1297a5aa5e6b70c926ddd1e145a0e3c0e99cc9992d4c382382b08c4b6a58a",
+      "scenario_03_north_short_stationary_a0_left.json": "b377efaa41b099a9240bc249dd633188aaac0f419d12f894df1bfb9c21d8cc03",
+      "scenario_04_south_short_stationary_a1_left.json": "d4793adf90f588db389dc1a7599ab4cefaee42bbfb836785d0871d46a2a749ad",
+      "scenario_05_northbound_free_flow.json": "223ec843c6eb4652f7338d145d874a2d6557ef6e8417d4c4b32754453b7a24b7",
+      "scenario_06_southbound_free_flow.json": "0fd0fc0b0c6030e3b03ad30f7a0f225f834fe3bff2f8c2db35b3485bd89a44c1",
+      "scenario_07_eastbound_free_flow.json": "fefb17c3b163b190b9dc49f699b4a2e94de926bb9f5f63306695c625798459d4",
+      "scenario_08_westbound_free_flow.json": "4afaeb80af8124136b9d676b4e3b6f642bd73aa14b018fd378374fdeb35613ad",
+      "scenario_09_north_parallel_stationary_a0_left.json": "c60e73426faf7a0f6d129097f4f685cd65155c1d12227da3229e9fb1043dddd2",
+      "scenario_10_south_parallel_stationary_a1_left.json": "1b5c2a9b668e2baf0bfb05584c85308d87da79c42f2314b6419a1741cc516a56",
+      "scenario_11_east_parallel_stationary_a1_left.json": "4542c2de5918a01ae986e59f2c31444d385724dbbef869040fcc70681c7bc770",
+      "scenario_12_west_parallel_stationary_a0_left.json": "32419f45c7f3d52e8e595e50569e17a99c72df8379f85e564b311d6fff62d5a3"
+    },
+    "evaluator_source_paths": [
+      "evaluation/base_c0_protocol.py",
+      "evaluation/evaluate_base_policy_c0.py",
+      "evaluation/validate_base_c0_run.py",
+      "evaluation/r8c1_diagnostic_protocol.py",
+      "configs/evaluation/p0_base_c0_town05_r8c1_probe_v1.json"
+    ]
+  }
+}

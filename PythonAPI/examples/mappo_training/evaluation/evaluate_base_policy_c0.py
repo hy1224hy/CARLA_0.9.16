@@ -59,6 +59,16 @@ from evaluation.base_c0_protocol import (
     summary_csv_rows,
     validate_episode_record,
 )
+from evaluation.r8c1_diagnostic_protocol import (
+    TOWN05_R8C1_C0_PROTOCOL_VERSION,
+    TOWN05_R8C1_C0_EPISODE_RECORD_VERSION,
+    R8C1_C0_MANIFEST_VERSION,
+    R8C1_C0_RESOLVED_CONFIG_VERSION,
+    actor_state_hashes,
+    build_source_provenance,
+    diagnostic_usage,
+    validate_source_provenance,
+)
 from models.actor_critic import Actor
 from training.checkpoint_protocol import (
     atomic_write_json,
@@ -285,6 +295,7 @@ def _build_actors(checkpoint: Mapping[str, Any]) -> Dict[int, Actor]:
             raise C0ProtocolError(f"checkpoint actor state missing for agent={agent_id}")
         actor.load_state_dict(state, strict=True)
         actor.eval()
+        actor.requires_grad_(False)
         actors[agent_id] = actor
     return actors
 
@@ -299,10 +310,27 @@ def _run_case(
     profile: str,
     checkpoint_sha256: str,
 ) -> Dict[str, Any]:
+    r8c1 = contract["protocol_version"] == TOWN05_R8C1_C0_PROTOCOL_VERSION
+    effective_horizon = int(contract["environment"]["max_steps"])
+    actor_hashes_before = actor_state_hashes(actors) if r8c1 else None
+    if r8c1:
+        effective_horizon = case.get("effective_episode_max_steps")
+        if (
+            isinstance(effective_horizon, bool)
+            or not isinstance(effective_horizon, int)
+            or not 1 <= effective_horizon <= int(contract["environment"]["max_steps"])
+        ):
+            raise C0ProtocolError("case effective_episode_max_steps is invalid")
+        if any(actor.training for actor in actors.values()):
+            raise C0ProtocolError("R8-C1 evaluation requires all Actors in eval mode")
     _set_seed(int(case["episode_seed"]), env)
     env.apply_scenario_config(dict(case["scenario_config"]))
+    if r8c1 and env.max_steps != effective_horizon:
+        raise C0ProtocolError("applied scenario max_steps differs from frozen effective horizon")
     started_at = utc_now_iso()
     observations, info = env.reset()
+    if r8c1 and env.max_steps != effective_horizon:
+        raise C0ProtocolError("reset max_steps differs from frozen effective horizon")
     active_mask = _strict_agent_bool_map(info.get("active_mask"), name="reset.active_mask")
     if not all(active_mask.values()) or info.get("episode_end_reason") != "running":
         raise C0ProtocolError("C0 reset must start with both agents active and reason=running")
@@ -323,7 +351,7 @@ def _run_case(
         agent_id: None for agent_id in AGENT_IDS
     }
 
-    for step_index in range(1, int(contract["environment"]["max_steps"]) + 1):
+    for step_index in range(1, effective_horizon + 1):
         pre_active = dict(active_mask)
         active_ids = [agent_id for agent_id in AGENT_IDS if pre_active[agent_id]]
         if not active_ids:
@@ -416,6 +444,7 @@ def _run_case(
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
         TOWN05_R7_C0_PROTOCOL_VERSION,
+        TOWN05_R8C1_C0_PROTOCOL_VERSION,
     }:
         offroad_terminated = _strict_agent_bool_map(
             final_info.get("offroad_terminated"),
@@ -452,6 +481,7 @@ def _run_case(
                     TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
                     TOWN05_R6_C0_PROTOCOL_VERSION,
                     TOWN05_R7_C0_PROTOCOL_VERSION,
+                    TOWN05_R8C1_C0_PROTOCOL_VERSION,
                 }
             ):
                 transition = lifecycle_transitions[agent_id]
@@ -460,7 +490,10 @@ def _run_case(
                         f"missing lifecycle transition for agent={agent_id}"
                     )
                 agents_payload[str(agent_id)]["lifecycle_transition"] = transition
-    if contract["protocol_version"] == TOWN05_R7_C0_PROTOCOL_VERSION:
+    if contract["protocol_version"] in {
+        TOWN05_R7_C0_PROTOCOL_VERSION,
+        TOWN05_R8C1_C0_PROTOCOL_VERSION,
+    }:
         confirmed = _strict_agent_bool_map(
             final_info.get("road_violation_confirmed"),
             name="final.road_violation_confirmed",
@@ -491,6 +524,9 @@ def _run_case(
             })
     record = {
         "record_version": (
+            TOWN05_R8C1_C0_EPISODE_RECORD_VERSION
+            if r8c1
+            else
             LEGACY_C0_EPISODE_RECORD_VERSION
             if legacy_action
             else (
@@ -549,6 +585,18 @@ def _run_case(
             "total_active_decision_steps": sum(agents_payload[str(agent_id)]["active_decision_steps"] for agent_id in AGENT_IDS),
         },
     }
+    if r8c1:
+        record.update({
+            "evaluation_purpose": "diagnostic_only",
+            "selection_allowed": False,
+            "performance_decision": "NOT_EVALUATED",
+            "effective_episode_max_steps": effective_horizon,
+            "reset_episode_max_steps": effective_horizon,
+            "scenario_group": case["scenario_group"],
+            "direction": case["direction"],
+        })
+        if actor_state_hashes(actors) != actor_hashes_before:
+            raise C0ProtocolError("Actor state changed during deterministic evaluation")
     validate_episode_record(
         record,
         eval_id=eval_id,
@@ -601,6 +649,17 @@ def _prepare_output(
     cases: list[Dict[str, Any]],
 ) -> tuple[Path, list[Dict[str, Any]]]:
     contract = contract_record["payload"]
+    r8c1 = contract["protocol_version"] == TOWN05_R8C1_C0_PROTOCOL_VERSION
+    diagnostic_evidence = {}
+    if r8c1:
+        diagnostic_evidence = {
+            **diagnostic_usage(),
+            "source_provenance": build_source_provenance(
+                contract=contract, checkpoint_record=checkpoint_record,
+                project_dir=PROJECT_DIR, repository_root=REPOSITORY_ROOT,
+            ),
+            "actor_state_sha256_before": actor_state_hashes(checkpoint_record["checkpoint"]["actors"]),
+        }
     output_dir = Path(args.output_dir).expanduser().resolve()
     if output_dir.name != args.eval_id:
         raise C0ProtocolError("output directory basename must equal eval_id")
@@ -627,8 +686,48 @@ def _prepare_output(
         for name, expected in expected_identity.items():
             if manifest.get(name) != expected or resolved.get(name) != expected:
                 raise C0ProtocolError(f"resume identity mismatch for {name}")
+        if r8c1:
+            if manifest.get("resolved_config_sha256") != sha256_file(resolved_path):
+                raise C0ProtocolError("resume resolved config SHA256 mismatch")
+            if (
+                manifest.get("manifest_version") != R8C1_C0_MANIFEST_VERSION
+                or resolved.get("resolved_config_version") != R8C1_C0_RESOLVED_CONFIG_VERSION
+            ):
+                raise C0ProtocolError("resume diagnostic evidence version mismatch")
+            for name, expected in diagnostic_evidence.items():
+                if name == "source_provenance":
+                    validate_source_provenance(
+                        resolved.get(name), contract=contract, checkpoint_record=checkpoint_record,
+                        project_dir=PROJECT_DIR, repository_root=REPOSITORY_ROOT,
+                    )
+                    expected = resolved.get(name)
+                if resolved.get(name) != expected or manifest.get(name) != expected:
+                    raise C0ProtocolError(f"resume diagnostic identity mismatch for {name}")
+            expected_resolved = {
+                "contract_id": contract["contract_id"],
+                "contract_canonical_sha256": contract_record["canonical_sha256"],
+                "checkpoint_path": checkpoint_record["path"],
+                "checkpoint_update": checkpoint_record["update"],
+                "checkpoint_formal_eligible": checkpoint_record["formal_eligible"],
+                "checkpoint_formal_ineligibility_reasons": checkpoint_record["formal_ineligibility_reasons"],
+                "environment_spec": contract["environment"],
+                "case_count": len(cases),
+                "cases": [{key: value for key, value in case.items() if key != "scenario_config"} for case in cases],
+                "host": args.host, "port": args.port, "device": "cpu",
+            }
+            for name, expected in expected_resolved.items():
+                if resolved.get(name) != expected:
+                    raise C0ProtocolError(f"resume frozen configuration mismatch for {name}")
+            if manifest.get("status") not in {"PREPARED", "RUNNING", "INTERRUPTED", "HOLD_ERROR"}:
+                raise C0ProtocolError("resume requires an incomplete resumable status")
+            if manifest.get("cleanup_error"):
+                raise C0ProtocolError("resume forbidden after an unresolved cleanup error")
+            if manifest.get("total_cases") != len(cases):
+                raise C0ProtocolError("resume manifest total cases mismatch")
         records = read_jsonl(episodes_path) if episodes_path.is_file() else []
         ensure_completed_prefix(records, cases)
+        if r8c1 and manifest.get("completed_cases") not in {len(records), max(0, len(records) - 1)}:
+            raise C0ProtocolError("resume completed case count is inconsistent with durable JSONL")
         for index, record in enumerate(records):
             validate_episode_record(
                 record,
@@ -653,7 +752,7 @@ def _prepare_output(
     output_dir.mkdir(parents=True)
     now = utc_now_iso()
     resolved = {
-        "resolved_config_version": C0_RESOLVED_CONFIG_VERSION,
+        "resolved_config_version": R8C1_C0_RESOLVED_CONFIG_VERSION if r8c1 else C0_RESOLVED_CONFIG_VERSION,
         "created_at": now,
         "eval_id": args.eval_id,
         "profile": args.profile,
@@ -680,10 +779,13 @@ def _prepare_output(
         "cases": [{key: value for key, value in case.items() if key not in {"scenario_config"}} for case in cases],
         "git": get_git_metadata(REPOSITORY_ROOT),
     }
+    if r8c1:
+        resolved.update(diagnostic_evidence)
+        resolved["environment_spec"] = dict(contract["environment"])
     atomic_write_json(resolved, resolved_path)
     atomic_write_json(
         {
-            "manifest_version": C0_MANIFEST_VERSION,
+            "manifest_version": R8C1_C0_MANIFEST_VERSION if r8c1 else C0_MANIFEST_VERSION,
             "eval_id": args.eval_id,
             "profile": args.profile,
             "contract_sha256": contract_record["sha256"],
@@ -699,6 +801,12 @@ def _prepare_output(
             "post_cleanup": {},
             "cleanup_error": "",
             "error": "",
+            **({
+                **diagnostic_evidence,
+                "actor_state_sha256_after": {},
+                "checkpoint_sha256_after": "",
+                "preflight": {},
+            } if r8c1 else {}),
         },
         manifest_path,
     )
@@ -721,6 +829,10 @@ def _record_carla_runtime(
             "CARLA client/server version differs from the frozen contract: "
             f"client={client_version!r}, server={server_version!r}, expected={expected_version!r}"
         )
+    if resolved["resolved_config_version"] == R8C1_C0_RESOLVED_CONFIG_VERSION:
+        for name, value in (("carla_client_version", client_version), ("carla_server_version", server_version)):
+            if runtime.get(name) not in {"pending_connection", value}:
+                raise C0ProtocolError(f"resume CARLA runtime changed: {name}")
     runtime.update(
         {
             "carla_client_version": client_version,
@@ -738,26 +850,91 @@ def _record_carla_runtime(
     )
 
 
+def _preflight_idle_world(*, host: str, port: int, expected_version: str) -> Dict[str, Any]:
+    """Inspect the existing server before constructing an environment or changing its world."""
+    client = carla.Client(host, port)
+    client.set_timeout(10.0)
+    versions = {
+        "carla_client_version": str(client.get_client_version()),
+        "carla_server_version": str(client.get_server_version()),
+    }
+    if any(not value.startswith(expected_version) for value in versions.values()):
+        raise C0ProtocolError("CARLA preflight client/server version differs from the contract")
+    world = client.get_world()
+    settings = world.get_settings()
+    actors = world.get_actors()
+    audit = {
+        **versions,
+        "vehicle_actor_count": len(actors.filter("vehicle.*")),
+        "sensor_actor_count": len(actors.filter("sensor.*")),
+        "synchronous_mode": bool(settings.synchronous_mode),
+        "fixed_delta_seconds": settings.fixed_delta_seconds,
+    }
+    if audit["vehicle_actor_count"] or audit["sensor_actor_count"] or audit["synchronous_mode"]:
+        raise C0ProtocolError("CARLA world is not idle: existing vehicles, sensors, or synchronous owner")
+    return audit
+
+
+def _restore_failed_initialization(*, host: str, port: int, preflight: Mapping[str, Any]) -> tuple[Dict[str, Any], str]:
+    """Recover timing after a spawn-disabled constructor fails before assignment."""
+    try:
+        client = carla.Client(host, port)
+        client.set_timeout(10.0)
+        world = client.get_world()
+        actors = world.get_actors()
+        if actors.filter("vehicle.*") or actors.filter("sensor.*"):
+            return {}, "cannot restore failed initialization: unexpected actors in world"
+        errors = []
+        try:
+            client.get_trafficmanager(8000).set_synchronous_mode(False)
+        except Exception as error:
+            errors.append(f"traffic manager restore: {type(error).__name__}: {error}")
+        settings = world.get_settings()
+        settings.synchronous_mode = preflight["synchronous_mode"]
+        settings.fixed_delta_seconds = preflight["fixed_delta_seconds"]
+        world.apply_settings(settings)
+        restored = world.get_settings()
+        timing_matches = (
+            bool(restored.synchronous_mode) == preflight["synchronous_mode"]
+            and restored.fixed_delta_seconds == preflight["fixed_delta_seconds"]
+        )
+        if not timing_matches:
+            errors.append("failed initialization world timing was not restored")
+        return {
+            "vehicle_actor_count": 0, "sensor_actor_count": 0,
+            "synchronous_mode": bool(restored.synchronous_mode),
+            "fixed_delta_seconds": restored.fixed_delta_seconds,
+            "world_timing_restored": timing_matches,
+        }, "; ".join(errors)
+    except Exception as error:
+        return {}, f"failed initialization cleanup: {type(error).__name__}: {error}"
+
+
 def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     contract_record = load_c0_contract(args.eval_contract, project_dir=PROJECT_DIR)
     contract = contract_record["payload"]
+    r8c1 = contract["protocol_version"] == TOWN05_R8C1_C0_PROTOCOL_VERSION
     if (
         contract["protocol_version"] not in FORMAL_EXECUTABLE_C0_PROTOCOL_VERSIONS
+        and not r8c1
         and not args.allow_diagnostic_checkpoint
     ):
         raise C0ProtocolError(
             "historical C0 v1/v2/v3 is read-only evidence; new executions require "
             "a current Town02 v4 or Town05 contract, or an explicit diagnostic smoke invocation"
         )
-    if args.allow_diagnostic_checkpoint and args.profile != "smoke":
+    if not r8c1 and args.allow_diagnostic_checkpoint and args.profile != "smoke":
         raise C0ProtocolError("diagnostic checkpoints are restricted to the smoke profile")
     checkpoint_record = load_and_validate_c0_checkpoint(
         args.checkpoint,
         contract=contract,
         allow_diagnostic_checkpoint=args.allow_diagnostic_checkpoint,
         map_location="cpu",
+        project_dir=PROJECT_DIR,
     )
     parse_eval_id(args.eval_id, profile=args.profile, checkpoint_update=checkpoint_record["update"])
+    if r8c1 and checkpoint_record["update"] not in contract["diagnostic_policy"]["profile_checkpoint_updates"].get(args.profile, []):
+        raise C0ProtocolError("R8-C1 checkpoint update is not registered for this diagnostic profile")
     if checkpoint_record["formal_eligible"]:
         verify_critical_sources_clean(
             repository_root=REPOSITORY_ROOT,
@@ -778,6 +955,7 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
     primary_error: BaseException | None = None
     cleanup_audit: Dict[str, Any] = {}
     cleanup_error = ""
+    environment_construction_started = False
     try:
         atomic_update_manifest(
             manifest_path,
@@ -785,6 +963,15 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
         )
         actors = _build_actors(checkpoint_record["checkpoint"])
         env_config = contract["environment"]
+        if r8c1:
+            resolved = load_strict_json(output_dir / outputs["resolved_config"])
+            if actor_state_hashes(actors) != resolved["actor_state_sha256_before"]:
+                raise C0ProtocolError("loaded Actors differ from the frozen checkpoint")
+            preflight = _preflight_idle_world(
+                host=args.host, port=args.port, expected_version=env_config["carla_version"],
+            )
+            atomic_update_manifest(manifest_path, {"preflight": preflight})
+        environment_construction_started = True
         env = CarlaMultiAgentEnv(
             host=args.host,
             port=args.port,
@@ -803,6 +990,11 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
             lidar_range_m=env_config.get("lidar_range_m", 4.0),
             ttc_max_range_m=env_config.get("ttc_max_range_m", 10.0),
         )
+        if r8c1:
+            # The environment reloads Town05 before remembering timing. Restore the
+            # actual preflight timing when close() releases this evaluator's world.
+            env._original_synchronous_mode = preflight["synchronous_mode"]
+            env._original_fixed_delta_seconds = preflight["fixed_delta_seconds"]
         _record_carla_runtime(
             env=env,
             resolved_path=output_dir / outputs["resolved_config"],
@@ -829,10 +1021,36 @@ def run_evaluation(args: argparse.Namespace) -> Dict[str, Any]:
                     "updated_at": utc_now_iso(),
                 },
             )
+        if r8c1:
+            after_hashes = actor_state_hashes(actors)
+            if after_hashes != resolved["actor_state_sha256_before"]:
+                raise C0ProtocolError("Actor weights changed during evaluation")
+            checkpoint_after = sha256_file(checkpoint_record["path"])
+            if checkpoint_after != checkpoint_record["sha256"]:
+                raise C0ProtocolError("checkpoint file changed during evaluation")
+            validate_source_provenance(
+                resolved["source_provenance"], contract=contract, checkpoint_record=checkpoint_record,
+                project_dir=PROJECT_DIR, repository_root=REPOSITORY_ROOT,
+            )
+            atomic_update_manifest(manifest_path, {
+                "actor_state_sha256_after": after_hashes,
+                "checkpoint_sha256_after": checkpoint_after,
+            })
     except BaseException as error:
         primary_error = error
     finally:
-        cleanup_audit, cleanup_error = _cleanup_environment(env)
+        if r8c1 and not environment_construction_started:
+            # An input/preflight failure has not created resources or changed CARLA.
+            cleanup_audit, cleanup_error = {}, ""
+        elif r8c1 and env is None:
+            cleanup_audit, cleanup_error = _restore_failed_initialization(
+                host=args.host, port=args.port, preflight=preflight,
+            )
+        else:
+            try:
+                cleanup_audit, cleanup_error = _cleanup_environment(env)
+            except Exception as error:
+                cleanup_audit, cleanup_error = {}, f"cleanup audit: {type(error).__name__}: {error}"
         if cleanup_error:
             atomic_update_manifest(
                 manifest_path,
@@ -909,7 +1127,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run frozen P0-BASE C0 checkpoint evaluation")
     parser.add_argument("--eval-contract", type=Path, default=DEFAULT_CONTRACT)
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument("--profile", choices=("smoke", "gate", "validation"), required=True)
+    parser.add_argument("--profile", choices=("smoke", "gate", "validation", "short_probe", "long_probe"), required=True)
     parser.add_argument("--eval-id", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--host", default="127.0.0.1")

@@ -608,7 +608,14 @@ def validate_checkpoint_header(
             "protocol_versions.metrics cannot be empty"
         )
     last_metrics = checkpoint["last_metrics"]
-    if update == 0:
+    fork = run_metadata.get("reward_fork", {})
+    is_fork_seed = checkpoint.get("checkpoint_kind") == "reward_fork_seed"
+    if is_fork_seed:
+        if (not isinstance(fork, Mapping) or fork.get("source_update") != update
+                or len(str(fork.get("source_sha256", ""))) != 64
+                or last_metrics is not None):
+            raise CheckpointProtocolError("invalid reward fork seed boundary")
+    elif update == 0:
         if last_metrics not in (None, {}):
             raise CheckpointProtocolError(
                 "update-0 checkpoint must not contain last_metrics"

@@ -156,6 +156,9 @@ _ALLOWED_FORMAL_OPTIONS = frozenset(
         "--run-id",
         "--save-dir",
         "--resume",
+        "--continuation-contract",
+        "--stop-request-file",
+        "--p0-smoke-interrupt-after-episodes",
     }
 )
 
@@ -907,7 +910,7 @@ def apply_experiment_contract(
         raise ExperimentContractError("P0-BASE formal contract forbids pretrained weights")
     if bool(getattr(args, "allow_resume_code_drift", False)):
         raise ExperimentContractError("formal resume forbids --allow-resume-code-drift")
-    if int(getattr(args, "p0_smoke_interrupt_after_episodes", 0)) != 0:
+    if int(getattr(args, "p0_smoke_interrupt_after_episodes", 0)) != 0 and not getattr(args, "continuation_contract", ""):
         raise ExperimentContractError("formal run forbids the P0 smoke interrupt hook")
 
     record = load_experiment_contract(contract_path, project_dir=project_dir)
@@ -921,7 +924,12 @@ def apply_experiment_contract(
         setattr(args, name, value)
 
     requested_stop = int(args.updates)
-    if requested_stop not in payload["segment_stop_updates"]:
+    continuation = None
+    if getattr(args, "continuation_contract", ""):
+        from training.continuation_protocol import load_continuation
+        continuation = load_continuation(args, record, project_dir)
+        args._continuation_metadata = continuation
+    if continuation is None and requested_stop not in payload["segment_stop_updates"]:
         raise ExperimentContractError(
             f"--updates={requested_stop} is not a registered segment stop; "
             f"allowed={payload['segment_stop_updates']}"
@@ -945,7 +953,7 @@ def apply_experiment_contract(
         **record,
         "contract_id": payload["contract_id"],
         "requested_stop_update": requested_stop,
-        "planned_total_updates": int(payload["planned_total_updates"]),
+        "planned_total_updates": int(continuation["payload"]["planned_total_updates"] if continuation else payload["planned_total_updates"]),
     }
     args._experiment_contract_metadata = metadata
     return metadata
@@ -1219,6 +1227,11 @@ def update_experiment_evidence(
             "notes": str(notes)[:500],
         }
     )
+    continuation = getattr(args, "_continuation_metadata", None)
+    if continuation:
+        manifest["continuation_sha256"] = continuation["sha256"]
+        manifest["effective_planned_total_updates"] = continuation["payload"]["planned_total_updates"]
+        manifest["continuation_path"] = continuation["path"]
     atomic_write_json(dict(manifest), manifest_path)
     resolved_path = run_dir / RESOLVED_CONFIG_NAME
     with resolved_path.open("r", encoding="utf-8") as handle:

@@ -262,6 +262,8 @@ class TrainingMetricsRecorder:
         resume_metrics_payload: Optional[Mapping[str, object]] = None,
         histogram_interval: int = 10,
         critic_protocol: Optional[Mapping[str, object]] = None,
+        pace_profile: str = "frozen_v6",
+        origin_update: int = 0,
     ) -> None:
         self.run_dir = Path(run_dir).resolve()
         self.run_dir.mkdir(parents=True, exist_ok=True)
@@ -294,6 +296,24 @@ class TrainingMetricsRecorder:
         self._pending_histogram_modules = None
 
         schema = reward_schema_document(self.reward_version)
+        self.origin_update = int(origin_update)
+        if not 0 <= self.origin_update <= completed_update:
+            raise MetricsProtocolError("invalid metrics origin update")
+        if self.origin_update:
+            schema["origin_update"] = self.origin_update
+        if pace_profile != "frozen_v6":
+            from environment.route_pace_reward import PROFILE, route_pace_spec
+            from environment.base_reward_v5 import reward_v5_spec
+            if pace_profile != PROFILE or self.reward_version != "v6":
+                raise MetricsProtocolError("invalid pace profile for recorder")
+            schema["pace_profile"] = pace_profile
+            schema["reward_protocol"] = {
+                "base_reward_protocol": reward_v5_spec(),
+                "pace_intervention": route_pace_spec(),
+            }
+            schema["reward_diagnostics"]["pace_deficit_raw"]["value_semantics"] = (
+                "own-route lag beyond deadzone in metres"
+            )
         if critic_protocol is not None:
             schema["critic_protocol"] = dict(critic_protocol)
         schema.update(
@@ -329,7 +349,9 @@ class TrainingMetricsRecorder:
             raise MetricsProtocolError(
                 "metrics.jsonl is ahead of the safe checkpoint update"
             )
-        self._last_committed_update = existing_updates[-1] if existing_updates else 0
+        if any(u <= self.origin_update for u in existing_updates):
+            raise MetricsProtocolError("fork metrics cannot include parent updates")
+        self._last_committed_update = existing_updates[-1] if existing_updates else self.origin_update
         self.writer = SummaryWriter(
             str(self.tb_dir),
             purge_step=start_update if completed_update > 0 else None,
@@ -499,7 +521,7 @@ class TrainingMetricsRecorder:
         completed_update: int,
         resume_metrics_payload: Optional[Mapping[str, object]],
     ) -> None:
-        if completed_update == 0:
+        if completed_update == self.origin_update:
             if resume_metrics_payload not in (None, {}):
                 raise MetricsProtocolError(
                     "update-0 checkpoint must not contain committed metrics"

@@ -1,6 +1,86 @@
 # 基于对抗学习的多车协作驾驶算法研究：研究推进 TODO
 
+> **2026-09-28 完成后分析：效率不平衡尚未解决。** 五个不重叠20轮窗口显示慢车均速7.45→9.46→9.31→11.71→8.14km/h，提速不持续；末20轮成功90.31%并不代表均衡驾驶。旧/新末窗口场景10到达差14.66→14.57秒、场景12差距扩大；北05越界下降但碰撞增加。100轮12场景各132–136次，覆盖充分但未验证泛化。下一步建议一次固定权重行为对比，然后统一调整超速与效率约束，短微调筛选后再重训；实现方案待用户审核，未改训练源码。[完整分析与改进路线](./R8C1_u456_训练结果分析与改进方向_20260928.md)。
+
+> **2026-09-28 本轮完成：u356→u456共100updates，11:21最终断点已提交，训练/镜头退出，carla-20监控已删除。** 最后20轮成功90.31%、碰撞5.31%、越界3.13%、道路违规1.25%、超时0；数值检查正常、S2十二场景覆盖。两车均速20.14/8.14km/h，长静止10/11到达约6.80/21.36秒及5.83/19.79秒，不平衡仍明显，超速峰值约49/40km/h；北向05仍6/25碰撞。本轮未达到稳定均衡基础策略的结论。下一步冻结u356/u456作同协议独立行为复测，再决定奖励修订与重训；未自动评估或追加训练。[最终结果与证据](./R8C1_u356_新奖励微调启动记录_20260927.md)。
+
+> **2026-09-28 10:55巡检：安全u439，距u456剩17updates。** 最近20轮成功82.19%、碰撞7.50%、越界5.00%、道路违规4.69%、超时0.63%，相比上窗安全退步。两车均速21.99/11.65km/h，峰值50.38/44.33km/h；短场景慢车近期到达时间回升，北向05越界减少却转为更多碰撞，东长静止11也退步。真实进程/镜头正常，数值无nonfinite或跳过更新，S2十二场景覆盖。保持原配置至u456，证据与同场景分析见[运行记录](./R8C1_u356_新奖励微调启动记录_20260927.md)。
+
+> **2026-09-28 10:35巡检：安全u421，距u456剩35updates。** 最近20轮成功88.44%、碰撞3.75%、越界4.06%、道路违规2.81%、超时0.94%；两车均速17.71/10.09km/h，数值与进程正常、12场景覆盖。慢车在短场景和长静止10/11明显提速，但西长08安全退步，北向05仍7/24回合agent0越界；速度峰值约41/45km/h，超速尚未受控。保持原配置继续，证据与同场景分析见[运行记录](./R8C1_u356_新奖励微调启动记录_20260927.md)。
+
+> **2026-09-28 10:16续训确认：新安全断点u408已落盘，继续至u456。** 本分支真实训练进程与跟踪镜头正常，carla-20每20分钟监控ACTIVE；模型和训练状态从u407承接，未改参数。以下恢复准备项中的“待核实”已完成。
+
+> **2026-09-28：从安全u407续训至u456（剩49updates）。** 上次最后20轮成功85.31%、碰撞5.00%、越界6.88%、超时0.63%；数值无异常、12场景覆盖，但慢车效率改善不稳定，东长静止两车到达约6.33/22.52秒，北向05有13/26回合agent0越界。已确认旧训练退出、恢复校验通过并启动PID512；20分钟监控已恢复ACTIVE，保持原奖励配置，首个新安全断点待核实。[结果与恢复记录](./R8C1_u356_新奖励微调启动记录_20260927.md)。
+
+> **2026-09-27 16:50巡检：安全u383，本轮已完成27updates。** 最近20updates成功84.06%、碰撞4.06%、越界7.19%、道路违规3.13%、超时1.56%，进程/镜头和数值完整性正常。短场景慢车成功回合到达普遍加快，长静止10/11也明显提速，但11安全失败增加，北长05仍10/26越界；超速问题仍在。继续原配置至u456，尚不能认定不平衡或安全问题解决。[运行巡检](./R8C1_u356_新奖励微调启动记录_20260927.md)。
+
+> **2026-09-27 u378速度/安全专项核对：** 超速项未删，但15km/h起罚、30km/h后每步仅-0.005封顶，远弱于新版pace最高-0.05；存在赶进度与速度约束失衡风险。旧/新各320回合碰撞13→15（4.06%→4.69%），越界33→23，成功238→267；新最近10updates碰撞未继续上升，但道路违规增加。记录峰值可达41–44km/h，旧策略也存在高速。未改运行参数，证据及后续修订建议写入[运行记录](./R8C1_u356_新奖励微调启动记录_20260927.md)。
+
+> **2026-09-27 16:31 巡检：安全u369，新奖励13updates/208回合。** 成功81.73%、碰撞4.33%、越界10.10%、道路违规1.44%、超时2.40%；训练/跟踪镜头及数值检查正常，S2十二场景覆盖。南短静止慢车有提速，但长静止09–12成功回合到达仍变慢；北长05为7/17成功、7越界，暂不能认定不平衡已抑制。继续授权目标u456，证据和分场景比较已保存。[运行巡检](./R8C1_u356_新奖励微调启动记录_20260927.md)。
+
+> **2026-09-27 新奖励训练已启动：u356→u456，共100个新updates。** 首个安全断点u357已提交，继续u358，S2十二场景覆盖；15/16成功、1越界，agent0/1均速4.85/1.62m/s。该首轮尚不能说明新奖励改善行为。动态镜头FOLLOWING，carla-20已更新新目录及u456目标并确认ACTIVE，每20分钟巡检。目录名仍含to406，恢复入口以 `resume_reward_fork.ps1 -StopUpdate 456` 为准，先核实进程再启动。[运行记录](./R8C1_u356_新奖励微调启动记录_20260927.md)。
+
+> **2026-09-27 新奖励微调已准备，等待启动 CARLA。** 新实验 `R8C1_RoutePaceV1_u356_to406_s42_20260927` 已从真实 u356 完整承接模型、优化器、S2 和调度状态，计划 u357–406；独立评估接入新奖励，新日志不混入父实验指标。45 项离线检查及实际断点/评估兼容预检通过，未启动训练。入口 `resume_reward_fork.ps1` 支持后台运行、跟踪镜头和同目录恢复。[程序、验证及启动恢复记录](./R8C1_u356_新奖励微调启动记录_20260927.md)。
+
+> **2026-09-27 代码审查：奖励补丁已接入，但新实验尚未完整闭环。** 启动微调前需补齐 u356 独立 fork 的 S2/优化器/调度承接，以及新奖励评估协议。另发现新 pace 的累计畅通时间未进入 Actor/Critic 观测；正式重训需处理这项信息缺口，并引入合法场景参数随机化与独立验证。当前课程是固定阈值的表现驱动升级，S1/S2 汇总门槛不能代表逐场景掌握。本次未改训练实现、未连接 CARLA。[实现逻辑、证据与分阶段修改计划](./基础策略代码审查与推进路线_20260927.md)。
+
+> **2026-09-25 路线进度奖励已调整，待用户启动 CARLA。** 新增 `v6 + route_pace_v1`：按自身路程、2.5 m/s 参考速度计进度，起步宽限 2 秒、误差容忍 2 米，每步最多 -0.05；阻挡暂停计时。确认旧 pace 因标签只覆盖 01–04，现已补齐当前 12 场景。原默认奖励、契约和 u356 断点保留；离线 42 项检查通过，未启动训练、效果待验证。下一步另建 u356 微调分支，明确课程/学习率/优化器承接，不使用旧 u600 启动脚本冒充同协议续训。[实现、验证及后续安排](./R8C1_路线进度奖励调整_20260925.md)。
+
+> 2026-09-25 20:15复查：仍停u356/5696回合，两个进程均退出，无新训练样本；已保存本次巡检快照，未自动重启，监控暂停未确认。
+
+> 2026-09-25 19:55巡检：仍停u356，训练和supervisor均已退出，无新增回合；状态与19:37一致。已保存巡检快照，未自动恢复训练；此前任务操作被拒绝，未确认监控暂停。
+
+> **2026-09-25 双车运动方式分析：** u337–356的238个成功回合中225次agent0先到，但北长05的9次成功全部agent1先到。历史u208确定性南短静止两seed均为agent0第26步到达、agent1第51步起步；其他场景和随机策略存在提前运动反例。u356缺少完整逐步速度，尚不能认定普遍“等队友到达才走”。已提交24回合冻结验证及后续配对干预计划，未改训练、未连接CARLA。[分析与证据](./R8C1_u356_双车先后通行分析_20260925.md)。
+
+> **2026-09-25 19:37 最新状态：训练及supervisor均已退出，安全断点u356/5696回合，距u600仍244updates。** latest文件SHA与manifest一致；旧RUNNING时间停在9月22日，不能视为运行中。最后20updates成功74.375%；未自动重启，等待恢复CARLA后继续。自动任务查看调用被用户拒绝，未确认暂停生效。[退出核查与恢复证据](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 15:03 巡检：u345/5520回合，较上次+14，工程与数值完整性正常。** 北长05成功8/18→4/18、agent0越界5→13；北长静止09成功18/20→11/20，前次改善未持续。西长08为7/19超时。旧短均速仍回升或稳定、超时仍1/72。最近20updates成功74.0625%；继续原配置u600，历史HOLD不变。[明细](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 14:41 巡检：u331/5296回合，较上次+14，训练/镜头和数值完整性正常。** 北长05成功6/20→8/18、超时清零但碰撞1→4；北长静止09成功7/18→18/20。旧短慢车四项均速均回升，但短03成功17/18→14/18、西长08超时4→5。最近20updates成功79.375%、超时3.125%。继续原配置u600，历史HOLD保留。[详细证据](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 14:20 巡检：u317/5072回合，较上次+11，工程与数值完整性正常。** 北长05成功1/15→6/15、agent0越界8→3；但北长静止09成功9/14→7/14，西长08超时1/14→4/14。旧短前三场景agent1均速回落，超时仍1/60。最近20updates成功78.125%、超时7.8125%；S2全覆盖，继续原配置u600。[明细](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 13:58 巡检：u306/4896回合，较上次+14，训练/镜头及数值完整性正常。** 最近20updates成功78.125%、超时4.6875%。北长05仍1/19成功、11越界；北长静止09成功6/18→11/19。旧短速度有升有降，南短02/04均18/18成功。S2连续mastery通过2不等于独立能力验收；继续原配置u600。[记录与证据](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 13:34 巡检：u292/4672回合，较上次+12，训练/镜头及数值完整性正常。** 同构成S2窗口超时44/192→5/192，旧短慢车均速均回升、超时7/64→0；南长静止10成功5/16→15/16。但北长05仍1/16成功、11越界，北静止09成功9/16→6/16。继续原配置u600，不能将效率恢复等同北向安全解决。[证据](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 13:13 巡检：u280/4480回合，较上次+8，工程数值与进程正常，但行为退化加重。** 最近20updates成功66.56%、超时14.38%；最新8updates超时30/128。北长05为0/11成功、6超时；南长静止10为8/10超时，agent1均速0.479m/s。旧短四场景慢车继续减速。S2全覆盖，单次mastery通过不代表能力通过。按授权继续原配置u600并巡检。[证据](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 12:51 巡检：u272/4352回合，较上次+10updates，训练/镜头及数值完整性正常。** S2覆盖12/12，新4场景各16次。北长05最新1/14成功、8越界、4超时；新北静止09出现5/13成功。旧短四场景agent1均速再次下降，最近20updates跨阶段超时5.625%，不能把越界下降等同全面改善。继续原配置u600及巡检。[详细记录](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 12:30 巡检：u262/4192回合，u260晋级S2，12/12场景已采样。** 新4场景仅3–4次，覆盖不等于掌握。北长05成功1/32→8/30，旧短四场景agent1均速继续回升；但北长仍19/30越界，新北静止09为0/3成功。训练/镜头和数值完整性正常；最近20updates跨阶段成功75.625%，不直接作为能力比较。继续u600及巡检，历史HOLD不变。[记录与证据](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 12:08 巡检：u246/3936回合，恢复后+15updates，训练/镜头及数值完整性正常。** 相邻等长窗口旧短四场景agent1均速均回升，短任务超时8→4/120；北长05仍仅1/30成功、29次agent0越界。南长06超时下降但安全失败增加。最近20updates成功72.81%，仍S1覆盖8/12。按授权继续u600，历史HOLD不变。[详细证据](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-22 11:46 已再次恢复训练：安全u231/3696回合，日志确认进入u232，目标u600。** 旧进程已退出；原配置、课程和恢复协议保留。20分钟监控carla-20已更新并确认ACTIVE，不重复创建。[恢复证据](./P0-R8C1_长训练续训与监控计划_20260915.md)。历史评估HOLD不变。
+
+> **2026-09-19 20:18 巡检：u230/3680回合，较上次+9updates，训练/镜头正常，数值完整性未见异常。** 北长05在最新等长窗口首次脱离全零（2/18成功，15越界1碰撞），但旧短四场景agent1均速均下降，南长06超时2→4/18。最近20updates成功71.875%、超时4.6875%；仍S1覆盖8/12。继续原配置u600，不能将局部成功当能力验收。[巡检明细](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-19 19:56 巡检：安全u221/3536回合，恢复后+13updates，训练与镜头正常，无数值/完整性异常。** 最近20updates成功72.19%；仍S1、覆盖8/12。等长窗口对照：北向05仍26/26由agent0越界；南长06成功14→22/26，但南短静止04超时3→4/26、西长08碰撞7→10/26。按用户授权继续u600，暂未出现北向突破，诊断HOLD保留。[详细巡检与证据](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-19 19:34 最新执行状态：用户明确授权原配置续至u600，已从u208恢复并进入u209，镜头FOLLOWING，20分钟巡检carla-20为ACTIVE。** 原诊断HOLD保留；本轮观察增加训练预算能否改善问题，不在u258自动停止。恢复与日志证据见[续训计划最新记录](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-19 最新进度：u208行为诊断54/54完成，未续训。** 北向长场景12/12越界；u208只延长目标即触发早期大转向/越界。南向静止起步确定性低速19→23→49步，不能仅归因主动制动。轨迹一致性PASS，但40/4459条控制回读与当步命令不同、全部等于步前回读，对齐HOLD。下一步先审核独立控制时序/起步诊断，不直接跑u600。[结果、证据与后续方案](./R8C1_u208_行为诊断结果_20260919.md)。
+
 > 本文档是本课题的主任务清单、代码修改记录表和实验登记表。执行任务时以本文档的阶段门槛为准；理论设计细节参考 [对抗指标、奖励设计与阶段计划](./adversarial_metrics_reward_design_and_plan_20260705.md)、[MAPPO 多智能体样本处理与 active-mask 原理](./MAPPO多智能体样本处理与active-mask原理.md)、[MAPPO GAE、优势标准化与 PPO 更新原理](./MAPPO_GAE优势标准化与PPO更新原理.md)、[MAPPO checkpoint 与恢复训练协议](./MAPPO_checkpoint与恢复训练协议.md)、[MAPPO TensorBoard 指标协议](./MAPPO_TensorBoard指标协议.md)、[R1 二维有符号纵向动作协议论文正文](./R1_二维纵向动作协议_论文正文与实验设计.md)、[R2 奖励预算校准论文正文](./R2_奖励预算校准_论文正文与实验设计.md) 和 [R3 Critic 价值归一化与真实 CARLA 验证](./R3_Critic价值归一化_论文正文与真实CARLA验证.md)。
+
+> 2026-09-15 实测完成：2 smoke + 40 诊断全部执行，10个Run/42条记录独立完整性PASS，重复性HOLD。u100短场景两轮均4/4成功，长场景两轮均4/8成功、3offroad、1collision；车道传感器奖励差及长12道路分类/5tick漂移未解决。现场车辆/传感器清零、async/None恢复。详见 [真实评估与指标诊断](./P0-EVAL-R8C1_20260915_真实评估与指标诊断.md)。
+
+> 2026-09-15 长训练准备：用户要求续训、跟踪镜头及每20分钟监控。u100 latest恢复文件SHA与完整状态已核验；当前固定阈值mastery课程仍为S0-A，最高仅12场景。原合同只允许到u100，需要显式预算扩展兼容支持，不能直接换合同或重置状态。建议保留原u600退火时序续至u600，新增8000回合；[具体方案](./P0-R8C1_长训练续训与监控计划_20260915.md)已提交确认。尚未启动训练，监控`carla-20`已创建但PAUSED；原评估HOLD不变。
+
+> 2026-09-15 18:11 已启动u600续训：用户确认预算扩展，348项离线测试与真实u101中断/恢复验收通过。保留原u100训练状态和u600退火时序；首次巡检u110/1760完整回合，无数值或完整性异常，仍S0-A（其余10场景未训练）。连续镜头已跟随；20分钟巡检与固定恢复脚本见 [续训与监控计划](./P0-R8C1_长训练续训与监控计划_20260915.md)。原“长训练准备/待审核”为历史记录，当前以此运行状态为准；独立评估重复性HOLD不变。
+
+> 2026-09-15 18:42 定时巡检：u143/2288完整回合，较上次+30updates，训练/镜头正常，数值与完整性未见异常；近20updates成功87.5%。课程仍S0-A、覆盖2/12，近20窗均未通过mastery；南镜像安全事件1/8即超过10%门槛，是当前覆盖瓶颈。保持原配置继续监控；细项与critic拟合警示见[续训记录](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> 2026-09-15 19:04 巡检：已到u171/2736完整回合，u155后晋级S0-B，覆盖由2/12扩大至4/12，新增静止起步两镜像各64次。近20updates成功88.125%（跨阶段窗口），工程健康；当前北向rolling越界阻止下一次晋级，critic EV0.156仍需观察。原配置继续运行，独立评估HOLD不变。
+
+> 2026-09-15 19:25 巡检：u197/3152完整回合，u186后晋级S1，已覆盖8/12，长free-flow各22次。工程健康，但北向长场景22/22越界、0成功；四长场景合计33/88成功，是当前重点能力瓶颈。最近20updates成功74.0625%为跨阶段窗口，不能直接判定旧任务退化。继续原配置监控，尚未覆盖最后4个长stationary场景。
+
+> **2026-09-16 11:12 当前状态：训练已退出，等待CARLA恢复。** 最后安全断点u208/3328回合SHA和manifest复核通过；9月15日19:40异常退出伴CARLA超时，今日无新增训练，不归因于额度。仍S1、覆盖8/12，最后20updates成功67.8125%、越界18.75%。未自动重启；暂停监控调用被用户拒绝，暂停未生效确认。恢复步骤及诊断见[续训记录](./P0-R8C1_长训练续训与监控计划_20260915.md)。
+
+> **2026-09-16 更正与分场景分析：用户确认手动停止训练，撤回“程序自行异常退出”的原因推断。** u208保留3328完整回合，u209的5条前缀排除。S1短场景成功92.05%、长场景43.75%；北向长任务44/44由agent0越界终止。agent1在同一组短场景中速度2.358→1.259m/s、制动20.94%→29.49%，但成功率88.44%→92.05%，属于效率下降而非全面遗忘。完整证据及下一步建议见[训练记录分析](./R8C1_u208_训练记录分析_20260916.md)。未恢复训练或修改科学参数。
+
+> 2026-09-16 行为验证程序核查：现有R8-C1独立评估固定u20/u60/u100及旧来源，不能直接评估续训u208，也不提供随机策略/完整逐步轨迹；旧通用评估为19维/3动作不兼容。已形成[独立行为诊断计划](./R8C1_u208_行为诊断计划_待审核.md)，建议新增入口并保留冻结训练源码，离线验证后再通知用户启动CARLA。尚未实施或运行。
 
 ## 0. 项目总览
 
@@ -10,26 +90,26 @@
 | 研究点 1     | 使用多智能体强化学习训练对抗车辆，主动生成能够干扰基础驾驶策略的长尾场景                                                                                                      |
 | 研究点 2     | 使用 PSRO（不是 PRSO）维护红蓝策略池并交替演进，研究策略泛化和循环克制                                                                                                  |
 | 扩展研究点     | 在多辆对抗车之间引入显式通信，研究通信对协同攻击能力的增益                                                                                                             |
-| 当前工程基线    | `codex/mappo-experiment-baseline`；R7 数学/协议已在 HEAD `0a4233c` 之上的工作树实现并通过离线回归，尚待提交。R6 诊断 Run 因不安全车道捷径与 critic 退化保持 `DIAGNOSTIC HOLD` |
+| 当前工程基线    | `codex/mappo-experiment-baseline`；HEAD `050fe9fc72b9639b3048f56384cc48ad0d8d0214`（R8-C1 pace）。R7 u153、R8-A u20 保持历史 `DIAGNOSTIC HOLD`；R8-C1独立诊断已完成，重复性HOLD、能力NOT_EVALUATED |
 | 当前研究阶段    | P0-BASE 基础 MAPPO 策略训练与选择 -> Phase 0 对抗指标可信化 -> Phase 1 单对抗车有效性验证                                                                          |
 | 当前训练入口    | 基础策略仅使用 `training/train_no_rllib_mappo_robust_v2.py`；单蓝车在 Phase 1 使用 `training/train_2red_1blue_ppo.py`                                   |
-| 当前有效自动化测试 | R7 全量 282/282 无 CARLA回归 PASS；2026-08-25 Town05 北/南/东/西真实道路语义 smoke PASS，覆盖合法直行/换道、对向车道、持续逆行、offroad 分工、reward 守恒和 cleanup；R6 的历史证据继续只读有效 |
-| 最近训练产物    | 诊断 Run `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634`：u160/2,560 episodes，93 success、525 collision、363 offroad、1,579 timeout；只作失败/回归证据，禁止 resume 到新协议、选模或入池 |
+| 当前有效自动化测试 | 2026-09-14 `python -B -m unittest discover -s tests -q`：337/337 PASS，46.949 s（旧 315 + R8-C1 新 22）；真实 u20/u60/u100 离线加载与确定性推理 PASS。未连接 CARLA，不代表策略能力通过 |
+| 最近训练产物    | `P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224`：u100/1600 episodes；614 success、87 collision、279 offroad、190 road_violation、430 timeout；最后 20 updates 成功 233/320=72.8125%，安全失败 27.1875%；仅 S0-A 两个 15 m rolling 镜像，独立 C0/能力裁决尚缺 |
 | 本文档创建日期   | 2026-07-20                                                                                                                                |
-| 最后更新日期    | 2026-08-24                                                                                                                                |
+| 最后更新日期    | 2026-09-15；`P0-EVAL-R8C1` 42回合真实诊断已完成；完整性PASS、重复性HOLD；下一步先审议事件帧归属与初始化重复性诊断，不能自动GO/选模/续训 |
 
 ### 阶段状态
 
 | 阶段 | 状态 | 结论 |
 |---|---|---|
 | 基础 CARLA 多车环境与 MAPPO | REAL SMOKE + SUCCESS VERIFIED | P0-00G 自动链路、用户人工视觉及固定场景 success 两层真实测试通过；不代表 MAPPO 性能/收敛已验证 |
-| 基础 MAPPO 策略训练与选择 | R6 U160 DIAGNOSTIC HOLD / R7 U200 FRESH AUTHORIZED | R7 离线回归与四方向真实语义 smoke 已通过；GO/HOLD 保持不变。用户授权 seed-42 fresh 训练至注册边界 u200并定时监控，当前无合格基础 checkpoint，多 seed/选模/入池仍阻塞 |
+| 基础 MAPPO 策略训练与选择 | R8-C1 DIAGNOSTIC EVALUATION COMPLETED / REPEATABILITY HOLD | u100短场景4/4成功、长场景4/8成功（主/重复一致）；长场景安全仍不足，且事件奖励/道路分类/步数重复性失败。42回合证据完整，但能力裁决仍NOT_EVALUATED，正式选模/入池仍阻塞 |
 | 对抗 episode 生命周期 | UNIT VERIFIED | P0-00B 已按红/蓝 agent-specific 任务边界适配；15 项测试通过，真实 CARLA 联调归入 P0-00G |
 | Phase 0 指标与归因 | IN PROGRESS | 仍缺精确碰撞对象、转向量解析、C0/C1/C2 统一评估器 |
-| Phase 1 单蓝车对抗 | BLOCKED | 等待 Phase 0；旧训练不能证明修复后的对抗有效性 |
+| Phase 1 单蓝车对抗 | BLOCKED | 等待基础能力与 Phase 0；入口仍硬编码 19 维观测/3 维动作及旧 reward，与当前 20/2 策略不兼容；旧训练不能证明新协议下对抗有效性 |
 | Phase 2 红车策略池 | PARTIAL | PSRO 池代码已存在，但质量、数量和行为多样性尚未达标 |
-| Phase 3 双蓝车协同 | PARTIAL | 训练脚本已存在，但奖励和生命周期语义尚未完全统一 |
-| Phase 4 PSRO | PARTIAL | runner、population、payoff、meta-solver 和 JPC 已有；历史结果退化为碰撞攻击 |
+| Phase 3 双蓝车协同 | PARTIAL / LEGACY COLLECTOR DEFECT | 部分旧 multi_adversarial_v2 入口缺 active-mask 采样隔离，可能记录失活 agent 的未执行动作；旧选模仍使用训练期 1-coop_success，迁移前不得作正式对照 |
+| Phase 4 PSRO | PARTIAL / METRIC SEMANTICS PENDING | 当前固定红池、仅扩蓝池；历史结果退化为碰撞攻击。方阵对角线没有训练配对关系，当前 JPC 不得解释为标准配对泛化或双边均衡 |
 | Phase 5 显式通信 | NOT STARTED | 代码中尚无消息编码、聚合、带宽或通信消融 |
 | Phase 6 红蓝双边演进 | NOT STARTED | 必须建立在单蓝、双蓝和固定池 PSRO 的可信结果之上 |
 | Phase 7 论文主实验 | NOT STARTED | 等待前述阶段形成稳定方法和冻结协议 |
@@ -55,6 +135,7 @@
 - `[ ] BLOCKED`：被前置任务阻塞。
 - `[ ] LATER`：后续阶段，不应提前实现。
 - `[ ] VERIFY`：已有实现，但尚未经过足够测试或实验验证。
+- `[ ] REVIEW`：方案已写出，等待用户审核；不得据此开始实现或运行新实验。
 
 ## 2. 不可破坏的研究不变量
 
@@ -74,6 +155,44 @@
 - **GAE 与优化目标隔离**：每个 agent/episode 独立计算原始 GAE；同一 agent 仅在完整 rollout 上标准化一次；Actor 使用标准化 advantage，Critic return 始终为 `raw_advantage + old_value`。
 
 ## 3. 下一步唯一主线
+
+### 当前主线：按用户授权原配置续至u600并每20分钟巡检（2026-09-19）
+
+用户选择先观察长训练结果，控制时序/起步修复方案暂后置。保持原参数和恢复协议，完成后冻结checkpoint进行同协议独立复测，不能仅凭训练成功率宣布基础能力通过。以下诊断任务状态保留作后续待办。
+
+- [x] 新增独立行为诊断入口、冻结54例及checkpoint身份；两项离线测试和来源预检通过。
+- [x] 执行54回合并独立核对逐步数据，记录控制对齐HOLD；车辆/传感器清零、时序恢复。
+- [ ] 审核[下一步方案](./R8C1_u208_行为诊断结果_20260919.md)，区分控制回读/执行时序与静止起步物理问题。旧重复性HOLD仍有效。
+- [ ] 满足工程与行为前提后再决定u258观察段及u600预算；未启动续训，未通过基础策略能力验收。
+
+> 已按 [批准计划](./P0-EVAL-R8C1_独立评估修复计划_待审核.md) 完成代码及337项离线回归；用户启动CARLA并授权后，于9月15日完成全部42回合与指标监控。[实测报告](./P0-EVAL-R8C1_20260915_真实评估与指标诊断.md)记录来源、分层结果、全部HOLD及下一步建议。本轮未修改共享环境/模型/奖励、未新训练；下一轮若需共享语义修复，先审核方案与版本兼容性。下方历史顺序仅供追踪。
+
+- [x] **P0-AUDIT-20260907 核对真实进度与代码问题**：完成 [审查记录](./2026-09-06_项目进度与实验可扩展性审查.md)，核查 registry、R8B/R8C1 JSONL/manifest 和跨入口代码；315 项离线回归通过。只将文档审查标记完成，不将评估修复或策略能力标记完成。
+- [x] **同步 R8-C1 u100 与 R8B identical-init 诊断**：R8-C1 首次团队成功在 u25；全程两镜像各 800 回合且未离开 S0-A。R8B 同初始化 u10 为 160/160 timeout。R8A 与 R8C1 共同 u1–20 均 0/320 success，训练预算不同，尚不能宣布 reward-v6 消融胜出。
+- [x] **P0-EVAL-R8C1-PLAN**：2026-09-11 用户明确批准既定范围：扩展 C0、40 回合诊断 + 2 回合 smoke、固定诊断用途；CARLA 由用户启动。
+- [x] **P0-EVAL-R8C1-IMPL**：完成现有 C0 evaluator/protocol/validator 的 R8-C1 扩展：schema8/rewardv6/obs20/action2/state40、200/500 tick、来源与 Actor 不变性、严格终止与道路重复性、分层汇总、固定诊断用途。新合同已冻结；详见 [实现与离线验收](./P0-EVAL-R8C1_实现与离线验收.md)。
+- [x] **P0-EVAL-R8C1-OFFLINE**：337/337 回归通过；新增 22 项覆盖假环境时限/五结局/inactive/篡改/恢复/初始化失败清理和独立 validator。真实 u20/u60/u100、39 个训练/共享源文件、42 回合矩阵预检 PASS。[原始证据](../diagnostics/r8c1_eval_offline/20260914_212000/checkpoint_preflight.json)。
+- [x] **P0-EVAL-R8C1-LIVE**：完成2smoke+24短+16长；10个独立validator及最终现场清理审计PASS。[最终审计](../diagnostics/r8c1_eval_live/20260915_091700/final_audit.json)。保留所有重复失败，不把完整性PASS写成能力GO。
+- [ ] NEXT **P0-EVAL-R8C1-VERIFY**：重复性尚未验收通过。先设计并审核事件frame/episode代际/消费tick及reset初始状态诊断；明确来源兼容性后再修复。u20/u60/u100短及u100长的冻结重复性均HOLD，阈值不改。
+- [ ] LATER **P0-EVAL-R8C1-DECISION**：依据独立确定性结果分析探索、转向和双 agent/方向差异，再审议是否优化；不自动恢复训练、不生成 `best_base_valid.pt`，不把本次事后诊断称为训练前预注册验证。
+
+| 问题 ID | 已确认问题 | 优先级与处理状态 |
+|---|---|---|
+| EVAL-01 | C0 仅注册到 R7；R8C1 schema8/rewardv6/R8 curriculum+sampling 不兼容，现合同评估字段仍 reserved | P1；已修复，337 项离线通过，真实 CARLA 待验证 |
+| EVAL-02 | C0 场景白名单不接受 `curriculum_stage`/`episode_max_steps`；循环及部分 validator 使用统一 max_steps，需要统一每 case 有效期限与剩余时间观测 | P1；已修复，337 项离线通过，真实 CARLA 待验证 |
+| EVAL-03 | 新版道路违规证据需完整纳入 repeatability signature/contract；诊断资格、来源完整性与能力裁决目前耦合 | P1；已修复，337 项离线通过，真实 CARLA 待验证，历史口径保留 |
+| EVAL-04 | 新评估存在旧 record 版本降级及 final_done/T-X 自洽但错误的证据风险 | P1；已绑定 R8 case/record/summary，并校验 v6 自然终止，拒绝测试通过 |
+| EVAL-05 | 构造中途失败可能遗留同步模式；清理审计 RPC 异常可能丢失 manifest | P1；已加失败时序恢复及异常落盘，假环境“失败→恢复→resume→独立校验”通过 |
+| EVAL-06 | profile 数量校验未固定 seed/用途/repeat；逐 scenario SHA 原只检格式 | P1；已冻结实际 42 次矩阵与逐文件 SHA，篡改拒绝测试通过 |
+| EVAL-07 | 实测lane_invasion事件数在动作/速度/完成度统计相同的重复中变化，导致return差2/4；回调尚无逐frame和episode代际归档 | P1 NEXT；事实已复现，异步归属为待验证原因；先审核事件诊断方案，不直接改共享环境 |
+| EVAL-08 | 长12成功结局不变，但agent1道路分类reference_lane→legal_lane_change、episode/active步数75→80；另有进度奖励漂移 | P1 NEXT；不能视作纯奖励噪声；定位reset状态及逐帧观测/控制差异 |
+| RES-03 | 05–08缺non_interactive标签，09–12也不满足联合门控；全部长probe实测pace eligible=0 | P2；本轮仅评估训练后策略迁移，不能声称pace项在长场景直接有效；后续独立冻结门控/方向/速度/长度对照 |
+| EXT-01 | 单蓝、多蓝、PSRO 对 Actor 19/3 与旧动作/奖励的假设不能消费当前 20/2 checkpoint | P1；后续 Phase 0 协议迁移，当前仅登记 |
+| EXT-02 | 旧多对抗 collector 无 active-mask 隔离；best 仍取训练窗口 1-coop_success；PPO 内核修复覆盖不一致 | P1；迁移前不得作可信对照，当前仅登记 |
+| RES-01 | 固定红池的单边响应无训练配对对角线，不能用现有 JPC 证明泛化或双边均衡 | P1；PSRO 重启前修正，当前不扩研究范围 |
+| RES-02 | 当前 Road43/6 属于选模验证集，缺独立 final-test；多 eval seed 不等于独立场景；等 update 不等于等预算 | P2；本次只作开发诊断，最终实验前另行冻结测试集/预算/统计 |
+
+### 历史主线与验收记录
 
 以下任务严格按顺序执行。2026-08-12 起实验背景由 Town02 切换为 Town05；旧 seed-42 u5、C0 和 GO/HOLD 结论只保留为 Town02 历史证据。Town05 改变地图几何和任务分布，必须 fresh 训练，禁止恢复旧 Run。完整场景坐标、奖励语义、合同与实测证据见 [Town05 正式实验迁移与 16 场景设计](./Town05_正式实验迁移与16场景设计.md)。
 
@@ -98,7 +217,7 @@
 - 完整边界为 u160、2,560 episodes：93 success、525 collision、363 offroad、1,579 timeout；160 次 PPO update 全部提交，未出现 nonfinite、skipped update 或 reward residual 超容差。
 - u151–u160 success rate 为 16.25%，但 collision+offroad 达 71.25%，明显高于 u101–u110 的 46.25%；车辆跨越虚线、进入不合理相邻/对向车道的人工观察与 lane-deviation/lane-invasion/exemption 代理一致。因此 success 上升不构成 mastery。
 - critic explained variance 从 u20 的 0.965 降至 u160 的 0.0226；target std 由 2.797 扩至 9.207，prediction std 仅 1.367。梯度没有爆炸或连续裁剪，首要假设是 outcome/reward 分布变宽与 critic LR 过早退火共同造成的欠拟合。
-- R6 的直接后继不是继续同合同到 u200，也不是扩大 seed；唯一 NEXT 改为 P0-T05-10/R7：先修复道路方向合法性、success/reward 漏洞和 critic 诊断/时序，再以新合同 fresh 验证。
+- R6 的直接后继不是继续同合同到 u200，也不是扩大 seed；P0-T05-10/R7 已完成道路方向合法性、success/reward 漏洞和 critic 诊断/时序修复并 fresh 验证。R7 u153 又证明：关闭违规捷径后，当前初始课程仍无法提供安全成功支持。下一步改为 P0-T05-11/R8-A 的课程-only fresh 消融，而不是继续 R7 或立即重调奖励。
 
 **目标与边界**
 
@@ -162,7 +281,7 @@
 
 #### P0-T05-10 / R7 道路方向合法性、reward-v5 与 critic 跟踪修复
 
-> **状态：LIVE PASS / FRESH U200 AUTHORIZED（2026-08-25）**。训练数学/协议、reward-v5/道路状态机/critic 诊断、R7 训练/C0 合同、离线 validator 和四方向 live validator 已实现，282/282 无 CARLA回归通过。真实 CARLA 北/南/东/西五项语义与 cleanup PASS；东向首次失败由验证器固定 `next(8m)` 跨入 junction connector Road 1946 引起，修复为同 road/non-junction 双向搜索后通过，训练数学未改。GO/HOLD 条件、阈值和裁决代码仍不修改；用户已授权 seed-42 fresh 运行至 u200。
+> **状态：R7 U153 USER-STOPPED / DIAGNOSTIC HOLD（2026-08-27）**。训练数学/协议、reward-v5/道路状态机/critic 诊断、R7 训练/C0 合同、离线 validator 和四方向 live validator 已实现，282/282 无 CARLA 回归与真实四方向语义 smoke 均通过。seed-42 fresh Run 最后完整边界为 u153：2,448 episodes 中 0 success、2,349 timeout，最近 20 update timeout 97.19%，两 agent 低速、高制动、负确定性纵向动作和完成度停滞；训练、ratio、reward、finite、checkpoint 审计健康。R7 冻结为失败证据，不再 resume/选模/入池；GO/HOLD 条件、阈值和裁决代码仍不修改。下一阶段为 P0-T05-11/R8-A 的课程-only fresh 消融。
 
 **已冻结的范围边界**
 
@@ -199,16 +318,51 @@
 
 1. [x] 代码审计并冻结 R7 数学、状态机真值表、字段/schema、拟修改文件和兼容矩阵；R6 入口/身份未改写，R7 新身份和 fresh 边界已由合同测试覆盖。
 2. [x] 无 CARLA阶段：覆盖同向/对向 lane、合法/非法换道、持续 wrong-way、junction 歧义、终局优先级、reward 守恒/排序、success legality gate、critic 分组审计、probe schema/checkpoint、分离 LR、R7 C0 五结局/道路证据与 R6 兼容；282/282 PASS。对抗 bonus 安全门属于后续 Phase 1 接入测试，不在本次基础训练入口中提前实现。
-3. [ ] NEXT：提醒用户启动 2000 端口后，使用已实现的 `utils.validate_r7_road_legality_live` 在 Town05 四方向脚本化验证原车道直行、允许换道、进入新车道后继续行驶并合法到达、越线进对向且违法到目标、持续 moving wrong-way 和 offroad delegation。合法用例不得误杀，非法用例不得 success。
-4. 精确 clean commit 上运行 fresh u1/u5 工程 smoke，只验证 PPO、reward residual、schema、checkpoint、恢复和 cleanup；不以短程 success 调参。
-5. 通过 smoke 后创建预注册 u600 seed-42 pilot，在 u20/u50/u100/u200/u400/u600 做 milestone 审计。使用最近窗口而非单 update 判断；任一 agent 持续 brake/饱和、wrong-way/对向捷径、success 与事故同步恶化或 critic 近均值退化时暂停训练并人工诊断，本阶段不把这些观察改写成新的机器 HOLD 门槛。
-6. 只有 Stage-0 连续两个 mastery window 同时通过驾驶、道路合法性和 critic 健康门槛，才扩展课程；只有 seed-42 pilot、独立 C0 和 GO/HOLD 通过后，才讨论多 seed 与策略池。
+3. [x] 真实 CARLA 四方向语义 smoke：`utils.validate_r7_road_legality_live` 验证原车道直行、允许换道、新车道合法到达、对向/持续 wrong-way、违法 goal 屏蔽、offroad delegation 与 cleanup；东向首个失败为验证夹具跨入 junction connector，修正为同 road/non-junction 搜索后 PASS，训练数学未改。
+4. [x] 在精确提交 `5c489f82d4b0a38579b1d3a684201c1d4c3f0ea4` 上启动 R7 seed-42 fresh Run，并多次只从完整 update 边界严格恢复；PPO、reward residual、schema、checkpoint/manifest、ratio、finite 与 cleanup 链路保持健康。
+5. [x] 训练于用户停止请求时落在最后完整边界 u153；累计 0 success/2,448 episodes，最近 20 update timeout 97.19%，完成度、速度与确定性纵向动作持续停滞。结论为 `DIAGNOSTIC HOLD`，不继续 u200/u600，不用训练时长代替机制归因。
+6. [x] R7 已只读封存；其 u153 checkpoint 禁止 resume、pretrained、选模或进入策略池，未完成 u154 前缀不计入完整统计。后续能力验证转入 P0-T05-11/R8-A。
 
 **本阶段预期交付**
 
 - R7 设计/兼容性说明、reward-v5 和道路方向合法性协议、critic 诊断协议。
 - 新版本化 training/C0 合同与严格 validator；旧 R6 checkpoint/run 的只读兼容边界。R7 GO/HOLD 优化按用户决定后移，现有 R6 条件和代码不改。
 - 无 CARLA测试报告、真实 CARLA脚本化报告、fresh smoke 证据和分段长训台账。
+
+#### P0-T05-11 / R8-A 两场景对称短课程可达性消融
+
+> **状态：LIVE VERIFIED / U20 DIAGNOSTIC HOLD（2026-09-01）**。四短场景脚本化机制均可合法到达，但 seed-42 fresh MAPPO 在 S0-A 至 u20 仍为 0/320 团队成功，并从 u13 起形成高 offroad/road violation 的非安全加速分支。工程/数值链路 PASS，策略能力 HOLD；R8-A u20 与 R7 u153 均只作失败证据。
+
+**A. 单一变量与禁止项**
+
+1. 初始训练只保留两个严格镜像的无交互短场景，优先选同一道路的北/南镜像；交换 agent/车道角色，目标几何、路线长度、初速度、时限完全一致。每个 16-episode update 精确各 8 次，禁止用有偏随机采样代替平衡。
+2. R8-A 不含 required merge、blocker、closing、following 或必须让行；不增加 lane id/标线/wrong-way 等观测，actor/critic observation 继续为 20 维。
+3. reward-v5 所有权重和公式保持不变；不添加正 speed/alive/centering bonus，不降低 collision/offroad/road-rule 的硬失败成本，不增加新的 reward component。
+4. 不同时实现共享 actor、行为克隆、PopArt、critic 扩容或探索参数调节；这些只能在 R8-A 有明确反证后作为独立版本消融。
+
+**B. 课程微阶段**
+
+1. `S0-A`：10–15 m、150–200 tick、约 2 m/s rolling start 的镜像对，目标是先学会不主动刹停、合法保持车道并完成短程到达。
+2. `S0-B`：保持同一镜像几何和短路线，改为 stationary start，验证策略能主动产生安全正纵向动作。
+3. `S1`：恢复四方向 40–45 m free-flow；`S2` 才恢复 parallel-stationary；之后再按独立阶段加入 rolling/following/closing/merge。
+4. 升级只由连续 mastery window 触发，不按 update 数强制推进；两个镜像场景必须分别达标，不能由 pooled 均值掩盖单方向/单 agent 失败。
+
+**C. 审计、测试和 pilot**
+
+1. [x] 审计并冻结 Stage-0 场景选择、episode sampler、mastery/恢复/checkpoint 身份、目标/初速度/time-limit 数据流、数学采样定义、协议兼容矩阵和测试矩阵。
+2. [x] 新建 12 个版本化场景和 R8-A curriculum/training 合同：S0-A/S0-B 各含北/南镜像对，S1/S2 恢复四方向长任务；S0-A 每 update 精确 8/8，resume 相位只由最后完整 update 决定。
+3. [x] 无 CARLA 验收完成：生成器 drift check、专用几何/镜像校验、Town05 OpenDRIVE 校验、合同加载和 300/300 全量回归 PASS；课程提交 `6596f048...b477f`，validator 修复/正式来源 `0ef7261...84ee`，合同 SHA256 `06a1acac...0da08`，场景池 SHA256 `1bc00134...65232`。
+4. [x] LIVE PASS：四短场景 rolling/stationary 均脚本化合法到达，reward residual=0，CARLA synchronous/fixed-delta/actor cleanup PASS；报告位于 `diagnostics/r8a_live/P0_T05_11_R8A_MECHANISM_SMOKE_20260901_152439/report.json`。
+5. [x] 正式 seed-42 fresh Run 分段完成 u1/u5/u10/u20：320 episodes 精确 160/160 镜像；strict 20 updates/320 episodes PASS；检查点、ratio、reward、finite、sampler/mastery 与 cleanup 均闭环。
+6. [x] `DIAGNOSTIC HOLD`：0 success、3 collision、19 offroad、29 road_violation、269 timeout；u13–u20 连续安全退化，stage 0、mastery 0。停止 u40–u150，不运行能力 C0，不 resume/选模/入池。
+
+**D. 预注册后继分支（不在 R8-A 实施）**
+
+> 2026-09-07 校正：以下是当时尚未实施的分支设想，不是当前执行指令。实际目录中的 `r8b_identical_init` 是同初始化诊断；实际 R8-C1 为 pace-deficit reward-only 实验，不是下述 lane-cost 分支。当前唯一候选任务为上方 `P0-EVAL-R8C1` 待审核计划。
+
+- R8-B 只在 R8-A 两短场景仍无法产生前进样本时考虑：仅对 free-flow 使用“宽限期后低速 + 无进展 + 无 blocker”的现有 mission-timeout 提前失败；不给正速度奖励，并对 yielding/merge/following 禁用以免误杀合理停车。
+- R8-C 只在 R8-A 已能前进但 lane risk 偏高时考虑：单独调整 lane soft-cost deadzone/weight；硬 collision/offroad/road-rule 终局保持 `-50`。不得同时改 stall 和 lane cost。
+- reward 已足够复杂，纯标量调参无法保证解决当前的状态分布/时序信用问题；先做课程-only 因果消融，再依据反证决定是否进入 R8-B/R8-C。
 
 #### P0-T05-05 非 Driving 区域终止及证据记录（真实 CARLA 验收完成）
 
@@ -302,13 +456,13 @@
 - [x] **P0-BASE-03 修复版 seed 42 正式 pilot 到 update 5**：Run `P0_BASE_MAPPO_R3_Town02_s42_20260811_112458` 已按 R3 训练合同从随机初始化完成 5 updates/80 episodes，strict validator、schema-v4 u5 periodic checkpoint、主/重复 C0 v4 与唯一 GO/HOLD v2 全部闭环。裁决为 `CONTINUE_WITH_WARNING`，仅有 9/16 gate lane-invasion warning；未启动 u6。详见 [u5 正式记录](./P0-BASE-R3_seed42_u5正式训练与GO-HOLD记录.md)。
 - [x] ARCHIVED **P0-BASE-03 Town02 同 Run恢复到 update 10**：因正式实验背景迁移至 Town05，该续训计划取消。Town02 u5 checkpoint、双 C0 与 `CONTINUE_WITH_WARNING` 裁决完整保留，但禁止跨地图恢复或用于 Town05 正式选模。
 - [ ] BLOCKED **P0-BASE-05 扩展多 seed 正式训练**：仅在 P0-BASE-04 GO 后，以同一 commit/config 运行 seeds `42,123,2024`；不得依据中间结果修改预算、奖励或场景，失败 Run 同样登记。
-- [ ] BLOCKED **P0-BASE-06 独立评估并选择 checkpoint**：用冻结 C0 协议评估全部 periodic checkpoint，先安全门槛、再任务成功与稳定性；生成 `best_base_valid.pt`，登记 SHA256、来源 Run/commit/config，禁止按训练 rollout 选模。
+- [ ] BLOCKED **P0-BASE-06 独立评估并选择 checkpoint**：正式选模仍需冻结的安全/能力门槛与独立验证协议；当前先完成上方待审核 `P0-EVAL-R8C1` 诊断评估，不直接进入本项，不依据训练曲线生成 `best_base_valid.pt`。正式执行时登记 SHA256、来源 Run/commit/config。
 - [ ] BLOCKED **P0-01 精确记录碰撞对象**：基础策略试训不依赖对抗 impact 归因；取得可用基础 checkpoint 后进入本项，从 CARLA collision event 保存对方 actor id/type，并区分 `red-blue`、`blue-blue`、`static/world`，禁止继续用“最近红车”猜测 impact 对象。
 - [ ] BLOCKED **P0-02 修复转向量提取**：等待 P0-01；`extract_kinematics()` 正确处理 NumPy action `[throttle, steer, brake]`，不能把正常步骤的 steer 恒记为 0。
 - [ ] BLOCKED **P0-03 补指标和奖励单元测试**：等待 P0-02；创建 `tests/test_adversarial_metrics.py`、`tests/test_adversarial_reward.py`。
 - [ ] BLOCKED **P0-04 实现 C0/C1/C2 统一评估器**：等待 P0-03；创建 `evaluation/evaluate_adversarial_c012.py`，输出逐 episode 原始记录和汇总统计。
 - [ ] BLOCKED **P0-05 修正 best checkpoint 规则**：等待 P0-04；训练期保存 `latest/periodic`，独立验证后再生成 `best_valid.pt`。
-- [ ] BLOCKED **P0-05M 迁移单蓝车训练证据与动作协议**：等待 P0-05；`train_2red_1blue_ppo.py` 已迁移 Town05 场景默认值，但仍按旧 3 维 Actor 加载，不能直接消费当前 Town05 基础策略的 2 维 signed-longitudinal checkpoint。必须先迁移 Actor/action mapping，再补原子 latest/periodic/interrupted、checksum/manifest、RNG/LR/RunID/协议版本、对抗 `episodes.jsonl`/`metrics.jsonl` 和严格 validator；禁止直接 `torch.save` 半个 update。
+- [ ] BLOCKED **P0-05M 迁移单蓝车训练证据与动作协议**：等待 P0-05；`train_2red_1blue_ppo.py` 已迁移 Town05 场景默认值，但仍按旧 19维观测/3维动作 Actor 和 reward-v2 加载，不能直接消费当前 20维观测/2维 signed-longitudinal checkpoint。必须统一 observation/action/reward/lifecycle 与 Actor 加载，再补原子 latest/periodic/interrupted、checksum/manifest、RNG/LR/RunID/协议版本、对抗 `episodes.jsonl`/`metrics.jsonl` 和严格 validator；禁止直接 `torch.save` 半个 update。
 - [ ] BLOCKED **P0-06 运行 Phase 0 基准评估**：等待 P0-05；验证互斥率、C0 基础能力和 C1 自然交通效应。
 - [ ] BLOCKED **P1-01 启动修复后的单蓝车 smoke run**：使用新 RunID，不恢复 2026-07-05 的旧 run。
 - [ ] BLOCKED **P1-02 完成单蓝车 3 seed 正式训练与配对评估**。
@@ -969,7 +1123,16 @@ git rev-parse HEAD
 | 2026-08-14 | `P0_BASE_MAPPO_Town05V3_s42_20260814_125226` | P0-T05-07 / u5 | 验证 Town05 v3 seed-42 首里程碑的训练健康、道路语义、确定性行为和结果级重复性 | origin `5dad4d4`；C0 接线修复 `a33a573` | `p0_base_town05_v3.json` / 5 updates、16 episodes/update、500 max steps | fresh | 42 | 主/重复各 32 cases；主为 0 success、2 collision、0 offroad、30 timeout；安全/结局一致，13/32 return 容差告警 | N/A | strict、双 C0、来源和重复性 gate PASS；judge=`CONTINUE_WITH_WARNING`；8 lane invasion，多 seed未放行 | `logs/P0_BASE_MAPPO_Town05V3_s42_20260814_125226`；`evaluations/P0_BASE_C0_gate_u000005_20260814_132002`；`decisions/base_mappo/P0_BASE_GO_HOLD_u000005_20260814_134018` | 经猹师傅批准后同 Run strict resume 到 u10；绑定 u5 decision 重做双 C0/judge |
 | 2026-08-17 | `DIAG_RESUME_REPRO_s42_20260817_115800` | P0-T05 checkpoint/repeatability spot-check | 在当前真实 CARLA 上抽查结果级 C0 重复性与完整 update 边界恢复 | unregistered dirty-tree diagnostic | u40 C0 smoke×2；训练 4 episodes/update、120 max steps，fresh u1→受控中断→resume u2 | fresh diagnostic；C0 使用正式 Run u40 只读 checkpoint | 42 / C0 case seed 61001 | C0 repeat `PASS`、无 mismatch/warning；训练 strict updates `[1,2]`、8 episode records `PASS` | N/A | checkpoint 配置漂移 fail-fast；完整原配置 resume 成功；optimizer/RNG/ValueNorm 恢复链路与 cleanup PASS；不作性能或逐位复现结论 | `diagnostics/resume_repro_live/DIAG_RESUME_REPRO_s42_20260817_115800`；`evaluations/P0_BASE_C0_smoke_u000040_20260817_115219`；`evaluations/P0_BASE_C0_smoke_u000040_20260817_115301` | 保持 u50 禁止 resume；按 P0-T05-09 新协议修复后再 fresh pilot |
 | 2026-08-20—23 | `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634` | P0-T05-09/R6 u160 | 检验 post-tanh entropy、reward-v4、任务期限、mastery 与任意单 agent HOLD 是否避免 u50 制动塌缩并形成合法驾驶趋势 | `63d62be026a8b27e67b00f8c04626db678552d38` | `p0_diag_town05_r6_u50_v1.json`；冻结长期边界 u160、16 episodes/update、500 max steps | fresh；同一 Run 仅在完整边界严格恢复 | 42 | 训练内 93 success、525 collision、363 offroad、1,579 timeout；未绑定正式 C0 | N/A | 160 PPO updates 健康，但后窗 success 上升伴随 collision/offroad 和跨线代理恶化；critic EV u20 0.965→u160 0.0226；`DIAGNOSTIC HOLD` | `diagnostics/r6_long_run/P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634`；u160 periodic SHA `e918b9a0...37d40` | 冻结 R6；P0-T05-10/R7 新道路方向/reward/critic 协议，fresh 验证，禁止选模/入池 |
+| 2026-08-25—27 | `P0_BASE_MAPPO_Town05R7_s42_20260825_164133` | P0-T05-10/R7 u153 | 验证 reward-v5/道路合法性/success gate、critic 分组审计和 u600 时序能否同时关闭违规捷径并学到稳定合法驾驶 | `5c489f82d4b0a38579b1d3a684201c1d4c3f0ea4` | `p0_base_town05_r7_v5.json`；冻结 u600 时序，用户放行分段至 u200 | fresh；多次仅从最后完整 update 严格恢复；用户于 u154 rollout 中停止 | 42 | 训练内 0 success、41 collision、50 offroad、8 road_violation、2,349 timeout；未执行正式 C0 | N/A | 最后完整 u153/2,448 episodes；最近 20 update 0 success、97.19% timeout，低速/高制动/负确定性纵向动作和完成度停滞；数值/协议审计健康；`DIAGNOSTIC HOLD` | `logs/P0_BASE_MAPPO_Town05R7_s42_20260825_164133`；u154 前缀保留但排除完整统计 | 冻结 R7，禁止 resume/选模/入池；P0-T05-11/R8-A 只改两场景镜像短课程，新身份 fresh 验证 |
+| 2026-09-01 | `P0_BASE_MAPPO_Town05R8A_s42_20260901_153548` | P0-T05-11/R8-A u20 | 检验严格镜像短课程和平衡采样能否单独产生合法成功支持 | `0ef726113e4b46c25b89f49434c7fe1ce94484ee` | `p0_base_town05_r8a_v1.json`；SHA `06a1acac...0da08`；场景池 `1bc00134...65232` | fresh；u1/u5/u10/u20 从完整边界严格恢复 | 42 | 训练内 0 success、3 collision、19 offroad、29 road_violation、269 timeout；未执行能力 C0 | N/A | 20 PPO updates/320 episodes 工程健康 PASS；u13 后违规加速，u11–u20 北/南安全终止 34/16；stage 0、mastery 0；`DIAGNOSTIC HOLD` | `logs/P0_BASE_MAPPO_Town05R8A_s42_20260901_153548`；latest SHA `2773869f...93877b` | 冻结 u20；禁止 resume/选模/入池；以新合同单变量审议 R8-B/R8-C |
 | YYYY-MM-DD | `<RunID>` | `<P?>` | `<一句话可证伪假设>` | `<sha>` | `<config path>` | `<sha256/path>` | `<seeds>` | `<rates/deltas>` | `<rates>` | `<pass/fail>` | `<run path>` | `<action>` |
+
+2026-09-07 实验补记：
+
+| 日期 | RunID | Phase | 假设/目的 | Commit | 脚本/配置 | 基础 ckpt | Seeds | C0/C1/C2 | 蓝碰撞/Kamikaze | 结果 | 证据路径 | 下一步 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-09-02 | `P0_DIAG_IDENTICAL_INIT_Town05R8A_s42_20260902_190944` | P0 初始化诊断 | 检查双独立 Actor 相同初始化是否解决停车 | 未补造正式来源资格 | R8-A 场景、identical-init 诊断 | fresh diagnostic | 42 | 未运行独立评估 | N/A | u10/160 episodes 全部 timeout；非 gated-stall 分支、非有效基础策略 | `diagnostics/r8b_identical_init/P0_DIAG_IDENTICAL_INIT_Town05R8A_s42_20260902_190944` | 保留诊断证据 |
+| 2026-09-03 | `P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224` | P0 reward-v6 pace pilot | 仅添加有界 free-flow pace-deficit cost | `050fe9fc72b9639b3048f56384cc48ad0d8d0214` | `p0_base_town05_r8c1_pace_v1.json`；合同 SHA `88bdb9dc...3f4` | fresh | 42 | 独立 C0 未实现/未运行；训练统计不充作 C0 | N/A | u100/1600 episodes；614 success、87 collision、279 offroad、190 road_violation、430 timeout；最后20次更新成功72.8125%、安全失败27.1875%；仍仅S0-A两镜像 | `logs/P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224`；manifest/episodes/metrics/periodic | 审核并实施 `P0-EVAL-R8C1`；不自动选模/续训/入池 |
 
 ## 15. 代码修改记录
 
@@ -977,6 +1140,9 @@ git rev-parse HEAD
 
 | 日期 | Commit/分支 | 修改文件 | 行为变化 | 验证方式 | checkpoint 兼容性 | 关联任务/Run |
 |---|---|---|---|---|---|---|
+| 2026-09-15 | 当前工作区，受控评估/训练源码未改，未创建提交 | 实测文档、进度/实验记录、诊断批处理与指标读取辅助脚本 | 执行2smoke+40诊断；新增lane事件差异、长12道路分类/时间漂移及长pace门控问题 | 10Run/42条独立validator PASS；smoke WARNING通过；4组主诊断repeatability HOLD；最终async/None、vehicle/sensor=0 | 原checkpoint及源码SHA保持一致；不选模、不入池、不自动训练 | [P0-EVAL-R8C1-LIVE](./P0-EVAL-R8C1_20260915_真实评估与指标诊断.md) |
+| 2026-09-14 | 当前工作区，未创建提交 | C0 protocol/runner/validator、R8C1 helper/JSON、专项 tests、进度文档 | 实现诊断评估、场景时限、来源与权重身份、五结局/道路重复性、分层汇总和失败清理；补齐版本降级/终止/矩阵约束 | 337/337 PASS（46.949 s）；真实 u20/u60/u100 与 42 次矩阵预检 PASS；[详细证据](./P0-EVAL-R8C1_实现与离线验收.md) | 原文件和训练源码身份核对；diagnostic_only，禁止选模/入池/GO；未连接 CARLA | `P0-EVAL-R8C1-IMPL`、`P0-EVAL-R8C1-OFFLINE`；真实验证待用户启动 CARLA |
+| 2026-09-07 | 当前工作区，仅文档；未新增代码提交 | 研究 TODO、P0-BASE 实验记录、R8-C1 待审核计划 | 同步 R8B/R8C1 实际进度；登记评估/跨入口/active-mask/JPC/实验设计问题；唯一候选主线改为评估计划审核 | 核对既有 JSONL/manifest/源码和文档链接；沿用本次审查的315/315测试结果，不冒称修复验收 | checkpoint/训练合同/旧评估结果均未改；计划未实现 | `P0-AUDIT-20260907`、`P0-EVAL-R8C1-PLAN` |
 | 2026-07-14 | `9cc4cb6` | env、metrics、reward、3 个训练脚本、lifecycle tests | 蓝车碰撞不再直接终止红车 episode；增加终止原因与碰撞前快照 | 7 个 lifecycle 单元测试通过 | 需用新实验验证，不默认兼容旧训练语义 | P0-A |
 | 2026-07-20 | `P0-00A` | `README.md`、`RUN_COMMANDS.md`、`FILE_INDEX.md`、研究 TODO | 冻结 `robust_v2`/`train_2red_1blue_ppo` 为当前唯一入口；旧 RLlib/shared/minimal/robust v1/旧对抗入口显式停用 | 文档入口与命令一致性检查 | 不修改 checkpoint；旧入口产物仍不得用于新协议 resume | P0-00A |
 | 2026-07-21 | `P0-00B-design-draft` | 研究 TODO | 增加逐场景 agent 状态矩阵；记录同伴红车碰撞的 agent-centric truncation 与红车全部到点时蓝车 termination；尚未修改运行时 | 人工核对状态矩阵，待用户最终确认 | 尚无运行时或 checkpoint 变化 | P0-00B |
@@ -1035,6 +1201,8 @@ git rev-parse HEAD
 | 2026-08-11 | 修复版 seed 42 在 u5 执行 v2 机器裁决后保留 `CONTINUE_WITH_WARNING`，不因 0 success 或两车 brake mode=1 人工改判 HOLD | 训练健康、来源、checkpoint、双 C0 和重复性全部 PASS；agent1 progress `4.713 m > 3 m`、整体 timeout `68.75% < 95%`，不满足 R4 all-agent 联合塌缩；唯一 warning 为 9/16 lane invasion | 因短训练观感直接 HOLD；忽略行为证据直接宣称模型可用；跳过 u10 或提前多 seed | 当前 Run 允许同身份 strict resume 到 u10；不等于 `PILOT_GO`，多 seed/选模/对抗训练仍阻塞；C 盘空间是启动 u10 前的主机硬前置 |
 | 2026-08-14 | Town05 v3 u5 保留机器裁决 `CONTINUE_WITH_WARNING`，不因 0 success、两车 brake mode=1 或 agent0 单车塌缩信号人工改写；同时不把 CONTINUE 解释为收敛或多 seed GO | 主 C0 的 agent1 progress `3.545 m > 3 m`，timeout `93.75% < 95%`，不满足 all-agent 联合塌缩；双 C0 安全/结局一致，return 告警 13/32=`40.625% < 50%`，无 hard failure | 看到停车观感后事后收紧 HOLD；因 v3 入口漏接而丢弃有效训练 checkpoint；直接跑长训练或多 seed | 同一 Run 只可 strict resume 到 u10；C0 入口修复 `a33a573` 不改训练算法/合同/权重，211/211 与来源校验 PASS |
 | 2026-08-23 | R6 u160 结论为 `DIAGNOSTIC HOLD`；道路方向合法性由 CARLA/OpenDRIVE 环境语义处理，R7 不向 actor 或 critic 观测增加车道字段；新奖励/critic 修复必须新合同 fresh 训练 | 2,560 episodes 中 success 后窗上升伴随 collision/offroad 和换道豁免代理恶化；对向 `Driving` lane 不会被旧 offroad 捕获；critic EV u20 0.965→u160 0.0226、target/pred std 失配，而无梯度爆炸 | 把 success 上升当收敛继续 u200；构造手工车道池；增加 actor/critic 车道观测；在 R6 权重上改奖励后 resume | P0-T05-10/R7、reward-v5、道路方向终止/success gate、critic 分组诊断与 u600 fresh pilot；共享 actor/BC 继续属于 P1 |
+| 2026-08-27 | R7 u153 判为 `DIAGNOSTIC HOLD`；R8-A 先做“两个严格镜像短场景”的课程-only fresh 消融，不先调 reward | R7 的 road violation 仅 8/2,448，证明道路门与 success gate 已关闭 R6 违规捷径；但 0 success、最近 20 update 97.19% timeout，且 free-flow/parallel-stationary 两家族都无 success。post-tanh entropy、KL、ratio、reward/finite/checkpoint 健康，critic 能拟合同质 timeout，因此首要缺口是安全成功支持和时序信用，不是奖励组件不足 | 继续 R7 到 u200/u600；直接添加 speed/alive/centering 奖励；降低硬安全成本；同时改 reward/stall/critic；恢复 R7 u153；加入车道观测、共享 actor 或 BC | P0-T05-11/R8-A；reward-v5、20 维观察、网络/PPO/LR/entropy/mastery/GO-HOLD 均冻结。失败后才分别考虑 R8-B gated stall 或 R8-C lane soft-cost 单变量消融 |
+| 2026-09-01 | R8-A 正式 Run 在 u20 判为 `DIAGNOSTIC HOLD`；停止后续 u40–u150，先归因违规加速，再以新合同单变量选择 R8-B 或 R8-C | 脚本化四短场景均可合法到达，排除场景不可达；训练工程健康且精确 8/8，但 0/320 team success。u13–u20 的 offroad/road violation 跨多个完整更新和两个镜像持续出现，agent 0 速度/完成度上升伴随动作边界率 0.831，说明延长训练更可能强化不安全捷径 | 因 u150 已预注册就机械续训；把较高 progress/return 当能力改善；在 u20 checkpoint 上同时调 reward、stall、lane cost 或探索；运行事后 C0 冒充能力证据 | 冻结 R8-A u20；禁止 resume/pretrained/选模/入池；下一实验必须新合同 fresh 且只改一个可证伪因素 |
 | 2026-07-20 | 通信放在无通信双蓝基线之后 | 否则无法把多车数量收益与消息通信收益分离 | 直接在现有双蓝脚本加入 attention | P3-P5 |
 | 2026-07-20 | 先固定红池 PSRO，再做双边演进 | 降低非平稳性，先验证 pool 和 meta-solver 的科学有效性 | 一开始同时训练红蓝双方 | P4-P6 |
 | YYYY-MM-DD | `<decision>` | `<evidence>` | `<alternatives>` | `<scope>` |
@@ -1081,9 +1249,13 @@ git rev-parse HEAD
 - [x] 第 4 天后半：诊断 Run `P0_DIAG_MAPPO_Town05R6U50_s42_20260820_123634` 在冻结合同注册边界内分段完成 u160；2,560 episodes、160 次 PPO update 健康，但道路方向合法性和 critic 退化触发 `DIAGNOSTIC HOLD`。R6 checkpoint 禁止选模、入池或跨 R7 resume。
 - [x] 第 5 天第一阶段：实施 P0-T05-10/R7 道路方向合法性/reward-v5、success gate、critic pre/post 分组诊断、checkpoint probe、road-rule mastery-v3 与 u600 分离 LR。未增加车道观测，未实现共享 actor/BC。
 - [x] 第 5 天第二阶段离线部分：冻结 R7 C0 五结局合同并完成 evaluator/validator、R6 兼容和四方向 live validator；282/282 无 CARLA回归通过。按用户要求未优化 GO/HOLD，相关文件未修改。
-- [ ] NEXT 第 5 天第二阶段真实部分：提醒用户启动 CARLA 2000，执行 Town05 四方向合法直行/允许换道/新车道稳定行驶与合法到达/对向跨线并违法到目标/moving wrong-way/offroad delegation smoke。通过前不得启动正式 u600 Run。
-- [ ] BLOCKED 第 5 天后：R7 四方向机制 smoke 通过后，在精确 clean commit 上运行 fresh u1/u5 工程 smoke；只有机制和工程门槛全过才注册 u600 seed-42 pilot。
-- [ ] BLOCKED：仅在 seed-42 u600 pilot、独立 C0 与 GO/HOLD 通过后，以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
+- [x] 第 5 天第二阶段真实部分：Town05 四方向合法直行/允许换道/新车道合法到达/对向与持续 wrong-way/违法 goal/offroad delegation 和 cleanup smoke PASS；东向首个失败仅为验证夹具 road-boundary 选点，修复后重验通过。
+- [x] 第 5 天后：精确提交 `5c489f82...ea4` 上启动 R7 seed-42 fresh，并从完整边界分段训练；最后完整 u153。2,448 episodes 为 0 success、2,349 timeout，最近 20 update timeout 97.19%，判 `DIAGNOSTIC HOLD`；未继续 u200/u600，未运行事后 C0 或放行多 seed。
+- [x] P0-T05-11/R8-A 离线实现：两个严格镜像短场景、8/8 确定采样、S0-A/S0-B/S1/S2 mastery 课程身份、resume/checkpoint 证据、兼容矩阵和测试均已冻结；300/300 无 CARLA 回归及三类场景校验 PASS。
+- [x] R8-A 四短场景 CARLA mechanism smoke PASS：脚本化合法到达、reward residual=0、cleanup 0/0。
+- [x] R8-A seed-42 fresh pilot 分段完成至 u20；strict/数值/checkpoint/sampler/cleanup PASS，但 0/320 success 且 u13 后安全性持续恶化，裁决 `DIAGNOSTIC HOLD`，不继续 u40–u150。
+- [ ] NEXT：先完成 R8-A 违规加速的动作/方向/agent 归因，再只选择一个新合同分支：R8-B gated no-progress/stall 或 R8-C lane soft-cost；禁止在 R8-A u20 上 resume 后调参。
+- [ ] BLOCKED：仅在新的 seed-42 pilot、独立 C0 与 GO/HOLD 通过后，以同一 commit/config 扩展 seeds `42,123,2024`；失败 Run 也登记。
 - [ ] BLOCKED：用冻结 C0 验证全部 periodic checkpoints，生成带 SHA/manifest 的 `best_base_valid.pt`。
 - [ ] 第 6 天：开始 P0-01/P0-02，修复对抗碰撞对象和 steer/control 解析，并补相应测试。
 - [ ] 第 7 天：继续 P0-03 至 P0-06 与 P0-05M；只有这些门槛通过后才决定是否运行单蓝车 smoke。
@@ -1117,4 +1289,4 @@ git rev-parse HEAD
 
 ## 20. 当前最重要的判断
 
-本项目已经超过“从零搭框架”的阶段。R6 已修复 pre-tanh entropy 奖励漏洞、显式任务期限、reward-v4、stall/mastery 和任意单 agent HOLD，但 u160 证明“摆脱制动塌缩”不等于合法驾驶。R7 已经在不增加车道观测的前提下实现 CARLA/OpenDRIVE 道路方向状态机、reward-v5、违法 success gate、critic pre/post 分组审计/probe、road-rule mastery-v3、u600 分离 LR，以及显式五结局 C0/道路证据链和四方向 live validator；282/282 无 CARLA回归与 2026-08-25 Town05 四方向真实语义 smoke 均通过。R6 仍不具备原始 rollout probe，历史拟合结论不得伪造。按用户决定，本轮不修改 GO/HOLD；当前 NEXT 是在精确提交上启动 seed-42 fresh R7，并按冻结 u600 时序运行至已注册分段边界 u200，定时监控成功率、五类结局、奖励、actor/critic loss、KL、熵、critic 分组拟合和道路违规。禁止继续 R6 u160、跨协议恢复或同时引入共享 actor/行为克隆。
+本项目已经超过“从零搭框架”的阶段。R6 u160 证明“摆脱制动塌缩”不等于合法驾驶；R7 u153 证明关闭违规捷径后仍会陷入低速超时；R8-A 又证明，把任务缩短到 15 m、rolling start 并做严格 8/8 镜像采样，仍不足以产生合法团队成功。R8-A 的 300/300 离线回归与四短场景脚本化 CARLA smoke 均 PASS，说明任务本身可达；正式 seed-42 fresh Run 至 u20 的工程/数值链路也 PASS，但 320 episodes 为 0 success、3 collision、19 offroad、29 road_violation、269 timeout，并从 u13 起由低速超时转为 agent 0 主导的违规加速，故冻结为 `DIAGNOSTIC HOLD`。R7 u153 与 R8-A u20 都禁止 resume/pretrained/选模/入池。当前 NEXT 是先归因 R8-A 的动作边界、方向和 agent 不对称，再以新合同只审议 R8-B gated no-progress/stall 或 R8-C lane soft-cost 中的一个，不同时修改 reward、探索、网络或观测。

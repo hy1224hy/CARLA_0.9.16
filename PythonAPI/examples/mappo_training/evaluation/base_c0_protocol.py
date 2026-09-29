@@ -90,6 +90,21 @@ from training.critic_diagnostics import (
     validate_critic_probe_batch,
 )
 from training.learning_rate_protocol import LEARNING_RATE_PROTOCOL_VERSION
+from evaluation.r8c1_diagnostic_protocol import (
+    TOWN05_R8C1_C0_PROTOCOL_VERSION,
+    TOWN05_R8C1_C0_EPISODE_RECORD_VERSION,
+    R8C1_SUMMARY_VERSION,
+    R8C1_REPEATABILITY_MODE,
+    R8C1_PROFILES,
+    R8C1_EXPECTED_PROTOCOL_VERSIONS,
+    diagnostic_usage,
+    validate_r8c1_contract_identity,
+    validate_r8c1_checkpoint_identity,
+)
+from training.checkpoint_protocol import (
+    R8C1_CHECKPOINT_SCHEMA_VERSION,
+    R8C1_TRAINING_PROTOCOL_VERSION,
+)
 
 
 LEGACY_C0_PROTOCOL_VERSION = "p0_base_c0_eval_v1"
@@ -184,8 +199,16 @@ OUTCOME_REPEATABILITY_CONTINUOUS_HOLD_ABS_TOLERANCE = {
 }
 OUTCOME_REPEATABILITY_MAX_WARNING_CASE_FRACTION = 0.5
 OUTCOME_REPEATABILITY_SYSTEMATIC_MIN_CASE_COUNT = 8
+R8C1_REPEATABILITY_HARD_FIELDS = OUTCOME_REPEATABILITY_HARD_FIELDS + tuple(
+    f"agent_{agent_id}_{field}"
+    for agent_id in AGENT_IDS
+    for field in (
+        "road_rule_terminated", "road_violation_confirmed", "road_classification",
+        "road_violation_reason", "road_reference_lane", "road_success_eligible",
+    )
+)
 RUN_ID_RE = re.compile(
-    r"^P0_BASE_C0_(smoke|gate|validation)_u([0-9]{6})_([0-9]{8}_[0-9]{6})$"
+    r"^P0_BASE_C0_(smoke|gate|validation|short_probe|long_probe)_u([0-9]{6})_([0-9]{8}_[0-9]{6})$"
 )
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -221,6 +244,7 @@ R7_SUMMARY_CSV_FIELDS = (
     "mean_episode_length",
     "mean_team_return",
 )
+R8C1_SUMMARY_CSV_FIELDS = R7_SUMMARY_CSV_FIELDS + tuple(diagnostic_usage())
 
 ROAD_LEGALITY_EVIDENCE_FIELDS = {
     "classification",
@@ -252,7 +276,7 @@ def outcome_names_for_protocol(protocol_version: str) -> tuple[str, ...]:
 
     return (
         R7_OUTCOMES
-        if str(protocol_version) == TOWN05_R7_C0_PROTOCOL_VERSION
+        if str(protocol_version) in {TOWN05_R7_C0_PROTOCOL_VERSION, TOWN05_R8C1_C0_PROTOCOL_VERSION}
         else OUTCOMES
     )
 
@@ -260,7 +284,7 @@ def outcome_names_for_protocol(protocol_version: str) -> tuple[str, ...]:
 def outcome_names_for_record(record_version: str) -> tuple[str, ...]:
     return (
         R7_OUTCOMES
-        if str(record_version) == TOWN05_R7_C0_EPISODE_RECORD_VERSION
+        if str(record_version) in {TOWN05_R7_C0_EPISODE_RECORD_VERSION, TOWN05_R8C1_C0_EPISODE_RECORD_VERSION}
         else OUTCOMES
     )
 
@@ -352,7 +376,10 @@ def _finite(value: Any, *, context: str) -> float:
     return result
 
 
-def _validate_scenario(payload: Any, *, path: Path, expected_town: str) -> None:
+def _validate_scenario(
+    payload: Any, *, path: Path, expected_town: str, r8c1: bool = False,
+    max_steps: int | None = None,
+) -> None:
     required = {
         "schema_version",
         "town",
@@ -364,6 +391,8 @@ def _validate_scenario(payload: Any, *, path: Path, expected_town: str) -> None:
         "agents",
     }
     optional = {"goal_mode", "agent_goal_zones"}
+    if r8c1:
+        required.update({"curriculum_stage", "episode_max_steps"})
     if not isinstance(payload, Mapping):
         raise C0ProtocolError(f"scenario {path.name} must be a mapping")
     missing = required - set(payload)
@@ -378,6 +407,12 @@ def _validate_scenario(payload: Any, *, path: Path, expected_town: str) -> None:
         )
     if payload["difficulty"] not in (1, 2, 3, 4):
         raise C0ProtocolError(f"scenario {path.name} has invalid difficulty")
+    if r8c1:
+        horizon = _positive_int(payload["episode_max_steps"], context=f"{path.name}.episode_max_steps")
+        if max_steps is None or horizon > max_steps:
+            raise C0ProtocolError(f"scenario {path.name} horizon exceeds contract max_steps")
+        if payload["curriculum_stage"] not in {"S0-A", "S0-B", "S1", "S2"}:
+            raise C0ProtocolError(f"scenario {path.name} curriculum_stage is invalid")
     if not str(payload["family"]).strip():
         raise C0ProtocolError(f"scenario {path.name} has empty family")
     if not isinstance(payload["tags"], list) or not payload["tags"]:
@@ -406,6 +441,7 @@ def _validate_scenario(payload: Any, *, path: Path, expected_town: str) -> None:
 
 
 def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
+    r8c1 = isinstance(payload, Mapping) and payload.get("protocol_version") == TOWN05_R8C1_C0_PROTOCOL_VERSION
     top_fields = {
         "protocol_version",
         "contract_id",
@@ -421,6 +457,8 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         "run_id_prefix",
         "critical_source_paths",
     }
+    if r8c1:
+        top_fields.add("diagnostic_policy")
     _require_exact_fields(payload, top_fields, context="C0 contract")
     protocol_version = payload["protocol_version"]
     if protocol_version not in {
@@ -433,6 +471,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
         TOWN05_R7_C0_PROTOCOL_VERSION,
+        TOWN05_R8C1_C0_PROTOCOL_VERSION,
     }:
         raise C0ProtocolError("C0 protocol version mismatch")
     legacy = protocol_version == LEGACY_C0_PROTOCOL_VERSION
@@ -452,6 +491,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         ),
         TOWN05_R6_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN05_R6_V4",
         TOWN05_R7_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN05_R7_V5",
+        TOWN05_R8C1_C0_PROTOCOL_VERSION: "P0_BASE_C0_TOWN05_R8C1_PROBE_V1",
     }[protocol_version]
     if payload["contract_id"] != expected_contract_id:
         raise C0ProtocolError("C0 contract_id mismatch")
@@ -464,9 +504,11 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
         TOWN05_R7_C0_PROTOCOL_VERSION,
+        TOWN05_R8C1_C0_PROTOCOL_VERSION,
     }
     r6_protocol = protocol_version == TOWN05_R6_C0_PROTOCOL_VERSION
-    r7_protocol = protocol_version == TOWN05_R7_C0_PROTOCOL_VERSION
+    r8c1 = protocol_version == TOWN05_R8C1_C0_PROTOCOL_VERSION
+    r7_protocol = protocol_version in {TOWN05_R7_C0_PROTOCOL_VERSION, TOWN05_R8C1_C0_PROTOCOL_VERSION}
     environment_fields = {
         "carla_version",
         "town",
@@ -500,6 +542,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
                 TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
                 TOWN05_R6_C0_PROTOCOL_VERSION,
                 TOWN05_R7_C0_PROTOCOL_VERSION,
+                TOWN05_R8C1_C0_PROTOCOL_VERSION,
             }
             and env["town"] != "Town05"
         )
@@ -511,12 +554,13 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
                 TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
                 TOWN05_R6_C0_PROTOCOL_VERSION,
                 TOWN05_R7_C0_PROTOCOL_VERSION,
+                TOWN05_R8C1_C0_PROTOCOL_VERSION,
             }
             and env["town"] != "Town02"
         )
         or env["num_agents"] != 2
         or env["reward_version"] != (
-            "v5"
+            "v6" if r8c1 else "v5"
             if r7_protocol
             else "v4"
             if r6_protocol
@@ -589,6 +633,8 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     }
     if r7_protocol:
         checkpoint_fields.add("state_dim")
+    if r8c1:
+        checkpoint_fields.add("required_protocol_versions")
     _require_exact_fields(
         checkpoint,
         checkpoint_fields,
@@ -600,6 +646,9 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     elif protocol_version in {ACTION_C0_PROTOCOL_VERSION, REWARD_C0_PROTOCOL_VERSION}:
         expected_checkpoint_schema = ACTION_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = ACTION_TRAINING_PROTOCOL_VERSION
+    elif r8c1:
+        expected_checkpoint_schema = R8C1_CHECKPOINT_SCHEMA_VERSION
+        expected_training_protocol = R8C1_TRAINING_PROTOCOL_VERSION
     elif r7_protocol:
         expected_checkpoint_schema = R7_CHECKPOINT_SCHEMA_VERSION
         expected_training_protocol = R7_TRAINING_PROTOCOL_VERSION
@@ -625,6 +674,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         ),
         TOWN05_R6_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN05_R6_V4",
         TOWN05_R7_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN05_R7_V5",
+        TOWN05_R8C1_C0_PROTOCOL_VERSION: "P0_BASE_MAPPO_TOWN05_R8C1_PACE_V1",
     }[protocol_version]
     if (
         checkpoint["schema_version"] != expected_checkpoint_schema
@@ -632,6 +682,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         or checkpoint["allowed_checkpoint_kinds"] != ["periodic"]
         or checkpoint["allowed_checkpoint_updates"]
         != (
+            [20, 60, 100] if r8c1 else
             [5, 10, 20, 40, 60, 80, 100, 120, 160, 200, 300, 400, 500, 600]
             if r7_protocol
             else [5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160]
@@ -645,18 +696,20 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         or checkpoint["required_training_contract_id"]
         != expected_training_contract_id
         or not SHA256_RE.fullmatch(str(checkpoint["required_training_contract_sha256"]))
-        or (r7_protocol and checkpoint["state_dim"] != 12)
+        or (r7_protocol and checkpoint["state_dim"] != (40 if r8c1 else 12))
     ):
         raise C0ProtocolError("checkpoint compatibility policy differs from the frozen baseline")
 
     profiles = payload["profiles"]
-    if set(profiles) != {"smoke", "gate", "validation"}:
+    if set(profiles) != (set(R8C1_PROFILES) if r8c1 else {"smoke", "gate", "validation"}):
         raise C0ProtocolError("profiles must be exactly smoke, gate and validation")
     expected_counts = {
         "smoke": (1, 1),
         "gate": (32 if new_offroad_protocol else 16, 1),
         "validation": (8, 3),
     }
+    if r8c1:
+        expected_counts = {"smoke": (1, 1), "short_probe": (4, 1), "long_probe": (8, 1)}
     seen_case_ids: set[tuple[str, int]] = set()
     profile_hashes: Dict[str, set[str]] = {}
     for profile_name, profile in profiles.items():
@@ -700,7 +753,8 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
                 raise C0ProtocolError(f"scenario path escapes directory: {name}") from error
             scenario = load_strict_json(path)
             _validate_scenario(
-                scenario, path=path, expected_town=str(env["town"])
+                scenario, path=path, expected_town=str(env["town"]),
+                r8c1=r8c1, max_steps=env["max_steps"]
             )
             hashes.add(sha256_file(path))
             for seed in seeds:
@@ -713,7 +767,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         actual_names = sorted(path.name for path in scenario_dir.glob("*.json"))
         if profile_name in {"gate", "validation"} and sorted(names) != actual_names:
             raise C0ProtocolError(f"{profile_name} must enumerate its complete frozen scenario directory")
-    if profile_hashes["gate"] & profile_hashes["validation"]:
+    if not r8c1 and profile_hashes["gate"] & profile_hashes["validation"]:
         raise C0ProtocolError("validation scenarios must not duplicate training scenarios by content hash")
 
     outcomes = payload["outcomes"]
@@ -761,6 +815,7 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
             TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
             TOWN05_R6_C0_PROTOCOL_VERSION,
             TOWN05_R7_C0_PROTOCOL_VERSION,
+            TOWN05_R8C1_C0_PROTOCOL_VERSION,
         }
     )
     repeatability_fields = (
@@ -787,10 +842,10 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
     if _positive_int(repeatability["required_repeats"], context="repeatability.required_repeats") < 2:
         raise C0ProtocolError("repeatability requires at least two runs")
     if outcome_repeatability:
-        if repeatability["comparison_mode"] != OUTCOME_REPEATABILITY_MODE:
+        if repeatability["comparison_mode"] != (R8C1_REPEATABILITY_MODE if r8c1 else OUTCOME_REPEATABILITY_MODE):
             raise C0ProtocolError("repeatability.comparison_mode differs")
         if repeatability["hard_fields"] != list(
-            OUTCOME_REPEATABILITY_HARD_FIELDS
+            R8C1_REPEATABILITY_HARD_FIELDS if r8c1 else OUTCOME_REPEATABILITY_HARD_FIELDS
         ):
             raise C0ProtocolError("repeatability.hard_fields differ")
         if repeatability["tolerant_fields"] != list(
@@ -843,6 +898,12 @@ def validate_c0_contract(payload: Any, *, project_dir: Path) -> None:
         if not _inside(project_dir, relative, context="critical_source_paths").exists():
             raise C0ProtocolError(f"critical source not found: {relative}")
 
+    if r8c1:
+        try:
+            validate_r8c1_contract_identity(payload, project_dir=project_dir)
+        except ValueError as error:
+            raise C0ProtocolError(str(error)) from error
+
 
 def load_c0_contract(path: str | Path, *, project_dir: Path) -> Dict[str, Any]:
     resolved = Path(path).expanduser().resolve()
@@ -888,6 +949,21 @@ def expand_profile_cases(
                     "scenario_config": scenario,
                 }
             )
+            if contract["protocol_version"] == TOWN05_R8C1_C0_PROTOCOL_VERSION:
+                directions = set(scenario["tags"]) & {"northbound", "southbound", "eastbound", "westbound"}
+                groups = {
+                    "r8a_short_free_flow_rolling": "short_rolling_trained",
+                    "r8a_short_free_flow_stationary": "short_stationary_transfer",
+                    "free_flow": "long_free_flow",
+                    "parallel_stationary": "long_stationary_pace_exempt",
+                }
+                if len(directions) != 1 or scenario["family"] not in groups:
+                    raise C0ProtocolError("R8C1 scenario direction/family is unclassified")
+                cases[-1].update({
+                    "effective_episode_max_steps": _positive_int(scenario["episode_max_steps"], context="case horizon"),
+                    "scenario_group": groups[scenario["family"]],
+                    "direction": next(iter(directions)),
+                })
     return cases
 
 
@@ -920,6 +996,7 @@ def load_and_validate_c0_checkpoint(
     contract: Mapping[str, Any],
     allow_diagnostic_checkpoint: bool = False,
     map_location: Any = "cpu",
+    project_dir: Path | None = None,
 ) -> Dict[str, Any]:
     checkpoint, digest = load_checkpoint_file(path, map_location=map_location)
     protocol_version = contract["protocol_version"]
@@ -929,9 +1006,11 @@ def load_and_validate_c0_checkpoint(
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
         TOWN05_R7_C0_PROTOCOL_VERSION,
+        TOWN05_R8C1_C0_PROTOCOL_VERSION,
     }
     r6_protocol = protocol_version == TOWN05_R6_C0_PROTOCOL_VERSION
-    r7_protocol = protocol_version == TOWN05_R7_C0_PROTOCOL_VERSION
+    r8c1 = protocol_version == TOWN05_R8C1_C0_PROTOCOL_VERSION
+    r7_protocol = protocol_version in {TOWN05_R7_C0_PROTOCOL_VERSION, TOWN05_R8C1_C0_PROTOCOL_VERSION}
     historical = not (r6_protocol or r7_protocol)
     validate_checkpoint_header(checkpoint, allow_legacy=historical)
     policy = contract["checkpoint"]
@@ -1005,6 +1084,7 @@ def load_and_validate_c0_checkpoint(
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
         TOWN05_R7_C0_PROTOCOL_VERSION,
+        TOWN05_R8C1_C0_PROTOCOL_VERSION,
     }:
         expected_protocols.update(
             {
@@ -1012,6 +1092,8 @@ def load_and_validate_c0_checkpoint(
                 "value_loss": VALUE_LOSS_PROTOCOL_VERSION,
             }
         )
+    if r8c1:
+        expected_protocols = R8C1_EXPECTED_PROTOCOL_VERSIONS
     if checkpoint.get("protocol_versions") != expected_protocols:
         mismatches.append("protocol_versions")
     if not legacy and checkpoint.get("action_spec") != action_protocol_spec():
@@ -1037,6 +1119,7 @@ def load_and_validate_c0_checkpoint(
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
         TOWN05_R7_C0_PROTOCOL_VERSION,
+        TOWN05_R8C1_C0_PROTOCOL_VERSION,
     }:
         expected_gamma = float(contract["environment"]["reward_gamma"])
         training_config = checkpoint.get("training_config", {})
@@ -1108,7 +1191,18 @@ def load_and_validate_c0_checkpoint(
         formal_reasons.append("training experiment contract id mismatch")
     if metadata.get("experiment_contract_sha256") != policy["required_training_contract_sha256"]:
         formal_reasons.append("training experiment contract SHA256 mismatch")
-    if formal_reasons and not allow_diagnostic_checkpoint:
+    if r8c1:
+        if formal_reasons:
+            raise C0ProtocolError("R8C1 input identity is invalid: " + "; ".join(formal_reasons))
+        try:
+            validate_r8c1_checkpoint_identity(
+                checkpoint, path=Path(path).resolve(), sha256=digest, contract=contract,
+                project_dir=project_dir or Path(__file__).resolve().parents[1],
+            )
+        except ValueError as error:
+            raise C0ProtocolError(str(error)) from error
+        formal_reasons.append("diagnostic_only: model selection and performance decisions are forbidden")
+    if formal_reasons and not allow_diagnostic_checkpoint and not r8c1:
         raise C0ProtocolError(
             "checkpoint is not eligible for formal C0 evaluation: " + "; ".join(formal_reasons)
         )
@@ -1255,6 +1349,9 @@ def validate_episode_record(
     checkpoint_sha256: str,
     expected_case: Mapping[str, Any] | None = None,
 ) -> None:
+    r8c1 = isinstance(record, Mapping) and record.get("record_version") == TOWN05_R8C1_C0_EPISODE_RECORD_VERSION
+    if expected_case is not None and "effective_episode_max_steps" in expected_case and not r8c1:
+        raise C0ProtocolError("R8C1 case requires R8C1 episode record version")
     top = {
         "record_version",
         "eval_id",
@@ -1275,6 +1372,8 @@ def validate_episode_record(
         "agents",
         "team",
     }
+    if r8c1:
+        top.update({*diagnostic_usage(), "effective_episode_max_steps", "reset_episode_max_steps", "scenario_group", "direction"})
     _require_exact_fields(record, top, context="episode record")
     record_version = record["record_version"]
     if record_version not in {
@@ -1287,11 +1386,12 @@ def validate_episode_record(
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
         TOWN05_R6_C0_EPISODE_RECORD_VERSION,
         TOWN05_R7_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R8C1_C0_EPISODE_RECORD_VERSION,
     }:
         raise C0ProtocolError("episode record version mismatch")
     current_action = record_version != LEGACY_C0_EPISODE_RECORD_VERSION
     reward_version = (
-        "v5"
+        "v6" if r8c1 else "v5"
         if record_version == TOWN05_R7_C0_EPISODE_RECORD_VERSION
         else "v4"
         if record_version == TOWN05_R6_C0_EPISODE_RECORD_VERSION
@@ -1312,6 +1412,26 @@ def validate_episode_record(
     if not SHA256_RE.fullmatch(str(record["scenario_sha256"])):
         raise C0ProtocolError("episode scenario SHA256 is invalid")
     episode_length = _positive_int(record["episode_length"], context="episode_length")
+    if r8c1:
+        for key, value in diagnostic_usage().items():
+            if record[key] != value or (key == "selection_allowed" and record[key] is not False):
+                raise C0ProtocolError(f"episode diagnostic usage differs: {key}")
+        if profile not in R8C1_PROFILES:
+            raise C0ProtocolError("R8C1 episode profile is invalid")
+        horizon = _positive_int(record["effective_episode_max_steps"], context="effective_episode_max_steps")
+        reset_horizon = _positive_int(record["reset_episode_max_steps"], context="reset_episode_max_steps")
+        if horizon not in {200, 500} or reset_horizon != horizon or episode_length > horizon:
+            raise C0ProtocolError("episode horizon/reset/length mismatch")
+        if record["episode_end_reason"] == "mission_timeout" and episode_length != horizon:
+            raise C0ProtocolError("mission_timeout must occur at effective episode horizon")
+        if record["direction"] not in {"northbound", "southbound", "eastbound", "westbound"}:
+            raise C0ProtocolError("episode direction is invalid")
+        if record["scenario_group"] not in {"short_rolling_trained", "short_stationary_transfer", "long_free_flow", "long_stationary_pace_exempt"}:
+            raise C0ProtocolError("episode scenario_group is invalid")
+        if expected_case is not None:
+            for key in ("effective_episode_max_steps", "scenario_group", "direction"):
+                if record[key] != expected_case[key]:
+                    raise C0ProtocolError(f"episode case identity mismatch for {key}")
     if (
         record["outcome"] not in outcome_names_for_record(record_version)
         or not str(record["episode_end_reason"]).strip()
@@ -1353,6 +1473,7 @@ def validate_episode_record(
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
         TOWN05_R6_C0_EPISODE_RECORD_VERSION,
         TOWN05_R7_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R8C1_C0_EPISODE_RECORD_VERSION,
     }
     if offroad_record:
         expected_agent_fields.update(
@@ -1363,7 +1484,7 @@ def validate_episode_record(
                 "max_footprint_outside_fraction",
             }
         )
-    road_record = record_version == TOWN05_R7_C0_EPISODE_RECORD_VERSION
+    road_record = record_version in {TOWN05_R7_C0_EPISODE_RECORD_VERSION, TOWN05_R8C1_C0_EPISODE_RECORD_VERSION}
     if road_record:
         expected_agent_fields.update(
             {
@@ -1376,6 +1497,7 @@ def validate_episode_record(
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
         TOWN05_R6_C0_EPISODE_RECORD_VERSION,
         TOWN05_R7_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R8C1_C0_EPISODE_RECORD_VERSION,
     }:
         expected_agent_fields.add("lifecycle_transition")
     returns = []
@@ -1392,10 +1514,22 @@ def validate_episode_record(
             raise C0ProtocolError(f"agent {agent_id} final done semantics are invalid")
         if agent["final_terminated"] and agent["final_truncated"]:
             raise C0ProtocolError(f"agent {agent_id} cannot terminate and truncate")
+        if r8c1:
+            if not agent["final_done"] or active_steps < 1:
+                raise C0ProtocolError(f"agent {agent_id} completed episode needs a final done and active decisions")
+            own_terminal = bool(
+                agent["reached_target"] or agent["collision"] or agent["offroad_terminated"]
+                or agent["road_rule_terminated"] or episode_length == horizon
+            )
+            if agent["final_terminated"] != own_terminal:
+                raise C0ProtocolError(f"agent {agent_id} terminal/truncation flags disagree with its v6 task boundary")
+            if active_steps < episode_length and not agent["reached_target"]:
+                raise C0ProtocolError(f"agent {agent_id} became inactive before team termination without reaching its goal")
         if record_version in {
             TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
             TOWN05_R6_C0_EPISODE_RECORD_VERSION,
             TOWN05_R7_C0_EPISODE_RECORD_VERSION,
+            TOWN05_R8C1_C0_EPISODE_RECORD_VERSION,
         }:
             transition = agent["lifecycle_transition"]
             if (
@@ -1434,6 +1568,18 @@ def validate_episode_record(
             raise C0ProtocolError(f"agent {agent_id} diagnostic schema mismatch")
         for name, stats in diagnostics.items():
             _validate_stats(stats, expected_count=active_steps, context=f"agent {agent_id}.diagnostics.{name}")
+        if r8c1:
+            pace_sum = (diagnostics["pace_deficit_reward"]["mean"] or 0.0) * active_steps
+            if not math.isclose(components["free_flow_pace_deficit"], pace_sum, rel_tol=0.0, abs_tol=1e-5):
+                raise C0ProtocolError(f"agent {agent_id} pace component differs from diagnostic reward sum")
+            for name in (
+                "pace_free_flow_tag", "pace_non_interactive_tag", "pace_grace_exempt",
+                "pace_front_blocker_exempt", "pace_complex_interaction_exempt",
+                "pace_near_goal_exempt", "pace_terminal_exempt", "pace_deficit_eligible",
+            ):
+                stats = diagnostics[name]
+                if active_steps and any(stats[key] not in (0.0, 1.0) for key in ("min", "max", "last")):
+                    raise C0ProtocolError(f"agent {agent_id} diagnostic {name} must be binary")
         for name in (
             "collision_event",
             "lane_invasion_sensor_event",
@@ -1732,6 +1878,7 @@ def _aggregate_group(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
         TOWN05_R6_C0_EPISODE_RECORD_VERSION,
         TOWN05_R7_C0_EPISODE_RECORD_VERSION,
+        TOWN05_R8C1_C0_EPISODE_RECORD_VERSION,
     }:
         result["offroad_count"] = sum(
             any(
@@ -1741,6 +1888,40 @@ def _aggregate_group(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
             for record in records
         )
         result["offroad_rate"] = result["offroad_count"] / count if count else 0.0
+    if records and records[0].get("record_version") == TOWN05_R8C1_C0_EPISODE_RECORD_VERSION:
+        result["agents"] = _r8c1_agent_summary(records)
+    return result
+
+
+def _r8c1_agent_summary(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Keep agent and scenario strata visible; means use active decisions only."""
+    result = {}
+    for agent_id in ("0", "1"):
+        agents = [record["agents"][agent_id] for record in records]
+        active = sum(agent["active_decision_steps"] for agent in agents)
+        result[agent_id] = {
+            "case_count": len(agents),
+            "reached_count": sum(agent["reached_target"] for agent in agents),
+            "collision_episode_count": sum(agent["collision"] for agent in agents),
+            "offroad_episode_count": sum(agent["offroad_terminated"] for agent in agents),
+            "road_violation_episode_count": sum(agent["road_rule_terminated"] for agent in agents),
+            "active_decision_steps": active,
+            "mean_episode_return": sum(agent["episode_return"] for agent in agents) / len(agents),
+            "mean_active_decision_steps": active / len(agents),
+            "mean_final_route_completion": sum(agent["diagnostics"]["route_completion"]["last"] or 0.0 for agent in agents) / len(agents),
+            "mean_reward_component_sum": {
+                name: sum(agent["reward_component_sums"][name] for agent in agents) / len(agents)
+                for name in REWARD_COMPONENTS["v6"]
+            },
+            "diagnostic_active_step_means": {
+                name: sum((agent["diagnostics"][name]["mean"] or 0.0) * agent["active_decision_steps"] for agent in agents) / active if active else None
+                for name in REWARD_DIAGNOSTICS["v6"]
+            },
+            "action_active_step_means": {
+                name: sum((agent["actions"][name] or 0.0) * agent["active_decision_steps"] for agent in agents) / active if active else None
+                for name in agents[0]["actions"] if name != "count"
+            },
+        }
     return result
 
 
@@ -1784,6 +1965,9 @@ def build_summary(
     elif record_version == TOWN05_R7_C0_EPISODE_RECORD_VERSION:
         eval_protocol_version = TOWN05_R7_C0_PROTOCOL_VERSION
         reward_version = "v5"
+    elif record_version == TOWN05_R8C1_C0_EPISODE_RECORD_VERSION:
+        eval_protocol_version = TOWN05_R8C1_C0_PROTOCOL_VERSION
+        reward_version = "v6"
     else:
         raise C0ProtocolError("cannot summarize an unknown C0 episode version")
     overall = _aggregate_group(records)
@@ -1813,6 +1997,7 @@ def build_summary(
             TOWN05_OUTCOME_REPEATABILITY_C0_EPISODE_RECORD_VERSION,
             TOWN05_R6_C0_EPISODE_RECORD_VERSION,
             TOWN05_R7_C0_EPISODE_RECORD_VERSION,
+            TOWN05_R8C1_C0_EPISODE_RECORD_VERSION,
         }:
             agents[agent_id]["offroad_episode_count"] = sum(
                 bool(record["agents"][agent_id]["offroad_terminated"])
@@ -1823,9 +2008,11 @@ def build_summary(
                 bool(record["agents"][agent_id]["road_rule_terminated"])
                 for record in records
             )
-    return {
+    result = {
         "summary_version": (
-            TOWN05_R7_C0_SUMMARY_VERSION
+            R8C1_SUMMARY_VERSION
+            if record_version == TOWN05_R8C1_C0_EPISODE_RECORD_VERSION
+            else TOWN05_R7_C0_SUMMARY_VERSION
             if record_version == TOWN05_R7_C0_EPISODE_RECORD_VERSION
             else C0_SUMMARY_VERSION
         ),
@@ -1839,6 +2026,15 @@ def build_summary(
         "by_family": by_family,
         "by_scenario": by_scenario,
     }
+    if record_version == TOWN05_R8C1_C0_EPISODE_RECORD_VERSION:
+        result.update(diagnostic_usage())
+        result["agents"] = _r8c1_agent_summary(records)
+        for key, field in (("by_direction", "direction"), ("by_scenario_group", "scenario_group")):
+            result[key] = {
+                value: _aggregate_group([record for record in records if record[field] == value])
+                for value in sorted({record[field] for record in records})
+            }
+    return result
 
 
 def summary_csv_rows(summary: Mapping[str, Any]) -> list[Dict[str, str]]:
@@ -1846,6 +2042,10 @@ def summary_csv_rows(summary: Mapping[str, Any]) -> list[Dict[str, str]]:
     groups = [("overall", "all", summary["overall"])]
     groups.extend(("family", name, value) for name, value in summary["by_family"].items())
     groups.extend(("scenario", name, value) for name, value in summary["by_scenario"].items())
+    r8c1 = summary["eval_protocol_version"] == TOWN05_R8C1_C0_PROTOCOL_VERSION
+    if r8c1:
+        groups.extend(("direction", name, value) for name, value in summary["by_direction"].items())
+        groups.extend(("scenario_group", name, value) for name, value in summary["by_scenario_group"].items())
     for scope, name, group in groups:
         counts = group["outcome_counts"]
         rates = group["outcome_rates"]
@@ -1862,14 +2062,16 @@ def summary_csv_rows(summary: Mapping[str, Any]) -> list[Dict[str, str]]:
                 "mean_episode_length": format(group["episode_length"]["mean"], ".12g"),
                 "mean_team_return": format(group["mean_team_return"], ".12g"),
             }
-        if summary["eval_protocol_version"] == TOWN05_R7_C0_PROTOCOL_VERSION:
+        if r8c1 or summary["eval_protocol_version"] == TOWN05_R7_C0_PROTOCOL_VERSION:
             base.update({
                 "offroad_count": str(counts["offroad"]),
                 "road_violation_count": str(counts["road_violation"]),
                 "offroad_rate": format(rates["offroad"], ".12g"),
                 "road_violation_rate": format(rates["road_violation"], ".12g"),
             })
-            rows.append({name: base[name] for name in R7_SUMMARY_CSV_FIELDS})
+            if r8c1:
+                base.update({key: ("false" if value is False else str(value)) for key, value in diagnostic_usage().items()})
+            rows.append({name: base[name] for name in (R8C1_SUMMARY_CSV_FIELDS if r8c1 else R7_SUMMARY_CSV_FIELDS)})
         else:
             base.update({
                 "other_count": str(counts["other"]),
@@ -1888,7 +2090,9 @@ def atomic_write_csv(path: str | Path, rows: Sequence[Mapping[str, str]]) -> Non
     try:
         with temporary.open("w", encoding="utf-8", newline="") as handle:
             fieldnames = (
-                R7_SUMMARY_CSV_FIELDS
+                R8C1_SUMMARY_CSV_FIELDS
+                if rows and set(rows[0]) == set(R8C1_SUMMARY_CSV_FIELDS)
+                else R7_SUMMARY_CSV_FIELDS
                 if rows and set(rows[0]) == set(R7_SUMMARY_CSV_FIELDS)
                 else SUMMARY_CSV_FIELDS
             )
@@ -1911,6 +2115,7 @@ def read_summary_csv(path: str | Path) -> list[Dict[str, str]]:
         if tuple(reader.fieldnames or ()) not in {
             SUMMARY_CSV_FIELDS,
             R7_SUMMARY_CSV_FIELDS,
+            R8C1_SUMMARY_CSV_FIELDS,
         }:
             raise C0ProtocolError("summary CSV schema mismatch")
         return [dict(row) for row in reader]
@@ -1972,6 +2177,16 @@ def outcome_repeatability_signature(record: Mapping[str, Any]) -> Dict[str, Any]
                 f"{prefix}_episode_return": agent["episode_return"],
             }
         )
+        if record.get("record_version") == TOWN05_R8C1_C0_EPISODE_RECORD_VERSION:
+            road = agent["road_legality"]
+            signature.update({
+                f"{prefix}_road_rule_terminated": agent["road_rule_terminated"],
+                f"{prefix}_road_violation_confirmed": agent["road_violation_confirmed"],
+                f"{prefix}_road_classification": road["classification"],
+                f"{prefix}_road_violation_reason": road["violation_reason"],
+                f"{prefix}_road_reference_lane": road["reference_lane"],
+                f"{prefix}_road_success_eligible": road["success_eligible"],
+            })
     return signature
 
 
@@ -1982,13 +2197,15 @@ def compare_repeatability_records(
     contract: Mapping[str, Any],
 ) -> Dict[str, Any]:
     repeatability = contract["repeatability"]
+    r8c1 = contract["protocol_version"] == TOWN05_R8C1_C0_PROTOCOL_VERSION
     outcome_mode = contract["protocol_version"] in {
         TOWN05_OUTCOME_REPEATABILITY_C0_PROTOCOL_VERSION,
         TOWN05_R6_C0_PROTOCOL_VERSION,
         TOWN05_R7_C0_PROTOCOL_VERSION,
+        TOWN05_R8C1_C0_PROTOCOL_VERSION,
     }
     if outcome_mode:
-        if repeatability["comparison_mode"] != OUTCOME_REPEATABILITY_MODE:
+        if repeatability["comparison_mode"] != (R8C1_REPEATABILITY_MODE if r8c1 else OUTCOME_REPEATABILITY_MODE):
             raise C0ProtocolError("repeatability comparison mode differs")
         hard_fields = repeatability["hard_fields"]
         tolerant_fields = repeatability["tolerant_fields"]
@@ -2017,6 +2234,13 @@ def compare_repeatability_records(
             raise C0ProtocolError("repeatability runs use different checkpoints")
         if left_record.get("profile") != right_record.get("profile"):
             raise C0ProtocolError("repeatability runs use different profiles")
+        if r8c1:
+            for record in (left_record, right_record):
+                if record.get("record_version") != TOWN05_R8C1_C0_EPISODE_RECORD_VERSION:
+                    raise C0ProtocolError("R8C1 repeatability requires R8C1 episode records")
+            for key in ("scenario_sha256", "episode_seed", "effective_episode_max_steps", "reset_episode_max_steps", "scenario_group", "direction"):
+                if left_record.get(key) != right_record.get(key):
+                    raise C0ProtocolError(f"repeatability input mismatch: {key}")
         left_signature = (
             outcome_repeatability_signature(left_record)
             if outcome_mode
@@ -2132,10 +2356,17 @@ def compare_repeatability_records(
     return {
         "status": status,
         "gate_pass": not mismatches,
+        **({
+            **diagnostic_usage(),
+            "systematic_drift_status": (
+                "NOT_APPLICABLE_INSUFFICIENT_CASES" if len(left) < systematic_min_case_count
+                else "HOLD" if warning_case_fraction > max_warning_case_fraction else "PASS"
+            ),
+        } if r8c1 else {}),
         "case_count": len(left),
         **(
             {
-                "comparison_mode": OUTCOME_REPEATABILITY_MODE,
+                "comparison_mode": R8C1_REPEATABILITY_MODE if r8c1 else OUTCOME_REPEATABILITY_MODE,
                 "hard_fields": hard_fields,
                 "tolerant_fields": tolerant_fields,
                 "continuous_fields": continuous_fields,

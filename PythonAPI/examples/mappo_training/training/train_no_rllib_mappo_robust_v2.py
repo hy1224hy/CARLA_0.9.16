@@ -98,6 +98,7 @@ from training.experiment_contract import (
     verify_critical_sources_clean,
 )
 from utils.training_metrics_recorder import TrainingMetricsRecorder
+from training.continuation_protocol import validate_continuation_checkpoint
 from training.checkpoint_protocol import (
     CHECKPOINT_SCHEMA_VERSION,
     INTERRUPTED_CHECKPOINT_NAME,
@@ -477,9 +478,12 @@ def checkpoint_protocol_versions(
 
 
 def checkpoint_training_config(args) -> Dict[str, object]:
-    return {
+    config = {
         name: getattr(args, name) for name in _resume_immutable_arg_names(args)
     }
+    if getattr(args, "pace_profile", "frozen_v6") != "frozen_v6":
+        config["pace_profile"] = args.pace_profile
+    return config
 
 
 def checkpoint_model_spec(
@@ -508,6 +512,11 @@ def _argument_was_explicit(args, name: str) -> bool:
 def apply_resume_configuration(args, checkpoint: Dict[str, object]) -> None:
     """Restore frozen run configuration while rejecting explicit drift."""
     saved_config = checkpoint["training_config"]
+    saved_profile = saved_config.get("pace_profile", "frozen_v6")
+    if (_argument_was_explicit(args, "pace_profile")
+            and getattr(args, "pace_profile", "frozen_v6") != saved_profile):
+        raise CheckpointProtocolError("resume cannot change pace profile; start a new pretrained run")
+    args.pace_profile = saved_profile
     for name in _resume_immutable_arg_names(args):
         if name not in saved_config:
             raise CheckpointProtocolError(
@@ -609,6 +618,9 @@ def _load_pretrained_weights(
 
 def runtime_metadata_with_carla(env) -> Dict[str, object]:
     metadata = runtime_metadata()
+    if getattr(env, "pace_profile", "frozen_v6") != "frozen_v6":
+        from environment.route_pace_reward import route_pace_spec
+        metadata["pace_reward_protocol"] = route_pace_spec()
     metadata["environment_reward_gamma"] = float(env.reward_gamma)
     metadata["offroad_protocol"] = (
         r6_offroad_protocol_spec()
@@ -646,6 +658,7 @@ def build_training_environment_kwargs(args, *, num_agents: int) -> Dict[str, obj
         "follow_spectator": args.follow_spectator,
         "lidar_range_m": args.lidar_range_m,
         "ttc_max_range_m": args.ttc_max_range_m,
+        "pace_profile": getattr(args, "pace_profile", "frozen_v6"),
     }
 
 
@@ -2944,9 +2957,48 @@ def validate_p0_smoke_interrupt_configuration(args, *, check_rollout_bound=True)
     return interrupt_after
 
 
+def training_source_paths(project_dir):
+    return [
+        Path(__file__).resolve(),
+        Path(__file__).resolve().with_name("action_protocol.py"),
+        Path(__file__).resolve().parents[1]
+        / "environment"
+        / "base_reward_v3.py",
+        Path(__file__).resolve().parents[1]
+        / "environment"
+        / "base_reward_v4.py",
+        Path(__file__).resolve().parents[1]
+        / "environment"
+        / "offroad_protocol.py",
+        Path(__file__).resolve().parents[1]
+        / "environment"
+        / "stall_protocol.py",
+        Path(__file__).resolve().with_name("experiment_contract.py"),
+        Path(__file__).resolve().with_name("checkpoint_protocol.py"),
+        Path(__file__).resolve().with_name("lifecycle_semantics.py"),
+        Path(__file__).resolve().with_name("metrics_protocol.py"),
+        Path(__file__).resolve().with_name("mastery_curriculum.py"),
+        Path(__file__).resolve().with_name("policy_distribution_protocol.py"),
+        Path(__file__).resolve().with_name("value_normalization.py"),
+        Path(__file__).resolve().with_name("critic_diagnostics.py"),
+        Path(__file__).resolve().with_name("learning_rate_protocol.py"),
+        project_dir / "utils" / "training_metrics_recorder.py",
+        project_dir / "models" / "actor_critic.py",
+        project_dir / "environment" / "carla_multi_agent_env.py",
+        project_dir / "environment" / "base_reward_v5.py",
+        project_dir / "environment" / "base_reward_v6.py",
+        project_dir / "environment" / "route_pace_reward.py",
+        project_dir / "training" / "reward_fork.py",
+        project_dir / "environment" / "road_legality_protocol.py",
+    ]
+
+
 def train(args):
     project_dir = Path(__file__).resolve().parents[1]
     repository_root = Path(__file__).resolve().parents[4]
+    if getattr(args, "pace_profile", "frozen_v6") != "frozen_v6":
+        if args.experiment_contract or args.reward_version != "v6":
+            raise ValueError("new pace profile requires v6 and a new run outside frozen experiment contracts")
     if getattr(args, "experiment_contract", "") and not getattr(
         args, "_experiment_contract_metadata", None
     ):
@@ -3018,49 +3070,22 @@ def train(args):
 
     save_dir = os.path.abspath(args.save_dir)
     current_git = get_git_metadata(repository_root)
-    fingerprint_paths = [
-        Path(__file__).resolve(),
-        Path(__file__).resolve().with_name("action_protocol.py"),
-        Path(__file__).resolve().parents[1]
-        / "environment"
-        / "base_reward_v3.py",
-        Path(__file__).resolve().parents[1]
-        / "environment"
-        / "base_reward_v4.py",
-        Path(__file__).resolve().parents[1]
-        / "environment"
-        / "offroad_protocol.py",
-        Path(__file__).resolve().parents[1]
-        / "environment"
-        / "stall_protocol.py",
-        Path(__file__).resolve().with_name("experiment_contract.py"),
-        Path(__file__).resolve().with_name("checkpoint_protocol.py"),
-        Path(__file__).resolve().with_name("lifecycle_semantics.py"),
-        Path(__file__).resolve().with_name("metrics_protocol.py"),
-        Path(__file__).resolve().with_name("mastery_curriculum.py"),
-        Path(__file__).resolve().with_name("policy_distribution_protocol.py"),
-        Path(__file__).resolve().with_name("value_normalization.py"),
-        Path(__file__).resolve().with_name("critic_diagnostics.py"),
-        Path(__file__).resolve().with_name("learning_rate_protocol.py"),
-        project_dir / "utils" / "training_metrics_recorder.py",
-        project_dir / "models" / "actor_critic.py",
-        project_dir / "environment" / "carla_multi_agent_env.py",
-        project_dir / "environment" / "base_reward_v5.py",
-        project_dir / "environment" / "base_reward_v6.py",
-        project_dir / "environment" / "road_legality_protocol.py",
-    ]
+    fingerprint_paths = training_source_paths(project_dir)
     experiment_contract_metadata = getattr(
         args, "_experiment_contract_metadata", None
     )
+    continuation_record = getattr(args, "_continuation_metadata", None)
+    continuation_identity = None
     if experiment_contract_metadata:
         fingerprint_paths.append(Path(experiment_contract_metadata["path"]))
-        verify_critical_sources_clean(
-            repository_root=repository_root,
-            project_dir=project_dir,
-            relative_paths=experiment_contract_metadata["payload"][
-                "critical_source_paths"
-            ],
-        )
+        if continuation_record:
+            fingerprint_paths.append(Path(__file__).with_name("continuation_protocol.py"))
+        else:
+            verify_critical_sources_clean(
+                repository_root=repository_root,
+                project_dir=project_dir,
+                relative_paths=experiment_contract_metadata["payload"]["critical_source_paths"],
+            )
     code_fingerprint = files_fingerprint(fingerprint_paths)
     resume_checkpoint = None
     resume_digest = ""
@@ -3136,7 +3161,14 @@ def train(args):
             saved_git_sha != current_git_sha
             or saved_code_fingerprint != code_fingerprint
         )
-        if resume_code_drift and not args.allow_resume_code_drift:
+        if continuation_record:
+            continuation_identity = validate_continuation_checkpoint(
+                continuation_record, resume_checkpoint, resume_digest,
+                code_fingerprint, current_git_sha, fingerprint_paths, project_dir,
+            )
+        elif resume_checkpoint["run_metadata"].get("continuation"):
+            raise CheckpointProtocolError("extended checkpoint requires --continuation-contract")
+        if resume_code_drift and not args.allow_resume_code_drift and not continuation_identity:
             raise CheckpointProtocolError(
                 "resume code identity mismatch: "
                 f"git={saved_git_sha}/{current_git_sha}, "
@@ -3323,6 +3355,10 @@ def train(args):
         args.lidar_range_m,
         args.curriculum_protocol,
     )
+    if getattr(args, "pace_profile", "frozen_v6") != "frozen_v6":
+        if experiment_contract_metadata or args.reward_version != "v6":
+            raise ValueError("route pace checkpoint cannot use the frozen experiment contract")
+        protocol_versions["pace_reward"] = args.pace_profile
     current_action_spec = action_protocol_spec()
     model_spec = checkpoint_model_spec(
         agent_ids, state_dim, args.hidden_dim, obs_dim=obs_dim
@@ -3502,7 +3538,7 @@ def train(args):
                 "last_runtime": runtime_metadata_with_carla(env),
                 "code_drift_override": bool(
                     run_metadata.get("code_drift_override", False)
-                    or resume_code_drift
+                    or (resume_code_drift and not continuation_identity)
                 ),
                 "code_drift_history": code_drift_history,
                 "experiment_contract_id": (
@@ -3517,6 +3553,9 @@ def train(args):
                 ),
             }
         )
+        if continuation_identity:
+            run_metadata["continuation"] = continuation_identity
+            run_metadata["planned_total_updates"] = continuation_identity["planned_total_updates"]
     else:
         try:
             env = _create_validated_env()
@@ -3617,6 +3656,8 @@ def train(args):
             resume_metrics_payload=last_metrics_payload,
             histogram_interval=args.tb_histogram_interval,
             critic_protocol=critic_spec,
+            pace_profile=getattr(args, "pace_profile", "frozen_v6"),
+            origin_update=int(run_metadata.get("reward_fork", {}).get("source_update", 0)),
         )
         update_experiment_evidence(
             args=args,
@@ -4634,6 +4675,8 @@ def train(args):
                 include_periodic=(update % args.save_interval == 0)
             )
             metrics_recorder.commit_payload(metrics_payload)
+            if getattr(args, "stop_request_file", "") and Path(args.stop_request_file).is_file():
+                raise KeyboardInterrupt("requested stop at complete update boundary")
         experiment_status = "SEGMENT_COMPLETED"
 
     except KeyboardInterrupt:
@@ -4866,6 +4909,8 @@ def build_parser():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--render", action="store_true")
+    parser.add_argument("--continuation-contract", default="", help="Pinned budget-only full-state continuation record")
+    parser.add_argument("--stop-request-file", default="", help="Stop safely after a complete update when this file exists")
     parser.add_argument(
         "--follow-spectator",
         action="store_true",
@@ -4914,6 +4959,8 @@ def build_parser():
         ),
     )
 
+    parser.add_argument("--pace-profile", choices=["frozen_v6", "route_pace_v1"],
+                        default="frozen_v6", help="v6 pace intervention; new run only, immutable on resume")
     parser.add_argument("--save-dir", type=str, default="./logs/mappo_robust_v2")
     parser.add_argument("--save-interval", type=int, default=5)
     parser.add_argument("--log-interval", type=int, default=1)
