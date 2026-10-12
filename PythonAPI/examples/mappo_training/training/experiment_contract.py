@@ -162,6 +162,8 @@ _ALLOWED_FORMAL_OPTIONS = frozenset(
         "--monitor-record-dir",
         "--monitor-view",
         "--monitor-overhead-height",
+        "--monitor-smoothing-seconds",
+        "--monitor-service-dir",
         "--updates",
         "--run-id",
         "--save-dir",

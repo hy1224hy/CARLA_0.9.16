@@ -230,16 +230,20 @@ class ExperimentContractApplicationTests(unittest.TestCase):
                 "--monitor-port", "8081", "--monitor-fps", "2",
                 "--monitor-width", "640", "--monitor-jpeg-quality", "50",
                 "--monitor-record-dir", str(Path(temp_dir) / "frames"),
+                "--monitor-smoothing-seconds", "0.7",
+                "--monitor-service-dir", str(Path(temp_dir) / "service"),
             ], namespace=copy.deepcopy(baseline))
             args._explicit_cli_options.update({
                 "--monitor-mode", "--monitor-view", "--monitor-overhead-height",
                 "--monitor-host", "--monitor-port", "--monitor-fps",
                 "--monitor-width", "--monitor-jpeg-quality", "--monitor-record-dir",
+                "--monitor-smoothing-seconds", "--monitor-service-dir",
             })
             apply_experiment_contract(baseline, project_dir=PROJECT_DIR)
             apply_experiment_contract(args, project_dir=PROJECT_DIR)
             self.assertEqual(args.monitor_view, "overhead")
             self.assertEqual(args.monitor_overhead_height, 50)
+            self.assertEqual(args.monitor_smoothing_seconds, 0.7)
             self.assertEqual(
                 {name: getattr(args, name) for name in TRAINER_ARG_NAMES},
                 {name: getattr(baseline, name) for name in TRAINER_ARG_NAMES},

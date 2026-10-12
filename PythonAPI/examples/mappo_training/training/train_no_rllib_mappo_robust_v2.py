@@ -2993,7 +2993,81 @@ def training_source_paths(project_dir):
     ]
 
 
+def training_monitor_result(
+    *, args, manifest, run_dir, total_episodes, outcomes, last_metrics_payload
+):
+    """Describe retained evidence; only a recorded checkpoint is a safe update."""
+    run_dir = Path(run_dir)
+    manifest_path = run_dir / MANIFEST_NAME
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            manifest = {}
+    if not isinstance(manifest, Mapping):
+        manifest = {}
+    latest = (manifest or {}).get("latest") or {}
+    if not isinstance(latest, Mapping):
+        latest = {}
+    checkpoint = run_dir / str(latest.get("path", LATEST_CHECKPOINT_NAME))
+    saved = bool(latest) and checkpoint.is_file()
+    if saved and latest.get("sha256"):
+        try:
+            saved = sha256_file(checkpoint) == latest["sha256"]
+        except OSError:
+            saved = False
+    completed_episodes = sum(int(value) for value in outcomes.values())
+    scalars = (last_metrics_payload or {}).get("scalars", {})
+    return {
+        "run_id": args.run_id,
+        "planned_updates": int(args.updates),
+        "safe_update": int(latest.get("update", 0)) if saved else None,
+        "started_episodes": int(total_episodes),
+        "completed_episodes": completed_episodes,
+        "outcomes": dict(outcomes),
+        "success_rate": (
+            int(outcomes.get("success", 0)) / completed_episodes
+            if completed_episodes else None
+        ),
+        "checkpoint": str(checkpoint) if saved else None,
+        "run_dir": str(run_dir),
+        "metrics_path": str(run_dir / "metrics.jsonl"),
+        "episode_metrics_path": str(run_dir / "episodes.jsonl"),
+        "last_metrics": {
+            key: value for key, value in scalars.items()
+            if key.startswith("episode/") or key.startswith("timing/")
+        },
+    }
+
+
 def train(args):
+    """Preserve a useful monitor result even when CARLA initialization fails."""
+    try:
+        return _train(args)
+    except BaseException as error:
+        monitor = getattr(args, "_web_monitor_instance", None)
+        if monitor is not None and not getattr(monitor, "finished", False):
+            try:
+                monitor.finish(
+                    "interrupted" if isinstance(error, KeyboardInterrupt) else "error",
+                    result={"run_id": args.run_id,
+                            "run_dir": str(Path(args.save_dir).resolve()),
+                            "reason": f"{type(error).__name__}: {error}"},
+                    message=f"训练初始化或执行失败: {error}",
+                )
+            except Exception as monitor_error:
+                print(f"  [警告] 监控终局写入失败: {monitor_error}")
+            finally:
+                try:
+                    monitor.close()
+                except Exception as monitor_error:
+                    print(f"  [警告] 监控清理失败: {monitor_error}")
+        raise
+    finally:
+        vars(args).pop("_web_monitor_instance", None)
+
+
+def _train(args):
     project_dir = Path(__file__).resolve().parents[1]
     repository_root = Path(__file__).resolve().parents[4]
     if getattr(args, "pace_profile", "frozen_v6") != "frozen_v6":
@@ -3380,6 +3454,46 @@ def train(args):
                 training_config=training_config,
             )
 
+    web_monitor = None
+    monitor_warning_shown = False
+
+    def _monitor_call(method, *values, **fields):
+        nonlocal monitor_warning_shown
+        if web_monitor is None:
+            return
+        try:
+            return getattr(web_monitor, method)(*values, **fields)
+        except Exception as error:
+            if not monitor_warning_shown:
+                print(f"  [警告] Web 监控 {method} 失败；训练继续运行: {error}")
+                monitor_warning_shown = True
+
+    if getattr(args, "monitor_mode", "off") == "web":
+        from visualization.web_training_monitor import WebTrainingMonitor
+
+        web_monitor = WebTrainingMonitor(
+            host=getattr(args, "monitor_host", "127.0.0.1"),
+            port=getattr(args, "monitor_port", 8080),
+            fps=getattr(args, "monitor_fps", 5.0),
+            width=getattr(args, "monitor_width", 960),
+            jpeg_quality=getattr(args, "monitor_jpeg_quality", 65),
+            record_dir=getattr(args, "monitor_record_dir", ""),
+            view=getattr(args, "monitor_view", "overhead"),
+            overhead_height=getattr(args, "monitor_overhead_height", 35.0),
+            smoothing_seconds=getattr(args, "monitor_smoothing_seconds", 0.5),
+            output_dir=str(Path(save_dir) / "monitor"),
+            service_dir=(getattr(args, "monitor_service_dir", "") or str(
+                project_dir / "logs" / f"web_monitor_{args.monitor_port}"
+            )),
+        )
+        args._web_monitor_instance = web_monitor
+        web_monitor.start()
+        web_monitor.set_phase(
+            "starting", run_id=args.run_id, planned_updates=args.updates,
+            total_episodes=total_episodes, message="正在准备训练",
+        )
+        print(f"Web 训练监控已启动: {web_monitor.url}")
+
     def _create_validated_env():
         created_env = CarlaMultiAgentEnv(
             **build_training_environment_kwargs(
@@ -3635,8 +3749,6 @@ def train(args):
         if args.render
         else None
     )
-    web_monitor = None
-    monitor_warning_shown = False
     last_metrics_payload = (
         copy.deepcopy(resume_checkpoint.get("last_metrics"))
         if resume_checkpoint is not None
@@ -3648,21 +3760,6 @@ def train(args):
         else None
     )
     try:
-        if getattr(args, "monitor_mode", "off") == "web":
-            from visualization.web_training_monitor import WebTrainingMonitor
-
-            web_monitor = WebTrainingMonitor(
-                host=getattr(args, "monitor_host", "127.0.0.1"),
-                port=getattr(args, "monitor_port", 8080),
-                fps=getattr(args, "monitor_fps", 5.0),
-                width=getattr(args, "monitor_width", 960),
-                jpeg_quality=getattr(args, "monitor_jpeg_quality", 65),
-                record_dir=getattr(args, "monitor_record_dir", ""),
-                view=getattr(args, "monitor_view", "vehicle"),
-                overhead_height=getattr(args, "monitor_overhead_height", 35.0),
-            )
-            web_monitor.start()
-            print(f"Web 训练监控已启动: {web_monitor.url}")
         metrics_recorder = TrainingMetricsRecorder(
             run_dir=save_dir,
             run_id=args.run_id,
@@ -3693,13 +3790,24 @@ def train(args):
             )
         except Exception as evidence_error:
             print(f"  [警告] 实验台账错误状态写入失败: {evidence_error}")
-        if visualizer is not None:
-            visualizer.close()
-        if web_monitor is not None:
-            web_monitor.close()
+        _monitor_call("set_phase", "finalizing", message="初始化失败，正在清理训练资源")
+        _monitor_call("stop_camera")
+        initialization_cleanup_errors = []
+        resources = [visualizer, env]
         if "metrics_recorder" in locals():
-            metrics_recorder.close()
-        env.close()
+            resources.append(metrics_recorder)
+        for resource in resources:
+            if resource is not None:
+                try:
+                    resource.close()
+                except Exception as cleanup_error:
+                    initialization_cleanup_errors.append(str(cleanup_error))
+        _monitor_call("finish", "error", message=str(error), result={
+            "run_id": args.run_id, "run_dir": save_dir,
+            "reason": f"训练初始化失败: {error}",
+            "cleanup_errors": initialization_cleanup_errors,
+        })
+        _monitor_call("close")
         raise
     print(f"RunID: {args.run_id}")
     print(
@@ -3860,6 +3968,8 @@ def train(args):
         }
 
     def _save_safe_checkpoint(*, include_periodic: bool) -> None:
+        _monitor_call("set_phase", "saving", update=completed_update,
+                      checkpoint=str(latest_path), message="正在保存安全 checkpoint")
         if include_periodic:
             periodic_path = periodic_dir / (
                 f"ckpt_update_{completed_update:06d}.pt"
@@ -3881,11 +3991,15 @@ def train(args):
             latest_path, latest_digest
         )
         atomic_write_json(manifest, manifest_path)
+        _monitor_call("set_phase", "saving", safe_update=completed_update,
+                      message="checkpoint 已保存，正在写入训练指标")
         print(f"最新 checkpoint: {latest_path}")
 
     def _save_interrupted_checkpoint() -> None:
         if not latest_path.is_file():
             return
+        _monitor_call("set_phase", "saving", checkpoint=str(interrupted_path),
+                      message="正在保留最近完整 update 的中断 checkpoint")
         interrupted_digest = atomic_copy_checkpoint(
             latest_path, interrupted_path
         )
@@ -4033,10 +4147,14 @@ def train(args):
                 if scenario_config:
                     env.set_scenario(scenario_config)
 
-                if web_monitor is not None:
-                    web_monitor.reset_camera()
+                _monitor_call(
+                    "begin_episode", update=update, episode=rollout_episode + 1,
+                    total_episodes=total_episodes + 1, step=0,
+                    scenario=scenario_name, message="正在切换场景，等待新回合画面",
+                )
                 obs_dict, info = env.reset()
                 total_episodes += 1
+                _monitor_call("set_phase", "rollout", message="正在采样，等待新场景首帧")
 
                 active_mask = validate_active_mask(
                     info['active_mask'], agent_ids,
@@ -4091,8 +4209,7 @@ def train(args):
                     for aid in step_cache:
                         active_decision_steps[aid] += 1
 
-                    if web_monitor is not None:
-                        web_monitor.prepare_camera(env)
+                    _monitor_call("prepare_camera", env)
                     next_obs, rewards, dones, info = env.step(action_dict)
                     step_reward_diagnostics = (
                         info.get("reward_diagnostics", {}) or {}
@@ -4199,8 +4316,10 @@ def train(args):
                                 {
                                     "run_id": args.run_id,
                                     "update": update,
-                                    "episode": rollout_episode,
+                                    "episode": rollout_episode + 1,
                                     "step": step + 1,
+                                    "world_frame": getattr(env, "_last_world_frame", None),
+                                    "message": "正在采样",
                                     "scenario": scenario_name,
                                     "rewards": {
                                         str(aid): round(float(value), 4)
@@ -4516,6 +4635,9 @@ def train(args):
 
             # ===== PPO 更新 =====
             n_transitions = buffer.total_size()
+            _monitor_call("set_phase", "optimizing", update=update,
+                          transitions=n_transitions, ppo_epochs=args.ppo_epochs,
+                          message="正在更新模型；同步仿真暂停推进")
             n_transitions_per_agent = {
                 aid: len(buffer.get_agent_data(aid)) for aid in agent_ids
             }
@@ -4748,11 +4870,12 @@ def train(args):
     finally:
         active_exception = sys.exc_info()[0] is not None
         cleanup_errors = []
+        _monitor_call("set_phase", "finalizing", message="正在清理训练资源并整理最终结果")
         if web_monitor is not None:
             try:
-                web_monitor.close()
+                web_monitor.stop_camera()
             except Exception as error:
-                cleanup_errors.append(f"web_monitor.close: {error}")
+                cleanup_errors.append(f"web_monitor.stop_camera: {error}")
         if visualizer is not None:
             try:
                 visualizer.close()
@@ -4786,6 +4909,34 @@ def train(args):
             )
         except Exception as error:
             evidence_error = error
+        if web_monitor is not None:
+            final_phase = (
+                "error" if cleanup_errors or evidence_error
+                or experiment_status in {"ERROR", "HOLD"}
+                else "interrupted" if experiment_status == "INTERRUPTED"
+                else "completed"
+            )
+            final_result = training_monitor_result(
+                args=args, manifest=manifest, run_dir=save_dir,
+                total_episodes=total_episodes,
+                outcomes={
+                    "success": total_successes, "collision": total_collisions,
+                    "timeout": total_timeouts, "offroad": total_offroads,
+                    "road_violation": total_road_violations,
+                },
+                last_metrics_payload=last_metrics_payload,
+            )
+            final_result.update(
+                experiment_status=experiment_status, reason=experiment_notes,
+                evidence_error=str(evidence_error) if evidence_error else None,
+            )
+            _monitor_call("finish", final_phase, result=final_result,
+                          message={"completed": "训练完成，结果已保留",
+                                   "interrupted": "训练已中断，安全结果已保留",
+                                   "error": "训练发生异常，详情已保留"}[final_phase])
+            _monitor_call("close")
+            print(f"监控结果页继续可用: {web_monitor.url}")
+            print(f"监控结果存档: {Path(save_dir) / 'monitor' / 'result.html'}")
         if evidence_error is not None:
             if active_exception:
                 print(f"  [警告] 实验台账最终状态写入失败: {evidence_error}")
@@ -4978,12 +5129,20 @@ def build_parser():
     parser.add_argument("--monitor-width", type=int, default=960)
     parser.add_argument("--monitor-jpeg-quality", type=int, default=65)
     parser.add_argument(
-        "--monitor-view", choices=["vehicle", "overhead"], default="vehicle",
+        "--monitor-view", choices=["vehicle", "overhead"], default="overhead",
         help="Web camera view: vehicle cameras or one overhead camera following all vehicles",
     )
     parser.add_argument(
         "--monitor-overhead-height", type=float, default=35.0,
         help="Minimum overhead height above the vehicles in meters; auto-zooms out when needed",
+    )
+    parser.add_argument(
+        "--monitor-smoothing-seconds", type=float, default=0.5,
+        help="Camera follow smoothing in simulation seconds; 0 disables smoothing",
+    )
+    parser.add_argument(
+        "--monitor-service-dir", default="",
+        help="Persistent monitor service directory; default logs/web_monitor_<port>",
     )
     parser.add_argument(
         "--monitor-record-dir",
