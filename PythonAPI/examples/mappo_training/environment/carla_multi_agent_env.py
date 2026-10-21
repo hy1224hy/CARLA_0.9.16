@@ -80,6 +80,26 @@ from environment.route_pace_reward import (
     CONFIG as ROUTE_PACE_CONFIG, PROFILE as ROUTE_PACE_PROFILE,
     route_pace_deficit,
 )
+from environment.instant_pace_reward import (
+    PROFILE as INSTANT_PACE_PROFILE, instant_pace_deficit,
+    continuous_overspeed_penalty,
+)
+from environment.instant_pace_reward_v3 import (
+    PROFILE as INSTANT_PACE_V3_PROFILE,
+    continuous_overspeed_penalty as continuous_overspeed_penalty_v3,
+)
+from environment.instant_pace_reward_v4 import (
+    PROFILE as INSTANT_PACE_V4_PROFILE, instant_pace_deficit as instant_pace_deficit_v4,
+)
+from environment.instant_pace_reward_v5 import (
+    PROFILE as INSTANT_PACE_V5_PROFILE, continuous_lane_deviation_penalty,
+)
+from environment.instant_pace_reward_v6 import (
+    PROFILE as INSTANT_PACE_V6_PROFILE,
+    continuous_overspeed_penalty as continuous_overspeed_penalty_v6,
+    continuous_lane_deviation_penalty as continuous_lane_deviation_penalty_v6,
+    steer_rate_penalty as steer_rate_penalty_v6,
+)
 from environment.offroad_protocol import (
     OFFROAD_PERSISTENCE_TICKS,
     classify_offroad_tick,
@@ -172,7 +192,9 @@ class CarlaMultiAgentEnv:
                 f"reward {reward_version} is base-policy only"
             )
         self.reward_version = reward_version
-        if pace_profile not in {"frozen_v6", ROUTE_PACE_PROFILE}:
+        if pace_profile not in {"frozen_v6", ROUTE_PACE_PROFILE, INSTANT_PACE_PROFILE,
+                                INSTANT_PACE_V3_PROFILE, INSTANT_PACE_V4_PROFILE,
+                                INSTANT_PACE_V5_PROFILE, INSTANT_PACE_V6_PROFILE}:
             raise ValueError(f"unsupported pace profile: {pace_profile}")
         if pace_profile != "frozen_v6" and reward_version != "v6":
             raise ValueError("route pace profile requires reward v6")
@@ -3772,6 +3794,65 @@ class CarlaMultiAgentEnv:
                     eligible=scene_eligible and not front_blocker,
                     terminal_event=terminal_event,
                 )
+            elif getattr(self, "pace_profile", "frozen_v6") in {
+                    INSTANT_PACE_PROFILE, INSTANT_PACE_V3_PROFILE, INSTANT_PACE_V4_PROFILE,
+                    INSTANT_PACE_V5_PROFILE, INSTANT_PACE_V6_PROFILE}:
+                scene_eligible = (
+                    (free_flow_tag and non_interactive_tag)
+                    or self.current_scenario_family in {"free_flow", "parallel_stationary"}
+                )
+                terminal_event = terminal_event or bool(
+                    self.reached_target.get(agent_id, False)
+                ) or not self.vehicles[agent_id].is_alive
+                pace_function = (instant_pace_deficit_v4
+                    if self.pace_profile in {INSTANT_PACE_V4_PROFILE, INSTANT_PACE_V5_PROFILE,
+                                             INSTANT_PACE_V6_PROFILE}
+                    else instant_pace_deficit)
+                decision = pace_function(
+                    diagnostics.get("closing_speed_mps", 0.0),
+                    distance_to_goal_m=diagnostics.get("distance_to_goal_m", 0.0),
+                    elapsed_seconds=int(self.current_step) * float(self.timestep),
+                    timestep=float(self.timestep), eligible=scene_eligible,
+                    front_blocker=front_blocker, complex_interaction=complex_interaction,
+                    terminal_event=terminal_event,
+                )
+                overspeed_function = (continuous_overspeed_penalty_v3
+                    if self.pace_profile in {INSTANT_PACE_V3_PROFILE, INSTANT_PACE_V4_PROFILE,
+                                             INSTANT_PACE_V5_PROFILE}
+                    else continuous_overspeed_penalty)
+                if self.pace_profile == INSTANT_PACE_V6_PROFILE:
+                    overspeed_function = continuous_overspeed_penalty_v6
+                details["overspeed"], diagnostics["overspeed_risk"] = overspeed_function(
+                    diagnostics.get("speed_mps", 0.0), timestep=float(self.timestep)
+                )
+                if self.pace_profile in {INSTANT_PACE_V5_PROFILE, INSTANT_PACE_V6_PROFILE}:
+                    # v5 parent already measures distance from road_reference_waypoints,
+                    # not from whichever lane a drifting vehicle currently occupies.
+                    lane_function = (continuous_lane_deviation_penalty_v6
+                        if self.pace_profile == INSTANT_PACE_V6_PROFILE
+                        else continuous_lane_deviation_penalty)
+                    lane_cost, lane_risk, lane_exempt = lane_function(
+                        diagnostics.get("lateral_distance_m", 0.0), timestep=float(self.timestep),
+                        exempt=bool(diagnostics.get("lane_deviation_exempted", 0.0)),
+                        road_violation=bool(diagnostics.get("road_violation_raw", 0.0)),
+                        opposing_lane=diagnostics.get("road_current_to_reference_cosine", 0.0) <= -0.5,
+                        in_junction=bool(diagnostics.get("road_in_junction", 0.0)),
+                    )
+                    details["lane_deviation"] = lane_cost
+                    diagnostics["lane_deviation_risk"] = lane_risk
+                    diagnostics["lane_deviation_exempted"] = float(lane_exempt)
+                if self.pace_profile == INSTANT_PACE_V6_PROFILE:
+                    details["steer_rate"] = 0.0
+                    diagnostics["steer_rate_normalized"] = 0.0
+                    vehicle = self.vehicles[agent_id]
+                    if (vehicle is not None and vehicle.is_alive
+                            and not self.reached_target.get(agent_id, False)):
+                        previous = getattr(self, "prev_controls", {}).get(agent_id)
+                        details["steer_rate"], diagnostics["steer_rate_normalized"] = steer_rate_penalty_v6(
+                            vehicle.get_control().steer,
+                            None if previous is None else previous["steer"],
+                            timestep=float(self.timestep),
+                        )
             details[REWARD_V6_PACE_COMPONENT] = decision.reward
             diagnostics.update({
                 "pace_free_flow_tag": float(free_flow_tag),

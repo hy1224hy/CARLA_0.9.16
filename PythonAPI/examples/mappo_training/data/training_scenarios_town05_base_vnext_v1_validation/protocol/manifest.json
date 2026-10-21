@@ -1,0 +1,178 @@
+{
+  "coordinate_convention": "CARLA left-handed, physical left=(sin(yaw),-cos(yaw))",
+  "direction_counts": {
+    "eastbound": 8,
+    "northbound": 8,
+    "southbound": 8,
+    "westbound": 8
+  },
+  "directions": [
+    "northbound",
+    "southbound",
+    "eastbound",
+    "westbound"
+  ],
+  "evaluation_scope": "same-corridor engineering validation of new combinations; not formal heldout/generalization evidence",
+  "goal_entry_distance_m": 29.0,
+  "initial_speed_mps": [
+    0.0,
+    2.5
+  ],
+  "initial_speed_semantics": "requested physical speed at first policy observation, committed by existing environment velocity warm-start/readback; not an ongoing target controller",
+  "legacy_r8a_12": "unchanged separate regression evaluation, excluded from this pool and its sampling",
+  "physical_template_count": 16,
+  "physical_template_groups": {
+    "bd1_eastbound_rolling_left_+04": [
+      "scenario_bd1_eastbound_rolling_m04_a0r.json",
+      "scenario_bd1_eastbound_rolling_p04_a0l.json"
+    ],
+    "bd1_eastbound_rolling_left_-04": [
+      "scenario_bd1_eastbound_rolling_m04_a0l.json",
+      "scenario_bd1_eastbound_rolling_p04_a0r.json"
+    ],
+    "bd1_eastbound_stationary_left_+04": [
+      "scenario_bd1_eastbound_stationary_m04_a0r.json",
+      "scenario_bd1_eastbound_stationary_p04_a0l.json"
+    ],
+    "bd1_eastbound_stationary_left_-04": [
+      "scenario_bd1_eastbound_stationary_m04_a0l.json",
+      "scenario_bd1_eastbound_stationary_p04_a0r.json"
+    ],
+    "bd1_northbound_rolling_left_+04": [
+      "scenario_bd1_northbound_rolling_m04_a0r.json",
+      "scenario_bd1_northbound_rolling_p04_a0l.json"
+    ],
+    "bd1_northbound_rolling_left_-04": [
+      "scenario_bd1_northbound_rolling_m04_a0l.json",
+      "scenario_bd1_northbound_rolling_p04_a0r.json"
+    ],
+    "bd1_northbound_stationary_left_+04": [
+      "scenario_bd1_northbound_stationary_m04_a0r.json",
+      "scenario_bd1_northbound_stationary_p04_a0l.json"
+    ],
+    "bd1_northbound_stationary_left_-04": [
+      "scenario_bd1_northbound_stationary_m04_a0l.json",
+      "scenario_bd1_northbound_stationary_p04_a0r.json"
+    ],
+    "bd1_southbound_rolling_left_+04": [
+      "scenario_bd1_southbound_rolling_m04_a0r.json",
+      "scenario_bd1_southbound_rolling_p04_a0l.json"
+    ],
+    "bd1_southbound_rolling_left_-04": [
+      "scenario_bd1_southbound_rolling_m04_a0l.json",
+      "scenario_bd1_southbound_rolling_p04_a0r.json"
+    ],
+    "bd1_southbound_stationary_left_+04": [
+      "scenario_bd1_southbound_stationary_m04_a0r.json",
+      "scenario_bd1_southbound_stationary_p04_a0l.json"
+    ],
+    "bd1_southbound_stationary_left_-04": [
+      "scenario_bd1_southbound_stationary_m04_a0l.json",
+      "scenario_bd1_southbound_stationary_p04_a0r.json"
+    ],
+    "bd1_westbound_rolling_left_+04": [
+      "scenario_bd1_westbound_rolling_m04_a0r.json",
+      "scenario_bd1_westbound_rolling_p04_a0l.json"
+    ],
+    "bd1_westbound_rolling_left_-04": [
+      "scenario_bd1_westbound_rolling_m04_a0l.json",
+      "scenario_bd1_westbound_rolling_p04_a0r.json"
+    ],
+    "bd1_westbound_stationary_left_+04": [
+      "scenario_bd1_westbound_stationary_m04_a0r.json",
+      "scenario_bd1_westbound_stationary_p04_a0l.json"
+    ],
+    "bd1_westbound_stationary_left_-04": [
+      "scenario_bd1_westbound_stationary_m04_a0l.json",
+      "scenario_bd1_westbound_stationary_p04_a0r.json"
+    ]
+  },
+  "pool_protocol": "town05_base_driving_matrix_v1",
+  "relative_longitudinal_deltas_m": [
+    -4,
+    4
+  ],
+  "route_length_m": 32.0,
+  "sampling": {
+    "actor_weights_are_not_swapped": true,
+    "complete_pairs_per_direction_per_update": 2,
+    "rollout_episodes": 16,
+    "support_phase": "safely_completed_update"
+  },
+  "sampling_protocol": "town05_base_driving_complete_pairs_v1",
+  "scenario_count": 32,
+  "scenario_sha256": {
+    "scenario_bd1_eastbound_rolling_m04_a0l.json": "f4e00cd65f2ffa5ca3ca56016712bcfe269fdfd61c014ad9387c72c7e681eee4",
+    "scenario_bd1_eastbound_rolling_m04_a0r.json": "23f1439c4f58b13a1a991a50a832a4669919eaa61740c4f2499749ec9f1f72be",
+    "scenario_bd1_eastbound_rolling_p04_a0l.json": "89baf223db5823b63207fe38e329c78b0841c269043d1f2313e47e6f0b7c35bd",
+    "scenario_bd1_eastbound_rolling_p04_a0r.json": "1446916c91efea124baa5c8c4239f892efb235bf101f9dd2008f2a9406fb3486",
+    "scenario_bd1_eastbound_stationary_m04_a0l.json": "a0f7d8525f074981b39e372b5008a2838132e3961ecc179e0b668a82e6a600e0",
+    "scenario_bd1_eastbound_stationary_m04_a0r.json": "0eaf9c0bb7cfd607886b5b8ec783ec00e837b6966f208254738d5665d33de550",
+    "scenario_bd1_eastbound_stationary_p04_a0l.json": "c9a24f07e3ef5a12ceeaa0bcba42200858a7366cfa5db38b3e0160d6332f8289",
+    "scenario_bd1_eastbound_stationary_p04_a0r.json": "e62a8bd1a0ec7d77ccb48e6aabca7b78691346f14ea5e4f7d2e83a0a41df8a37",
+    "scenario_bd1_northbound_rolling_m04_a0l.json": "253220f9373fca7e1377d66f145552842d4b75752f311cebc19c6e78f68df49b",
+    "scenario_bd1_northbound_rolling_m04_a0r.json": "093afed306fdc960c4afde6e53dc63770e6f0d3471afae32a4d44fb75c46e6ca",
+    "scenario_bd1_northbound_rolling_p04_a0l.json": "0c0d612430abcba5fa03b153ecea6bc86d8fb2da7a4b1008d1045dcc8cc7f7b3",
+    "scenario_bd1_northbound_rolling_p04_a0r.json": "10038bc55e01698a69180dc014dec27df8be6332afcbddc10e6e2eef76e1e33e",
+    "scenario_bd1_northbound_stationary_m04_a0l.json": "0cce1473e9c28f1ee4d3463c24e47f0ceae1028a8d2f46a4e09c32a026a59e45",
+    "scenario_bd1_northbound_stationary_m04_a0r.json": "36d1c059bd614a453cf990cf9ddad32984313904d2a959f439d3c0839fd62e95",
+    "scenario_bd1_northbound_stationary_p04_a0l.json": "3bf79a7d686bbf10bff35be31c8f7e2932ef6d36d460a7bbc4bb9d481aa38d3f",
+    "scenario_bd1_northbound_stationary_p04_a0r.json": "7b3802719c5ee606aa823123e4b62f1818f032a8be1e0abed8ac0cb484b6ca5d",
+    "scenario_bd1_southbound_rolling_m04_a0l.json": "66870154ae544e9845baf2b53d4facf6e191ed4355754275ed03aef60e536aa0",
+    "scenario_bd1_southbound_rolling_m04_a0r.json": "59caa78185fce83a6eb5cafb94d5dbd3f8ab98e2e0794850361f9353b14b49b1",
+    "scenario_bd1_southbound_rolling_p04_a0l.json": "b85c1b8a608abb2dae6e2461b96a4528f5e3958971e4b996f0a1d52da0547a96",
+    "scenario_bd1_southbound_rolling_p04_a0r.json": "77dcbec89c73f8f4c14670ebb7f5a4e2467e547d0f6d2a46e202fe3c129b0fb9",
+    "scenario_bd1_southbound_stationary_m04_a0l.json": "053f71bd6f5a122bca3884428cde0fa062ddfa7f3a18f8368a900e0d54228cb3",
+    "scenario_bd1_southbound_stationary_m04_a0r.json": "7e04be738bbfc8adb2aa2a611963c1d09426127f35fa9f033508cb06f8c3acb4",
+    "scenario_bd1_southbound_stationary_p04_a0l.json": "993abc27ce2913390a6a9a49b2076a4aa2561a22af6ece3a29cdb1dbdc1f7153",
+    "scenario_bd1_southbound_stationary_p04_a0r.json": "7a8e20f1df0063ab655f40a5fe45c8f325c55105f1b7c2d527a93e5856f1f22d",
+    "scenario_bd1_westbound_rolling_m04_a0l.json": "5ea2739b69bdce7a8666c39b54c1ccf8c0acb616071d501927016cfd50f2cf25",
+    "scenario_bd1_westbound_rolling_m04_a0r.json": "7b687e71542014db7cb3e26e1fbe6aaaa6577f59ea46ea10bc658208570418cb",
+    "scenario_bd1_westbound_rolling_p04_a0l.json": "e3d634d7451609d9d1556d80328dbd682a30bb2669e1392021d5f24c321e6646",
+    "scenario_bd1_westbound_rolling_p04_a0r.json": "2bdc707546f3063f69d22005587478ad2d00839bf18aee3ff4425c591d65b1cf",
+    "scenario_bd1_westbound_stationary_m04_a0l.json": "fae5caf3c8d8d114b11431b5ab1991f2f39c774264a12d58f90e1fd8a7f5464a",
+    "scenario_bd1_westbound_stationary_m04_a0r.json": "7438fafe779ef52cf89452cfb80352b5b72be05921be4372e54c5eb93fdadb1e",
+    "scenario_bd1_westbound_stationary_p04_a0l.json": "3538b3f3d92a5c7cef4ec6c96373964846a03d5119ff19db4de6292852101a6e",
+    "scenario_bd1_westbound_stationary_p04_a0r.json": "5fb6da98cb3693dc35b9d8734319327a95ceea50ff41b796ede036829e84f102"
+  },
+  "split": "validation",
+  "split_rule": "whole actor-swap physical-template groups; validation uses +/-4m offsets absent from training's 0/+/-8m",
+  "stage_support_sets": {
+    "0": [],
+    "1": [
+      "scenario_bd1_eastbound_rolling_m04_a0l.json",
+      "scenario_bd1_eastbound_rolling_m04_a0r.json",
+      "scenario_bd1_eastbound_rolling_p04_a0l.json",
+      "scenario_bd1_eastbound_rolling_p04_a0r.json",
+      "scenario_bd1_eastbound_stationary_m04_a0l.json",
+      "scenario_bd1_eastbound_stationary_m04_a0r.json",
+      "scenario_bd1_eastbound_stationary_p04_a0l.json",
+      "scenario_bd1_eastbound_stationary_p04_a0r.json",
+      "scenario_bd1_northbound_rolling_m04_a0l.json",
+      "scenario_bd1_northbound_rolling_m04_a0r.json",
+      "scenario_bd1_northbound_rolling_p04_a0l.json",
+      "scenario_bd1_northbound_rolling_p04_a0r.json",
+      "scenario_bd1_northbound_stationary_m04_a0l.json",
+      "scenario_bd1_northbound_stationary_m04_a0r.json",
+      "scenario_bd1_northbound_stationary_p04_a0l.json",
+      "scenario_bd1_northbound_stationary_p04_a0r.json",
+      "scenario_bd1_southbound_rolling_m04_a0l.json",
+      "scenario_bd1_southbound_rolling_m04_a0r.json",
+      "scenario_bd1_southbound_rolling_p04_a0l.json",
+      "scenario_bd1_southbound_rolling_p04_a0r.json",
+      "scenario_bd1_southbound_stationary_m04_a0l.json",
+      "scenario_bd1_southbound_stationary_m04_a0r.json",
+      "scenario_bd1_southbound_stationary_p04_a0l.json",
+      "scenario_bd1_southbound_stationary_p04_a0r.json",
+      "scenario_bd1_westbound_rolling_m04_a0l.json",
+      "scenario_bd1_westbound_rolling_m04_a0r.json",
+      "scenario_bd1_westbound_rolling_p04_a0l.json",
+      "scenario_bd1_westbound_rolling_p04_a0r.json",
+      "scenario_bd1_westbound_stationary_m04_a0l.json",
+      "scenario_bd1_westbound_stationary_m04_a0r.json",
+      "scenario_bd1_westbound_stationary_p04_a0l.json",
+      "scenario_bd1_westbound_stationary_p04_a0r.json"
+    ]
+  },
+  "validation_status": "OFFLINE_INVARIANTS_PASS_LIVE_CARLA_PREFLIGHT_PENDING"
+}

@@ -474,6 +474,12 @@ def checkpoint_protocol_versions(
             "curriculum": R8A_MASTERY_PROTOCOL_VERSION,
             "scenario_sampling": R8A_SAMPLING_PROTOCOL_VERSION,
         })
+    if str(curriculum_protocol) == "base_driving_vnext_v1":
+        from training.base_driving_scenarios_v1 import BASE_DRIVING_SAMPLING_PROTOCOL
+        from training.base_driving_curriculum import BASE_DRIVING_CURRICULUM_PROTOCOL_VERSION
+        versions.update({"base_driving": "base_driving_vnext_v1",
+                         "curriculum": BASE_DRIVING_CURRICULUM_PROTOCOL_VERSION,
+                         "scenario_sampling": BASE_DRIVING_SAMPLING_PROTOCOL})
     return versions
 
 
@@ -483,6 +489,11 @@ def checkpoint_training_config(args) -> Dict[str, object]:
     }
     if getattr(args, "pace_profile", "frozen_v6") != "frozen_v6":
         config["pace_profile"] = args.pace_profile
+    base_metadata = getattr(args, "_base_driving_metadata", None)
+    if base_metadata:
+        config.update({"base_driving_protocol": "base_driving_vnext_v1",
+                       "base_driving_reward_profile": base_metadata["record"]["reward_profile"],
+                       "base_driving_contract_sha256": base_metadata["record"]["contract_sha256"]})
     return config
 
 
@@ -511,6 +522,8 @@ def _argument_was_explicit(args, name: str) -> bool:
 
 def apply_resume_configuration(args, checkpoint: Dict[str, object]) -> None:
     """Restore frozen run configuration while rejecting explicit drift."""
+    from training.base_driving_contract import validate_resume_contract
+    validate_resume_contract(args, checkpoint)
     saved_config = checkpoint["training_config"]
     saved_profile = saved_config.get("pace_profile", "frozen_v6")
     if (_argument_was_explicit(args, "pace_profile")
@@ -618,9 +631,27 @@ def _load_pretrained_weights(
 
 def runtime_metadata_with_carla(env) -> Dict[str, object]:
     metadata = runtime_metadata()
+    if hasattr(env, "base_driving_reward_spec"):
+        metadata["base_driving_reward_protocol"] = dict(env.base_driving_reward_spec)
     if getattr(env, "pace_profile", "frozen_v6") != "frozen_v6":
-        from environment.route_pace_reward import route_pace_spec
-        metadata["pace_reward_protocol"] = route_pace_spec()
+        if env.pace_profile == "instant_pace_v6":
+            from environment.instant_pace_reward_v6 import instant_pace_spec
+            metadata["pace_reward_protocol"] = instant_pace_spec()
+        elif env.pace_profile == "instant_pace_v5":
+            from environment.instant_pace_reward_v5 import instant_pace_spec
+            metadata["pace_reward_protocol"] = instant_pace_spec()
+        elif env.pace_profile == "instant_pace_v4":
+            from environment.instant_pace_reward_v4 import instant_pace_spec
+            metadata["pace_reward_protocol"] = instant_pace_spec()
+        elif env.pace_profile == "instant_pace_v3":
+            from environment.instant_pace_reward_v3 import instant_pace_spec
+            metadata["pace_reward_protocol"] = instant_pace_spec()
+        elif env.pace_profile == "instant_pace_v2":
+            from environment.instant_pace_reward import instant_pace_spec
+            metadata["pace_reward_protocol"] = instant_pace_spec()
+        else:
+            from environment.route_pace_reward import route_pace_spec
+            metadata["pace_reward_protocol"] = route_pace_spec()
     metadata["environment_reward_gamma"] = float(env.reward_gamma)
     metadata["offroad_protocol"] = (
         r6_offroad_protocol_spec()
@@ -2988,7 +3019,13 @@ def training_source_paths(project_dir):
         project_dir / "environment" / "base_reward_v5.py",
         project_dir / "environment" / "base_reward_v6.py",
         project_dir / "environment" / "route_pace_reward.py",
+        project_dir / "environment" / "instant_pace_reward.py",
+        project_dir / "environment" / "instant_pace_reward_v3.py",
+        project_dir / "environment" / "instant_pace_reward_v4.py",
+        project_dir / "environment" / "instant_pace_reward_v5.py",
+        project_dir / "environment" / "instant_pace_reward_v6.py",
         project_dir / "training" / "reward_fork.py",
+        project_dir / "training" / "reward_fork_v2.py",
         project_dir / "environment" / "road_legality_protocol.py",
     ]
 
@@ -3070,6 +3107,10 @@ def train(args):
 def _train(args):
     project_dir = Path(__file__).resolve().parents[1]
     repository_root = Path(__file__).resolve().parents[4]
+    from training.base_driving_contract import configure as configure_base_driving
+    base_metadata = configure_base_driving(args, project_dir)
+    if base_metadata and not getattr(args, "_base_driving_clock_owned", False):
+        raise ValueError("use python -m utils.base_driving_session run: exclusive clock ownership is required")
     if getattr(args, "pace_profile", "frozen_v6") != "frozen_v6":
         if args.experiment_contract or args.reward_version != "v6":
             raise ValueError("new pace profile requires v6 and a new run outside frozen experiment contracts")
@@ -3145,6 +3186,9 @@ def _train(args):
     save_dir = os.path.abspath(args.save_dir)
     current_git = get_git_metadata(repository_root)
     fingerprint_paths = training_source_paths(project_dir)
+    if base_metadata:
+        from training.base_driving_contract import source_paths as base_source_paths
+        fingerprint_paths.extend(base_source_paths(project_dir, base_metadata))
     experiment_contract_metadata = getattr(
         args, "_experiment_contract_metadata", None
     )
@@ -3320,7 +3364,11 @@ def _train(args):
         maximum_team_road_violation_rate=(
             0.10 if args.reward_version in {"v5", "v6"} else None
         ),
-    )
+    ) if not base_metadata else None
+    if base_metadata:
+        from training.base_driving_runtime import load_adapter
+        curriculum = load_adapter(scenario_dir,
+            config=base_metadata["payload"].get("curriculum_config", {}))
 
     # R6 adds the observable remaining-time fraction; historical rewards keep
     # their exact 19-dimensional observation contract.
@@ -3495,11 +3543,15 @@ def _train(args):
         print(f"Web 训练监控已启动: {web_monitor.url}")
 
     def _create_validated_env():
-        created_env = CarlaMultiAgentEnv(
-            **build_training_environment_kwargs(
-                args, num_agents=len(agent_ids)
-            )
-        )
+        environment_type = CarlaMultiAgentEnv
+        environment_kwargs = build_training_environment_kwargs(args, num_agents=len(agent_ids))
+        if base_metadata:
+            from utils.preflight_base_driving_scenarios_v1 import require_geometry_preflight
+            require_geometry_preflight(scenario_dir, args.base_driving_geometry_report)
+            from environment.base_driving_env import BaseDrivingEnv
+            environment_type = BaseDrivingEnv
+            environment_kwargs["base_driving_reward_profile"] = base_metadata["record"]["reward_profile"]
+        created_env = environment_type(**environment_kwargs)
         try:
             validate_environment_reward_discount(created_env, args)
             actual_state_dim = int(created_env.get_global_state().shape[0])
@@ -3605,6 +3657,10 @@ def _train(args):
                 raise CheckpointProtocolError(
                     f"mastery curriculum state mismatch: {error}"
                 ) from error
+        if base_metadata:
+            curriculum.load_state_dict(resume_checkpoint.get("base_driving_state"),
+                                       expected_completed_update=completed_update)
+            curriculum.validate_checkpoint_histories(saved_curriculum)
         if start_update > args.updates:
             raise CheckpointProtocolError(
                 f"checkpoint completed update={completed_update}, but "
@@ -3875,6 +3931,9 @@ def _train(args):
             "args": _serializable_args(),
             "model_spec": model_spec,
             "training_config": training_config,
+            **({"base_driving_contract": base_metadata["record"],
+                "base_driving_state": curriculum.state_dict(completed_update=completed_update)}
+               if base_metadata else {}),
             "lr_schedule": {
                 "enabled": bool(args.lr_decay),
                 "decay_horizon": lr_decay_horizon,
@@ -3902,10 +3961,10 @@ def _train(args):
                     "scenario_sampling_mode": args.scenario_sampling_mode,
                 },
                 "curriculum_protocol_version": (
-                    curriculum.mastery_gate.state_dict()[
+                    curriculum.base_gate.state_dict()["curriculum_protocol_version"] if base_metadata else curriculum.mastery_gate.state_dict()[
                         "curriculum_protocol_version"
                     ]
-                    if curriculum.mastery_gate is not None
+                    if base_metadata or curriculum.mastery_gate is not None
                     else "update_schedule_v1"
                 ),
                 "stages": curriculum.curriculum_stages,
@@ -3927,7 +3986,8 @@ def _train(args):
                     if curriculum.mastery_gate is not None else None
                 ),
                 "sampler_state": (
-                    r8a_sampler_state(completed_update)
+                    curriculum.sampler_state_dict(completed_update=completed_update) if base_metadata
+                    else r8a_sampler_state(completed_update)
                     if args.curriculum_protocol == "r8a_mastery_v1"
                     else None
                 ),
@@ -4050,7 +4110,11 @@ def _train(args):
             sample_counts = None
             coverage_counts = None
             soft_weights = None
-            if args.scenario_sampling_mode == "r8a_balanced":
+            if base_metadata:
+                weighted_scenarios = list(available_scenarios)
+                sampled_scenarios = curriculum.sample_scenarios(args.rollout_episodes, phase=update - 1)
+                sampling_priorities = {}
+            elif args.scenario_sampling_mode == "r8a_balanced":
                 weighted_scenarios = list(available_scenarios)
                 sampled_scenarios = sample_r8a_balanced(
                     weighted_scenarios,
@@ -4079,7 +4143,7 @@ def _train(args):
             else:
                 weighted_scenarios = available_scenarios
 
-            if args.scenario_sampling_mode != "r8a_balanced":
+            if not base_metadata and args.scenario_sampling_mode != "r8a_balanced":
                 sampled_scenarios = sample_scenarios_stratified(
                     available_scenarios=weighted_scenarios,
                     n_episodes=args.rollout_episodes,
@@ -4110,6 +4174,7 @@ def _train(args):
 
             # ── 收集 rollout 数据 ──
             rollout_started_at = time.perf_counter()
+            base_episodes = []
             mastery_speed_sums = {aid: 0.0 for aid in agent_ids}
             mastery_active_counts = {aid: 0 for aid in agent_ids}
             mastery_brake_mode_sums = {aid: 0.0 for aid in agent_ids}
@@ -4173,6 +4238,9 @@ def _train(args):
 
                 episode_rewards = {aid: 0.0 for aid in agent_ids}
                 episode_last_completion = {aid: 0.0 for aid in agent_ids}
+                base_episode = {aid: {"speed_sum": 0.0, "steps": 0,
+                                     "brake_sum": 0.0, "controls_readable": 0}
+                                for aid in agent_ids}
                 active_decision_steps = {aid: 0 for aid in agent_ids}
                 episode_buffer_starts = {
                     aid: len(buffer.get_agent_data(aid)) for aid in agent_ids
@@ -4214,6 +4282,17 @@ def _train(args):
                     step_reward_diagnostics = (
                         info.get("reward_diagnostics", {}) or {}
                     )
+                    if base_metadata:
+                        for aid in step_cache:
+                            diagnostic = step_reward_diagnostics[aid]
+                            base_episode[aid]["speed_sum"] += float(diagnostic["speed_mps"])
+                            base_episode[aid]["steps"] += 1
+                            episode_last_completion[aid] = float(diagnostic["route_completion"])
+                            vehicle = env.vehicles[aid]
+                            if vehicle is not None and vehicle.is_alive:
+                                control = vehicle.get_control()
+                                base_episode[aid]["controls_readable"] += 1
+                                base_episode[aid]["brake_sum"] += float(control.brake > 0.01 and control.throttle <= 0.01)
                     if curriculum.mastery_gate is not None:
                         for aid in step_cache:
                             diagnostics = step_reward_diagnostics.get(aid, {})
@@ -4493,6 +4572,18 @@ def _train(args):
                 )
 
                 curriculum.record_scenario_result(scenario_name, ep_success)
+                if base_metadata:
+                    base_episodes.append({"scenario_name": scenario_name,
+                        "success": ep_success, "collision": ep_collision,
+                        "timeout": ep_timeout, "offroad": ep_offroad,
+                        "road_violation": ep_road_violation,
+                        "agent_metrics": {aid: {
+                            "mean_speed_mps": base_episode[aid]["speed_sum"] / max(1, base_episode[aid]["steps"]),
+                            "completion": episode_last_completion[aid],
+                            "brake_mode_rate": base_episode[aid]["brake_sum"] / max(1, base_episode[aid]["controls_readable"]),
+                            "active_decision_steps": base_episode[aid]["steps"],
+                            "brake_observation_steps": base_episode[aid]["controls_readable"],
+                        } for aid in agent_ids}})
 
                 if (
                     args.p0_smoke_interrupt_after_episodes > 0
@@ -4838,6 +4929,21 @@ def _train(args):
 
             # 先冻结本 update 指标并写入 checkpoint，再写 TensorBoard/JSONL。
             # 若在两个动作之间中断，resume 会从 checkpoint 重放同一指标 payload。
+            if base_metadata:
+                base_evidence = curriculum.observe_update(update, base_episodes)
+                metrics_recorder.record_audit("base_driving_curriculum", base_evidence)
+                metrics_recorder.record_scalars({
+                    "curriculum/stage_index": curriculum.base_gate.stage_index,
+                    "curriculum/mastery_passed": float(base_evidence["passed"]),
+                    "curriculum/mastery_promoted": float(base_evidence["promoted"]),
+                    "curriculum/base_window_closed": float(base_evidence["window_closed"]),
+                    "curriculum/base_review_required": float(curriculum.base_gate.review_required),
+                    **{f"curriculum/agent_{aid}/mean_speed_mps": float(np.mean([
+                        row["agent_metrics"][aid]["mean_speed_mps"] for row in base_episodes])) for aid in agent_ids},
+                    **{f"diagnostic/agent_{aid}/missing_actual_control_steps": float(sum(
+                        row["agent_metrics"][aid]["active_decision_steps"] - row["agent_metrics"][aid]["brake_observation_steps"]
+                        for row in base_episodes)) for aid in agent_ids},
+                })
             metrics_payload = metrics_recorder.finalize_update(update)
             completed_update = update
             last_metrics_payload = copy.deepcopy(metrics_payload)
@@ -5073,7 +5179,7 @@ def build_parser():
         ),
     )
     parser.add_argument("--scenario-sampling-mode", type=str, default="weighted",
-                        choices=["random", "stratified", "weighted", "r8a_balanced"],
+                        choices=["random", "stratified", "weighted", "r8a_balanced", "base_driving_paired_v1"],
                         help=("场景采样模式: random=随机, stratified=分层轮询, "
                               "weighted=分层+失败率加权, "
                               "r8a_balanced=R8-A确定性精确平衡"))
@@ -5092,7 +5198,7 @@ def build_parser():
         "--curriculum-protocol",
         type=str,
         default="update_schedule_v1",
-        choices=["update_schedule_v1", "mastery_v2", "r8a_mastery_v1"],
+        choices=["update_schedule_v1", "mastery_v2", "r8a_mastery_v1", "base_driving_vnext_v1"],
         help=("课程推进协议；P0-T05-09/R6 使用 mastery_v2；"
               "R8-A 使用 r8a_mastery_v1"),
     )
@@ -5199,7 +5305,7 @@ def build_parser():
         ),
     )
 
-    parser.add_argument("--pace-profile", choices=["frozen_v6", "route_pace_v1"],
+    parser.add_argument("--pace-profile", choices=["frozen_v6", "route_pace_v1", "instant_pace_v2", "instant_pace_v3", "instant_pace_v4", "instant_pace_v5", "instant_pace_v6"],
                         default="frozen_v6", help="v6 pace intervention; new run only, immutable on resume")
     parser.add_argument("--save-dir", type=str, default="./logs/mappo_robust_v2")
     parser.add_argument("--save-interval", type=int, default=5)
@@ -5222,6 +5328,10 @@ def build_parser():
         ),
     )
 
+    parser.add_argument("--base-driving-contract", default="",
+                        help="Explicit independent base-driving experiment contract; immutable on resume")
+    parser.add_argument("--base-driving-geometry-report", default="",
+                        help="Verified map-only geometry report; not driving qualification")
     return parser
 
 

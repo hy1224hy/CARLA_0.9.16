@@ -304,7 +304,7 @@ class TrainingMetricsRecorder:
         if pace_profile != "frozen_v6":
             from environment.route_pace_reward import PROFILE, route_pace_spec
             from environment.base_reward_v5 import reward_v5_spec
-            if pace_profile != PROFILE or self.reward_version != "v6":
+            if pace_profile not in {PROFILE, "instant_pace_v2", "instant_pace_v3", "instant_pace_v4", "instant_pace_v5", "instant_pace_v6"} or self.reward_version != "v6":
                 raise MetricsProtocolError("invalid pace profile for recorder")
             schema["pace_profile"] = pace_profile
             schema["reward_protocol"] = {
@@ -314,6 +314,41 @@ class TrainingMetricsRecorder:
             schema["reward_diagnostics"]["pace_deficit_raw"]["value_semantics"] = (
                 "own-route lag beyond deadzone in metres"
             )
+            if pace_profile in {"instant_pace_v2", "instant_pace_v3", "instant_pace_v4", "instant_pace_v5", "instant_pace_v6"}:
+                if pace_profile == "instant_pace_v6":
+                    from environment.instant_pace_reward_v6 import instant_pace_spec
+                elif pace_profile == "instant_pace_v5":
+                    from environment.instant_pace_reward_v5 import instant_pace_spec
+                elif pace_profile == "instant_pace_v4":
+                    from environment.instant_pace_reward_v4 import instant_pace_spec
+                elif pace_profile == "instant_pace_v3":
+                    from environment.instant_pace_reward_v3 import instant_pace_spec
+                else:
+                    from environment.instant_pace_reward import instant_pace_spec
+                schema["reward_protocol"]["pace_intervention"] = instant_pace_spec()
+                schema["reward_protocol"]["replaced_base_components"] = ["free_flow_pace_deficit", "overspeed"]
+                schema["reward_diagnostics"]["pace_deficit_raw"]["value_semantics"] = (
+                    "instantaneous forward-speed deficit in m/s; no accumulated route debt"
+                )
+                schema["reward_diagnostics"]["overspeed_risk"]["value_semantics"] = (
+                    "squared normalized speed excess; nonnegative, not clipped to [0,1]"
+                )
+                if pace_profile in {"instant_pace_v5", "instant_pace_v6"}:
+                    schema["reward_protocol"]["replaced_base_components"].append("lane_deviation")
+                    schema["reward_diagnostics"]["lane_deviation_risk"]["value_semantics"] = (
+                        "unclipped reference-lane u+u^2, before exemption; nonnegative"
+                    )
+                    schema["reward_diagnostics"]["lane_deviation_exempted"]["value_semantics"] = (
+                        "effective exemption; confirmed non-junction violation/opposing lane lifts grace"
+                    )
+                if pace_profile == "instant_pace_v6":
+                    schema["reward_protocol"]["replaced_base_components"].append("steer_rate")
+                    schema["reward_diagnostics"]["lane_deviation_risk"]["value_semantics"] = (
+                        "unclipped reference-lane u+u^2 plus squared center distance/scale, before exemption"
+                    )
+                    schema["reward_diagnostics"]["steer_rate_normalized"]["value_semantics"] = (
+                        "unclipped squared normalized steer command rate; nonnegative and may exceed 1"
+                    )
         if critic_protocol is not None:
             schema["critic_protocol"] = dict(critic_protocol)
         schema.update(
