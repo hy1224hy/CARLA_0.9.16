@@ -99,3 +99,47 @@ ssh -NT -F "C:\Users\hy\.sshconfig" `
 ```
 
 打开 <http://127.0.0.1:18080/>；健康检查是 <http://127.0.0.1:18080/healthz>。本地 18080 映射服务器 8080，不要将服务器监控监听地址改成自己的 Windows 地址。
+
+
+## 使用脚本启动（screen）
+
+脚本 `scripts/run_server_startup_v1.sh` 适用于 Linux 服务器。在更新后的 `PythonAPI/examples/mappo_training` 目录执行：
+
+```bash
+# screen 未安装时先执行：apt-get update && apt-get install -y screen
+conda activate carla-mappo
+bash scripts/run_server_startup_v1.sh all
+```
+
+`all` 启动或复用 CARLA，并在独立 screen 中建立全新的 startup_v1 训练；默认总预算 50 updates，25/50 两个冻结评估里程碑。终端打印的 DISPATCHED 只代表已派发，真正启动和预检结果以日志为准。训练屏幕名 `mappo-startup-v1`，CARLA 屏幕名 `carla-server`。
+
+```bash
+# CARLA 已运行时，只派发训练；这会创建另一个全新 run。
+bash scripts/run_server_startup_v1.sh train
+
+# 查看训练 / CARLA；离开 screen 使用 Ctrl+A，松开再按 D。
+screen -r mappo-startup-v1
+screen -r carla-server
+
+# 使用启动时打印的实际 RUN_ID；以下不会创建新实验。
+bash scripts/run_server_startup_v1.sh status BD_STARTUP_V1_s42_实际时间
+
+# 程序异常退出后：先修复/重启 CARLA，再显式恢复原计划。
+# SSH 断开而 screen 仍在时，直接重新连接 screen，勿执行恢复。
+bash scripts/run_server_startup_v1.sh resume BD_STARTUP_V1_s42_实际时间
+```
+
+如果环境名是 myconda 或 CARLA 安装目录不同，在首次启动时设置：
+
+```bash
+CONDA_ENV=myconda CARLA_ROOT=/opt/carla/CARLA_0.9.16 \
+  bash scripts/run_server_startup_v1.sh all
+```
+
+Conda、Python 依赖和 screen 需提前安装；脚本不会自动安装软件。默认 CARLA 用户为 carla，默认以 root 通过 runuser 启动，也允许 carla 用户自行运行。CARLA 用 Low 画质离屏渲染。脚本不会杀死旧进程，端口已占用时不重复启动；训练入口等待 CARLA 就绪后，在共享时钟锁下检查版本和地图，必要时加载 Town05。同步世界或其他时钟拥有者会导致拒绝启动，须先核查现有任务。
+
+启动日志为 `diagnostics/server_startup_v1/RUN_ID/launcher.log`，CARLA 日志为 `logs/server_launcher/carla.log`。首次运行的环境信息保存在该 run 的 `launcher.env`，status/resume 会复用；不支持通过改环境变量切换同一计划的奖励、预算或监控端口。训练源码仍受计划 SHA 检查，计划建立后不要拉取新代码再直接续训。
+
+此脚本仅包装服务器上的进程和训练流程。本地 Windows 的 SSH 监控隧道仍按本文“本地浏览器”部分建立。阶段间冻结评估仍保留上一训练画面，不推送实时评估视频。screen 保护终端断连，不能保护服务器重启或模拟器崩溃。
+
+脚本通过 Bash 语法与 9 项模拟系统命令的离线检查；这些检查未启动真实 screen、CARLA 或训练。真实服务器首次启动结果以 launcher.log 为准。
