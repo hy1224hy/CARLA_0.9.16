@@ -143,3 +143,21 @@ Conda、Python 依赖和 screen 需提前安装；脚本不会自动安装软件
 此脚本仅包装服务器上的进程和训练流程。本地 Windows 的 SSH 监控隧道仍按本文“本地浏览器”部分建立。阶段间冻结评估仍保留上一训练画面，不推送实时评估视频。screen 保护终端断连，不能保护服务器重启或模拟器崩溃。
 
 脚本通过 Bash 语法与 9 项模拟系统命令的离线检查；这些检查未启动真实 screen、CARLA 或训练。真实服务器首次启动结果以 launcher.log 为准。
+
+
+## Linux 场景池预检：pool differs 修复
+
+`ValueError: pool differs from the frozen generated base-driving matrix` 可能由 v1 源场景的 provenance 哈希跨平台不一致引起。冻结场景在 Windows 下生成，记录源文件 CRLF 原始字节 SHA；Linux 的 Git 检出使用 LF。旧生成器重新计算 LF 文件 SHA 后，80 个场景只有 `geometry_provenance.source_sha256` 不同，生成矩阵严格比较失败。已使用 Git 中的 LF 文件离线复现。
+
+修复只将 v1 源哈希按冻结协议统一为 CRLF 编码后计算；保留现有 80 个场景、manifest、奖励和训练参数。不是忽略来源哈希：其他字节的更改仍导致哈希不同，场景漂移仍拒绝。项目 .gitattributes 同时固定两个冻结池为 LF，避免 Windows checkout 改写场景字节导致 manifest 失败。
+
+更新后先验证：
+
+```bash
+python -m utils.build_base_driving_scenarios_v1 --check
+python -m unittest tests.test_base_driving_source_portability tests.test_base_driving_scenarios_v1 tests.test_base_driving_preflight_v1
+```
+
+这两步不连接 CARLA。13 项相关检查覆盖 LF/CRLF 源、80 个冻结场景及严格拒绝真实内容漂移。
+
+如果尚未开始 PPO，旧控制计划已在 prepare 时绑定旧生成器源码。请保留失败目录，更新后用全新 RUN_ID 重新执行 live 预检和 prepare，再 run；不要直接沿用旧 PLAN，也不要手改 source_sha256、关闭检查或重新生成并覆盖冻结场景池。已有有效 checkpoint 的实验不能直接换源码严格续训，需单独评估迁移方式。

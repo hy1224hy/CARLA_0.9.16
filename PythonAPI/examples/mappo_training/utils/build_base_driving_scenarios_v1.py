@@ -36,6 +36,18 @@ def _serialize(payload: object) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
 
 
+def frozen_source_sha256(path: Path) -> str:
+    """Keep the v1 source identity independent of Git's checkout line endings.
+
+    The frozen v1 pools recorded Windows CRLF source hashes. Preserve that
+    exact identity on Linux as well: normalize only LF/CRLF line endings to
+    CRLF before hashing. All other bytes remain significant. Generated pool
+    artifacts themselves stay LF and retain their existing manifest hashes.
+    """
+    content = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+    return hashlib.sha256(content).hexdigest()
+
+
 def _signed(value: int) -> str:
     return "z00" if not value else f"{'p' if value > 0 else 'm'}{abs(value):02d}"
 
@@ -116,7 +128,7 @@ def _scenario(direction: str, startup: str, delta: int, a0_left: bool, *, split:
         "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT",
         "geometry_provenance": {
             "source": source_path.relative_to(PROJECT_DIR).as_posix(),
-            "source_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
+            "source_sha256": frozen_source_sha256(source_path),
             "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
             "source_start_advance_m": SOURCE_START_ADVANCE_M,
             "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
