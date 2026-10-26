@@ -18,6 +18,23 @@ def arguments(run):
 
 
 class SessionTests(unittest.TestCase):
+    def test_monitor_options_reach_supervisor_and_training_child(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = arguments(directory)
+            args.monitor_mode, args.monitor_port = "web", 18081
+            args.monitor_fps = 3.0
+            with patch("utils.mut_mappo_session.subprocess.Popen") as child, patch("builtins.print"):
+                child.return_value.pid = 456789
+                child.return_value.poll.return_value = 0
+                child.return_value.returncode = 0
+                dispatched = launch(args)
+                self.assertEqual(supervise(args), 0)
+            commands = [dispatched["command"], child.call_args_list[1].args[0]]
+            for command in commands:
+                for flag, value in (("--monitor-mode", "web"), ("--monitor-port", "18081"),
+                                    ("--monitor-fps", "3.0")):
+                    self.assertEqual(command[command.index(flag)+1], value)
+
     def test_lock_rejects_second_owner_and_releases(self):
         with tempfile.TemporaryDirectory() as directory:
             with RunSessionOwner(directory):

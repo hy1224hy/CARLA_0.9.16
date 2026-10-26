@@ -1,5 +1,6 @@
 """Cross-branch CARLA ownership, detached launch, and file-only progress inspection."""
 from __future__ import annotations
+from visualization.mut_mappo_monitor import add_monitor_arguments, monitor_cli_arguments
 
 import argparse
 from datetime import datetime, timezone
@@ -249,6 +250,7 @@ def _supervise_owned(args):
         command.append("--resume")
     if args.rounds is not None:
         command += ["--stop-round", str(args.rounds)]
+    command += monitor_cli_arguments(args)
     stamp = _unique_stamp()
     log = session / f"training_{stamp}.log"
     with log.open("x", encoding="utf-8") as output:
@@ -294,6 +296,7 @@ def launch(args):
         command.append("--resume")
     if args.rounds is not None:
         command += ["--rounds", str(args.rounds)]
+    command += monitor_cli_arguments(args)
     kwargs = {"cwd": str(ROOT), "stdin": subprocess.DEVNULL,
               "stderr": subprocess.STDOUT,
               "env": dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")}
@@ -323,6 +326,7 @@ def main():
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--rounds", type=int)
     parser.add_argument("--supervisor-log", help=argparse.SUPPRESS)
+    add_monitor_arguments(parser)
     args = parser.parse_args()
     if args.mode == "inspect":
         print(json.dumps(inspect_files(args.run_dir), ensure_ascii=False, indent=2))

@@ -81,7 +81,7 @@ class _LatestFrameStore:
                 frame_submitted_at=frame.submitted_at,
                 frame_scene_generation=frame.generation, dropped_frames=dropped,
             )
-            for key in ("run_id", "update", "episode", "step", "scenario"):
+            for key in ("run_id", "update", "episode", "step", "scenario", "round", "team", "condition", "operation", "monitor_kind"):
                 self._status["frame_" + key] = frame.status.get(key)
             self._status["camera_frame"] = frame.status.get("camera_frame")
             self._condition.notify_all()

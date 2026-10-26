@@ -392,19 +392,21 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#111827;padding:12px;
 <img id="camera" alt="等待 CARLA 摄像头画面"><div class="meta" id="frame"></div>
 <section id="result-section" hidden><h2>最终结果</h2><pre id="result"></pre></section>
 <details><summary>完整监控状态</summary><pre id="status"></pre></details></main><script>
-const labels={starting:'启动中',resetting:'切换场景',rollout:'采样行驶中',running:'采样行驶中',optimizing:'正在更新模型',saving:'正在保存 checkpoint',finalizing:'正在整理结果',completed:'训练已完成',interrupted:'训练已中断',error:'训练异常退出'};
+const labels={starting:'启动中',resetting:'切换场景',rollout:'采样行驶中',running:'采样行驶中',optimizing:'正在更新模型',evaluating:'独立评估中',validating:'教师门控评估中',saving:'正在保存 checkpoint',finalizing:'正在整理结果',completed:'训练已完成',interrupted:'训练已中断',error:'训练异常退出'};
 let imageKey='';let failures=0;const clientId=Math.random().toString(36).slice(2)+Date.now().toString(36);
 document.querySelector('#camera').onerror=()=>{imageKey=''};
 async function poll(){try{let r=await fetch('/status.json?client='+encodeURIComponent(clientId),{cache:'no-store'});if(!r.ok)throw Error(r.status);let s=await r.json();failures=0;
-document.querySelector('#phase').textContent=labels[s.phase]||s.phase||'启动中';document.querySelector('#run').textContent=s.run_id||'';
-document.querySelector('#progress').textContent='Update '+(s.update??'—')+' / Episode '+(s.episode??'—')+' / Step '+(s.step??'—')+' / 场景 '+(s.scenario??'—');
+document.querySelector('#phase').textContent=(s.phase==='completed'&&s.purpose==='evaluation')?'评估已结束':(labels[s.phase]||s.phase||'启动中');document.querySelector('#run').textContent=s.run_id||'';
+let progress=s.monitor_kind==='mut_mappo'?'轮次 '+(s.round??'—')+' / 蓝团队 '+(s.team??'—')+' / 条件 '+(s.condition??'—')+' / 红方源 u'+(s.red_source_update??'—'):'Update '+(s.update??'—');
+document.querySelector('#progress').textContent=progress+' / Episode '+(s.episode??'—')+' / Step '+(s.step??'—')+' / 场景 '+(s.scenario??'—');
 let messages=[];if(s.message)messages.push(s.message);if(s.connection_state==='stale')messages.push('训练进程心跳失联，当前保留最后已知画面与状态');
 if(s.frame_is_previous_episode)messages.push('当前仍为上一回合画面，等待新场景第一帧');else if(!s.sequence)messages.push('等待摄像头第一帧');
 if(s.phase==='optimizing'||s.phase==='saving'||s.phase==='finalizing')messages.push('此阶段仿真暂停，保留最后一帧');
 if(s.monitor_error)messages.push('监控错误：'+s.monitor_error);if(s.connection_state==='finished')messages.push('结果已保留；新训练开始后页面会自动更新');
 let note=document.querySelector('#note');note.textContent=messages.join(' · ')||'俯视摄像头持续跟随训练车辆';note.className='note'+(s.connection_state==='stale'||s.monitor_error?' warning':'');
 let session=s.session_id||s.producer_token||'default';let finished=['completed','interrupted','error'].includes(s.phase);let key=session+(finished?':final':':stream');if(s.sequence&&key!==imageKey){document.querySelector('#camera').src=(finished?'/latest.jpg?session=':'/stream.mjpg?session=')+encodeURIComponent(session);imageKey=key;}
-document.querySelector('#frame').textContent=s.sequence?'画面所属：Update '+(s.frame_update??'—')+' / Episode '+(s.frame_episode??'—')+' / Step '+(s.frame_step??'—')+' / '+(s.frame_scenario??'—')+' · 画面距今 '+(s.frame_age_seconds??0)+' 秒':'';
+let frameProgress=s.frame_monitor_kind==='mut_mappo'?'轮次 '+(s.frame_round??'—')+' / 蓝团队 '+(s.frame_team??'—')+' / 条件 '+(s.frame_condition??'—'):'Update '+(s.frame_update??'—');
+document.querySelector('#frame').textContent=s.sequence?'画面所属：'+frameProgress+' / Episode '+(s.frame_episode??'—')+' / Step '+(s.frame_step??'—')+' / '+(s.frame_scenario??'—')+' · 画面距今 '+(s.frame_age_seconds??0)+' 秒':'';
 document.querySelector('#result-section').hidden=!s.result;document.querySelector('#result').textContent=JSON.stringify(s.result||{},null,2);document.querySelector('#status').textContent=JSON.stringify(s,null,2);
 }catch(e){failures++;imageKey='';let note=document.querySelector('#note');note.className='note warning';note.textContent='监控服务连接中断，保留最后画面；正在自动重连（'+failures+'）';}setTimeout(poll,1000)}poll();
 </script></body></html>"""

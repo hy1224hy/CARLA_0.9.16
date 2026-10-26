@@ -27,6 +27,7 @@ from training.mut_mappo_checkpoint import CheckpointStore, SCHEMA_VERSION, _vali
 from training.train_no_rllib_mappo_robust_v2 import (RolloutBuffer, build_active_step_cache,
     refresh_observations_after_active_change, validate_active_mask, write_active_transitions)
 from utils.mut_mappo_session import CarlaOwner, last_json_record
+from visualization.mut_mappo_monitor import MutMAPPOMonitor, add_monitor_arguments, options_from_args
 
 
 def now():
@@ -103,7 +104,12 @@ class Runtime:
         return run_case(self, case, seed=seed, deterministic=deterministic, trace_path=trace_path)
 
     def close(self):
-        self.env.close()
+        try:
+            monitor = getattr(self, "monitor", None)
+            if monitor is not None:
+                monitor.detach()
+        finally:
+            self.env.close()
 
 
 def create_runtime(config, checkpoint=None, condition="C2", team="A", audit_callback=None):
@@ -178,7 +184,12 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
         case["seed"] = int(seed)
     env = runtime.env
     ticks_before = dict(getattr(env, "_world_tick_counts", {}))
+    monitor = getattr(runtime, "monitor", None)
+    if monitor is not None:
+        monitor.begin(runtime, case)
     obs, info = env.reset_case(case)
+    if monitor is not None:
+        monitor.ready()
     # Reset evidence is not repeated by every step and may be mutated during
     # actor cleanup. Preserve it before the first control, including the exact
     # realized initial state used for paired C0/C1/C2 comparisons.
@@ -222,7 +233,11 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
             blue_mask = {aid: active[aid] for aid in (2, 3)}
             blue_controls, cache = learner.sample(obs, env.get_global_state(), blue_mask)
             controls.update(blue_controls)
+        if monitor is not None:
+            monitor.before_step(env)
         next_obs, rewards, dones, info = env.step(controls)
+        if monitor is not None:
+            monitor.after_step(env, step + 1, rewards, info)
         for aid, control in controls.items():
             control_counts[aid] += 1
             brake_counts[aid] += int(control[2] > 0.01 and control[0] <= 0.01)
@@ -309,6 +324,10 @@ def refresh_peers(runtime, teams, gate, config, completed_round, ledger, run_dir
     snapshots = {name: team.snapshot(version) for name, team in teams.items()}
     stats = {name: {} for name in teams}
     ledger.phase = "validation"
+    monitor = getattr(runtime, "monitor", None)
+    if monitor is not None:
+        monitor.context(operation="gate", round=completed_round)
+        monitor.phase("validating", "正在评估互学习教师与选择性门控")
     try:
         for name, team in teams.items():
             runtime.team, runtime.blue_actors = name, team.frozen_actors()
@@ -330,6 +349,8 @@ def refresh_peers(runtime, teams, gate, config, completed_round, ledger, run_dir
         return snapshots
     finally:
         ledger.phase = "train"
+        if monitor is not None:
+            monitor.context(operation="train")
 
 
 def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_runtime):
@@ -374,8 +395,12 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
     segment = uuid.uuid4().hex
     status_path = run_dir / "session/status.json"
     status = {"started_at": now(), "segment_id": segment, "status": "STARTING", "method": config["method"]}
+    monitor = MutMAPPOMonitor(config, run_dir, planned_rounds=None if tick_stopping else stop)
+    terminal, monitor_result = "error", {}
     try:
+        monitor.start()
         runtime = env_factory(config, audit_callback=ledger.tick)
+        runtime.monitor = monitor
         train_cases = cases_for(config, "train")
         family_map = {case["case_key"]: case["family"] for case in train_cases}
         teachers = payload["teachers"]
@@ -383,10 +408,13 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
             if ledger.counts["train"] >= config["run"]["train_tick_budget"]:
                 break
             round_metrics, episode_metrics = {}, {}
+            monitor.context(round=round_no, update=round_no, operation="train",
+                            train_tick_budget=config["run"]["train_tick_budget"])
             order = ("A",) if len(topology) == 1 else (payload["next_team"], "B" if payload["next_team"] == "A" else "A")
             for name in order:
                 team = teams[name]
                 runtime.team = name
+                monitor.context(team=name)
                 runtime.blue_actors = team.actors
                 if hasattr(runtime.env, "set_cost_coefficient"):
                     runtime.env.set_cost_coefficient(team.cost_state["lambda"])
@@ -409,6 +437,7 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                         for group in opt.param_groups:
                             group["lr"] = value
                     team.schedule_state["actor_lr" if key == "lr_actor" else "critic_lr"] = value
+                monitor.phase("optimizing", f"正在更新蓝方团队 {name} 的模型", team=name)
                 round_metrics[name] = team.update(buffer, aux_context={"family_by_scenario": family_map})
                 bad_rate = sum(not r.get("blue_eligible", False) for r in records)/len(records)
                 coeff = team.cost_state["lambda"] * (config["run"]["cost_up"] if bad_rate > config["run"]["cost_target"] else config["run"]["cost_down"])
@@ -459,9 +488,11 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                 "actors": sum(p.numel() for actor in team.actors.values() for p in actor.parameters()),
                 "critics": sum(p.numel() for critic in team.critics.values() for p in critic.parameters())}
                 for name, team in teams.items()}
+            monitor.phase("saving", "正在保存完整 A+B 训练边界")
             store.save(candidate_payload, metrics)
             candidate_payload["last_metrics"] = copy.deepcopy(metrics)
             payload = candidate_payload
+            monitor.phase("saving", "完整 A+B 边界已保存", safe_round=payload["completed_round"])
             print(json.dumps({"safe_round": round_no, "actual_train_ticks": ledger.counts["train"],
                               "training_window": episode_metrics}, ensure_ascii=False), flush=True)
             status.update(status="SAFE_AB_BOUNDARY", completed_round=round_no, at=now())
@@ -476,8 +507,12 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
             training_budget_reached=ledger.counts["train"] >= config["run"]["train_tick_budget"],
             stop_rule=config["run"].get("stop_rule", "rounds"))
         atomic_write_json(status, status_path)
+        terminal = "completed"
+        monitor_result = {"segment_status": status["status"], "actual_counters": ledger.counts}
         return payload
     except BaseException as error:
+        terminal = "interrupted" if isinstance(error, KeyboardInterrupt) else "error"
+        monitor_result = {"error": f"{type(error).__name__}: {error}"}
         # Manifest commit can succeed before latest.pt/metric replay fails.
         # Report the verified authority, never the uncommitted candidate state.
         try:
@@ -492,8 +527,17 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
         atomic_write_json(status, status_path)
         raise
     finally:
-        if runtime is not None:
-            runtime.close()
+        monitor.phase("finalizing", "正在清理四车环境并保留最终画面")
+        monitor.detach()
+        try:
+            if runtime is not None:
+                runtime.close()
+        except BaseException as cleanup_error:
+            terminal = "error"
+            monitor_result["cleanup_error"] = str(cleanup_error)
+            raise
+        finally:
+            monitor.finish(terminal, result=monitor_result, message="训练阶段已结束，画面与安全保存结果已保留")
 
 
 def main():
@@ -508,6 +552,7 @@ def main():
     parser.add_argument("--seed", type=int)
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--allow-candidate", action="store_true")
+    add_monitor_arguments(parser)
     args = parser.parse_args()
     config = load_config(args.config)
     if args.mutual_mode:
@@ -519,6 +564,7 @@ def main():
     if args.seed is not None:
         config["seed"] = args.seed
     config = validate_config(config)
+    config["_monitor_options"] = options_from_args(args)
     if args.validate_only:
         print(json.dumps(config["_root_validation"], ensure_ascii=False, indent=2))
         return

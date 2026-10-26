@@ -203,6 +203,7 @@ def run_identity(config):
     paths += [ROOT / "models/actor_critic.py", ROOT / "models/mut_mappo_critics.py", ROOT / "evaluation/mut_mappo_metrics.py",
               ROOT / "evaluation/evaluate_mut_mappo.py", ROOT / "utils/mut_mappo_session.py",
               ROOT / "utils/adversarial_metrics.py", ROOT / "evaluation/mut_mappo_selection.py"]
+    paths.append(ROOT / "visualization/mut_mappo_monitor.py")
     sources = {str(path.relative_to(ROOT)).replace("\\", "/"): sha256_file(path) for path in paths}
     return {"protocol": config["protocol"], "config_sha256": config_digest(config),
             "task_contract_sha256": task_contract_digest(config),

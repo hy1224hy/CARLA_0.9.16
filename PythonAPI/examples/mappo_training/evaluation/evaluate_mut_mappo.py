@@ -6,6 +6,8 @@ owner lock.  Training-window statistics cannot be ingested as evaluation cases.
 """
 from __future__ import annotations
 
+from visualization.mut_mappo_monitor import MutMAPPOMonitor, add_monitor_arguments, options_from_args
+
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -166,7 +168,7 @@ def preflight(config_path: str | Path, checkpoint_path: str | Path | None, *, sp
 def evaluate(config_path: str | Path, checkpoint_path: str | Path | None = None, *, team: str = "both",
              split: str = "selection", output_dir: str | Path | None = None,
              conditions: tuple[str, ...] = CONDITIONS, validate_only: bool = False,
-             select_best: bool = False) -> dict[str, Any]:
+             select_best: bool = False, monitor_options: dict | None = None) -> dict[str, Any]:
     if select_best and (split != "selection" or not {"C1", "C2"}.issubset(conditions)):
         raise ValueError("--select-best requires independent selection-split C1/C2 paired evaluation")
     resolved = preflight(config_path, checkpoint_path, split=split, team=team, conditions=conditions)
@@ -197,99 +199,124 @@ def evaluate(config_path: str | Path, checkpoint_path: str | Path | None = None,
     retries = int(config.get("evaluation", {}).get("max_invalid_retries", 1))
     if retries < 0:
         raise ValueError("max_invalid_retries must be nonnegative")
+    monitored_config = dict(config, _monitor_options=monitor_options or config.get("_monitor_options", {}))
+    monitor = MutMAPPOMonitor(monitored_config, output, purpose="evaluation")
+    terminal, monitor_error = "error", None
     try:
-        with CarlaOwner(host=config.get("host", "127.0.0.1"), port=int(config.get("port", 2000)),
-                        run_dir=output, purpose="evaluation"):
-            with (output / "cases.jsonl").open("x", encoding="utf-8") as stream:
-                for candidate in metadata["teams"]:
-                    for case_index, case in enumerate(cases):
-                        seed = int(case.get("seed", config.get("evaluation", {}).get("seed", 62001)))
-                        for attempt in range(retries + 1):
-                            group = []
-                            for condition in conditions:
-                                runtime = None
-                                fatal_error = None
-                                audited_ticks = {"total": 0, "decision": 0, "setup": 0}
-                                def audit_tick(event):
-                                    count = int(event["ticks"])
-                                    phase = event["kind"]
-                                    audited_ticks["total"] += count
-                                    audited_ticks[phase] = audited_ticks.get(phase, 0) + count
-                                context = {"case_key": case["case_key"], "condition": condition,
-                                           "team": candidate, "paired_attempt": attempt, "seed": seed,
-                                           "split": split, "policy_mode": "deterministic"}
-                                # Filenames depend on indices, never untrusted case_key path text.
-                                trace = traces / f"{candidate}_{case_index:05d}_{condition}_a{attempt}.jsonl"
-                                row = dict(context, valid=False, invalid_reason="execution_interrupted")
-                                try:
+        monitor.start()
+        monitor.context(operation="evaluation", planned_episodes=metadata["planned_episodes"])
+        try:
+            with CarlaOwner(host=config.get("host", "127.0.0.1"), port=int(config.get("port", 2000)),
+                            run_dir=output, purpose="evaluation"):
+                with (output / "cases.jsonl").open("x", encoding="utf-8") as stream:
+                    for candidate in metadata["teams"]:
+                        for case_index, case in enumerate(cases):
+                            seed = int(case.get("seed", config.get("evaluation", {}).get("seed", 62001)))
+                            for attempt in range(retries + 1):
+                                group = []
+                                for condition in conditions:
+                                    runtime = None
+                                    fatal_error = None
+                                    audited_ticks = {"total": 0, "decision": 0, "setup": 0}
+                                    def audit_tick(event):
+                                        count = int(event["ticks"])
+                                        phase = event["kind"]
+                                        audited_ticks["total"] += count
+                                        audited_ticks[phase] = audited_ticks.get(phase, 0) + count
+                                    context = {"case_key": case["case_key"], "condition": condition,
+                                               "team": candidate, "paired_attempt": attempt, "seed": seed,
+                                               "split": split, "policy_mode": "deterministic"}
+                                    # Filenames depend on indices, never untrusted case_key path text.
+                                    trace = traces / f"{candidate}_{case_index:05d}_{condition}_a{attempt}.jsonl"
+                                    row = dict(context, valid=False, invalid_reason="execution_interrupted")
                                     try:
-                                        checkpoint = resolved["checkpoint_payload"] or metadata["checkpoint_path"]
-                                        runtime = create_runtime(config, checkpoint, condition=condition, team=candidate,
-                                                                 audit_callback=audit_tick)
-                                        row = dict(run_case(runtime, case, seed=seed, deterministic=True, trace_path=trace))
-                                    except Exception:
-                                        row = dict(context, valid=False, invalid_reason="environment_exception",
-                                                   error=traceback.format_exc())
-                                    except BaseException as error:
-                                        row.update(error=traceback.format_exc())
-                                        fatal_error = error
-                                finally:
-                                    if runtime is not None:
                                         try:
-                                            runtime.close()
+                                            checkpoint = resolved["checkpoint_payload"] or metadata["checkpoint_path"]
+                                            runtime = create_runtime(config, checkpoint, condition=condition, team=candidate,
+                                                                     audit_callback=audit_tick)
+                                            runtime.monitor = monitor
+                                            monitor.context(team=candidate, condition=condition,
+                                                operation="evaluation", evaluation_split=split,
+                                                round=metadata.get("checkpoint_completed_round"),
+                                                case_index=case_index + 1, paired_attempt=attempt)
+                                            row = dict(run_case(runtime, case, seed=seed, deterministic=True, trace_path=trace))
+                                        except Exception:
+                                            row = dict(context, valid=False, invalid_reason="environment_exception",
+                                                       error=traceback.format_exc())
                                         except BaseException as error:
-                                            row.update(valid=False, invalid_reason="cleanup_failure", cleanup_error=traceback.format_exc())
+                                            row.update(error=traceback.format_exc())
                                             fatal_error = error
-                                for key in ("case_key", "condition", "team"):
-                                    if key in row and row[key] != context[key]:
-                                        raise ValueError(f"runtime changed evaluator identity {key}")
-                                row.update(context, trace_path=str(trace.relative_to(output)), evidence="independent_evaluation",
-                                           family=case.get("family"), tick_counts=audited_ticks)
-                                summarize_cases([row])  # result/identity errors are fatal, never scored as task failures
-                                stream.write(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n")
-                                stream.flush()
-                                os.fsync(stream.fileno())
-                                records.append(row)
-                                group.append(row)
-                                metadata["completed_attempted_episodes"] += 1
-                                _atomic_json(output / "manifest.json", metadata)
-                                print("CASE_DONE", candidate, case["case_key"], condition,
-                                      "VALID" if row["valid"] else "INVALID", flush=True)
-                                if fatal_error is not None:
-                                    raise fatal_error
-                            if all(row["valid"] for row in group):
-                                break
-                            # Entire same-key group is rerun at the same seed; no replacement of only a bad side.
-                        metadata["completed_case_groups"] += 1
-                        _atomic_json(output / "manifest.json", metadata)
-        for field, digest in (("config_path", "config_sha256"), ("checkpoint_path", "checkpoint_sha256"),
-                              ("case_manifest_path", "case_manifest_sha256")):
-            if metadata[field] is not None and _sha256(Path(metadata[field])) != metadata[digest]:
-                raise RuntimeError(f"{field} changed during evaluation")
-        identity = config.get("_root_validation", {})
-        source_red = config.get("red_checkpoint", {})
-        if source_red and _sha256(_resolve(source_red["path"])) != identity["red_sha256"]:
-            raise RuntimeError("frozen red checkpoint changed during evaluation")
-        for scenario_path, digest in identity.get("scenario_hashes", {}).items():
-            if _sha256(_resolve(scenario_path)) != digest:
-                raise RuntimeError(f"scenario {scenario_path} changed during evaluation")
-        metadata["status"] = "COMPLETED"
-    except BaseException:
-        metadata["status"] = "FAILED"
-        metadata["error"] = traceback.format_exc()
+                                    finally:
+                                        if runtime is not None:
+                                            try:
+                                                monitor.detach()
+                                                runtime.close()
+                                            except BaseException as error:
+                                                row.update(valid=False, invalid_reason="cleanup_failure", cleanup_error=traceback.format_exc())
+                                                fatal_error = error
+                                    for key in ("case_key", "condition", "team"):
+                                        if key in row and row[key] != context[key]:
+                                            raise ValueError(f"runtime changed evaluator identity {key}")
+                                    row.update(context, trace_path=str(trace.relative_to(output)), evidence="independent_evaluation",
+                                               family=case.get("family"), tick_counts=audited_ticks)
+                                    summarize_cases([row])  # result/identity errors are fatal, never scored as task failures
+                                    stream.write(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n")
+                                    stream.flush()
+                                    os.fsync(stream.fileno())
+                                    records.append(row)
+                                    group.append(row)
+                                    metadata["completed_attempted_episodes"] += 1
+                                    monitor.phase("evaluating", "独立配对评估进行中", completed_cases=metadata["completed_attempted_episodes"])
+                                    _atomic_json(output / "manifest.json", metadata)
+                                    print("CASE_DONE", candidate, case["case_key"], condition,
+                                          "VALID" if row["valid"] else "INVALID", flush=True)
+                                    if fatal_error is not None:
+                                        raise fatal_error
+                                if all(row["valid"] for row in group):
+                                    break
+                                # Entire same-key group is rerun at the same seed; no replacement of only a bad side.
+                            metadata["completed_case_groups"] += 1
+                            _atomic_json(output / "manifest.json", metadata)
+            for field, digest in (("config_path", "config_sha256"), ("checkpoint_path", "checkpoint_sha256"),
+                                  ("case_manifest_path", "case_manifest_sha256")):
+                if metadata[field] is not None and _sha256(Path(metadata[field])) != metadata[digest]:
+                    raise RuntimeError(f"{field} changed during evaluation")
+            identity = config.get("_root_validation", {})
+            source_red = config.get("red_checkpoint", {})
+            if source_red and _sha256(_resolve(source_red["path"])) != identity["red_sha256"]:
+                raise RuntimeError("frozen red checkpoint changed during evaluation")
+            for scenario_path, digest in identity.get("scenario_hashes", {}).items():
+                if _sha256(_resolve(scenario_path)) != digest:
+                    raise RuntimeError(f"scenario {scenario_path} changed during evaluation")
+            metadata["status"] = "COMPLETED"
+        except BaseException:
+            metadata["status"] = "FAILED"
+            metadata["error"] = traceback.format_exc()
+            raise
+        finally:
+            metadata["ended_at"] = _now()
+            _atomic_json(output / "manifest.json", metadata)
+            report = evaluate_records(records, output, metadata=metadata, required_conditions=conditions)
+        if select_best:
+            from evaluation.mut_mappo_selection import select_and_export
+            report["selection"] = select_and_export([{
+                "report": report, "checkpoint_payload": resolved["checkpoint_payload"],
+                "checkpoint_sha256": metadata["checkpoint_sha256"], "evaluation_source": str(output),
+            }], config, output)
+            _atomic_json(output / "summary.json", report)
+        terminal = "completed"
+        return report
+    except BaseException as error:
+        terminal = "interrupted" if isinstance(error, KeyboardInterrupt) else "error"
+        monitor_error = f"{type(error).__name__}: {error}"
         raise
     finally:
-        metadata["ended_at"] = _now()
-        _atomic_json(output / "manifest.json", metadata)
-        report = evaluate_records(records, output, metadata=metadata, required_conditions=conditions)
-    if select_best:
-        from evaluation.mut_mappo_selection import select_and_export
-        report["selection"] = select_and_export([{
-            "report": report, "checkpoint_payload": resolved["checkpoint_payload"],
-            "checkpoint_sha256": metadata["checkpoint_sha256"], "evaluation_source": str(output),
-        }], config, output)
-        _atomic_json(output / "summary.json", report)
-    return report
+        monitor.detach()
+        monitor.finish(terminal, result={"evaluation_status": metadata.get("status"),
+            "attempted_episodes": metadata.get("completed_attempted_episodes", 0),
+            "planned_episodes": metadata.get("planned_episodes"), "error": monitor_error},
+            message="独立评估阶段已结束；结果请查看评估输出，不等同策略合格")
+
 
 
 def main() -> None:
@@ -302,12 +329,13 @@ def main() -> None:
     parser.add_argument("--output-dir")
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--select-best", action="store_true", help="selection split only: rank evaluated teams and export one frozen 20/2 blue policy")
+    add_monitor_arguments(parser)
     args = parser.parse_args()
     if not args.validate_only and not args.output_dir:
         parser.error("--output-dir is required for live evaluation")
     report = evaluate(args.config, args.checkpoint, team=args.team, split=args.split,
                       output_dir=args.output_dir, conditions=tuple(args.conditions), validate_only=args.validate_only,
-                      select_best=args.select_best)
+                      select_best=args.select_best, monitor_options=options_from_args(args))
     print(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False))
 
 
