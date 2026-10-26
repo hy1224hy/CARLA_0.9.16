@@ -2026,8 +2026,14 @@ def run_mappo_ppo_update(
     huber_delta: float = 10.0,
     shuffle: bool = True,
     context: str,
+    actor_aux_loss=None,
 ) -> MAPPOUpdateResult:
-    """Execute the exact production MAPPO optimizer path on a prepared batch."""
+    """Execute production PPO; an optional hook adds a scalar actor loss.
+
+    The default is disabled for historical trainers. The hook receives
+    ``(physical_agent_id, observations, rollout_row_indices)`` so auxiliary
+    gates can stay aligned with the original on-policy samples.
+    """
     validate_prepared_mappo_batch(
         prepared,
         agent_ids,
@@ -2256,6 +2262,15 @@ def run_mappo_ppo_update(
                     ent_coef=ent_coef,
                     context=actor_context,
                 )
+                if actor_aux_loss is not None:
+                    auxiliary_loss = actor_aux_loss(aid, tensors["obs"][mb], mb)
+                    if not isinstance(auxiliary_loss, torch.Tensor) or auxiliary_loss.ndim != 0:
+                        raise TypeError(f"{actor_context}: auxiliary loss must be a scalar tensor")
+                    ensure_finite_tensor(auxiliary_loss, name="actor_aux_loss", context=actor_context)
+                    actor_loss = actor_loss + auxiliary_loss
+                    metrics.setdefault(f"actor_aux_loss_{aid}", []).append(
+                        float(auxiliary_loss.detach().item())
+                    )
                 actor_optims[aid].zero_grad()
                 actor_loss.backward()
                 ensure_finite_module_gradients(
@@ -2328,6 +2343,18 @@ def run_mappo_ppo_update(
                 float(np.mean(epoch_entropy_bonuses))
             )
             mean_epoch_kl = float(np.mean(epoch_approx_kls))
+            if actor_aux_loss is not None:
+                # Check the actual updated policy after the auxiliary step as
+                # well as the existing pre-step minibatch diagnostics.
+                with torch.no_grad():
+                    updated_logp, _ = actors[aid].evaluate_actions_z(
+                        tensors["obs"], tensors["act"]
+                    )
+                    log_ratio = updated_logp - tensors["old_logp"]
+                    updated_kl = ((log_ratio.exp() - 1.0) - log_ratio).mean()
+                    ensure_finite_tensor(updated_kl, name="post_aux_approx_kl", context=context)
+                    metrics.setdefault(f"post_aux_approx_kl_{aid}", []).append(float(updated_kl.item()))
+                    mean_epoch_kl = max(mean_epoch_kl, float(updated_kl.item()))
             metrics[f"approx_kl_{aid}"].append(mean_epoch_kl)
             metrics[f"clip_frac_{aid}"].append(
                 float(np.mean(epoch_clip_fracs))

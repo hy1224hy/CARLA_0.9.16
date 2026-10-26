@@ -1,0 +1,1099 @@
+{
+  "schema_version": "mut_mappo_cases_v1",
+  "geometry_status": "candidate_not_live_validated",
+  "scope": "debug_only_two_families_north_south_not_formal_four_direction_coverage",
+  "generation": "fixed numerical initial states; seed changes do not define holdouts",
+  "geometry_protocol": "base two-lane Town05 scenario plus same-road same-lane waypoint arc offsets; reject ambiguous offset, junction, physical overlap, non-broken cut-in boundary and failed exact spawn at live reset",
+  "cases": [
+    {
+      "case_key": "train_blocking_north_00",
+      "family": "blocking",
+      "direction": "north",
+      "seed": 40000,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.0
+        },
+        "agent1": {
+          "initial_speed_mps": 3.0
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 15.0,
+          "initial_speed_mps": 2.2
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 22.0,
+          "initial_speed_mps": 2.35
+        }
+      }
+    },
+    {
+      "case_key": "train_blocking_south_00",
+      "family": "blocking",
+      "direction": "south",
+      "seed": 40001,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.0
+        },
+        "agent1": {
+          "initial_speed_mps": 3.0
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 15.0,
+          "initial_speed_mps": 2.2
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 22.0,
+          "initial_speed_mps": 2.35
+        }
+      }
+    },
+    {
+      "case_key": "train_cut_in_north_00",
+      "family": "cut_in",
+      "direction": "north",
+      "seed": 40002,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.0
+        },
+        "agent1": {
+          "initial_speed_mps": 3.0
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 15.0,
+          "initial_speed_mps": 2.2
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 22.0,
+          "initial_speed_mps": 2.35
+        }
+      }
+    },
+    {
+      "case_key": "train_cut_in_south_00",
+      "family": "cut_in",
+      "direction": "south",
+      "seed": 40003,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.0
+        },
+        "agent1": {
+          "initial_speed_mps": 3.0
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 15.0,
+          "initial_speed_mps": 2.2
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 22.0,
+          "initial_speed_mps": 2.35
+        }
+      }
+    },
+    {
+      "case_key": "gate_blocking_north_00",
+      "family": "blocking",
+      "direction": "north",
+      "seed": 40004,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.008
+        },
+        "agent1": {
+          "initial_speed_mps": 3.008
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 15.4,
+          "initial_speed_mps": 2.22
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 22.4,
+          "initial_speed_mps": 2.37
+        }
+      }
+    },
+    {
+      "case_key": "gate_blocking_north_01",
+      "family": "blocking",
+      "direction": "north",
+      "seed": 40005,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.108
+        },
+        "agent1": {
+          "initial_speed_mps": 3.108
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 16.6,
+          "initial_speed_mps": 2.42
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 23.6,
+          "initial_speed_mps": 2.57
+        }
+      }
+    },
+    {
+      "case_key": "gate_blocking_north_02",
+      "family": "blocking",
+      "direction": "north",
+      "seed": 40006,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.208
+        },
+        "agent1": {
+          "initial_speed_mps": 3.208
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 17.8,
+          "initial_speed_mps": 2.62
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 24.8,
+          "initial_speed_mps": 2.77
+        }
+      }
+    },
+    {
+      "case_key": "gate_blocking_north_03",
+      "family": "blocking",
+      "direction": "north",
+      "seed": 40007,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.308
+        },
+        "agent1": {
+          "initial_speed_mps": 3.308
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 19.0,
+          "initial_speed_mps": 2.82
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 26.0,
+          "initial_speed_mps": 2.97
+        }
+      }
+    },
+    {
+      "case_key": "gate_blocking_south_00",
+      "family": "blocking",
+      "direction": "south",
+      "seed": 40008,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.008
+        },
+        "agent1": {
+          "initial_speed_mps": 3.008
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 15.4,
+          "initial_speed_mps": 2.22
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 22.4,
+          "initial_speed_mps": 2.37
+        }
+      }
+    },
+    {
+      "case_key": "gate_blocking_south_01",
+      "family": "blocking",
+      "direction": "south",
+      "seed": 40009,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.108
+        },
+        "agent1": {
+          "initial_speed_mps": 3.108
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 16.6,
+          "initial_speed_mps": 2.42
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 23.6,
+          "initial_speed_mps": 2.57
+        }
+      }
+    },
+    {
+      "case_key": "gate_blocking_south_02",
+      "family": "blocking",
+      "direction": "south",
+      "seed": 40010,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.208
+        },
+        "agent1": {
+          "initial_speed_mps": 3.208
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 17.8,
+          "initial_speed_mps": 2.62
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 24.8,
+          "initial_speed_mps": 2.77
+        }
+      }
+    },
+    {
+      "case_key": "gate_blocking_south_03",
+      "family": "blocking",
+      "direction": "south",
+      "seed": 40011,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.308
+        },
+        "agent1": {
+          "initial_speed_mps": 3.308
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 19.0,
+          "initial_speed_mps": 2.82
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 26.0,
+          "initial_speed_mps": 2.97
+        }
+      }
+    },
+    {
+      "case_key": "gate_cut_in_north_00",
+      "family": "cut_in",
+      "direction": "north",
+      "seed": 40012,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.008
+        },
+        "agent1": {
+          "initial_speed_mps": 3.008
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 15.4,
+          "initial_speed_mps": 2.22
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 22.4,
+          "initial_speed_mps": 2.37
+        }
+      }
+    },
+    {
+      "case_key": "gate_cut_in_north_01",
+      "family": "cut_in",
+      "direction": "north",
+      "seed": 40013,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.108
+        },
+        "agent1": {
+          "initial_speed_mps": 3.108
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 16.6,
+          "initial_speed_mps": 2.42
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 23.6,
+          "initial_speed_mps": 2.57
+        }
+      }
+    },
+    {
+      "case_key": "gate_cut_in_north_02",
+      "family": "cut_in",
+      "direction": "north",
+      "seed": 40014,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.208
+        },
+        "agent1": {
+          "initial_speed_mps": 3.208
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 17.8,
+          "initial_speed_mps": 2.62
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 24.8,
+          "initial_speed_mps": 2.77
+        }
+      }
+    },
+    {
+      "case_key": "gate_cut_in_north_03",
+      "family": "cut_in",
+      "direction": "north",
+      "seed": 40015,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.308
+        },
+        "agent1": {
+          "initial_speed_mps": 3.308
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 19.0,
+          "initial_speed_mps": 2.82
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 26.0,
+          "initial_speed_mps": 2.97
+        }
+      }
+    },
+    {
+      "case_key": "gate_cut_in_south_00",
+      "family": "cut_in",
+      "direction": "south",
+      "seed": 40016,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.008
+        },
+        "agent1": {
+          "initial_speed_mps": 3.008
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 15.4,
+          "initial_speed_mps": 2.22
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 22.4,
+          "initial_speed_mps": 2.37
+        }
+      }
+    },
+    {
+      "case_key": "gate_cut_in_south_01",
+      "family": "cut_in",
+      "direction": "south",
+      "seed": 40017,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.108
+        },
+        "agent1": {
+          "initial_speed_mps": 3.108
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 16.6,
+          "initial_speed_mps": 2.42
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 23.6,
+          "initial_speed_mps": 2.57
+        }
+      }
+    },
+    {
+      "case_key": "gate_cut_in_south_02",
+      "family": "cut_in",
+      "direction": "south",
+      "seed": 40018,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.208
+        },
+        "agent1": {
+          "initial_speed_mps": 3.208
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 17.8,
+          "initial_speed_mps": 2.62
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 24.8,
+          "initial_speed_mps": 2.77
+        }
+      }
+    },
+    {
+      "case_key": "gate_cut_in_south_03",
+      "family": "cut_in",
+      "direction": "south",
+      "seed": 40019,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.308
+        },
+        "agent1": {
+          "initial_speed_mps": 3.308
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 19.0,
+          "initial_speed_mps": 2.82
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 26.0,
+          "initial_speed_mps": 2.97
+        }
+      }
+    },
+    {
+      "case_key": "selection_blocking_north_00",
+      "family": "blocking",
+      "direction": "north",
+      "seed": 40020,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.034
+        },
+        "agent1": {
+          "initial_speed_mps": 3.034
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 16.7,
+          "initial_speed_mps": 2.285
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 23.7,
+          "initial_speed_mps": 2.435
+        }
+      }
+    },
+    {
+      "case_key": "selection_blocking_north_01",
+      "family": "blocking",
+      "direction": "north",
+      "seed": 40021,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.134
+        },
+        "agent1": {
+          "initial_speed_mps": 3.134
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 17.9,
+          "initial_speed_mps": 2.485
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 24.9,
+          "initial_speed_mps": 2.635
+        }
+      }
+    },
+    {
+      "case_key": "selection_blocking_south_00",
+      "family": "blocking",
+      "direction": "south",
+      "seed": 40022,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.034
+        },
+        "agent1": {
+          "initial_speed_mps": 3.034
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 16.7,
+          "initial_speed_mps": 2.285
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 23.7,
+          "initial_speed_mps": 2.435
+        }
+      }
+    },
+    {
+      "case_key": "selection_blocking_south_01",
+      "family": "blocking",
+      "direction": "south",
+      "seed": 40023,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.134
+        },
+        "agent1": {
+          "initial_speed_mps": 3.134
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 17.9,
+          "initial_speed_mps": 2.485
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 24.9,
+          "initial_speed_mps": 2.635
+        }
+      }
+    },
+    {
+      "case_key": "selection_cut_in_north_00",
+      "family": "cut_in",
+      "direction": "north",
+      "seed": 40024,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.034
+        },
+        "agent1": {
+          "initial_speed_mps": 3.034
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 16.7,
+          "initial_speed_mps": 2.285
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 23.7,
+          "initial_speed_mps": 2.435
+        }
+      }
+    },
+    {
+      "case_key": "selection_cut_in_north_01",
+      "family": "cut_in",
+      "direction": "north",
+      "seed": 40025,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.134
+        },
+        "agent1": {
+          "initial_speed_mps": 3.134
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 17.9,
+          "initial_speed_mps": 2.485
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 24.9,
+          "initial_speed_mps": 2.635
+        }
+      }
+    },
+    {
+      "case_key": "selection_cut_in_south_00",
+      "family": "cut_in",
+      "direction": "south",
+      "seed": 40026,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.034
+        },
+        "agent1": {
+          "initial_speed_mps": 3.034
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 16.7,
+          "initial_speed_mps": 2.285
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 23.7,
+          "initial_speed_mps": 2.435
+        }
+      }
+    },
+    {
+      "case_key": "selection_cut_in_south_01",
+      "family": "cut_in",
+      "direction": "south",
+      "seed": 40027,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.134
+        },
+        "agent1": {
+          "initial_speed_mps": 3.134
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 17.9,
+          "initial_speed_mps": 2.485
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 24.9,
+          "initial_speed_mps": 2.635
+        }
+      }
+    },
+    {
+      "case_key": "test_blocking_north_00",
+      "family": "blocking",
+      "direction": "north",
+      "seed": 40028,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.062
+        },
+        "agent1": {
+          "initial_speed_mps": 3.062
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 18.1,
+          "initial_speed_mps": 2.355
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 25.1,
+          "initial_speed_mps": 2.505
+        }
+      }
+    },
+    {
+      "case_key": "test_blocking_north_01",
+      "family": "blocking",
+      "direction": "north",
+      "seed": 40029,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.162
+        },
+        "agent1": {
+          "initial_speed_mps": 3.162
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 19.3,
+          "initial_speed_mps": 2.555
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 26.3,
+          "initial_speed_mps": 2.705
+        }
+      }
+    },
+    {
+      "case_key": "test_blocking_south_00",
+      "family": "blocking",
+      "direction": "south",
+      "seed": 40030,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.062
+        },
+        "agent1": {
+          "initial_speed_mps": 3.062
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 18.1,
+          "initial_speed_mps": 2.355
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 25.1,
+          "initial_speed_mps": 2.505
+        }
+      }
+    },
+    {
+      "case_key": "test_blocking_south_01",
+      "family": "blocking",
+      "direction": "south",
+      "seed": 40031,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.162
+        },
+        "agent1": {
+          "initial_speed_mps": 3.162
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 0,
+          "forward_m": 19.3,
+          "initial_speed_mps": 2.555
+        },
+        "agent3": {
+          "anchor_red_id": 1,
+          "forward_m": 26.3,
+          "initial_speed_mps": 2.705
+        }
+      }
+    },
+    {
+      "case_key": "test_cut_in_north_00",
+      "family": "cut_in",
+      "direction": "north",
+      "seed": 40032,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.062
+        },
+        "agent1": {
+          "initial_speed_mps": 3.062
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 18.1,
+          "initial_speed_mps": 2.355
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 25.1,
+          "initial_speed_mps": 2.505
+        }
+      }
+    },
+    {
+      "case_key": "test_cut_in_north_01",
+      "family": "cut_in",
+      "direction": "north",
+      "seed": 40033,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_05_north_parallel_rolling_a1_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.162
+        },
+        "agent1": {
+          "initial_speed_mps": 3.162
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 19.3,
+          "initial_speed_mps": 2.555
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 26.3,
+          "initial_speed_mps": 2.705
+        }
+      }
+    },
+    {
+      "case_key": "test_cut_in_south_00",
+      "family": "cut_in",
+      "direction": "south",
+      "seed": 40034,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.062
+        },
+        "agent1": {
+          "initial_speed_mps": 3.062
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 18.1,
+          "initial_speed_mps": 2.355
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 25.1,
+          "initial_speed_mps": 2.505
+        }
+      }
+    },
+    {
+      "case_key": "test_cut_in_south_01",
+      "family": "cut_in",
+      "direction": "south",
+      "seed": 40035,
+      "episode_max_steps": 500,
+      "base_scenario": "data/training_scenarios_town05_v1/scenario_06_south_parallel_rolling_a0_left.json",
+      "geometry_status": "candidate_not_live_validated",
+      "red_overrides": {
+        "agent0": {
+          "initial_speed_mps": 3.162
+        },
+        "agent1": {
+          "initial_speed_mps": 3.162
+        }
+      },
+      "blue_spawn_offsets": {
+        "agent2": {
+          "anchor_red_id": 1,
+          "forward_m": 19.3,
+          "initial_speed_mps": 2.555
+        },
+        "agent3": {
+          "anchor_red_id": 0,
+          "forward_m": 26.3,
+          "initial_speed_mps": 2.705
+        }
+      }
+    }
+  ],
+  "splits": {
+    "train": [
+      "train_blocking_north_00",
+      "train_blocking_south_00",
+      "train_cut_in_north_00",
+      "train_cut_in_south_00"
+    ],
+    "gate": [
+      "gate_blocking_north_00",
+      "gate_blocking_north_01",
+      "gate_blocking_north_02",
+      "gate_blocking_north_03",
+      "gate_blocking_south_00",
+      "gate_blocking_south_01",
+      "gate_blocking_south_02",
+      "gate_blocking_south_03",
+      "gate_cut_in_north_00",
+      "gate_cut_in_north_01",
+      "gate_cut_in_north_02",
+      "gate_cut_in_north_03",
+      "gate_cut_in_south_00",
+      "gate_cut_in_south_01",
+      "gate_cut_in_south_02",
+      "gate_cut_in_south_03"
+    ],
+    "selection": [
+      "selection_blocking_north_00",
+      "selection_blocking_north_01",
+      "selection_blocking_south_00",
+      "selection_blocking_south_01",
+      "selection_cut_in_north_00",
+      "selection_cut_in_north_01",
+      "selection_cut_in_south_00",
+      "selection_cut_in_south_01"
+    ],
+    "test": [
+      "test_blocking_north_00",
+      "test_blocking_north_01",
+      "test_blocking_south_00",
+      "test_blocking_south_01",
+      "test_cut_in_north_00",
+      "test_cut_in_north_01",
+      "test_cut_in_south_00",
+      "test_cut_in_south_01"
+    ]
+  }
+}
