@@ -123,6 +123,11 @@ def preflight(config_path: str | Path, checkpoint_path: str | Path | None, *, sp
         raise ValueError("conditions must be a unique nonempty subset of C0/C1/C2")
     if "C2" in conditions and checkpoint_source is None:
         raise ValueError("C2 requires a complete Mut-MAPPO checkpoint; initialization is not a trained candidate")
+    reference_hashes = {}
+    if "C2" in conditions and config.get("task", {}).get("reward_profile") == "c1_progress_team_v1":
+        directory = _resolve(config["task"]["team_reward"]["reference_dir"])
+        reference_hashes = {case["case_key"]: _sha256(directory / (hashlib.sha256(case["case_key"].encode()).hexdigest() + ".json"))
+                            for case in cases}
     if team not in {"A", "B", "both"}:
         raise ValueError("team must be A, B, or both")
     # Model/state verification is owned by the common loader, so train and
@@ -162,6 +167,7 @@ def preflight(config_path: str | Path, checkpoint_path: str | Path | None, *, sp
                          "planned_episodes": len(teams) * len(cases) * len(conditions),
                          "configuration_validation": "OFFLINE_VALIDATED",
                          "configuration_identity": config.get("_root_validation", {}),
+                         "reference_curve_sha256": reference_hashes,
                          "checkpoint_validation": checkpoint_validation}}
 
 

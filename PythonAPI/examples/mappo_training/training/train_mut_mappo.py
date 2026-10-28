@@ -10,6 +10,7 @@ import argparse
 import copy
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
 import time
 import uuid
@@ -28,6 +29,8 @@ from training.train_no_rllib_mappo_robust_v2 import (RolloutBuffer, build_active
     refresh_observations_after_active_change, validate_active_mask, write_active_transitions)
 from utils.mut_mappo_session import CarlaOwner, last_json_record
 from visualization.mut_mappo_monitor import MutMAPPOMonitor, add_monitor_arguments, options_from_args
+from environment.mut_mappo_efficiency_reward import PROFILE as TEAM_PROFILE, ReferenceStore, reference_identity, settle_team_tail
+from evaluation.driving_policy_metrics import DrivingMetrics
 
 
 def now():
@@ -72,6 +75,13 @@ def validate_checkpoint_for_config(config, path):
             raise ValueError("C2 requires a current complete training checkpoint or selected inference export")
         _validate_payload(payload)
     identity = payload.get("identity", {})
+    if identity.get("training_reference_hashes"):
+        import hashlib
+        from training.checkpoint_protocol import sha256_file
+        directory = resolve_path(config["task"]["team_reward"]["reference_dir"])
+        for key, digest in identity["training_reference_hashes"].items():
+            if sha256_file(directory / (hashlib.sha256(key.encode()).hexdigest() + ".json")) != digest:
+                raise ValueError("training C1 reference changed since checkpoint creation")
     expected = config["_root_validation"]
     if identity.get("model_spec") != MODEL_SPEC or identity.get("red_sha256") != expected["red_sha256"]:
         raise ValueError("evaluation model/red identity differs")
@@ -139,10 +149,14 @@ def create_runtime(config, checkpoint=None, condition="C2", team="A", audit_call
     from environment.mut_mappo_env import MutMAPPOEnv
     idle = _preflight_idle_world(host=config["host"], port=config["port"], expected_version="0.9.16")
     red_config = dict(source["training_config"], reward_gamma=source["training_config"]["gamma"])
+    reference = None
+    if config["task"].get("reward_profile") == TEAM_PROFILE and condition == "C2" and not config.get("_building_reference"):
+        reference = ReferenceStore(config["task"]["team_reward"]["reference_dir"], reference_identity(config))
     try:
         env = MutMAPPOEnv(red_checkpoint_config=red_config, task_config=config["task"],
                          host=config["host"], port=config["port"], seed=config["seed"],
-                         num_agents=2 if condition == "C0" else 4, audit_callback=audit_callback)
+                         num_agents=2 if condition == "C0" else 4, audit_callback=audit_callback,
+                         reference_store=reference)
         env._original_synchronous_mode = idle["synchronous_mode"]
         env._original_fixed_delta_seconds = idle["fixed_delta_seconds"]
     except BaseException:
@@ -178,7 +192,7 @@ def _flags(env, info, dones):
     return active, terminated, truncated
 
 
-def _episode(runtime, case, *, learner=None, buffer=None, seed=None, deterministic=True, trace_path=None):
+def _episode(runtime, case, *, learner=None, buffer=None, seed=None, deterministic=True, trace_path=None, step_callback=None):
     case = copy.deepcopy(case)
     if seed is not None:
         case["seed"] = int(seed)
@@ -224,6 +238,10 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
     brake_counts = {aid: 0 for aid in physical_ids}
     max_reward_residual = 0.0
     step = 0
+    initial_states = (case_geometry or {}).get("realized_initial_states", {})
+    driving = DrivingMetrics(float(runtime.config["task"].get("timestep", 0.1)),
+                             {aid: state["speed"] for aid, state in initial_states.items() if "speed" in state})
+    team_timeline = []
     while any(active.values()):
         controls = policy_controls(runtime.red_actors, obs, active, runtime.device, True)
         cache = {}
@@ -238,6 +256,14 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
         next_obs, rewards, dones, info = env.step(controls)
         if monitor is not None:
             monitor.after_step(env, step + 1, rewards, info)
+        if "team_step_reward" in info:
+            team_timeline.append(float(info["team_step_reward"]))
+        from environment.base_driving_env import BaseDrivingEnv
+        longitudinal = (BaseDrivingEnv.get_longitudinal_safety_state(env)
+                        if hasattr(env, "vehicles") else {})
+        references = getattr(env, "road_reference_waypoints", {})
+        driving.update(active, info.get("post_tick_kinematics", {}), info.get("reward_diagnostics", {}),
+                       longitudinal, {aid: wp.transform.rotation.yaw for aid, wp in references.items()})
         for aid, control in controls.items():
             control_counts[aid] += 1
             brake_counts[aid] += int(control[2] > 0.01 and control[0] <= 0.01)
@@ -246,6 +272,8 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
             if residual is not None:
                 max_reward_residual = max(max_reward_residual, abs(float(residual)))
         next_active, terminated, truncated = _flags(env, info, dones)
+        if step_callback is not None:
+            step_callback(info)
         step += 1
         pre_cleanup_state = np.asarray(info.get("bootstrap_global_state", np.concatenate(
             [np.asarray(next_obs[aid], dtype=np.float32) for aid in physical_ids])), dtype=np.float32).copy()
@@ -260,7 +288,9 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
                 "team": runtime.team, "step": step, "obs": obs, "controls": controls, "rewards": rewards,
                 "active_mask": active, "next_active_mask": next_active,
                 "terminated": terminated, "truncated": truncated,
-                "mut_metrics": info.get("mut_metrics", {}), "kinematics": info.get("kinematics", info.get("pre_collision_kinematics", {}))})
+                "mut_metrics": info.get("mut_metrics", {}),
+                "kinematics": info.get("post_tick_kinematics", info.get("kinematics", info.get("pre_collision_kinematics", {}))),
+                "driving_diagnostics": info.get("reward_diagnostics", {}), "longitudinal_safety": longitudinal})
         end_reason = info.get("episode_end_reason", "running" if any(next_active.values()) else "ended")
         obs = refresh_observations_after_active_change(env, next_obs, active, next_active, end_reason,
             physical_ids, context="MutMAPPO physical refresh")
@@ -268,13 +298,21 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
         if step > runtime.config["task"]["max_steps"] + 1:
             raise RuntimeError("environment did not honor the frozen task limit; invalid episode")
     if buffer is not None:
+        tail_audit = (settle_team_tail(buffer, starts, team_timeline, float(runtime.config["learning"]["gamma"]))
+                      if team_timeline else {})
         for aid in (2, 3):
             if len(buffer.data[aid]) > starts[aid]:
                 buffer.mark_episode_end(aid)
                 buffer.add_episode_bootstrap(aid, pre_cleanup_state if truncated[aid] else None)
         buffer.add_scenario(case["case_key"])
     metric = dict(info.get("mut_metrics", {}))
+    if team_timeline:
+        metric["team_discounted_return"] = math.fsum(float(runtime.config["learning"]["gamma"]) ** i * r
+                                                    for i, r in enumerate(team_timeline))
+        metric["return_semantics"] = "returns=actual active step rewards; team_tail_credit folds post-departure reward for PPO"
     metric.update({"case_key": case["case_key"], "family": case["family"], "seed": case.get("seed"),
+        "direction": case.get("direction"), "pair_id": case.get("pair_id"),
+        "startup_mode": case.get("startup_mode"), "red0_role": case.get("red0_role"),
         "condition": runtime.condition, "team": runtime.team, "steps": step, "returns": returns,
         "case_geometry": case_geometry, "setup_contacts": setup_contacts,
         "initial_evidence_identity": initial_evidence_identity, "sensor_timing": sensor_timing,
@@ -285,15 +323,17 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
         "tick_count_scope": "per_case_explicit_ticks_including_reset",
         "brake_mode_rate": {aid: brake_counts[aid]/control_counts[aid] if control_counts[aid] else None for aid in physical_ids},
         "max_abs_reward_residual": max_reward_residual,
+        "driving_metrics": driving.summary(),
+        "team_tail_credit": tail_audit if buffer is not None else {},
         "agent_terminated": terminated, "agent_truncated": truncated, "created_at": now()})
     return json_value(metric)
 
 
-def run_case(runtime, case, *, seed=None, deterministic=True, trace_path=None):
+def run_case(runtime, case, *, seed=None, deterministic=True, trace_path=None, step_callback=None):
     before = capture_rng_state()
     try:
         torch.manual_seed(int(seed if seed is not None else case.get("seed", runtime.config["seed"])))
-        return _episode(runtime, case, seed=seed, deterministic=deterministic, trace_path=trace_path)
+        return _episode(runtime, case, seed=seed, deterministic=deterministic, trace_path=trace_path, step_callback=step_callback)
     finally:
         restore_rng_state(before)
 
@@ -342,6 +382,8 @@ def refresh_peers(runtime, teams, gate, config, completed_round, ledger, run_dir
                 record["b_count"] += int(not result.get("blue_eligible", False))
                 record["case_keys"].append(case["case_key"])
                 record.update(teacher_hash=snapshots[name]["hash"], version=version)
+                if config["mutual"].get("quality_metric") == "efficiency":
+                    record["utility_sum"] = record.get("utility_sum", 0.0) + float(result["safe_efficiency_utility"])
         gate.refresh({n: s["hash"] for n, s in snapshots.items()}, stats, version=version, completed_round=completed_round)
         for name, team in teams.items():
             peer = "B" if name == "A" else "A"
@@ -420,8 +462,13 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                     runtime.env.set_cost_coefficient(team.cost_state["lambda"])
                 buffer, records = RolloutBuffer([2, 3]), []
                 with team.rng_context():
-                    for ep in range(config["run"]["episodes_per_team_update"]):
-                        case = train_cases[((round_no-1)*config["run"]["episodes_per_team_update"]+ep) % len(train_cases)]
+                    if config["_case_manifest"].get("sampling_protocol") == "first_point_complete_pairs_v1":
+                        from training.first_point_scenarios import sample_pairs
+                        collection_cases = sample_pairs(train_cases, round_no - 1, config["run"]["episodes_per_team_update"])
+                    else:
+                        collection_cases = [train_cases[((round_no-1)*config["run"]["episodes_per_team_update"]+ep) % len(train_cases)]
+                                            for ep in range(config["run"]["episodes_per_team_update"])]
+                    for case in collection_cases:
                         result = _episode(runtime, case, learner=team, buffer=buffer,
                                           seed=team.next_episode_seed(), deterministic=False)
                         if not result["valid"]:
@@ -440,12 +487,15 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                 monitor.phase("optimizing", f"正在更新蓝方团队 {name} 的模型", team=name)
                 round_metrics[name] = team.update(buffer, aux_context={"family_by_scenario": family_map})
                 bad_rate = sum(not r.get("blue_eligible", False) for r in records)/len(records)
-                coeff = team.cost_state["lambda"] * (config["run"]["cost_up"] if bad_rate > config["run"]["cost_target"] else config["run"]["cost_down"])
+                coeff = (1.0 if config["task"].get("reward_profile") == TEAM_PROFILE else
+                         team.cost_state["lambda"] * (config["run"]["cost_up"] if bad_rate > config["run"]["cost_target"] else config["run"]["cost_down"]))
                 team.cost_state = {"lambda": max(config["run"]["cost_min"], min(config["run"]["cost_max"], coeff)), "updates": round_no}
                 episode_metrics[name] = {"n": len(records), "q": sum(r.get("blue_eligible", False) and r.get("response", False) for r in records)/len(records),
                     "b": bad_rate, "red_success_rate": sum(r.get("red_success", False) for r in records)/len(records),
                     "scenario_coverage": {case_key: sum(r["case_key"] == case_key for r in records) for case_key in family_map},
                     "agents": {}, "max_abs_reward_residual": max(r.get("max_abs_reward_residual", 0) for r in records)}
+                if config["task"].get("reward_profile") == TEAM_PROFILE:
+                    episode_metrics[name]["safe_efficiency_utility"] = sum(r["safe_efficiency_utility"] for r in records) / len(records)
                 for aid in range(4):
                     def measurements(key):
                         values = []

@@ -92,6 +92,16 @@ def validate_config(config, config_path=None):
         raise ValueError("first implementation freezes Town05 and 0.1 second timestep")
     from environment.mut_mappo_events import MutRewardConfig
     MutRewardConfig.from_dict(config["task"].get("reward"), timestep=config["task"]["timestep"])
+    profile = config["task"].get("reward_profile", "legacy")
+    if profile not in {"legacy", "c1_progress_team_v1"}:
+        raise ValueError("unknown Mut reward profile")
+    if profile == "c1_progress_team_v1":
+        settings = config["task"]["team_reward"]
+        if not settings.get("reference_dir"):
+            raise ValueError("C1 progress reward requires its prepared reference directory")
+        if any(not math.isfinite(float(settings.get(k, default))) or float(settings.get(k, default)) < 0
+               for k, default in (("attack_weight", 10), ("driving_weight", 1))):
+            raise ValueError("team reward weights must be finite and nonnegative")
     stall = config["task"].get("stall", {})
     if not isinstance(stall.get("enabled"), bool) or any(
             not math.isfinite(float(stall.get(key, -1))) or float(stall.get(key, -1)) <= 0
@@ -144,7 +154,7 @@ def validate_config(config, config_path=None):
     physical_configs = []
     source_hashes = {}
     for case in cases:
-        if case.get("family") not in {"blocking", "cut_in"}:
+        if case.get("family") not in {"blocking", "cut_in", "parallel", "staggered"}:
             raise ValueError("unknown candidate interaction family")
         scenario_path = resolve_path(case["base_scenario"])
         scenario = json.loads(scenario_path.read_text(encoding="utf-8-sig"))
@@ -204,10 +214,18 @@ def run_identity(config):
               ROOT / "evaluation/evaluate_mut_mappo.py", ROOT / "utils/mut_mappo_session.py",
               ROOT / "utils/adversarial_metrics.py", ROOT / "evaluation/mut_mappo_selection.py"]
     paths.append(ROOT / "visualization/mut_mappo_monitor.py")
+    paths += [ROOT / "environment/mut_mappo_efficiency_reward.py", ROOT / "training/first_point_scenarios.py",
+              ROOT / "evaluation/driving_policy_metrics.py"]
     sources = {str(path.relative_to(ROOT)).replace("\\", "/"): sha256_file(path) for path in paths}
-    return {"protocol": config["protocol"], "config_sha256": config_digest(config),
+    identity = {"protocol": config["protocol"], "config_sha256": config_digest(config),
             "task_contract_sha256": task_contract_digest(config),
             "algorithm": config["algorithm"], "team_count": config["team_count"],
             "model_spec": MODEL_SPEC, "red_sha256": config["_root_validation"]["red_sha256"],
             "case_manifest_sha256": config["_root_validation"]["case_manifest_sha256"],
             "scenario_hashes": config["_root_validation"]["scenario_hashes"], "source_hashes": sources}
+    if config["task"].get("reward_profile") == "c1_progress_team_v1":
+        directory = resolve_path(config["task"]["team_reward"]["reference_dir"])
+        identity["training_reference_hashes"] = {
+            case["case_key"]: sha256_file(directory / (hashlib.sha256(case["case_key"].encode()).hexdigest() + ".json"))
+            for split in ("train", "gate") for case in cases_for(config, split)}
+    return identity

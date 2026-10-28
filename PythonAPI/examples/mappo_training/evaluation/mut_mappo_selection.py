@@ -118,6 +118,7 @@ def _candidate_rows(candidate, threshold):
         if task > n:
             raise ValueError("task-violation count exceeds the final paired denominator")
         rows.append(dict(base, b=b, q=q, AttackGain_safe=gain,
+                         safe_efficiency_utility=c2.get("safe_efficiency_utility"),
                          task_violation_episodes=task, qualified=b <= threshold,
                          rejection=None if b <= threshold else "blue_bad_rate_above_candidate_threshold"))
     return rows
@@ -154,7 +155,11 @@ def select_and_export(candidates: Iterable[Mapping], config: Mapping, output_dir
             owners[key] = candidate
             rows.append(row)
     qualified = [row for row in rows if row["qualified"]]
-    qualified.sort(key=lambda row: (-row["AttackGain_safe"], -row["q"], row["task_violation_episodes"],
+    efficiency_first = config.get("evaluation", {}).get("selection_metric") == "safe_efficiency_utility"
+    if efficiency_first and any(row.get("safe_efficiency_utility") is None for row in qualified):
+        raise ValueError("efficiency selection requires measured C1-relative utility")
+    qualified.sort(key=lambda row: ((-float(row["safe_efficiency_utility"]),) if efficiency_first else ()) +
+                                  (-row["AttackGain_safe"], -row["q"], row["task_violation_episodes"],
                                    row["completed_round"], row["team"], row["checkpoint_sha256"]))
     incomplete = any(not row["evidence_complete"] for row in rows)
     selected = None if incomplete or not qualified else qualified[0]
@@ -163,7 +168,8 @@ def select_and_export(candidates: Iterable[Mapping], config: Mapping, output_dir
               "split": "selection", "selection_max_bad_rate": threshold,
               "threshold_status": "candidate_screening_not_safety_probability_guarantee",
               "invalid_pair_rule": "all_planned_pairs_required_for_every_competing_team",
-              "ranking": RANKING, "candidates": rows, "selected": copy.deepcopy(selected),
+              "ranking": (["safe_efficiency_utility_desc"] + RANKING if efficiency_first else RANKING),
+              "candidates": rows, "selected": copy.deepcopy(selected),
               "export": None, "test_used_for_selection": False}
     output = Path(output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)

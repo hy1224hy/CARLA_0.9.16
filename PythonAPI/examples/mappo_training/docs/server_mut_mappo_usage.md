@@ -1,5 +1,7 @@
 # MutMAPPO：Git 同步代码，单独上传模型
 
+2026-10-28 同步后的团队效率奖励和串行实验完整指南见 [服务器启动指南](server_mut_mappo_start_20261028.md)。下文保留旧 `cases_v1` 与旧奖励的两轮工程检查命令，不等同于新奖励实验。
+
 继续使用 `/root/carla-project/PythonAPI/examples/mappo_training`，不复制第二套项目、不上传源码ZIP。`training/`、`environment/`、`evaluation/`、`models/`、`utils/`放代码，`configs/mut_mappo/`放模板，`data/mut_mappo/`放候选四车案例。模型放`artifacts/`，生成配置放`configs/mut_mappo/generated/`，二者被Git忽略。
 
 当前实现是20维观测/2维动作、冻结红0/1、训练蓝2/3。蓝方由对应红Actor暖启动，四车Critic和优化器新建；两个蓝团队A/B进行普通或选择性互学习。A/B不是红蓝双方；红方再训练、自动红蓝交替进化、通信及完整PSRO闭环未实现。训练、教师门控和独立评估均可用 `--monitor-mode web` 开启俯视网页监控。

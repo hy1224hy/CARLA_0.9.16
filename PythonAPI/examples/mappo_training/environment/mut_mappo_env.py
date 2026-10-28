@@ -21,6 +21,7 @@ from environment.mut_mappo_events import (
     MutEpisodeEvents, MutRewardConfig, SAFETY_KEYS, blue_driving_reward,
 )
 from utils.adversarial_metrics import extract_kinematics
+from environment.mut_mappo_efficiency_reward import PROFILE as TEAM_PROFILE, TeamEfficiencyReward
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -31,10 +32,19 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
 
     def __init__(self, red_checkpoint_config: dict, task_config: dict,
                  host="127.0.0.1", port=2000, seed=42, num_agents=4,
-                 audit_callback=None):
+                 audit_callback=None, reference_store=None):
         if num_agents not in (2, 4):
             raise ValueError("MutMAPPO supports two-car C0 or four-car C1/C2")
         self.task_config = deepcopy(task_config)
+        self.reference_store = reference_store
+        self.team_reward = (TeamEfficiencyReward(task_config.get("team_reward"),
+                            dt=float(task_config.get("timestep", 0.1)),
+                            horizon=int(task_config.get("max_steps", 500)),
+                            gamma=float(task_config.get("team_reward", {}).get("gamma", 0.999)))
+                            if task_config.get("reward_profile") == TEAM_PROFILE else None)
+        self._route_progress = {}
+        self._route_axes = {}
+        self._team_reference = None
         self.red_checkpoint_config = deepcopy(red_checkpoint_config)
         self.red_ids = (0, 1)
         self.blue_ids = (2, 3) if num_agents == 4 else ()
@@ -92,7 +102,7 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
                 "is_junction": bool(wp.is_junction)}
 
     def _resolve_case(self, case):
-        if not case.get("case_key") or case.get("family") not in {"blocking", "cut_in"}:
+        if not case.get("case_key") or case.get("family") not in {"blocking", "cut_in", "parallel", "staggered"}:
             raise ValueError("case requires stable case_key and known family")
         base_ref = case.get("base_scenario")
         if isinstance(base_ref, dict):
@@ -156,6 +166,11 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
                                         "y": float(transform.location.y), "z": 0.5,
                                         "yaw": yaw,
                                         "initial_speed_mps": float(spec["initial_speed_mps"])}
+                if case.get("blue_goal_mode") == "anchor_red_goal":
+                    goals = scenario.get("agent_goal_zones", {})
+                    if scenario.get("goal_mode") != "per_agent_explicit" or f"agent{rid}" not in goals:
+                        raise ValueError("paired first-point cases require explicit red goals")
+                    goals[f"agent{bid}"] = deepcopy(goals[f"agent{rid}"])
                 evidence["waypoints"][f"agent{bid}"] = self._waypoint_record(blue_wp)
         # Require legal, separated initial footprints without moving any paired case.
         for ai in range(self.num_agents):
@@ -179,6 +194,9 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
         self._mut_outcomes = {aid: "running" for aid in range(self.num_agents)}
         self._physical_contacts_seen = {aid: set() for aid in range(self.num_agents)}
         self.mut_events.reset()
+        if getattr(self, "team_reward", None) is not None:
+            self.team_reward.reset()
+            self._team_reference = self.reference_store.curve(case["case_key"]) if self.reference_store else None
         scenario, evidence = self._resolve_case(case)
         self.set_scenario(scenario)
         evidence["goal_waypoints"] = {}
@@ -207,6 +225,14 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
         self._case_geometry_evidence = evidence
         self.traffic_manager.set_random_device_seed(int(case.get("seed", self.seed)))
         self._post_tick_kinematics = deepcopy(evidence["realized_initial_states"])
+        self._route_axes, self._route_progress = {}, {}
+        for aid, snapshot in self._post_tick_kinematics.items():
+            start = snapshot["location"]
+            yaw = math.radians(snapshot["rotation"]["yaw"])
+            goal = self._get_target_location(aid)
+            length = (goal.x - start["x"]) * math.cos(yaw) + (goal.y - start["y"]) * math.sin(yaw)
+            self._route_axes[aid] = (start["x"], start["y"], math.cos(yaw), math.sin(yaw), max(length, 1e-6))
+            self._route_progress[aid] = 0.0
         self._last_mut_reward_details = {}
         self._agent_result_evidence = {}
         self._capture_agent_result_evidence(self._post_tick_kinematics, decision_sample=False)
@@ -313,6 +339,7 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
             rewards, details = method()
         finally:
             self._computing_role_base_reward = False
+        self._team_base_details = deepcopy(details)
         self._post_tick_kinematics = self._snapshot_kinematics()
         self._capture_agent_result_evidence(self._post_tick_kinematics)
         kinematics = extract_kinematics(self, list(range(self.num_agents)),
@@ -452,6 +479,9 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
                         "contract_status": "candidate",
                         "physical_contacts": contacts,
                         "contact_events": list(deduplicated.values())})
+        metrics["route_progress"] = dict(getattr(self, "_route_progress", {}))
+        if getattr(self, "team_reward", None) is not None:
+            metrics.update(self.team_reward.metrics(self.mut_events.blue_eligible))
         reward_residual = max((abs(value.get("reward_residual", 0.0))
                                for value in self._last_mut_reward_details.values()), default=0.0)
         return {"agent_terminated": dict(self.last_terminated),
@@ -462,7 +492,9 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
                 "case_geometry": deepcopy(self._case_geometry_evidence),
                 "post_tick_kinematics": deepcopy(getattr(self, "_post_tick_kinematics", {})),
                 "blue_reward_audit": deepcopy(self._last_mut_reward_details),
-                "blue_reward_formula": "team_impact + team_threat + team_timeout + driving - lambda * safety_cost",
+                "blue_reward_formula": ("shared C1 progress utility + driving - risk - team safety"
+                    if getattr(self, "team_reward", None) is not None
+                    else "team_impact + team_threat + team_timeout + driving - lambda * safety_cost"),
                 "blue_reward_max_abs_residual": reward_residual}
 
     def step(self, actions: dict):
@@ -479,6 +511,7 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
                     raise ValueError("environment controls must be finite [throttle, steer, brake]")
                 if not (0.0 <= value[0] <= 1.0 and -1.0 <= value[1] <= 1.0 and 0.0 <= value[2] <= 1.0):
                     raise ValueError("environment control outside physical bounds")
+        active_before = dict(self.active_mask)
         obs, rewards, dones, info = super().step(actions)
         # The parent captures observations before goal/failed-car despawn.
         # Keep that exact physical state for agent-specific truncation
@@ -504,6 +537,29 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
             audit["expected_reward"] = expected
             audit["actual_reward"] = float(rewards[bid])
             audit["reward_residual"] = float(rewards[bid]) - expected
+        for aid, snapshot in getattr(self, "_post_tick_kinematics", {}).items():
+            if aid in getattr(self, "_route_axes", {}):
+                x, y, fx, fy, length = self._route_axes[aid]
+                loc = snapshot["location"]
+                self._route_progress[aid] = min(1.0, max(0.0, ((loc["x"] - x) * fx + (loc["y"] - y) * fy) / length))
+                if self.reached_target.get(aid, False):
+                    self._route_progress[aid] = 1.0
+        if getattr(self, "team_reward", None) is not None:
+            costs = {b: audit["costs"] for b, audit in self._last_mut_reward_details.items()}
+            utility, components = self.team_reward.step(step=self.current_step,
+                progress=self._route_progress, reached=self.reached_target,
+                eligible=self.mut_events.blue_eligible and not self._last_mut_step_events.get("birth_protected", False),
+                safety=self.mut_events.safety,
+                costs=costs, base_details={b: self._team_base_details.get(b, {}) for b in self.blue_ids},
+                reference=self._team_reference)
+            self._last_mut_reward_details = {}
+            for bid in self.blue_ids:
+                if active_before.get(bid, False):
+                    rewards[bid] = utility
+                    info["reward_details"][bid] = dict(components)
+                    self._last_mut_reward_details[bid] = {"team_utility": utility,
+                        "expected_reward": utility, "actual_reward": utility, "reward_residual": 0.0}
+            info["team_step_reward"] = utility
         if self.follow_spectator:
             self._update_overhead_spectator()
         info["episode_end_reason"] = self.episode_end_reason

@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from contextlib import contextmanager
 from pathlib import Path
 
 
@@ -106,8 +107,8 @@ class MutMAPPOMonitor:
 
     def ready(self):
         operation = self.fields["operation"]
-        phase = "validating" if operation == "gate" else "evaluating" if operation == "evaluation" else "rollout"
-        message = "教师门控评估" if operation == "gate" else "独立配对评估" if operation == "evaluation" else "正在采样训练"
+        phase = "validating" if operation == "gate" else "evaluating" if operation in {"evaluation", "reference", "credit"} else "rollout"
+        message = {"gate": "教师门控评估", "evaluation": "独立配对评估", "reference": "采集普通交通 C1 参考曲线", "credit": "四组合贡献评估"}.get(operation, "正在采样训练")
         self.phase(phase, message)
 
     def before_step(self, env):
@@ -147,3 +148,22 @@ class MutMAPPOMonitor:
         finally:
             self.call("close")
             self.web = None
+
+
+@contextmanager
+def monitored_evaluation(config, directory, options=None, *, operation="evaluation"):
+    """Scope additional serial evaluators without taking ownership of world ticks."""
+    monitor = MutMAPPOMonitor(dict(config, _monitor_options=options or {}), directory, purpose="evaluation")
+    terminal, result = "error", {"operation": operation}
+    try:
+        monitor.start()
+        monitor.context(operation=operation)
+        yield monitor
+        terminal = "completed"
+    except BaseException as error:
+        terminal = "interrupted" if isinstance(error, KeyboardInterrupt) else "error"
+        result["error"] = f"{type(error).__name__}: {error}"
+        raise
+    finally:
+        monitor.detach()
+        monitor.finish(terminal, result=result, message="本阶段已结束，保留最终状态与画面")

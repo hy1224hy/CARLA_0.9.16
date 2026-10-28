@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 import math
 from typing import Any, Iterable, Mapping
+from evaluation.driving_policy_metrics import average, summarize_driving
 
 CONDITIONS = ("C0", "C1", "C2")
 METRICS_VERSION = "mut_mappo_external_metrics_v1"
@@ -159,6 +160,10 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "invalid_reason_counts": dict(sorted(Counter(_invalid_reason(row) for row in rows if not row["valid"]).items())),
         "consumed_tick_counts": dict(sorted(ticks.items())),
         "n_attempts_without_tick_counts": missing_tick_counts,
+        "attack_integral": average([row.get("attack_integral") for row in valid]),
+        "safe_efficiency_utility": average([row.get("safe_efficiency_utility") for row in valid]),
+        "team_utility_total": average([row.get("team_utility_total") for row in valid]),
+        "driving_metrics": summarize_driving(valid),
     }
 
 
@@ -175,6 +180,9 @@ def summarize_cases(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     result["teams"] = {team: {condition: _summarize([row for row in rows if row["team"] == team and row["condition"] == condition])
                               for condition in CONDITIONS}
                        for team in sorted({row["team"] for row in rows})}
+    axes = sorted({(row["condition"], str(row.get("family", "unknown")), str(row.get("direction", "unknown"))) for row in rows})
+    result["strata"] = {"|".join(axis): _summarize([row for row in rows if
+        (row["condition"], str(row.get("family", "unknown")), str(row.get("direction", "unknown"))) == axis]) for axis in axes}
     return result
 
 

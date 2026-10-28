@@ -117,6 +117,11 @@ class GateState:
                 own, peer = statistics[student][family], statistics[teacher][family]
                 ns, qs, bs = _stats(own)
                 nt, qt, bt = _stats(peer)
+                if self.config.get("quality_metric") == "efficiency":
+                    qs, qt = float(own["utility_sum"]) / ns, float(peer["utility_sum"]) / nt
+                    if not np.isfinite([qs, qt]).all():
+                        raise ValueError("nonfinite gate efficiency")
+                    q_margin = float(self.config.get("min_efficiency_gap", 0.02))
                 if ns != nt:
                     raise ValueError("gate A/B must have the same valid-case denominator")
                 if own.get("case_keys") != peer.get("case_keys"):
