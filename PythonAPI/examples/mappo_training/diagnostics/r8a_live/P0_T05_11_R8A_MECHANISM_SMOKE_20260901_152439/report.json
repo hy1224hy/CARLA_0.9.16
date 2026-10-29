@@ -1,0 +1,210 @@
+{
+  "report_version": "p0_t05_11_r8a_curriculum_live_v1",
+  "created_at": "2026-09-01T07:25:07.536799Z",
+  "reward_protocol": {
+    "reward_version": "v5",
+    "reward_protocol_version": "base_route_road_rule_reward_v5_r7",
+    "components": [
+      "progress",
+      "overspeed",
+      "longitudinal_rate",
+      "steer_rate",
+      "safety_lidar",
+      "ttc",
+      "lane_deviation",
+      "lane_invasion",
+      "offroad",
+      "road_rule",
+      "collision",
+      "success",
+      "mission_timeout"
+    ],
+    "diagnostics": [
+      "progress_m",
+      "route_completion_prev",
+      "route_completion",
+      "remaining_route_fraction",
+      "remaining_time_fraction",
+      "distance_to_goal_m",
+      "speed_mps",
+      "closing_speed_mps",
+      "overspeed_risk",
+      "longitudinal_command",
+      "longitudinal_rate_normalized",
+      "steer_rate_normalized",
+      "lidar_min_normalized",
+      "lidar_previous_min_normalized",
+      "lidar_trigger_ray_count",
+      "lidar_closing_speed_mps",
+      "lidar_approach_gate",
+      "lidar_risk",
+      "ttc_candidate_count",
+      "ttc_trigger_count",
+      "ttc_min_seconds_capped",
+      "ttc_risk",
+      "lateral_distance_m",
+      "lane_deviation_risk",
+      "legal_lane_change_event",
+      "legal_lane_change_grace_remaining",
+      "lane_deviation_exempted",
+      "yaw_error_rad",
+      "driving_center_valid",
+      "footprint_outside_count",
+      "footprint_outside_fraction",
+      "offroad_raw",
+      "offroad_consecutive_ticks",
+      "offroad_terminated",
+      "road_same_reference_lane",
+      "road_adjacent_to_reference",
+      "road_lane_change_permitted",
+      "road_current_to_reference_cosine",
+      "road_vehicle_to_current_cosine",
+      "road_in_junction",
+      "road_violation_raw",
+      "road_violation_consecutive_ticks",
+      "road_violation_terminated",
+      "road_success_eligible",
+      "collision_event",
+      "lane_invasion_sensor_event",
+      "success_event",
+      "mission_timeout_event",
+      "stall_low_speed",
+      "stall_no_progress_ticks",
+      "stall_raw",
+      "stall_front_blocker_exempt",
+      "stall_complex_interaction_exempt",
+      "stall_reportable"
+    ],
+    "parameters": {
+      "route_potential_scale": 20.0,
+      "success_bonus": 20.0,
+      "collision_penalty": -50.0,
+      "offroad_penalty": -50.0,
+      "mission_timeout_base_penalty": 10.0,
+      "mission_timeout_remaining_penalty": 10.0,
+      "overspeed_start_mps": 4.166666666666667,
+      "overspeed_full_mps": 8.333333333333334,
+      "overspeed_weight": 0.005,
+      "control_rate_reference_per_s": 2.0,
+      "longitudinal_rate_weight": 0.001,
+      "steer_rate_weight": 0.001,
+      "lidar_threshold_normalized": 0.5,
+      "lidar_closing_reference_mps": 2.0,
+      "lidar_risk_weight": 0.002,
+      "ttc_threshold_s": 3.0,
+      "ttc_tau_s": 1.0,
+      "ttc_risk_weight": 0.005,
+      "lane_deviation_deadzone_m": 0.35,
+      "lane_deviation_full_penalty_m": 1.25,
+      "lane_deviation_weight": 0.01,
+      "legal_lane_change_grace_ticks": 10,
+      "broken_line_penalty": -0.25,
+      "solid_line_penalty": -2.0,
+      "curb_penalty": -4.0,
+      "road_rule_penalty": -50.0,
+      "legal_lane_change_penalty": 0.0,
+      "illegal_lane_change_penalty": -2.0
+    },
+    "positive_dense_components": [
+      "progress"
+    ],
+    "lane_reference": "current_topology_approved_legal_lane",
+    "legal_lane_change_reward": "no_bonus_no_event_penalty",
+    "illegal_lane_change_reward": "bounded_event_cost_then_persistent_terminal",
+    "terminal_priority": [
+      "collision",
+      "offroad",
+      "road_rule",
+      "success",
+      "mission_timeout"
+    ],
+    "anti_hacking_invariants": [
+      "discounted_route_potential_telescopes",
+      "speed_alone_has_no_positive_reward",
+      "lane_center_has_no_positive_dwell_reward",
+      "broken_marking_alone_never_legalizes_a_lane_change",
+      "opposing_driving_lane_is_not_treated_as_offroad",
+      "road_rule_terminal_dominates_complete_route_potential",
+      "success_requires_current_road_legality",
+      "stall_is_diagnostic_only"
+    ]
+  },
+  "road_legality_protocol": {
+    "road_legality_protocol_version": "town05_road_legality_r7_v1",
+    "parameters": {
+      "same_direction_min_cosine": 0.5,
+      "opposing_direction_max_cosine": -0.5,
+      "wrong_way_heading_max_cosine": -0.1736481776669303,
+      "wrong_way_min_speed_mps": 0.5,
+      "violation_persistence_ticks": 5,
+      "legal_transition_grace_ticks": 10
+    },
+    "observation_space_change": false,
+    "reference_lane_key": [
+      "road_id",
+      "lane_id"
+    ],
+    "legal_lane_change_evidence": [
+      "adjacent_waypoint_topology",
+      "carla_lane_change_permission",
+      "same_direction_alignment"
+    ],
+    "broken_marking_semantics": "audit_only_never_sufficient_or_required",
+    "junction_semantics": "nonterminal_ambiguous_but_success_ineligible",
+    "terminal_rule": "same_reason_persists_for_frozen_tick_threshold",
+    "offroad_delegation": "exact_driving_footprint_protocol"
+  },
+  "scenarios": {
+    "scenario_01_north_short_rolling_a0_left.json": {
+      "expected_initial_speed_mps": 2.0,
+      "observed_initial_speed_mps": {
+        "0": 1.979407554261772,
+        "1": 1.9794074377078346
+      },
+      "episode_max_steps": 200,
+      "steps": 34,
+      "end_reason": "all_agents_reached",
+      "max_abs_reward_residual": 0.0
+    },
+    "scenario_02_south_short_rolling_a1_left.json": {
+      "expected_initial_speed_mps": 2.0,
+      "observed_initial_speed_mps": {
+        "0": 1.9794074361028673,
+        "1": 1.9794074361028673
+      },
+      "episode_max_steps": 200,
+      "steps": 33,
+      "end_reason": "all_agents_reached",
+      "max_abs_reward_residual": 0.0
+    },
+    "scenario_03_north_short_stationary_a0_left.json": {
+      "expected_initial_speed_mps": 0.0,
+      "observed_initial_speed_mps": {
+        "0": 0.005055055491377998,
+        "1": 0.005054769572326766
+      },
+      "episode_max_steps": 200,
+      "steps": 43,
+      "end_reason": "all_agents_reached",
+      "max_abs_reward_residual": 0.0
+    },
+    "scenario_04_south_short_stationary_a1_left.json": {
+      "expected_initial_speed_mps": 0.0,
+      "observed_initial_speed_mps": {
+        "0": 0.005054759798195875,
+        "1": 0.005054759798195875
+      },
+      "episode_max_steps": 200,
+      "steps": 43,
+      "end_reason": "all_agents_reached",
+      "max_abs_reward_residual": 0.0
+    }
+  },
+  "status": "PASS",
+  "cleanup": {
+    "synchronous_mode": false,
+    "fixed_delta_seconds": null,
+    "vehicle_count": 0,
+    "sensor_count": 0
+  }
+}

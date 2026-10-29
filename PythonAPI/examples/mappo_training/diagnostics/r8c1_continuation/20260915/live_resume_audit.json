@@ -1,0 +1,143 @@
+{
+  "checkpoint_sha256": "f361ba865ae04ba3da6e66282eeb06a6259dfe6fdabf4662a19dfa891d57ff2d",
+  "continuation": {
+    "compatibility": "audited_budget_only_full_state_resume",
+    "id": "R8C1_U100_TO_U600_20260915_V1",
+    "parent_checkpoint_sha256": "1e975bff5975060faeeaedbff4fa42a7f94aebc4bd694b1a6d4fe7e2ad815904",
+    "parent_update": 100,
+    "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\configs\\base_mappo\\p0_r8c1_continue_u600_v1.json",
+    "planned_total_updates": 600,
+    "sha256": "4d2863bc0498e9e65da4b32c857441fa63710a8b028e975543bf723b670d0098"
+  },
+  "curriculum_state": {
+    "agent_ids": [
+      0,
+      1
+    ],
+    "config": {
+      "consecutive_passing_windows": 2,
+      "maximum_agent_brake_mode_rate": 0.8,
+      "maximum_team_collision_rate": 0.1,
+      "maximum_team_offroad_rate": 0.1,
+      "maximum_team_road_violation_rate": 0.1,
+      "maximum_team_timeout_rate": 0.9,
+      "minimum_agent_mean_completion": 0.15,
+      "minimum_agent_mean_speed_mps": 0.3,
+      "minimum_team_success_rate": 0.1
+    },
+    "consecutive_passes": 0,
+    "curriculum_protocol_version": "town05_r8a_stratified_mastery_v1",
+    "last_evidence": {
+      "consecutive_passes": 0,
+      "failures": [
+        "pooled.team.road_violation_rate",
+        "scenario.scenario_01_north_short_rolling_a0_left.json.team.road_violation_rate",
+        "scenario.scenario_02_south_short_rolling_a1_left.json.team.road_violation_rate"
+      ],
+      "passed": false,
+      "previous_stage": 0,
+      "promoted": false,
+      "protocol_version": "town05_r8a_stratified_mastery_v1",
+      "required_scenarios": [
+        "scenario_01_north_short_rolling_a0_left.json",
+        "scenario_02_south_short_rolling_a1_left.json"
+      ],
+      "scenario_windows": {
+        "scenario_01_north_short_rolling_a0_left.json": {
+          "agent_brake_mode_rate": {
+            "0": 0.010582010582010581,
+            "1": 0.1834862385321101
+          },
+          "agent_mean_completion": {
+            "0": 0.8288812175220429,
+            "1": 0.7093538506376962
+          },
+          "agent_mean_speed_mps": {
+            "0": 5.656153656842356,
+            "1": 2.8033772519589832
+          },
+          "episode_count": 8,
+          "team_collision_rate": 0.0,
+          "team_offroad_rate": 0.0,
+          "team_road_violation_rate": 0.125,
+          "team_success_rate": 0.875,
+          "team_timeout_rate": 0.0,
+          "update": 101
+        },
+        "scenario_02_south_short_rolling_a1_left.json": {
+          "agent_brake_mode_rate": {
+            "0": 0.02,
+            "1": 0.24396135265700483
+          },
+          "agent_mean_completion": {
+            "0": 0.7042148772847201,
+            "1": 0.7185433539609842
+          },
+          "agent_mean_speed_mps": {
+            "0": 6.44538551288539,
+            "1": 2.161499232595729
+          },
+          "episode_count": 8,
+          "team_collision_rate": 0.0,
+          "team_offroad_rate": 0.0,
+          "team_road_violation_rate": 0.125,
+          "team_success_rate": 0.875,
+          "team_timeout_rate": 0.0,
+          "update": 101
+        }
+      },
+      "stage_index": 0,
+      "update": 101,
+      "window": {
+        "agent_brake_mode_rate": {
+          "0": 0.015424164524421594,
+          "1": 0.21294117647058824
+        },
+        "agent_mean_completion": {
+          "0": 0.7665480474033814,
+          "1": 0.7139486022993401
+        },
+        "agent_mean_speed_mps": {
+          "0": 6.061928390026432,
+          "1": 2.4907448989985275
+        },
+        "episode_count": 16,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.125,
+        "team_success_rate": 0.875,
+        "team_timeout_rate": 0.0,
+        "update": 101
+      }
+    },
+    "last_update": 101,
+    "stage_count": 4,
+    "stage_index": 0,
+    "stage_names": [
+      "S0-A",
+      "S0-B",
+      "S1",
+      "S2"
+    ]
+  },
+  "lr_schedule": {
+    "actor_final_lr": 1.5e-05,
+    "critic_final_lr": 0.0001,
+    "critic_hold_updates": 300,
+    "current_actor_lrs": {
+      "0": 0.0002524207011686143,
+      "1": 0.0002524207011686143
+    },
+    "current_critic_lr": 0.0003,
+    "decay_horizon": 600,
+    "enabled": true,
+    "initial_actor_lr": 0.0003,
+    "initial_critic_lr": 0.0003,
+    "protocol_version": "separate_actor_critic_lr_r7_v1"
+  },
+  "metrics_count": 101,
+  "safe_update": 101,
+  "status": "PASS",
+  "total_episodes": 1616,
+  "unique_complete_episodes": 1616
+}

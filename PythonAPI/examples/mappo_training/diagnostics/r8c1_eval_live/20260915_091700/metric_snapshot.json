@@ -1,0 +1,2499 @@
+{
+  "updated_at": "2026-09-15T01:26:15.413493+00:00",
+  "batch_status": "COMPLETED_WITH_REPEATABILITY_HOLD",
+  "evaluation_purpose": "diagnostic_only",
+  "selection_allowed": false,
+  "performance_decision": "NOT_EVALUATED",
+  "completed_probe_episodes": 40,
+  "smoke_episodes": 2,
+  "runs": [
+    {
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_091925",
+      "profile": "short_probe",
+      "update": 20,
+      "repeat": 1,
+      "status": "DIAGNOSTIC_PASS",
+      "episodes": 4,
+      "outcomes": {
+        "timeout": 4
+      }
+    },
+    {
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_092002",
+      "profile": "short_probe",
+      "update": 20,
+      "repeat": 2,
+      "status": "DIAGNOSTIC_PASS",
+      "episodes": 4,
+      "outcomes": {
+        "timeout": 4
+      }
+    },
+    {
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092242",
+      "profile": "short_probe",
+      "update": 60,
+      "repeat": 1,
+      "status": "DIAGNOSTIC_PASS",
+      "episodes": 4,
+      "outcomes": {
+        "collision": 1,
+        "success": 3
+      }
+    },
+    {
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092309",
+      "profile": "short_probe",
+      "update": 60,
+      "repeat": 2,
+      "status": "DIAGNOSTIC_PASS",
+      "episodes": 4,
+      "outcomes": {
+        "collision": 1,
+        "success": 3
+      }
+    },
+    {
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092340",
+      "profile": "short_probe",
+      "update": 100,
+      "repeat": 1,
+      "status": "DIAGNOSTIC_PASS",
+      "episodes": 4,
+      "outcomes": {
+        "success": 4
+      }
+    },
+    {
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092407",
+      "profile": "short_probe",
+      "update": 100,
+      "repeat": 2,
+      "status": "DIAGNOSTIC_PASS",
+      "episodes": 4,
+      "outcomes": {
+        "success": 4
+      }
+    },
+    {
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092436",
+      "profile": "long_probe",
+      "update": 100,
+      "repeat": 1,
+      "status": "DIAGNOSTIC_PASS",
+      "episodes": 8,
+      "outcomes": {
+        "offroad": 3,
+        "success": 4,
+        "collision": 1
+      }
+    },
+    {
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092516",
+      "profile": "long_probe",
+      "update": 100,
+      "repeat": 2,
+      "status": "DIAGNOSTIC_PASS",
+      "episodes": 8,
+      "outcomes": {
+        "offroad": 3,
+        "success": 4,
+        "collision": 1
+      }
+    }
+  ],
+  "groups_separated_by_repeat": [
+    {
+      "update": 20,
+      "scenario_group": "short_rolling_trained",
+      "repeat": 1,
+      "case_count": 2,
+      "outcomes": {
+        "timeout": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.7944095881339118,
+          "speed_mps": 3.3533151402695376,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.4520547945205479
+        },
+        "1": {
+          "reached_count": 0,
+          "mean_final_completion": 0.5307034873621304,
+          "speed_mps": 0.4004119719844257,
+          "brake_mode_rate": 0.8625,
+          "coast_mode_rate": 0.1075,
+          "pace_eligible_rate": 0.9
+        }
+      }
+    },
+    {
+      "update": 20,
+      "scenario_group": "short_rolling_trained",
+      "repeat": 2,
+      "case_count": 2,
+      "outcomes": {
+        "timeout": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.8010786235044385,
+          "speed_mps": 3.37911289689055,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.4520547945205479
+        },
+        "1": {
+          "reached_count": 0,
+          "mean_final_completion": 0.5293433332570768,
+          "speed_mps": 0.39906353736623223,
+          "brake_mode_rate": 0.8625,
+          "coast_mode_rate": 0.1075,
+          "pace_eligible_rate": 0.9
+        }
+      }
+    },
+    {
+      "update": 20,
+      "scenario_group": "short_stationary_transfer",
+      "repeat": 1,
+      "case_count": 2,
+      "outcomes": {
+        "timeout": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.811059073370896,
+          "speed_mps": 2.373676135583004,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.6226415094339622
+        },
+        "1": {
+          "reached_count": 0,
+          "mean_final_completion": 1.3663346662676803e-06,
+          "speed_mps": 2.92360824564253e-05,
+          "brake_mode_rate": 0.3925,
+          "coast_mode_rate": 0.5575,
+          "pace_eligible_rate": 0.9
+        }
+      }
+    },
+    {
+      "update": 20,
+      "scenario_group": "short_stationary_transfer",
+      "repeat": 2,
+      "case_count": 2,
+      "outcomes": {
+        "timeout": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.811059073370896,
+          "speed_mps": 2.373676135583004,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.6226415094339622
+        },
+        "1": {
+          "reached_count": 0,
+          "mean_final_completion": 1.3663346662676803e-06,
+          "speed_mps": 2.9236082457352106e-05,
+          "brake_mode_rate": 0.3925,
+          "coast_mode_rate": 0.5575,
+          "pace_eligible_rate": 0.9
+        }
+      }
+    },
+    {
+      "update": 60,
+      "scenario_group": "short_rolling_trained",
+      "repeat": 1,
+      "case_count": 2,
+      "outcomes": {
+        "collision": 1,
+        "success": 1
+      },
+      "agents": {
+        "0": {
+          "reached_count": 1,
+          "mean_final_completion": 0.6811170020800038,
+          "speed_mps": 4.1431677377012885,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.21568627450980393
+        },
+        "1": {
+          "reached_count": 1,
+          "mean_final_completion": 0.708565196600003,
+          "speed_mps": 3.5541874267345146,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.3442622950819672
+        }
+      }
+    },
+    {
+      "update": 60,
+      "scenario_group": "short_rolling_trained",
+      "repeat": 2,
+      "case_count": 2,
+      "outcomes": {
+        "collision": 1,
+        "success": 1
+      },
+      "agents": {
+        "0": {
+          "reached_count": 1,
+          "mean_final_completion": 0.6811170020800038,
+          "speed_mps": 4.1431677377012885,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.21568627450980393
+        },
+        "1": {
+          "reached_count": 1,
+          "mean_final_completion": 0.708565196600003,
+          "speed_mps": 3.5541874267345146,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.3442622950819672
+        }
+      }
+    },
+    {
+      "update": 60,
+      "scenario_group": "short_stationary_transfer",
+      "repeat": 1,
+      "case_count": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.8198701933029405,
+          "speed_mps": 3.8706547036863532,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.47368421052631576
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.8209727729493721,
+          "speed_mps": 3.0305981762157805,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.5238095238095238
+        }
+      }
+    },
+    {
+      "update": 60,
+      "scenario_group": "short_stationary_transfer",
+      "repeat": 2,
+      "case_count": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.8198701933029405,
+          "speed_mps": 3.8706547036863532,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.47368421052631576
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.8209727729493721,
+          "speed_mps": 3.0305981762157805,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.5238095238095238
+        }
+      }
+    },
+    {
+      "update": 100,
+      "scenario_group": "long_free_flow",
+      "repeat": 1,
+      "case_count": 4,
+      "outcomes": {
+        "offroad": 1,
+        "success": 2,
+        "collision": 1
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.7185782872031901,
+          "speed_mps": 10.905331372232,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.0
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.6161587970189835,
+          "speed_mps": 5.561024525603367,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.0
+        }
+      }
+    },
+    {
+      "update": 100,
+      "scenario_group": "long_free_flow",
+      "repeat": 2,
+      "case_count": 4,
+      "outcomes": {
+        "offroad": 1,
+        "success": 2,
+        "collision": 1
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.7185759754807732,
+          "speed_mps": 10.905296183966078,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.0
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.6161098445185753,
+          "speed_mps": 5.497556502048714,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.0
+        }
+      }
+    },
+    {
+      "update": 100,
+      "scenario_group": "long_stationary_pace_exempt",
+      "repeat": 1,
+      "case_count": 4,
+      "outcomes": {
+        "offroad": 2,
+        "success": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.7224147714150292,
+          "speed_mps": 9.628123417868782,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.0
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.5610382312920303,
+          "speed_mps": 3.8197012676715687,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.00823045267489712,
+          "pace_eligible_rate": 0.0
+        }
+      }
+    },
+    {
+      "update": 100,
+      "scenario_group": "long_stationary_pace_exempt",
+      "repeat": 2,
+      "case_count": 4,
+      "outcomes": {
+        "offroad": 2,
+        "success": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.7241191908113604,
+          "speed_mps": 9.647776027272762,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.0
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.5626394212388077,
+          "speed_mps": 3.8895955690894484,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.008097165991902834,
+          "pace_eligible_rate": 0.0
+        }
+      }
+    },
+    {
+      "update": 100,
+      "scenario_group": "short_rolling_trained",
+      "repeat": 1,
+      "case_count": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.8525443870497926,
+          "speed_mps": 6.440715314609078,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.047619047619047616
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.8127168224261363,
+          "speed_mps": 3.845575881876411,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.38461538461538464
+        }
+      }
+    },
+    {
+      "update": 100,
+      "scenario_group": "short_rolling_trained",
+      "repeat": 2,
+      "case_count": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.851238037956197,
+          "speed_mps": 6.431565594607112,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.047619047619047616
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.813358308061663,
+          "speed_mps": 3.8529416857038945,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.38461538461538464
+        }
+      }
+    },
+    {
+      "update": 100,
+      "scenario_group": "short_stationary_transfer",
+      "repeat": 1,
+      "case_count": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.833685337562788,
+          "speed_mps": 5.618178311298229,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.14893617021276595
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.823771868834936,
+          "speed_mps": 2.831864864798953,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.5555555555555556
+        }
+      }
+    },
+    {
+      "update": 100,
+      "scenario_group": "short_stationary_transfer",
+      "repeat": 2,
+      "case_count": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "agents": {
+        "0": {
+          "reached_count": 2,
+          "mean_final_completion": 0.833685337562788,
+          "speed_mps": 5.618178311298229,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.14893617021276595
+        },
+        "1": {
+          "reached_count": 2,
+          "mean_final_completion": 0.823771868834936,
+          "speed_mps": 2.831864864798953,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "pace_eligible_rate": 0.5555555555555556
+        }
+      }
+    }
+  ],
+  "episodes": [
+    {
+      "case_id": "short_probe:scenario_01_north_short_rolling_a0_left:s61001",
+      "scenario_name": "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "northbound",
+      "outcome": "timeout",
+      "episode_length": 200,
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_091925",
+      "update": 20,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 36,
+          "final_completion": 0.785190769443447,
+          "speed_mps": 3.3874165354674806,
+          "episode_return": 31.381034706047185,
+          "throttle_mean": 0.2658764198422432,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.033873363216924995,
+          "pace_eligible_rate": 0.4444444444444444,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 200,
+          "final_completion": 0.3507238811560268,
+          "speed_mps": 0.26320644926734466,
+          "episode_return": -11.167853210636952,
+          "throttle_mean": 0.0,
+          "brake_mean": 0.06063450271030888,
+          "brake_mode_rate": 0.915,
+          "coast_mode_rate": 0.085,
+          "steer_mean": -0.06441424067132175,
+          "pace_eligible_rate": 0.9,
+          "pace_reward_sum": -0.37488271728876643,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_02_south_short_rolling_a1_left:s61001",
+      "scenario_name": "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "southbound",
+      "outcome": "timeout",
+      "episode_length": 200,
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_091925",
+      "update": 20,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 37,
+          "final_completion": 0.8036284068243766,
+          "speed_mps": 3.3201354044012694,
+          "episode_return": 35.81247664442796,
+          "throttle_mean": 0.28347054566885976,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.01217789067005789,
+          "pace_eligible_rate": 0.4594594594594595,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 200,
+          "final_completion": 0.7106830935682338,
+          "speed_mps": 0.5376174947015067,
+          "episode_return": -1.2011448446917612,
+          "throttle_mean": 0.0013008774566696957,
+          "brake_mean": 0.06430428539038985,
+          "brake_mode_rate": 0.81,
+          "coast_mode_rate": 0.13,
+          "steer_mean": -0.06096102298019104,
+          "pace_eligible_rate": 0.9,
+          "pace_reward_sum": -0.05903046949782117,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_03_north_short_stationary_a0_left:s61001",
+      "scenario_name": "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "northbound",
+      "outcome": "timeout",
+      "episode_length": 200,
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_091925",
+      "update": 20,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 55,
+          "final_completion": 0.8146183976176649,
+          "speed_mps": 2.2982209302301406,
+          "episode_return": 31.92299270417513,
+          "throttle_mean": 0.25893883759325204,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.021872803490524263,
+          "pace_eligible_rate": 0.6363636363636364,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 200,
+          "final_completion": 1.3346151570463898e-06,
+          "speed_mps": 2.934001746056538e-05,
+          "episode_return": -20.944347659591422,
+          "throttle_mean": 0.0,
+          "brake_mean": 0.03130605374579318,
+          "brake_mode_rate": 0.785,
+          "coast_mode_rate": 0.215,
+          "steer_mean": -0.058998940885066985,
+          "pace_eligible_rate": 0.9,
+          "pace_reward_sum": -0.9426290502028603,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_04_south_short_stationary_a1_left:s61001",
+      "scenario_name": "scenario_04_south_short_stationary_a1_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "southbound",
+      "outcome": "timeout",
+      "episode_length": 200,
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_091925",
+      "update": 20,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 51,
+          "final_completion": 0.807499749124127,
+          "speed_mps": 2.455049396257661,
+          "episode_return": 33.832505751600266,
+          "throttle_mean": 0.2756870424046236,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.0207499415138919,
+          "pace_eligible_rate": 0.6078431372549019,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 200,
+          "final_completion": 1.398054175488971e-06,
+          "speed_mps": 2.913214745228522e-05,
+          "episode_return": -20.944252612641705,
+          "throttle_mean": 0.0025403251871466636,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.9,
+          "steer_mean": -0.055621220553293826,
+          "pace_eligible_rate": 0.9,
+          "pace_reward_sum": -0.9426289300026147,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_01_north_short_rolling_a0_left:s61001",
+      "scenario_name": "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "northbound",
+      "outcome": "timeout",
+      "episode_length": 200,
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_092002",
+      "update": 20,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 36,
+          "final_completion": 0.7985288401845003,
+          "speed_mps": 3.4397286530600883,
+          "episode_return": 31.645311499872875,
+          "throttle_mean": 0.2697289503282971,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.03152846818233633,
+          "pace_eligible_rate": 0.4444444444444444,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 200,
+          "final_completion": 0.3480035729459198,
+          "speed_mps": 0.26050956696609046,
+          "episode_return": -11.244041366874093,
+          "throttle_mean": 0.0,
+          "brake_mean": 0.061439307392574846,
+          "brake_mode_rate": 0.915,
+          "coast_mode_rate": 0.085,
+          "steer_mean": -0.06464285369031131,
+          "pace_eligible_rate": 0.9,
+          "pace_reward_sum": -0.3783112762788381,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_02_south_short_rolling_a1_left:s61001",
+      "scenario_name": "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "southbound",
+      "outcome": "timeout",
+      "episode_length": 200,
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_092002",
+      "update": 20,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 37,
+          "final_completion": 0.8036284068243766,
+          "speed_mps": 3.3201354044012694,
+          "episode_return": 35.81247664442796,
+          "throttle_mean": 0.28347054566885976,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.01217789067005789,
+          "pace_eligible_rate": 0.4594594594594595,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 200,
+          "final_completion": 0.7106830935682338,
+          "speed_mps": 0.537617507766374,
+          "episode_return": -1.2011448144012835,
+          "throttle_mean": 0.0013008774566696957,
+          "brake_mean": 0.06430480141760199,
+          "brake_mode_rate": 0.81,
+          "coast_mode_rate": 0.13,
+          "steer_mean": -0.060960867151297865,
+          "pace_eligible_rate": 0.9,
+          "pace_reward_sum": -0.05903046949782117,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_03_north_short_stationary_a0_left:s61001",
+      "scenario_name": "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "northbound",
+      "outcome": "timeout",
+      "episode_length": 200,
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_092002",
+      "update": 20,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 55,
+          "final_completion": 0.8146183976176649,
+          "speed_mps": 2.2982209302301406,
+          "episode_return": 31.92299270417513,
+          "throttle_mean": 0.25893883759325204,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.021872803490524263,
+          "pace_eligible_rate": 0.6363636363636364,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 200,
+          "final_completion": 1.3346151570463898e-06,
+          "speed_mps": 2.9340017460597367e-05,
+          "episode_return": -20.94434763973027,
+          "throttle_mean": 0.0,
+          "brake_mean": 0.03130640483577736,
+          "brake_mode_rate": 0.785,
+          "coast_mode_rate": 0.215,
+          "steer_mean": -0.05899884540587664,
+          "pace_eligible_rate": 0.9,
+          "pace_reward_sum": -0.9426290502028603,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_04_south_short_stationary_a1_left:s61001",
+      "scenario_name": "scenario_04_south_short_stationary_a1_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "southbound",
+      "outcome": "timeout",
+      "episode_length": 200,
+      "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_092002",
+      "update": 20,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 51,
+          "final_completion": 0.807499749124127,
+          "speed_mps": 2.455049396257661,
+          "episode_return": 33.832505751600266,
+          "throttle_mean": 0.2756870424046236,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.0207499415138919,
+          "pace_eligible_rate": 0.6078431372549019,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 200,
+          "final_completion": 1.398054175488971e-06,
+          "speed_mps": 2.9132147454106845e-05,
+          "episode_return": -20.9442526100678,
+          "throttle_mean": 0.0025403251871466636,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.9,
+          "steer_mean": -0.0556212502066046,
+          "pace_eligible_rate": 0.9,
+          "pace_reward_sum": -0.9426289300026147,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_01_north_short_rolling_a0_left:s61001",
+      "scenario_name": "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "northbound",
+      "outcome": "collision",
+      "episode_length": 24,
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092242",
+      "update": 60,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 24,
+          "final_completion": 0.5552962274301307,
+          "speed_mps": 3.642810387360381,
+          "episode_return": -43.09716204372161,
+          "throttle_mean": 0.4071561222275098,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.08025416836608201,
+          "pace_eligible_rate": 0.16666666666666666,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 24,
+          "final_completion": 0.5886569767970087,
+          "speed_mps": 3.7510970850511787,
+          "episode_return": -38.35768666544928,
+          "throttle_mean": 0.4388626056412856,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.0003144182931767621,
+          "pace_eligible_rate": 0.16666666666666666,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_02_south_short_rolling_a1_left:s61001",
+      "scenario_name": "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 37,
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092242",
+      "update": 60,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 27,
+          "final_completion": 0.8069377767298769,
+          "speed_mps": 4.587929826893205,
+          "episode_return": 35.918447746265564,
+          "throttle_mean": 0.5151884842801977,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.02198135348347326,
+          "pace_eligible_rate": 0.25925925925925924,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 37,
+          "final_completion": 0.8284734164029974,
+          "speed_mps": 3.4264622429615437,
+          "episode_return": 36.29736641688891,
+          "throttle_mean": 0.32875788413189555,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.005540743803706121,
+          "pace_eligible_rate": 0.4594594594594595,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_03_north_short_stationary_a0_left:s61001",
+      "scenario_name": "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "northbound",
+      "outcome": "success",
+      "episode_length": 45,
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092242",
+      "update": 60,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 45,
+          "final_completion": 0.841326935795061,
+          "speed_mps": 3.8029813273273954,
+          "episode_return": 32.19719561615404,
+          "throttle_mean": 0.4035217470592923,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.02791473424424314,
+          "pace_eligible_rate": 0.5555555555555556,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 38,
+          "final_completion": 0.8116399636654201,
+          "speed_mps": 3.3345857974647473,
+          "episode_return": 35.92406395826414,
+          "throttle_mean": 0.4319175771976772,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.014572995976777747,
+          "pace_eligible_rate": 0.47368421052631576,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_04_south_short_stationary_a1_left:s61001",
+      "scenario_name": "scenario_04_south_short_stationary_a1_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 46,
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092242",
+      "update": 60,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 31,
+          "final_completion": 0.79841345081082,
+          "speed_mps": 3.968890250013872,
+          "episode_return": 35.75657157592873,
+          "throttle_mean": 0.5337415597131175,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.04351047674689682,
+          "pace_eligible_rate": 0.3548387096774194,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 46,
+          "final_completion": 0.8303055822333242,
+          "speed_mps": 2.7794779673579377,
+          "episode_return": 36.35938898778992,
+          "throttle_mean": 0.37148492556551227,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.02449997471463259,
+          "pace_eligible_rate": 0.5652173913043478,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_01_north_short_rolling_a0_left:s61001",
+      "scenario_name": "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "northbound",
+      "outcome": "collision",
+      "episode_length": 24,
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092309",
+      "update": 60,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 24,
+          "final_completion": 0.5552962274301307,
+          "speed_mps": 3.642810387360381,
+          "episode_return": -43.09716204372161,
+          "throttle_mean": 0.4071561222275098,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.08025416836608201,
+          "pace_eligible_rate": 0.16666666666666666,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 24,
+          "final_completion": 0.5886569767970087,
+          "speed_mps": 3.7510970850511787,
+          "episode_return": -38.35768666544928,
+          "throttle_mean": 0.4388626056412856,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.0003144182931767621,
+          "pace_eligible_rate": 0.16666666666666666,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_02_south_short_rolling_a1_left:s61001",
+      "scenario_name": "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 37,
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092309",
+      "update": 60,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 27,
+          "final_completion": 0.8069377767298769,
+          "speed_mps": 4.587929826893205,
+          "episode_return": 35.918447746265564,
+          "throttle_mean": 0.5151884842801977,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.02198135348347326,
+          "pace_eligible_rate": 0.25925925925925924,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 37,
+          "final_completion": 0.8284734164029974,
+          "speed_mps": 3.4264622429615437,
+          "episode_return": 36.29736641688891,
+          "throttle_mean": 0.32875788413189555,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.005540743803706121,
+          "pace_eligible_rate": 0.4594594594594595,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_03_north_short_stationary_a0_left:s61001",
+      "scenario_name": "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "northbound",
+      "outcome": "success",
+      "episode_length": 45,
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092309",
+      "update": 60,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 45,
+          "final_completion": 0.841326935795061,
+          "speed_mps": 3.8029813273273954,
+          "episode_return": 32.19719561615404,
+          "throttle_mean": 0.4035217470592923,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.02791473424424314,
+          "pace_eligible_rate": 0.5555555555555556,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 38,
+          "final_completion": 0.8116399636654201,
+          "speed_mps": 3.3345857974647473,
+          "episode_return": 31.92406395826414,
+          "throttle_mean": 0.4319175771976772,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.014572995976777747,
+          "pace_eligible_rate": 0.47368421052631576,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_04_south_short_stationary_a1_left:s61001",
+      "scenario_name": "scenario_04_south_short_stationary_a1_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 46,
+      "eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092309",
+      "update": 60,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 31,
+          "final_completion": 0.79841345081082,
+          "speed_mps": 3.968890250013872,
+          "episode_return": 35.75657157592873,
+          "throttle_mean": 0.5337415597131175,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.04351047674689682,
+          "pace_eligible_rate": 0.3548387096774194,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 46,
+          "final_completion": 0.8303055822333242,
+          "speed_mps": 2.7794779673579377,
+          "episode_return": 36.35938898778992,
+          "throttle_mean": 0.37148492556551227,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.02449997471463259,
+          "pace_eligible_rate": 0.5652173913043478,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_01_north_short_rolling_a0_left:s61001",
+      "scenario_name": "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "northbound",
+      "outcome": "success",
+      "episode_length": 32,
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092340",
+      "update": 100,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 21,
+          "final_completion": 0.8532780381001658,
+          "speed_mps": 6.401523170730593,
+          "episode_return": 32.846040713567106,
+          "throttle_mean": 0.8766299571309771,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.026955327393287525,
+          "pace_eligible_rate": 0.047619047619047616,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 32,
+          "final_completion": 0.8271151283252907,
+          "speed_mps": 3.990094730675113,
+          "episode_return": 32.23775170646677,
+          "throttle_mean": 0.4156110091134906,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.01574833458289504,
+          "pace_eligible_rate": 0.375,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_02_south_short_rolling_a1_left:s61001",
+      "scenario_name": "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 33,
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092340",
+      "update": 100,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 21,
+          "final_completion": 0.8518107359994196,
+          "speed_mps": 6.479907458487564,
+          "episode_return": 34.81313710366794,
+          "throttle_mean": 0.8816543249856859,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.008942046624031804,
+          "pace_eligible_rate": 0.047619047619047616,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 33,
+          "final_completion": 0.7983185165269819,
+          "speed_mps": 3.7054363921322153,
+          "episode_return": 35.71784635714986,
+          "throttle_mean": 0.3819303255189549,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.01791105013002049,
+          "pace_eligible_rate": 0.3939393939393939,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_03_north_short_stationary_a0_left:s61001",
+      "scenario_name": "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "northbound",
+      "outcome": "success",
+      "episode_length": 40,
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092340",
+      "update": 100,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 24,
+          "final_completion": 0.8597608838040952,
+          "speed_mps": 5.666786201107893,
+          "episode_return": 34.97717060471151,
+          "throttle_mean": 0.8798718005418777,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.006884184025693685,
+          "pace_eligible_rate": 0.16666666666666666,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 40,
+          "final_completion": 0.8217837538313782,
+          "speed_mps": 3.1780994075830296,
+          "episode_return": 30.161345241558344,
+          "throttle_mean": 0.4190200358629227,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.006556397466920316,
+          "pace_eligible_rate": 0.5,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_04_south_short_stationary_a1_left:s61001",
+      "scenario_name": "scenario_04_south_short_stationary_a1_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 50,
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092340",
+      "update": 100,
+      "repeat": 1,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 23,
+          "final_completion": 0.8076097913214806,
+          "speed_mps": 5.567457034975101,
+          "episode_return": 33.96061636082557,
+          "throttle_mean": 0.8904878834019536,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.03361098797303503,
+          "pace_eligible_rate": 0.13043478260869565,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 50,
+          "final_completion": 0.8257599838384937,
+          "speed_mps": 2.5548772305716914,
+          "episode_return": 34.221066805166096,
+          "throttle_mean": 0.3442279288172722,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.0386908140196465,
+          "pace_eligible_rate": 0.6,
+          "pace_reward_sum": -0.0020540364962979003,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_01_north_short_rolling_a0_left:s61001",
+      "scenario_name": "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "northbound",
+      "outcome": "success",
+      "episode_length": 32,
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092407",
+      "update": 100,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 21,
+          "final_completion": 0.8506653399129745,
+          "speed_mps": 6.383223730726661,
+          "episode_return": 32.79453772264521,
+          "throttle_mean": 0.8767459108715966,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.027168581167989897,
+          "pace_eligible_rate": 0.047619047619047616,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 32,
+          "final_completion": 0.828398099596344,
+          "speed_mps": 4.005056519699688,
+          "episode_return": 32.26320466094587,
+          "throttle_mean": 0.41680404730141163,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.01607053668703884,
+          "pace_eligible_rate": 0.375,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_02_south_short_rolling_a1_left:s61001",
+      "scenario_name": "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_group": "short_rolling_trained",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 33,
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092407",
+      "update": 100,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 21,
+          "final_completion": 0.8518107359994196,
+          "speed_mps": 6.479907458487564,
+          "episode_return": 34.81313710366794,
+          "throttle_mean": 0.8816543249856859,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.008942046624031804,
+          "pace_eligible_rate": 0.047619047619047616,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 33,
+          "final_completion": 0.7983185165269819,
+          "speed_mps": 3.7054363921322153,
+          "episode_return": 35.71784635714986,
+          "throttle_mean": 0.3819303255189549,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.01791105013002049,
+          "pace_eligible_rate": 0.3939393939393939,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_03_north_short_stationary_a0_left:s61001",
+      "scenario_name": "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "northbound",
+      "outcome": "success",
+      "episode_length": 40,
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092407",
+      "update": 100,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 24,
+          "final_completion": 0.8597608838040952,
+          "speed_mps": 5.666786201107893,
+          "episode_return": 34.97717060471151,
+          "throttle_mean": 0.8798718005418777,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.006884184025693685,
+          "pace_eligible_rate": 0.16666666666666666,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 40,
+          "final_completion": 0.8217837538313782,
+          "speed_mps": 3.1780994075830296,
+          "episode_return": 28.161345241558344,
+          "throttle_mean": 0.4190200358629227,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.006556397466920316,
+          "pace_eligible_rate": 0.5,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "short_probe:scenario_04_south_short_stationary_a1_left:s61001",
+      "scenario_name": "scenario_04_south_short_stationary_a1_left.json",
+      "scenario_group": "short_stationary_transfer",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 50,
+      "eval_id": "P0_BASE_C0_short_probe_u000100_20260915_092407",
+      "update": 100,
+      "repeat": 2,
+      "profile": "short_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 23,
+          "final_completion": 0.8076097913214806,
+          "speed_mps": 5.567457034975101,
+          "episode_return": 33.96061636082557,
+          "throttle_mean": 0.8904878834019536,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.03361098797303503,
+          "pace_eligible_rate": 0.13043478260869565,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 50,
+          "final_completion": 0.8257599838384937,
+          "speed_mps": 2.5548772305716914,
+          "episode_return": 32.221066805166096,
+          "throttle_mean": 0.3442279288172722,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.0386908140196465,
+          "pace_eligible_rate": 0.6,
+          "pace_reward_sum": -0.0020540364962979003,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_05_northbound_free_flow:s61001",
+      "scenario_name": "scenario_05_northbound_free_flow.json",
+      "scenario_group": "long_free_flow",
+      "direction": "northbound",
+      "outcome": "offroad",
+      "episode_length": 14,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092436",
+      "update": 100,
+      "repeat": 1,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 14,
+          "final_completion": 0.12681512059950248,
+          "speed_mps": 4.482395339737211,
+          "episode_return": -51.54851098165129,
+          "throttle_mean": 0.873930675642831,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.16571125920329774,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": true
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 14,
+          "final_completion": 0.13249921328218672,
+          "speed_mps": 4.312094980602902,
+          "episode_return": 2.625578913515691,
+          "throttle_mean": 0.40934144811970846,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.016384665987321308,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_06_southbound_free_flow:s61001",
+      "scenario_name": "scenario_06_southbound_free_flow.json",
+      "scenario_group": "long_free_flow",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 74,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092436",
+      "update": 100,
+      "repeat": 1,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 38,
+          "final_completion": 0.9729623647645581,
+          "speed_mps": 11.74259190324379,
+          "episode_return": 39.00832540519647,
+          "throttle_mean": 0.8554473566381555,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.0069347012444938485,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 74,
+          "final_completion": 0.9331414157163014,
+          "speed_mps": 5.752746053391433,
+          "episode_return": 33.77027852445585,
+          "throttle_mean": 0.40889722632395253,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.011839932201247712,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_07_eastbound_free_flow:s61001",
+      "scenario_name": "scenario_07_eastbound_free_flow.json",
+      "scenario_group": "long_free_flow",
+      "direction": "eastbound",
+      "outcome": "success",
+      "episode_length": 66,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092436",
+      "update": 100,
+      "repeat": 1,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 38,
+          "final_completion": 0.9431058792384812,
+          "speed_mps": 10.702384854267098,
+          "episode_return": 32.309399792073265,
+          "throttle_mean": 0.8609323595699511,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.011095143975628736,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 66,
+          "final_completion": 0.9446728139432402,
+          "speed_mps": 6.099486319951303,
+          "episode_return": 21.986091858537826,
+          "throttle_mean": 0.3960504030639475,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.006984456664543937,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_08_westbound_free_flow:s61001",
+      "scenario_name": "scenario_08_westbound_free_flow.json",
+      "scenario_group": "long_free_flow",
+      "direction": "westbound",
+      "outcome": "collision",
+      "episode_length": 43,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092436",
+      "update": 100,
+      "repeat": 1,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 43,
+          "final_completion": 0.8314297842102185,
+          "speed_mps": 12.435963278258637,
+          "episode_return": -46.064018820159895,
+          "throttle_mean": 0.8446271613586781,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.01918152788502359,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 43,
+          "final_completion": 0.4543217451342057,
+          "speed_mps": 4.811237133666759,
+          "episode_return": 8.858500104532794,
+          "throttle_mean": 0.4409934070914291,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.009466083628277099,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_09_north_parallel_stationary_a0_left:s61001",
+      "scenario_name": "scenario_09_north_parallel_stationary_a0_left.json",
+      "scenario_group": "long_stationary_pace_exempt",
+      "direction": "northbound",
+      "outcome": "offroad",
+      "episode_length": 23,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092436",
+      "update": 100,
+      "repeat": 1,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 23,
+          "final_completion": 0.2647919781321657,
+          "speed_mps": 5.471905906690081,
+          "episode_return": -48.8551244492315,
+          "throttle_mean": 0.8860376321751139,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.10314582515022029,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": true
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 23,
+          "final_completion": 0.08650940196674542,
+          "speed_mps": 1.797642350681374,
+          "episode_return": 1.7151965241569262,
+          "throttle_mean": 0.40428492297296936,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.03607998525156923,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_10_south_parallel_stationary_a1_left:s61001",
+      "scenario_name": "scenario_10_south_parallel_stationary_a1_left.json",
+      "scenario_group": "long_stationary_pace_exempt",
+      "direction": "southbound",
+      "outcome": "offroad",
+      "episode_length": 51,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092436",
+      "update": 100,
+      "repeat": 1,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 51,
+          "final_completion": 0.7477603302926867,
+          "speed_mps": 11.456888577592602,
+          "episode_return": -43.85294052742278,
+          "throttle_mean": 0.8269452972739351,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.027095256806990386,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": true
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 51,
+          "final_completion": 0.2916352746431905,
+          "speed_mps": 2.6257546311204667,
+          "episode_return": 5.67945720857762,
+          "throttle_mean": 0.3303801116405749,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.09723252132900205,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_11_east_parallel_stationary_a1_left:s61001",
+      "scenario_name": "scenario_11_east_parallel_stationary_a1_left.json",
+      "scenario_group": "long_stationary_pace_exempt",
+      "direction": "eastbound",
+      "outcome": "success",
+      "episode_length": 94,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092436",
+      "update": 100,
+      "repeat": 1,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 39,
+          "final_completion": 0.9288117322761289,
+          "speed_mps": 9.655940576841735,
+          "episode_return": 30.103011185374264,
+          "throttle_mean": 0.866430924488948,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.017363106408037055,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 94,
+          "final_completion": 0.9424785488698534,
+          "speed_mps": 4.019952163546138,
+          "episode_return": 29.829467292141636,
+          "throttle_mean": 0.35082121821556317,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.02127659574468085,
+          "steer_mean": -0.03690151478401683,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_12_west_parallel_stationary_a0_left:s61001",
+      "scenario_name": "scenario_12_west_parallel_stationary_a0_left.json",
+      "scenario_group": "long_stationary_pace_exempt",
+      "direction": "westbound",
+      "outcome": "success",
+      "episode_length": 75,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092436",
+      "update": 100,
+      "repeat": 1,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 40,
+          "final_completion": 0.9482950449591353,
+          "speed_mps": 9.659151178150038,
+          "episode_return": 34.500394468648885,
+          "throttle_mean": 0.8576792940497399,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.006719147635158152,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 75,
+          "final_completion": 0.9235296996883321,
+          "speed_mps": 5.000701925573852,
+          "episode_return": 25.5982486724541,
+          "throttle_mean": 0.43090714772542316,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.026086134229941913,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_05_northbound_free_flow:s61001",
+      "scenario_name": "scenario_05_northbound_free_flow.json",
+      "scenario_group": "long_free_flow",
+      "direction": "northbound",
+      "outcome": "offroad",
+      "episode_length": 14,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092516",
+      "update": 100,
+      "repeat": 2,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 14,
+          "final_completion": 0.12681512059950248,
+          "speed_mps": 4.482395339737211,
+          "episode_return": -51.54851098165129,
+          "throttle_mean": 0.873930675642831,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.16571125920329774,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": true
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 14,
+          "final_completion": 0.13249921328218672,
+          "speed_mps": 4.312094980602902,
+          "episode_return": 2.625578913515691,
+          "throttle_mean": 0.40934144811970846,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.016384665987321308,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_06_southbound_free_flow:s61001",
+      "scenario_name": "scenario_06_southbound_free_flow.json",
+      "scenario_group": "long_free_flow",
+      "direction": "southbound",
+      "outcome": "success",
+      "episode_length": 74,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092516",
+      "update": 100,
+      "repeat": 2,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 38,
+          "final_completion": 0.9729625209928451,
+          "speed_mps": 11.742593477100428,
+          "episode_return": 39.00832850149774,
+          "throttle_mean": 0.8554473582066988,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.006934715189823979,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 74,
+          "final_completion": 0.9331518039684585,
+          "speed_mps": 5.752803000344627,
+          "episode_return": 31.770491432811237,
+          "throttle_mean": 0.4088975243471764,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.011841463619635466,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_07_eastbound_free_flow:s61001",
+      "scenario_name": "scenario_07_eastbound_free_flow.json",
+      "scenario_group": "long_free_flow",
+      "direction": "eastbound",
+      "outcome": "success",
+      "episode_length": 68,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092516",
+      "update": 100,
+      "repeat": 2,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 38,
+          "final_completion": 0.9430964761205272,
+          "speed_mps": 10.702260121479728,
+          "episode_return": 32.309217066199196,
+          "throttle_mean": 0.8609331265876168,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.0110943131868752,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 68,
+          "final_completion": 0.9444666156894505,
+          "speed_mps": 5.89784993244236,
+          "episode_return": 25.990267799883853,
+          "throttle_mean": 0.39997700470335346,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.001020481290812741,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_08_westbound_free_flow:s61001",
+      "scenario_name": "scenario_08_westbound_free_flow.json",
+      "scenario_group": "long_free_flow",
+      "direction": "westbound",
+      "outcome": "collision",
+      "episode_length": 43,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092516",
+      "update": 100,
+      "repeat": 2,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 43,
+          "final_completion": 0.8314297842102185,
+          "speed_mps": 12.435963278258637,
+          "episode_return": -46.064018820159895,
+          "throttle_mean": 0.8446271613586781,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.01918152788502359,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 43,
+          "final_completion": 0.4543217451342057,
+          "speed_mps": 4.811237133666759,
+          "episode_return": 8.858500104532794,
+          "throttle_mean": 0.4409934070914291,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.009466083628277099,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_09_north_parallel_stationary_a0_left:s61001",
+      "scenario_name": "scenario_09_north_parallel_stationary_a0_left.json",
+      "scenario_group": "long_stationary_pace_exempt",
+      "direction": "northbound",
+      "outcome": "offroad",
+      "episode_length": 23,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092516",
+      "update": 100,
+      "repeat": 2,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 23,
+          "final_completion": 0.2647919781321657,
+          "speed_mps": 5.471905906690081,
+          "episode_return": -48.8551244492315,
+          "throttle_mean": 0.8860376321751139,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.10314582515022029,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": true
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 23,
+          "final_completion": 0.08650940196674542,
+          "speed_mps": 1.797642350681374,
+          "episode_return": 1.7151965241569262,
+          "throttle_mean": 0.40428492297296936,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.03607998525156923,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_10_south_parallel_stationary_a1_left:s61001",
+      "scenario_name": "scenario_10_south_parallel_stationary_a1_left.json",
+      "scenario_group": "long_stationary_pace_exempt",
+      "direction": "southbound",
+      "outcome": "offroad",
+      "episode_length": 51,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092516",
+      "update": 100,
+      "repeat": 2,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": false,
+          "active_steps": 51,
+          "final_completion": 0.7477603302926867,
+          "speed_mps": 11.456888577592602,
+          "episode_return": -43.85294052742278,
+          "throttle_mean": 0.8269452972739351,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": 0.027095256806990386,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": true
+        },
+        "1": {
+          "reached": false,
+          "active_steps": 51,
+          "final_completion": 0.2916352746431905,
+          "speed_mps": 2.6257546311204667,
+          "episode_return": 5.67945720857762,
+          "throttle_mean": 0.3303801116405749,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.09723252132900205,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_11_east_parallel_stationary_a1_left:s61001",
+      "scenario_name": "scenario_11_east_parallel_stationary_a1_left.json",
+      "scenario_group": "long_stationary_pace_exempt",
+      "direction": "eastbound",
+      "outcome": "success",
+      "episode_length": 93,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092516",
+      "update": 100,
+      "repeat": 2,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 39,
+          "final_completion": 0.9288117322761289,
+          "speed_mps": 9.655940576841735,
+          "episode_return": 30.103011185374264,
+          "throttle_mean": 0.866430924488948,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.017363106408037055,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 93,
+          "final_completion": 0.9255024194837244,
+          "speed_mps": 3.987210422243423,
+          "episode_return": 29.512462565224183,
+          "throttle_mean": 0.3492466572832356,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.021505376344086023,
+          "steer_mean": -0.03458657192557009,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    },
+    {
+      "case_id": "long_probe:scenario_12_west_parallel_stationary_a0_left:s61001",
+      "scenario_name": "scenario_12_west_parallel_stationary_a0_left.json",
+      "scenario_group": "long_stationary_pace_exempt",
+      "direction": "westbound",
+      "outcome": "success",
+      "episode_length": 80,
+      "eval_id": "P0_BASE_C0_long_probe_u000100_20260915_092516",
+      "update": 100,
+      "repeat": 2,
+      "profile": "long_probe",
+      "agents": {
+        "0": {
+          "reached": true,
+          "active_steps": 40,
+          "final_completion": 0.9551127225444606,
+          "speed_mps": 9.734322409120264,
+          "episode_return": 34.62773123989646,
+          "throttle_mean": 0.8566250443458557,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.004765194609353785,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        },
+        "1": {
+          "reached": true,
+          "active_steps": 80,
+          "final_completion": 0.9469105888615706,
+          "speed_mps": 5.183253450545499,
+          "episode_return": 25.977464015844348,
+          "throttle_mean": 0.4370679646730423,
+          "brake_mean": 0.0,
+          "brake_mode_rate": 0.0,
+          "coast_mode_rate": 0.0,
+          "steer_mean": -0.03841372169990791,
+          "pace_eligible_rate": 0.0,
+          "pace_reward_sum": 0.0,
+          "reward_residual_max_abs": 0.0,
+          "road_reason": "",
+          "offroad": false
+        }
+      }
+    }
+  ],
+  "repeatability": [
+    {
+      "gate_pass": false,
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\r8c1_eval_live\\20260915_091700\\short_probe_u000020_repeatability.json",
+      "profile": "short_probe",
+      "status": "HOLD",
+      "update": 20
+    },
+    {
+      "gate_pass": false,
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\r8c1_eval_live\\20260915_091700\\short_probe_u000060_repeatability.json",
+      "profile": "short_probe",
+      "status": "HOLD",
+      "update": 60
+    },
+    {
+      "gate_pass": false,
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\r8c1_eval_live\\20260915_091700\\short_probe_u000100_repeatability.json",
+      "profile": "short_probe",
+      "status": "HOLD",
+      "update": 100
+    },
+    {
+      "gate_pass": false,
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\r8c1_eval_live\\20260915_091700\\long_probe_u000100_repeatability.json",
+      "profile": "long_probe",
+      "status": "HOLD",
+      "update": 100
+    }
+  ]
+}

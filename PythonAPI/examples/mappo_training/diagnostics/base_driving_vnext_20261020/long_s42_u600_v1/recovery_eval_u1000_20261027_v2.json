@@ -1,0 +1,200 @@
+{
+  "actions": [
+    [
+      "validation",
+      1000,
+      1000
+    ],
+    [
+      "train",
+      1000,
+      1200
+    ],
+    [
+      "screen",
+      1200,
+      1200
+    ]
+  ],
+  "authorization": "Human reported CARLA crash, restarted it, and explicitly requested resuming training and monitoring on2026-10-27.",
+  "automatic_restart": false,
+  "budget_extension": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\extension_u1200_recovery_v1.json",
+  "complete_source_state": {
+    "actor_adam_steps": {
+      "0": [
+        5000
+      ],
+      "1": [
+        5000
+      ]
+    },
+    "base_driving_state_keys": [
+      "runtime_protocol_version",
+      "pool_manifest_sha256",
+      "base_gate",
+      "sampler_state",
+      "scenario_success_history",
+      "scenario_total_sample_counts"
+    ],
+    "critic_adam_steps": [
+      5000
+    ],
+    "episodes": 16000,
+    "lr_schedule": {
+      "actor_final_lr": 1.5e-05,
+      "critic_final_lr": 0.0001,
+      "critic_hold_updates": 300,
+      "current_actor_lrs": {
+        "0": 1.4999999999999985e-05,
+        "1": 1.4999999999999985e-05
+      },
+      "current_critic_lr": 9.999999999999999e-05,
+      "decay_horizon": 600,
+      "enabled": true,
+      "initial_actor_lr": 0.0003,
+      "initial_critic_lr": 0.0003,
+      "protocol_version": "separate_actor_critic_lr_r7_v1"
+    },
+    "rng_components": [
+      "python",
+      "numpy",
+      "torch_cpu",
+      "torch_cuda"
+    ],
+    "safe_update": 1000,
+    "sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+    "source_fingerprint": "8d35d03c4a09111331b00ed308fa08f04a659070b2205e4ff61e6749fb865700",
+    "value_normalizer_update_count": 1000.0
+  },
+  "controller_source": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\resume_base_u1200_eval_20261027_v2.py",
+  "controller_source_sha256": "6c2310b8d5d09fc876c5b38f57cce05d2e0ca1cfe88b2129443ea7d7b09dd71b",
+  "extension_sha256": "4bd640c454fc393dcd9425e984cede232a98928728feda8b1bd4aecdfe62e189",
+  "interrupted_validation_archive": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\interrupted_validation_u001000_20261027_v2_0b198029",
+  "interrupted_validation_file_sha256": {
+    "episodes.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "geometry_preflight.json": "44e66792744e3926015907ef13bf05488e32e5fc1a6211fd0e45797f64dd50e5",
+    "manifest.json": "20695cf74e16db388983f37c6427fca97a65eef7c31c65e6b475473cd5b12da2",
+    "resolved_config.json": "f16373397f527f331a05a92fd608bc1cebe0627b30147174176ba90f326f9329"
+  },
+  "live_preflight": {
+    "carla_client_version": "0.9.16",
+    "carla_server_version": "0.9.16",
+    "fixed_delta_seconds": null,
+    "sensor_actor_count": 0,
+    "synchronous_mode": false,
+    "vehicle_actor_count": 0
+  },
+  "prepared_at": "2026-10-27T12:49:49.641524Z",
+  "prior_exit": {
+    "automatic_restart": false,
+    "camera_pid": 32124,
+    "camera_returncode": 0,
+    "ended_at": "2026-10-27T11:39:31.793979Z",
+    "launch_id": "9597351f69b44b9e9b86a7d1af257d37",
+    "returncode": 0,
+    "spawned_pid": 21004,
+    "supervisor_pid": 31544,
+    "trainer_pid": 28496
+  },
+  "prior_exit_sha256": "7f090a7374698deed11f0469112dde6fb217e11bc3304feb739f6b6e204c8f4f",
+  "prior_launch": {
+    "actual_worker_pid": 28496,
+    "automatic_restart": false,
+    "command": [
+      "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+      "-B",
+      "-u",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\continue_base_u1200_recovery.py",
+      "worker",
+      "--from-update",
+      "943",
+      "--to-update",
+      "1000",
+      "--launch-id",
+      "9597351f69b44b9e9b86a7d1af257d37"
+    ],
+    "extension_record": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\extension_u1200_recovery_v1.json",
+    "launch_id": "9597351f69b44b9e9b86a7d1af257d37",
+    "log_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\BD_vNext_V6_scratch_s42_u600_20261020_v1\\session\\training_9597351f69b44b9e9b86a7d1af257d37.log",
+    "resume_update": 943,
+    "spawned_pid": 21004,
+    "started_at": "2026-10-27T10:21:30.081934Z",
+    "status": "WORKER_STARTED_NOT_YET_TRAINED",
+    "stop_update": 1000,
+    "supervisor_pid": 31544,
+    "trainer_pid": 28496,
+    "worker_started_at": "2026-10-27T10:21:34.178383Z"
+  },
+  "prior_launch_sha256": "3b3baf927dea02678e5c636873df99a4f6a2c00ef50096f322fbfd71c520b43f",
+  "prior_status": {
+    "automatic_restart": false,
+    "changed_at": "2026-10-27T11:39:35.587532Z",
+    "completed_stages": [
+      50,
+      100,
+      200,
+      400,
+      600,
+      800
+    ],
+    "explicit_interruption_recovery": true,
+    "extension_sha256": "4bd640c454fc393dcd9425e984cede232a98928728feda8b1bd4aecdfe62e189",
+    "initial_safe_update": 943,
+    "interrupted_session_archive": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\interrupted_session_30c38e9c0dfa4934909b946d3192b1a5_5e5a0729",
+    "pid": 31544,
+    "started_at": "2026-10-27T10:21:24.512578Z",
+    "status": "FROZEN_EVALUATION",
+    "target_update": 1000,
+    "total_budget_episodes": 19200,
+    "total_budget_updates": 1200,
+    "version": "base_driving_explicit_u1200_recovery_v1"
+  },
+  "prior_status_sha256": "adc210d0856622f76ed30be1805a8ceb92451392e2708c2878098275f6c5632d",
+  "recovery_policy": "Retain parallel32 byte-for-byte; archive incomplete validation0/64 with original status; rerun validation64, then native full-state1000->1200 and complete frozen1200.",
+  "remaining_training_episodes": 3200,
+  "remaining_training_updates": 200,
+  "retained_parallel_file_sha256": {
+    "episodes.jsonl": "3644dd1b552f200722ce524eb1ed745d7939c22d8422853b5dba63fdf1734097",
+    "geometry_preflight.json": "a9f72bbedd4c5eb77885f29c7bd2a931594b8cba012f3cd0009b62a65073022a",
+    "manifest.json": "50f0d412bc12e92b517bc505e3715fd8b9c317936ee364954bde7b58256dc7ed",
+    "qualification.json": "7050193817a87782555542cf4b19e4341fae535b3d40fdfc4f59e9e2afecb455",
+    "resolved_config.json": "131f44d86bbca62241f7456358f453ca710c63155ac3817c3ff322cedfeccfd1",
+    "traces/c0_u1000_scenario_bd1_eastbound_rolling_z00_a0l_s63001_deterministic.jsonl": "38903188ea60c59c6dd3314547828bd9eb76a8421941759356e5349e44db3f07",
+    "traces/c0_u1000_scenario_bd1_eastbound_rolling_z00_a0l_s63002_deterministic.jsonl": "db391338fd5ad374b4d71c7b479f251e93de295f3aa17de7bf0293066aedfae0",
+    "traces/c0_u1000_scenario_bd1_eastbound_rolling_z00_a0r_s63001_deterministic.jsonl": "30699afb4854fb1a04819f5fc727741a2a3f1445611321010755414b5c9f630b",
+    "traces/c0_u1000_scenario_bd1_eastbound_rolling_z00_a0r_s63002_deterministic.jsonl": "156c4876d06afdd2276340c0f56113f2c61501bd30389e3b00224b73f5b8cf5b",
+    "traces/c0_u1000_scenario_bd1_eastbound_stationary_z00_a0l_s63001_deterministic.jsonl": "e6abac39bc370ee906350a0c42aa53ab4e91abe826a231ed50892694a4098022",
+    "traces/c0_u1000_scenario_bd1_eastbound_stationary_z00_a0l_s63002_deterministic.jsonl": "a6ea1c4d91e6ac3b520bc560d6cc1ad665b32c539ba4736b5e0ec23d62fb3ec7",
+    "traces/c0_u1000_scenario_bd1_eastbound_stationary_z00_a0r_s63001_deterministic.jsonl": "eda5347180b6f477d46a605e684330fc04ac4f88c1b62f3bbd18c8304db9b01a",
+    "traces/c0_u1000_scenario_bd1_eastbound_stationary_z00_a0r_s63002_deterministic.jsonl": "1a1f0ddca6a75db908e786ac0744b6bc7ed033aea9d2f19c57929b72adcdade1",
+    "traces/c0_u1000_scenario_bd1_northbound_rolling_z00_a0l_s63001_deterministic.jsonl": "3c67e2c68e2317d6f2995dc9f514e76a11ece65a06b0944a702218c8492c73d8",
+    "traces/c0_u1000_scenario_bd1_northbound_rolling_z00_a0l_s63002_deterministic.jsonl": "e03b4f802fe5f250876f355283249bf1f6361cffd649837b834781f4123ac839",
+    "traces/c0_u1000_scenario_bd1_northbound_rolling_z00_a0r_s63001_deterministic.jsonl": "5928fee6ca71cea41fe626dcf187a65d7c59e06fbdc25bf98bef1164579df40b",
+    "traces/c0_u1000_scenario_bd1_northbound_rolling_z00_a0r_s63002_deterministic.jsonl": "3a87b144bbd5ba5a4c7736f9ce672475b5dc14036030757d7f9878f5207ead7f",
+    "traces/c0_u1000_scenario_bd1_northbound_stationary_z00_a0l_s63001_deterministic.jsonl": "e013b3c63bb52caf2a1028b1b60b42953c6c5bc4538c37ef8cb562c681a1a140",
+    "traces/c0_u1000_scenario_bd1_northbound_stationary_z00_a0l_s63002_deterministic.jsonl": "b430fd91c39e60ea80c552933f37779a75d964a3a0d5dc82b8b9ab25eea1b419",
+    "traces/c0_u1000_scenario_bd1_northbound_stationary_z00_a0r_s63001_deterministic.jsonl": "0535a5655f58b94ead4dc9e26545c9cad2b67abd720f3076c18c20cd150fd0f7",
+    "traces/c0_u1000_scenario_bd1_northbound_stationary_z00_a0r_s63002_deterministic.jsonl": "e3befc401f598d6975512330fa79d3698c461c936b4447d4428f898977d4a0cc",
+    "traces/c0_u1000_scenario_bd1_southbound_rolling_z00_a0l_s63001_deterministic.jsonl": "3f37ece905250fcd73f7c9b08845ec530b0473585a812ac20c8cc04d1ad76ce5",
+    "traces/c0_u1000_scenario_bd1_southbound_rolling_z00_a0l_s63002_deterministic.jsonl": "45cb56e933a82dfccf594d9b2d6266efc47665bfff7a5a119ae53180c5df325e",
+    "traces/c0_u1000_scenario_bd1_southbound_rolling_z00_a0r_s63001_deterministic.jsonl": "7eea03c799c65d27685b975eb7d4ad98842e8d8630e2266eb51b1d8836cd2cf9",
+    "traces/c0_u1000_scenario_bd1_southbound_rolling_z00_a0r_s63002_deterministic.jsonl": "f8426ef0f88d4d1b8bbefbadc912161bdbfe4dde15a1e50d350be7606bd9c254",
+    "traces/c0_u1000_scenario_bd1_southbound_stationary_z00_a0l_s63001_deterministic.jsonl": "7e61a99775ad8bfd3641ee35abbe59eb5cb589443a31679f8ea07c8b7006f92d",
+    "traces/c0_u1000_scenario_bd1_southbound_stationary_z00_a0l_s63002_deterministic.jsonl": "89698f0b19345da821371986d46eb4bfe16235c6d91c9c79301025a1b74b8f14",
+    "traces/c0_u1000_scenario_bd1_southbound_stationary_z00_a0r_s63001_deterministic.jsonl": "bca4d5bec746e1e5e41acc39cab4b7791a90654974636db4fbb7423444988bfe",
+    "traces/c0_u1000_scenario_bd1_southbound_stationary_z00_a0r_s63002_deterministic.jsonl": "93313fbdd427443514ca6d6921da59543fc3b4e8911d532e70eefdc0ac9c8f69",
+    "traces/c0_u1000_scenario_bd1_westbound_rolling_z00_a0l_s63001_deterministic.jsonl": "36c9a4d8815265ff50dc68bdda03f6b55bc6ef2d33120314a1f8ca26c4f4e07c",
+    "traces/c0_u1000_scenario_bd1_westbound_rolling_z00_a0l_s63002_deterministic.jsonl": "215d4c03b36c2a3764768f2a60e3aaeea036c9b1819b93f228afd42a0320435c",
+    "traces/c0_u1000_scenario_bd1_westbound_rolling_z00_a0r_s63001_deterministic.jsonl": "d2662221ae809ec2ab2e3a822f95fc4efc02805867d0521457e37b6b0fa4f95f",
+    "traces/c0_u1000_scenario_bd1_westbound_rolling_z00_a0r_s63002_deterministic.jsonl": "c42c6969e68be451705c7785fa9a9806d3437bef31b96b01db891fa356b6b238",
+    "traces/c0_u1000_scenario_bd1_westbound_stationary_z00_a0l_s63001_deterministic.jsonl": "33cdf1bea5c276b60dc806bae524681241f45984dae73338ce6587b80facae34",
+    "traces/c0_u1000_scenario_bd1_westbound_stationary_z00_a0l_s63002_deterministic.jsonl": "1402919fee93758f202b1ef0985092395bcfa9f0bf4a8d59ae9519cc91d3b8ea",
+    "traces/c0_u1000_scenario_bd1_westbound_stationary_z00_a0r_s63001_deterministic.jsonl": "18a66f9a194c9a5e27bf8c8efe5b3a6bd0e219404433018585755cbc52d8df11",
+    "traces/c0_u1000_scenario_bd1_westbound_stationary_z00_a0r_s63002_deterministic.jsonl": "c2a7a5768bc4645b71ffaf2c399b85b64829675b2dd75c1d06eb438be2a431e5"
+  },
+  "source_checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u001000.pt",
+  "source_checkpoint_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+  "total_budget_episodes": 19200,
+  "total_budget_updates": 1200,
+  "version": "base_driving_u1000_validation_recovery_u1200_v2"
+}

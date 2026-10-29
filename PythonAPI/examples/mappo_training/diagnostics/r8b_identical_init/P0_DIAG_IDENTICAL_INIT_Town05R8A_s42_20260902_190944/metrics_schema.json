@@ -1,0 +1,414 @@
+{
+  "action_protocol": {
+    "action_protocol_version": "tanh_gaussian_signed_longitudinal_2d_pre_tanh_z_v2",
+    "environment_action_channels": [
+      "throttle",
+      "steer",
+      "brake"
+    ],
+    "environment_action_dim": 3,
+    "longitudinal_deadzone": 0.05,
+    "mapping_version": "signed_longitudinal_deadzone_v2",
+    "policy_action_channels": [
+      "signed_longitudinal",
+      "steer"
+    ],
+    "policy_action_dim": 2
+  },
+  "agent_ids": [
+    0,
+    1
+  ],
+  "aggregation": {
+    "mean_per_active_step": "mean over transitions owned by this agent",
+    "nonzero_mean": "mean over non-zero active transitions only",
+    "nonzero_rate": "non-zero active transitions / active transitions",
+    "pooled_mean_per_active_step": "transition-weighted mean across agents",
+    "sum_per_episode_mean": "mean episode sum with episodes equally weighted",
+    "team_mean_agent_episode_sum": "mean of per-agent episode-sum means"
+  },
+  "critic_protocol": {
+    "beta": 0.99999,
+    "enabled": true,
+    "epsilon": 1e-05,
+    "huber_delta": 10.0,
+    "loss": "huber",
+    "network_output": "normalized_value",
+    "protocol_version": "mappo_valuenorm_v1",
+    "rollout_and_gae_value": "denormalized_reward_units",
+    "statistics_update": "once_per_complete_ppo_update_before_minibatches",
+    "target_scope": "pooled_active_agent_return_targets",
+    "value_loss_protocol_version": "normalized_huber_delta_10_v1",
+    "variance_floor": 0.01
+  },
+  "episode_records": {
+    "commit_semantics": "fsync each episode before checkpoint; discard records ahead of the latest safe update on resume",
+    "jsonl_file": "episodes.jsonl",
+    "version": "mappo_episode_record_road_rule_v4"
+  },
+  "jsonl_file": "metrics.jsonl",
+  "metrics_protocol_version": "mappo_metrics_r7_p0_t05_10_v8",
+  "reward_audit_atol": 1e-06,
+  "reward_components": {
+    "collision": {
+      "enabled": true,
+      "sparse": true,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "lane_deviation": {
+      "enabled": true,
+      "sparse": false,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "lane_invasion": {
+      "enabled": true,
+      "sparse": true,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "longitudinal_rate": {
+      "enabled": true,
+      "sparse": false,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "mission_timeout": {
+      "enabled": true,
+      "sparse": true,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "offroad": {
+      "enabled": true,
+      "sparse": true,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "overspeed": {
+      "enabled": true,
+      "sparse": false,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "progress": {
+      "enabled": true,
+      "sparse": false,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "road_rule": {
+      "enabled": true,
+      "sparse": true,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "safety_lidar": {
+      "enabled": true,
+      "sparse": false,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "steer_rate": {
+      "enabled": true,
+      "sparse": false,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "success": {
+      "enabled": true,
+      "sparse": true,
+      "value_semantics": "weighted contribution included in env reward"
+    },
+    "ttc": {
+      "enabled": true,
+      "sparse": false,
+      "value_semantics": "weighted contribution included in env reward"
+    }
+  },
+  "reward_diagnostics": {
+    "closing_speed_mps": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "collision_event": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "distance_to_goal_m": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "driving_center_valid": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "footprint_outside_count": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "footprint_outside_fraction": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lane_deviation_exempted": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lane_deviation_risk": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lane_invasion_sensor_event": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lateral_distance_m": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "legal_lane_change_event": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "legal_lane_change_grace_remaining": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lidar_approach_gate": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lidar_closing_speed_mps": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lidar_min_normalized": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lidar_previous_min_normalized": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lidar_risk": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "lidar_trigger_ray_count": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "longitudinal_command": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "longitudinal_rate_normalized": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "mission_timeout_event": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "offroad_consecutive_ticks": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "offroad_raw": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "offroad_terminated": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "overspeed_risk": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "progress_m": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "remaining_route_fraction": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "remaining_time_fraction": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_adjacent_to_reference": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_current_to_reference_cosine": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_in_junction": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_lane_change_permitted": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_same_reference_lane": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_success_eligible": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_vehicle_to_current_cosine": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_violation_consecutive_ticks": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_violation_raw": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "road_violation_terminated": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "route_completion": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "route_completion_prev": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "speed_mps": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "stall_complex_interaction_exempt": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "stall_front_blocker_exempt": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "stall_low_speed": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "stall_no_progress_ticks": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "stall_raw": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "stall_reportable": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "steer_rate_normalized": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "success_event": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "ttc_candidate_count": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "ttc_min_seconds_capped": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "ttc_risk": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "ttc_trigger_count": {
+      "value_semantics": "raw finite environment diagnostic"
+    },
+    "yaw_error_rad": {
+      "value_semantics": "raw finite environment diagnostic"
+    }
+  },
+  "reward_protocol": {
+    "anti_hacking_invariants": [
+      "discounted_route_potential_telescopes",
+      "speed_alone_has_no_positive_reward",
+      "lane_center_has_no_positive_dwell_reward",
+      "broken_marking_alone_never_legalizes_a_lane_change",
+      "opposing_driving_lane_is_not_treated_as_offroad",
+      "road_rule_terminal_dominates_complete_route_potential",
+      "success_requires_current_road_legality",
+      "stall_is_diagnostic_only"
+    ],
+    "components": [
+      "progress",
+      "overspeed",
+      "longitudinal_rate",
+      "steer_rate",
+      "safety_lidar",
+      "ttc",
+      "lane_deviation",
+      "lane_invasion",
+      "offroad",
+      "road_rule",
+      "collision",
+      "success",
+      "mission_timeout"
+    ],
+    "diagnostics": [
+      "progress_m",
+      "route_completion_prev",
+      "route_completion",
+      "remaining_route_fraction",
+      "remaining_time_fraction",
+      "distance_to_goal_m",
+      "speed_mps",
+      "closing_speed_mps",
+      "overspeed_risk",
+      "longitudinal_command",
+      "longitudinal_rate_normalized",
+      "steer_rate_normalized",
+      "lidar_min_normalized",
+      "lidar_previous_min_normalized",
+      "lidar_trigger_ray_count",
+      "lidar_closing_speed_mps",
+      "lidar_approach_gate",
+      "lidar_risk",
+      "ttc_candidate_count",
+      "ttc_trigger_count",
+      "ttc_min_seconds_capped",
+      "ttc_risk",
+      "lateral_distance_m",
+      "lane_deviation_risk",
+      "legal_lane_change_event",
+      "legal_lane_change_grace_remaining",
+      "lane_deviation_exempted",
+      "yaw_error_rad",
+      "driving_center_valid",
+      "footprint_outside_count",
+      "footprint_outside_fraction",
+      "offroad_raw",
+      "offroad_consecutive_ticks",
+      "offroad_terminated",
+      "road_same_reference_lane",
+      "road_adjacent_to_reference",
+      "road_lane_change_permitted",
+      "road_current_to_reference_cosine",
+      "road_vehicle_to_current_cosine",
+      "road_in_junction",
+      "road_violation_raw",
+      "road_violation_consecutive_ticks",
+      "road_violation_terminated",
+      "road_success_eligible",
+      "collision_event",
+      "lane_invasion_sensor_event",
+      "success_event",
+      "mission_timeout_event",
+      "stall_low_speed",
+      "stall_no_progress_ticks",
+      "stall_raw",
+      "stall_front_blocker_exempt",
+      "stall_complex_interaction_exempt",
+      "stall_reportable"
+    ],
+    "illegal_lane_change_reward": "bounded_event_cost_then_persistent_terminal",
+    "lane_reference": "current_topology_approved_legal_lane",
+    "legal_lane_change_reward": "no_bonus_no_event_penalty",
+    "parameters": {
+      "broken_line_penalty": -0.25,
+      "collision_penalty": -50.0,
+      "control_rate_reference_per_s": 2.0,
+      "curb_penalty": -4.0,
+      "illegal_lane_change_penalty": -2.0,
+      "lane_deviation_deadzone_m": 0.35,
+      "lane_deviation_full_penalty_m": 1.25,
+      "lane_deviation_weight": 0.01,
+      "legal_lane_change_grace_ticks": 10,
+      "legal_lane_change_penalty": 0.0,
+      "lidar_closing_reference_mps": 2.0,
+      "lidar_risk_weight": 0.002,
+      "lidar_threshold_normalized": 0.5,
+      "longitudinal_rate_weight": 0.001,
+      "mission_timeout_base_penalty": 10.0,
+      "mission_timeout_remaining_penalty": 10.0,
+      "offroad_penalty": -50.0,
+      "overspeed_full_mps": 8.333333333333334,
+      "overspeed_start_mps": 4.166666666666667,
+      "overspeed_weight": 0.005,
+      "road_rule_penalty": -50.0,
+      "route_potential_scale": 20.0,
+      "solid_line_penalty": -2.0,
+      "steer_rate_weight": 0.001,
+      "success_bonus": 20.0,
+      "ttc_risk_weight": 0.005,
+      "ttc_tau_s": 1.0,
+      "ttc_threshold_s": 3.0
+    },
+    "positive_dense_components": [
+      "progress"
+    ],
+    "reward_protocol_version": "base_route_road_rule_reward_v5_r7",
+    "reward_version": "v5",
+    "terminal_priority": [
+      "collision",
+      "offroad",
+      "road_rule",
+      "success",
+      "mission_timeout"
+    ]
+  },
+  "reward_version": "v5",
+  "run_id": "P0_DIAG_IDENTICAL_INIT_Town05R8A_s42_20260902_190944",
+  "tensorboard_directory": "tb"
+}

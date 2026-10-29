@@ -1,0 +1,76 @@
+{
+  "status": "WARNING",
+  "gate_pass": true,
+  "evaluation_purpose": "diagnostic_only",
+  "selection_allowed": false,
+  "performance_decision": "NOT_EVALUATED",
+  "systematic_drift_status": "NOT_APPLICABLE_INSUFFICIENT_CASES",
+  "case_count": 1,
+  "comparison_mode": "r8c1_road_outcome_strict_tick_tolerant_v1",
+  "hard_fields": [
+    "case_id",
+    "outcome",
+    "episode_end_reason",
+    "agent_0_reached",
+    "agent_0_collision",
+    "agent_0_offroad_terminated",
+    "agent_0_final_done",
+    "agent_0_final_terminated",
+    "agent_0_final_truncated",
+    "agent_0_first_offroad_evidence_present",
+    "agent_0_lifecycle_transition",
+    "agent_1_reached",
+    "agent_1_collision",
+    "agent_1_offroad_terminated",
+    "agent_1_final_done",
+    "agent_1_final_terminated",
+    "agent_1_final_truncated",
+    "agent_1_first_offroad_evidence_present",
+    "agent_1_lifecycle_transition",
+    "agent_0_road_rule_terminated",
+    "agent_0_road_violation_confirmed",
+    "agent_0_road_classification",
+    "agent_0_road_violation_reason",
+    "agent_0_road_reference_lane",
+    "agent_0_road_success_eligible",
+    "agent_1_road_rule_terminated",
+    "agent_1_road_violation_confirmed",
+    "agent_1_road_classification",
+    "agent_1_road_violation_reason",
+    "agent_1_road_reference_lane",
+    "agent_1_road_success_eligible"
+  ],
+  "tolerant_fields": [
+    "episode_length",
+    "agent_0_active_decision_steps",
+    "agent_1_active_decision_steps"
+  ],
+  "continuous_fields": [
+    "agent_0_episode_return",
+    "agent_1_episode_return"
+  ],
+  "warning_case_fraction": 1.0,
+  "max_warning_case_fraction": 0.5,
+  "systematic_drift_min_case_count": 8,
+  "mismatches": [],
+  "warnings": [
+    {
+      "case_ordinal": 1,
+      "case_id": "smoke:scenario_01_north_short_rolling_a0_left:s61002",
+      "tolerated_tick_differences": {},
+      "continuous_differences": {
+        "agent_1_episode_return": {
+          "left": 30.263204660945867,
+          "right": 30.26361785798059,
+          "absolute_delta": 0.00041319703472453284,
+          "pass_at_or_below": 1e-05,
+          "hold_above": 0.1
+        }
+      }
+    }
+  ],
+  "left_eval_id": "P0_BASE_C0_smoke_u000100_20260915_091700",
+  "right_eval_id": "P0_BASE_C0_smoke_u000100_20260915_091745",
+  "contract_sha256": "0654a931a0387ffdbf3884bf83ef5ae63899fcf0aa5ba922a9acc6f4748e736d",
+  "checkpoint_sha256": "c3519fb3ccb0b55f4b14f735849dd0093bc28914feee8ece60c556dbb417d1d6"
+}

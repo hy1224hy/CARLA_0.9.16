@@ -1,0 +1,47 @@
+{
+  "checkpoints": [
+    {
+      "environment": {
+        "disable_tensorboard": true,
+        "follow_spectator": true,
+        "lidar_range_m": 20.0,
+        "max_steps": 500,
+        "num_agents": 2,
+        "pace_profile": "instant_pace_v6",
+        "reward_gamma": 0.999,
+        "reward_version": "v6",
+        "spawn_vehicles": false,
+        "straight_road_length": 50.0,
+        "timestep": 0.1,
+        "town": "Town05",
+        "ttc_max_range_m": 20.0
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_recovery_20261017_v1\\u000025.pt",
+      "sha256": "4de5877ce870f558a3e15c7d09f0d2d2d2c3e1f884b725da8e3d91685dff1f64",
+      "update": 25
+    }
+  ],
+  "cleanup": [
+    {
+      "audit": {},
+      "error": ""
+    }
+  ],
+  "completed_cases": 0,
+  "ended_at": "2026-10-17T08:21:17.576214+00:00",
+  "error": "Traceback (most recent call last):\n  File \"D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\evaluation\\evaluate_reward_fork.py\", line 109, in evaluate\n    idle = _preflight_idle_world(host=\"127.0.0.1\", port=2000, expected_version=\"0.9.16\")\n  File \"D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\evaluation\\evaluate_base_policy_c0.py\", line 859, in _preflight_idle_world\n    \"carla_server_version\": str(client.get_server_version()),\nRuntimeError: time-out of 10000ms while waiting for the simulator, make sure the simulator is ready and connected to 127.0.0.1:2000\n",
+  "formal_eligibility": false,
+  "source_sha256": {
+    "environment\\carla_multi_agent_env.py": "af03ff79e8f89230faddaf4bfefb71e9a97cf1df3158b067f30c8e0ff0c7b203",
+    "environment\\instant_pace_reward.py": "8a382e016aa5f032a11010f4f253a071e1577d6dc4910db11f8c31af316caa02",
+    "environment\\instant_pace_reward_v3.py": "a69b2b36851ffdbae551f5417d7de5fb80f10d78d248479cc01f06958cc250bc",
+    "environment\\instant_pace_reward_v4.py": "0369f3f7625987f68c4e8cc052f7716ec00c3787c4e29cbcc7eda48f932eb543",
+    "environment\\instant_pace_reward_v5.py": "950300894e71ee48b0e59d817facc042e04fdf6b516fb296afaac624541b9763",
+    "environment\\instant_pace_reward_v6.py": "1c83c12b3890ea3af5c33c825f795d19cad12b7239c1a5a68f2a3d4fed8fc1dd",
+    "environment\\route_pace_reward.py": "a9b9a14b107013b010c730c520d90027046dfd5f662a27bbf8b2837a426a2fe5",
+    "evaluation\\diagnose_r8c1_behavior.py": "e18add949b6548281bc6d42c6fb4675562b00d08ce36abd396bd5aad53de06c2",
+    "evaluation\\evaluate_reward_fork.py": "a9d764ff2318c093f4f5df898cfbb346f392a78fc3cd8d07da5f3a36649402cc"
+  },
+  "started_at": "2026-10-17T08:21:07.545727+00:00",
+  "status": "FAILED"
+}

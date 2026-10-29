@@ -1,0 +1,648 @@
+{
+  "captured_at_asia_shanghai": "2026-10-26T21:36:11.558602+08:00",
+  "scope": "Existing file evidence only; no simulator connection or new experiment",
+  "latest_checkpoint": {
+    "path": "latest.pt",
+    "recorded_at": "2026-10-26T13:17:55.784189+00:00",
+    "sha256": "4d71b51e35e9b0bb8b32dea7bc931d02848783cc86035a3c9cb9900a75e70564",
+    "update": 800
+  },
+  "latest_metric_update": 800,
+  "latest_metric_selected_scalars": {
+    "curriculum/available_scenario_count": 48.0,
+    "curriculum/base_review_required": 1.0,
+    "curriculum/stage_index": 1.0,
+    "reward_audit/max_abs_step_residual": 0.0,
+    "reward_audit/nonfinite_count": 0.0,
+    "train/update_skipped": 0.0
+  },
+  "stages": [
+    {
+      "update": 50,
+      "stage_summary_exists": true,
+      "summary_source": {
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u000050_summary.json",
+        "sha256": "0e89b6c6d32b1c1ff78ae1b083aac40622ee9b1b6c8bcbbce6f6e1fa6ae9f7f9"
+      },
+      "training_integrity": {
+        "episodes": 800,
+        "maxima": {
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "train/update_skipped": 0.0
+        },
+        "outcomes": {
+          "collision": 20,
+          "offroad": 55,
+          "road_violation": 25,
+          "success": 0,
+          "timeout": 700
+        },
+        "updates": 50
+      },
+      "selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "stage_status": "COMPLETED",
+      "parallel": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000050\\parallel\\qualification.json",
+          "sha256": "faaffea1dd6fb0f6c3d1e0d50521340cfa9cef7a6af5f752c77d3c178a860fe8"
+        },
+        "reports": [
+          {
+            "case_count": 32,
+            "both_reached_fraction": 0.0,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "no_safety_or_timeout_events",
+              "both_reached_fraction",
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "5b752b9fef7aba0ba9510681a340ebbf0b0ff48ce3ec2c431b4f829ded68b61c",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "training_screen",
+            "vehicle_episode_failed_check_counts": {
+              "own_goal_reached": 64,
+              "safe": 62,
+              "preferred_cruise_speed": 62,
+              "unblocked_low_speed": 60,
+              "reference_lane_stability": 22,
+              "stationary_unblocked_startup": 30,
+              "sufficient_cruise_evidence": 12
+            }
+          }
+        ]
+      },
+      "validation": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000050\\validation\\qualification.json",
+          "sha256": "e25c7f7c85df03717ce83877d04d4bd5bbec2e3d7d516667faf9b992127a9df8"
+        },
+        "reports": [
+          {
+            "case_count": 64,
+            "both_reached_fraction": 0.0,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "no_safety_or_timeout_events",
+              "both_reached_fraction",
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "5b752b9fef7aba0ba9510681a340ebbf0b0ff48ce3ec2c431b4f829ded68b61c",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "validation",
+            "vehicle_episode_failed_check_counts": {
+              "own_goal_reached": 128,
+              "safe": 122,
+              "sufficient_cruise_evidence": 10,
+              "reference_lane_stability": 42,
+              "preferred_cruise_speed": 116,
+              "unblocked_low_speed": 112,
+              "stationary_unblocked_startup": 64
+            }
+          }
+        ]
+      }
+    },
+    {
+      "update": 100,
+      "stage_summary_exists": true,
+      "summary_source": {
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u000100_summary.json",
+        "sha256": "a60fb30aeb53ea7c6a3dafca86ce5d9ac5051cf5a0e7cdb88dc0f97dfddd94e3"
+      },
+      "training_integrity": {
+        "episodes": 1600,
+        "maxima": {
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "train/update_skipped": 0.0
+        },
+        "outcomes": {
+          "collision": 65,
+          "offroad": 212,
+          "road_violation": 99,
+          "success": 0,
+          "timeout": 1224
+        },
+        "updates": 100
+      },
+      "selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "stage_status": "COMPLETED",
+      "parallel": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000100\\parallel\\qualification.json",
+          "sha256": "117a668621b8024f8bd25e17d037373ecf6ae4672f881cbf44b80850340250d0"
+        },
+        "reports": [
+          {
+            "case_count": 32,
+            "both_reached_fraction": 0.0625,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "no_safety_or_timeout_events",
+              "both_reached_fraction",
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "c561dbe7e3d2540f73fa00e641d84026a5552cb21dce119ae7285dda3ac6696b",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "training_screen",
+            "vehicle_episode_failed_check_counts": {
+              "preferred_cruise_speed": 62,
+              "upper_task_speed": 32,
+              "reference_lane_stability": 47,
+              "own_goal_reached": 30,
+              "safe": 30,
+              "unblocked_low_speed": 28,
+              "stationary_unblocked_startup": 16
+            }
+          }
+        ]
+      },
+      "validation": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000100\\validation\\qualification.json",
+          "sha256": "cf3b4242d49dfccdbdba39d4809622a21a70d44338b47ae654fcdc03d2d8d234"
+        },
+        "reports": [
+          {
+            "case_count": 64,
+            "both_reached_fraction": 0.125,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "no_safety_or_timeout_events",
+              "both_reached_fraction",
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "c561dbe7e3d2540f73fa00e641d84026a5552cb21dce119ae7285dda3ac6696b",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "validation",
+            "vehicle_episode_failed_check_counts": {
+              "preferred_cruise_speed": 118,
+              "upper_task_speed": 64,
+              "reference_lane_stability": 96,
+              "actual_steering_stability": 22,
+              "own_goal_reached": 60,
+              "safe": 56,
+              "unblocked_low_speed": 52,
+              "stationary_unblocked_startup": 32,
+              "sufficient_cruise_evidence": 4
+            }
+          }
+        ]
+      }
+    },
+    {
+      "update": 200,
+      "stage_summary_exists": true,
+      "summary_source": {
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u000200_summary.json",
+        "sha256": "9fbe3274b78338003378135ef4ca42f33d5b769ef10ee51ac32d3ed66e452960"
+      },
+      "training_integrity": {
+        "episodes": 3200,
+        "maxima": {
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "train/update_skipped": 0.0
+        },
+        "outcomes": {
+          "collision": 207,
+          "offroad": 420,
+          "road_violation": 235,
+          "success": 970,
+          "timeout": 1368
+        },
+        "updates": 200
+      },
+      "selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "stage_status": "COMPLETED",
+      "parallel": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000200\\parallel\\qualification.json",
+          "sha256": "51fe00629be7ef572682bf3345bd68fbe6129ef777371f4cc363fa1620635df2"
+        },
+        "reports": [
+          {
+            "case_count": 32,
+            "both_reached_fraction": 1.0,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "4d2fdc2d0a180b37981c54299527eb96651b2c5378faac786c6db1992a8ad3ee",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "training_screen",
+            "vehicle_episode_failed_check_counts": {
+              "preferred_cruise_speed": 54,
+              "upper_task_speed": 54,
+              "reference_lane_stability": 56,
+              "unblocked_low_speed": 24,
+              "stationary_unblocked_startup": 16,
+              "actual_steering_stability": 11
+            }
+          }
+        ]
+      },
+      "validation": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000200\\validation\\qualification.json",
+          "sha256": "6668cca720e90cb6888a61894f7d6ff005a84efb9d3b62ca7bffb75795cb0d8d"
+        },
+        "reports": [
+          {
+            "case_count": 64,
+            "both_reached_fraction": 0.75,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "no_safety_or_timeout_events",
+              "both_reached_fraction",
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "4d2fdc2d0a180b37981c54299527eb96651b2c5378faac786c6db1992a8ad3ee",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "validation",
+            "vehicle_episode_failed_check_counts": {
+              "preferred_cruise_speed": 112,
+              "upper_task_speed": 106,
+              "reference_lane_stability": 120,
+              "actual_steering_stability": 32,
+              "unblocked_low_speed": 40,
+              "own_goal_reached": 32,
+              "safe": 16,
+              "sufficient_cruise_evidence": 8,
+              "stationary_unblocked_startup": 24
+            }
+          }
+        ]
+      }
+    },
+    {
+      "update": 400,
+      "stage_summary_exists": true,
+      "summary_source": {
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u000400_summary.json",
+        "sha256": "ba90b8ded3d5a7b0d497d8dfcf06fea43db0b3022a7af5a28ee86b285a4dc749"
+      },
+      "training_integrity": {
+        "episodes": 6400,
+        "maxima": {
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "train/update_skipped": 0.0
+        },
+        "outcomes": {
+          "collision": 332,
+          "offroad": 577,
+          "road_violation": 324,
+          "success": 3785,
+          "timeout": 1382
+        },
+        "updates": 400
+      },
+      "selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "stage_status": "COMPLETED",
+      "parallel": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000400\\parallel\\qualification.json",
+          "sha256": "ac7f7131fafd83fd5d7fc7e039c3dd912d21f03d633c2ca0e207ec68a9bd6086"
+        },
+        "reports": [
+          {
+            "case_count": 32,
+            "both_reached_fraction": 1.0,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "26573b6c7ffc994cf1c4527eb4d7163c97d1de3c5d342c18dbba9b47bae5f610",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "training_screen",
+            "vehicle_episode_failed_check_counts": {
+              "preferred_cruise_speed": 64,
+              "upper_task_speed": 64,
+              "reference_lane_stability": 46,
+              "actual_steering_stability": 57,
+              "unblocked_low_speed": 16,
+              "stationary_unblocked_startup": 8
+            }
+          }
+        ]
+      },
+      "validation": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000400\\validation\\qualification.json",
+          "sha256": "673f54dc3b332ae88d96508950fa830b6e83d3fcdb5a77e01db8733f671c7b16"
+        },
+        "reports": [
+          {
+            "case_count": 64,
+            "both_reached_fraction": 0.65625,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "no_safety_or_timeout_events",
+              "both_reached_fraction",
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "26573b6c7ffc994cf1c4527eb4d7163c97d1de3c5d342c18dbba9b47bae5f610",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "validation",
+            "vehicle_episode_failed_check_counts": {
+              "own_goal_reached": 44,
+              "safe": 24,
+              "preferred_cruise_speed": 102,
+              "upper_task_speed": 106,
+              "reference_lane_stability": 106,
+              "actual_steering_stability": 57,
+              "unblocked_low_speed": 22,
+              "stationary_unblocked_startup": 18
+            }
+          }
+        ]
+      }
+    },
+    {
+      "update": 600,
+      "stage_summary_exists": true,
+      "summary_source": {
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u000600_summary.json",
+        "sha256": "4a90f035c053660de172ecfe88fa305e252ea3dfa8d6eae75a39429ba84207aa"
+      },
+      "training_integrity": {
+        "episodes": 9600,
+        "maxima": {
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "train/update_skipped": 0.0
+        },
+        "outcomes": {
+          "collision": 410,
+          "offroad": 763,
+          "road_violation": 449,
+          "success": 6577,
+          "timeout": 1401
+        },
+        "updates": 600
+      },
+      "selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "stage_status": "COMPLETED",
+      "parallel": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000600\\parallel\\qualification.json",
+          "sha256": "53a04c63e55154d2b3102dce0e9f9e59df6c7003ca7a04e88468a485e98848da"
+        },
+        "reports": [
+          {
+            "case_count": 32,
+            "both_reached_fraction": 1.0,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "4fd6193e34cdf29ca111d537f99f94c7bae425d6b14279939b14aef6db525498",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "training_screen",
+            "vehicle_episode_failed_check_counts": {
+              "preferred_cruise_speed": 64,
+              "upper_task_speed": 64,
+              "reference_lane_stability": 52,
+              "actual_steering_stability": 62,
+              "unblocked_low_speed": 14,
+              "stationary_unblocked_startup": 8
+            }
+          }
+        ]
+      },
+      "validation": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000600\\validation\\qualification.json",
+          "sha256": "1acc6714be886000319dc8cc665d8464000736c7f88e1b7727a726ad09c58def"
+        },
+        "reports": [
+          {
+            "case_count": 64,
+            "both_reached_fraction": 0.6875,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "no_safety_or_timeout_events",
+              "both_reached_fraction",
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "4fd6193e34cdf29ca111d537f99f94c7bae425d6b14279939b14aef6db525498",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "validation",
+            "vehicle_episode_failed_check_counts": {
+              "own_goal_reached": 40,
+              "safe": 22,
+              "preferred_cruise_speed": 122,
+              "upper_task_speed": 122,
+              "reference_lane_stability": 102,
+              "actual_steering_stability": 94,
+              "unblocked_low_speed": 14,
+              "stationary_unblocked_startup": 10
+            }
+          }
+        ]
+      }
+    },
+    {
+      "update": 800,
+      "stage_summary_exists": true,
+      "summary_source": {
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u000800_summary.json",
+        "sha256": "e959d12e50e2cda87a3bd53be92ac6e937bf2e3b5931d0770e4aac857cf23963"
+      },
+      "training_integrity": {
+        "episodes": 12800,
+        "maxima": {
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "train/update_skipped": 0.0
+        },
+        "outcomes": {
+          "collision": 513,
+          "offroad": 1028,
+          "road_violation": 624,
+          "success": 9228,
+          "timeout": 1407
+        },
+        "updates": 800
+      },
+      "selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "stage_status": "COMPLETED",
+      "parallel": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000800\\parallel\\qualification.json",
+          "sha256": "270fce93025a7016fba3591459131fadba2dacc4fce23f5532da8521205c4224"
+        },
+        "reports": [
+          {
+            "case_count": 32,
+            "both_reached_fraction": 1.0,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "4d71b51e35e9b0bb8b32dea7bc931d02848783cc86035a3c9cb9900a75e70564",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "training_screen",
+            "vehicle_episode_failed_check_counts": {
+              "preferred_cruise_speed": 64,
+              "upper_task_speed": 64,
+              "reference_lane_stability": 56,
+              "actual_steering_stability": 64,
+              "unblocked_low_speed": 16,
+              "stationary_unblocked_startup": 8
+            }
+          }
+        ]
+      },
+      "validation": {
+        "source": {
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000800\\validation\\qualification.json",
+          "sha256": "0edcacc9bd4c7b18f5a0d1a2f28b202052fe2876799cea59f6106b3185305e33"
+        },
+        "reports": [
+          {
+            "case_count": 64,
+            "both_reached_fraction": 0.84375,
+            "qualified": false,
+            "qualification_decision": "NOT_QUALIFIED",
+            "evidence_status": "COMPLETE_VALID_EVIDENCE",
+            "failed_checks": [
+              "no_safety_or_timeout_events",
+              "both_reached_fraction",
+              "each_vehicle_and_stratum"
+            ],
+            "checkpoint_sha256": "4d71b51e35e9b0bb8b32dea7bc931d02848783cc86035a3c9cb9900a75e70564",
+            "scope": "Registered engineering/validation suite only. No held-out or population generalization claim; arrival gap is never a qualification condition.",
+            "suite_role": "validation",
+            "vehicle_episode_failed_check_counts": {
+              "preferred_cruise_speed": 120,
+              "upper_task_speed": 122,
+              "reference_lane_stability": 109,
+              "actual_steering_stability": 113,
+              "unblocked_low_speed": 24,
+              "own_goal_reached": 20,
+              "safe": 15,
+              "stationary_unblocked_startup": 14
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "default_mut_config": {
+    "source": {
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\configs\\mut_mappo\\local_candidate_v1.json",
+      "sha256": "733bbbe52a53477d21fd7fe797c6e396180c849a06041da846f852c99f439fd9"
+    },
+    "communication": {
+      "enabled": false,
+      "message_dim": 8,
+      "status": "planned_not_implemented"
+    },
+    "model_spec": {
+      "obs_dim": 20,
+      "action_dim": 2,
+      "physical_ids": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "learner_ids": [
+        2,
+        3
+      ],
+      "state_dim": 80,
+      "critic_num_agents": 4
+    },
+    "red_capability": "candidate_not_independently_qualified"
+  },
+  "default_mut_cases": {
+    "source": {
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\mut_mappo\\cases_v1.json",
+      "sha256": "7012e69b76e0f2df8175429acc1ee577ed956403eb62033a644f619e375600cb"
+    },
+    "case_count": 36,
+    "split_counts": {
+      "train": 4,
+      "gate": 16,
+      "selection": 8,
+      "test": 8
+    },
+    "geometry_status": "candidate_not_live_validated"
+  },
+  "symmetric_v2_cases": {
+    "source": {
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\mut_mappo\\symmetric_v2\\cases.json",
+      "sha256": "434291ec285ea8d293764f285d7c2528df51ec1f1c079123e383d4027a770ccb"
+    },
+    "case_count": 192,
+    "split_counts": {
+      "gate": 32,
+      "selection": 32,
+      "test": 32,
+      "train": 96
+    },
+    "geometry_status": "candidate_not_live_validated"
+  }
+}

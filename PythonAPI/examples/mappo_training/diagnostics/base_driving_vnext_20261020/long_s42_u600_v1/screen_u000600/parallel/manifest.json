@@ -1,0 +1,104 @@
+{
+  "checkpoints": [
+    {
+      "base_driving_contract": {
+        "contract_sha256": "7e1a76a77bb6bd661522cb3013cd1cc1b2a9a2228bc81690353b59f6eee2e273",
+        "protocol": "base_driving_vnext_v1",
+        "qualification_contract_sha256": "e640b7ea4b5bb5ad4d0b0f850d73d0db3ad64eac99d680c2bf120307b64bbae6",
+        "reward_profile": "v6",
+        "scenario_pool_sha256": "865959723b6f92bb4ed48632ff076baa20905c28d3d2ab284efb9342dc51921d"
+      },
+      "environment": {
+        "base_driving_reward_profile": "v6",
+        "disable_tensorboard": true,
+        "follow_spectator": true,
+        "lidar_range_m": 20.0,
+        "max_steps": 400,
+        "num_agents": 2,
+        "pace_profile": "instant_pace_v6",
+        "reward_gamma": 0.999,
+        "reward_version": "v6",
+        "spawn_vehicles": false,
+        "straight_road_length": 50.0,
+        "timestep": 0.1,
+        "town": "Town05",
+        "ttc_max_range_m": 20.0
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u000600.pt",
+      "qualification_eligible": true,
+      "reference_only": false,
+      "sha256": "4fd6193e34cdf29ca111d537f99f94c7bae425d6b14279939b14aef6db525498",
+      "update": 600
+    }
+  ],
+  "cleanup": [
+    {
+      "audit": {
+        "fixed_delta_seconds": null,
+        "sensor_actor_count": 0,
+        "synchronous_mode": false,
+        "vehicle_actor_count": 0,
+        "world_timing_restored": true
+      },
+      "error": ""
+    }
+  ],
+  "completed_cases": 32,
+  "contract_sha256": "e640b7ea4b5bb5ad4d0b0f850d73d0db3ad64eac99d680c2bf120307b64bbae6",
+  "ended_at": "2026-10-26T08:18:59.144445+00:00",
+  "formal_eligibility": false,
+  "geometry_preflight": {
+    "report_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\preflight_train_live.json",
+    "report_sha256": "a9f72bbedd4c5eb77885f29c7bd2a931594b8cba012f3cd0009b62a65073022a",
+    "status": "PASS_GEOMETRY_ONLY"
+  },
+  "parallel_regression": true,
+  "protocol": "base_driving_vnext_v1",
+  "resolved_config_sha256": "131f44d86bbca62241f7456358f453ca710c63155ac3817c3ff322cedfeccfd1",
+  "scenario_pool_manifest_sha256": "865959723b6f92bb4ed48632ff076baa20905c28d3d2ab284efb9342dc51921d",
+  "scenario_suite_definition": {
+    "kind": "parallel_stage0_regression",
+    "pool_manifest_sha256": "865959723b6f92bb4ed48632ff076baa20905c28d3d2ab284efb9342dc51921d",
+    "scenario_names": [
+      "scenario_bd1_eastbound_rolling_z00_a0l",
+      "scenario_bd1_eastbound_rolling_z00_a0r",
+      "scenario_bd1_eastbound_stationary_z00_a0l",
+      "scenario_bd1_eastbound_stationary_z00_a0r",
+      "scenario_bd1_northbound_rolling_z00_a0l",
+      "scenario_bd1_northbound_rolling_z00_a0r",
+      "scenario_bd1_northbound_stationary_z00_a0l",
+      "scenario_bd1_northbound_stationary_z00_a0r",
+      "scenario_bd1_southbound_rolling_z00_a0l",
+      "scenario_bd1_southbound_rolling_z00_a0r",
+      "scenario_bd1_southbound_stationary_z00_a0l",
+      "scenario_bd1_southbound_stationary_z00_a0r",
+      "scenario_bd1_westbound_rolling_z00_a0l",
+      "scenario_bd1_westbound_rolling_z00_a0r",
+      "scenario_bd1_westbound_stationary_z00_a0l",
+      "scenario_bd1_westbound_stationary_z00_a0r"
+    ],
+    "source_scenario_count": 48
+  },
+  "scenario_suite_sha256": "4a50cf0583a83e10149208fff86bd358184a298d6072d70cdd273433cb12ae49",
+  "source_sha256": {
+    "environment\\base_driving_env.py": "eca3551718c96a36649dfc146973f051f8c83407f4f8e1d40dbc7e25de4d5adb",
+    "environment\\base_driving_reward.py": "933a1ad5ec6b4306fc3187f7ddf0ca6a0408e8b8b4d0ab3ac6c58cb9f7cb36f0",
+    "environment\\base_reward_v4.py": "57ddbf702ced7b98fb33d6175143644936744859964c2def4a26a717b631850e",
+    "environment\\base_reward_v5.py": "3e3032bfca75fdb8acfa6b59878e57b8dbd3665d4826a3c7a1733e140627665f",
+    "environment\\base_reward_v6.py": "f39af641933a12f3cfac92589dcad402c07390bf1fbc2ad29afd109a088f8bbf",
+    "environment\\carla_multi_agent_env.py": "af03ff79e8f89230faddaf4bfefb71e9a97cf1df3158b067f30c8e0ff0c7b203",
+    "environment\\instant_pace_reward.py": "8a382e016aa5f032a11010f4f253a071e1577d6dc4910db11f8c31af316caa02",
+    "environment\\instant_pace_reward_v3.py": "a69b2b36851ffdbae551f5417d7de5fb80f10d78d248479cc01f06958cc250bc",
+    "environment\\instant_pace_reward_v4.py": "0369f3f7625987f68c4e8cc052f7716ec00c3787c4e29cbcc7eda48f932eb543",
+    "environment\\instant_pace_reward_v5.py": "950300894e71ee48b0e59d817facc042e04fdf6b516fb296afaac624541b9763",
+    "environment\\instant_pace_reward_v6.py": "1c83c12b3890ea3af5c33c825f795d19cad12b7239c1a5a68f2a3d4fed8fc1dd",
+    "evaluation\\base_driving_qualification.py": "50de2138b7929592d05c43b00bcc6f5fae99ff6e72e019a92716236db6ffecce",
+    "evaluation\\diagnose_r8c1_behavior.py": "e18add949b6548281bc6d42c6fb4675562b00d08ce36abd396bd5aad53de06c2",
+    "evaluation\\evaluate_base_driving_vnext.py": "db09655d641a682caef6942a472f774405e4d4ffb946bcc8ceaa2e0679efc2e5",
+    "models\\actor_critic.py": "f37b7358a77d682b010b3e75c267390b22a7cee6b5106bb01559295386bfaf80",
+    "training\\action_protocol.py": "7135ebfd5960ce3826beba63f9ae62d66bc89eb6b41fc2992c10f721562472f5",
+    "utils\\preflight_base_driving_scenarios_v1.py": "dc2d7ab7a9e99cfc11011153bf2030809c047d59cb061458e31f83682990e7cd"
+  },
+  "started_at": "2026-10-26T08:17:02.867650+00:00",
+  "status": "COMPLETED"
+}

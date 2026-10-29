@@ -1,0 +1,48 @@
+{
+  "version": "base_driving_live_start_v1",
+  "at": "2026-10-20T10:16:56.639734+00:00",
+  "plan_sha256": "c864d7b67deb747abf7bcfb9e913c78717352ce596cca0254a7d570d1e123ba0",
+  "reward_profile": "v6",
+  "fresh_source_update": 0,
+  "authorized_stop_updates": [
+    50,
+    100,
+    200,
+    400,
+    600
+  ],
+  "total_episode_budget": 9600,
+  "live_evidence": {
+    "preflight_train_live.json": {
+      "sha256": "a9f72bbedd4c5eb77885f29c7bd2a931594b8cba012f3cd0009b62a65073022a",
+      "status": "PASS_GEOMETRY_ONLY"
+    },
+    "preflight_validation_live.json": {
+      "sha256": "44e66792744e3926015907ef13bf05488e32e5fc1a6211fd0e45797f64dd50e5",
+      "status": "PASS_GEOMETRY_ONLY"
+    },
+    "mechanical_smoke_live.json": {
+      "sha256": "8ab22678dabaf0311195296e9bb6ec3ecfdb226115d556cb7132e38ca0430ae0",
+      "status": "PASS_MECHANICAL_ONLY"
+    },
+    "map_probe_live.json": {
+      "sha256": "88c4a6aef99707e325d81aa87a177d650c49c4a4ffbe1eba66b96ec254a49aa7",
+      "status": "PASS_MECHANICAL_ONLY"
+    },
+    "town_setup_live.json": {
+      "sha256": "6cd1717ee55927feddc144c46f95071259dd9f8be8696ab4d8c9c2fc41e6a385",
+      "status": "PASS_MECHANICAL_ONLY"
+    }
+  },
+  "checker_fix": {
+    "reason": "Actual Town05 probe: LaneType.Any chooses narrow shoulder then rejects point inside Driving; use exact nonprojecting Driving membership as runtime. Correct measured westbound left=-1/right=-2.",
+    "old_sha256": "30f009baeaa39f61d6108d1a176d85eed0fb5c4d9438f665c653ecbbc5c2f5bb",
+    "new_sha256": "dc2d7ab7a9e99cfc11011153bf2030809c047d59cb061458e31f83682990e7cd",
+    "targeted_tests": 5,
+    "pool_coordinates_changed": false,
+    "reward_changed": false
+  },
+  "automation_id": "carla-20",
+  "automation_status": "ACTIVE",
+  "meaning": "mechanical readiness and dispatched fresh training; no learned-policy qualification yet"
+}

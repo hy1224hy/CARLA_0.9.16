@@ -1,0 +1,32 @@
+{
+  "authorization": {
+    "live_execution": false,
+    "weak_red_override": false
+  },
+  "base_config": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_pilot_20261028_v1\\base_config.json",
+  "entries": [
+    {
+      "config": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_pilot_20261028_v1\\configs\\B0_s42.json",
+      "group": "B0",
+      "run_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_pilot_20261028_v1\\runs\\B0_s42",
+      "run_id": "B0_s42",
+      "seed": 42
+    }
+  ],
+  "evaluation_route": "explicit evaluate_mut_mappo stages; wrapper evaluate uses repeats=1",
+  "execution": "serial only; A+B actual train ticks including setup; complete-boundary soft cap",
+  "qualification": "red NOT_QUALIFIED; config preparation does not grant eligibility",
+  "reference_repeats_planned": 2,
+  "reward": "c1_progress_team_v1; team tail credit; no communication",
+  "scene_stage": "full",
+  "schema": "first_point_experiment_v1",
+  "split_counts": {
+    "gate": 16,
+    "selection": 16,
+    "test": 16,
+    "train": 24
+  },
+  "status": "PREPARED_NOT_RUN",
+  "suite": "B0_pilot_only",
+  "train_tick_budget": 24000
+}

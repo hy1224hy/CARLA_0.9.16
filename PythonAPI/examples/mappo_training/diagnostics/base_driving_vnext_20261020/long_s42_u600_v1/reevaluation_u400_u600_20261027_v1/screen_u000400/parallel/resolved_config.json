@@ -1,0 +1,1810 @@
+{
+  "contract": {
+    "checkpoint": {
+      "accepted_base_driving_reward_profiles": [
+        "v6",
+        "startup_v1"
+      ],
+      "accepted_pace_profiles": [
+        "instant_pace_v6"
+      ],
+      "legacy_reference_can_qualify": false,
+      "required_model_spec": {
+        "action_dim": 2,
+        "obs_dim": 20
+      }
+    },
+    "definitions": {
+      "control": "Actual post-step VehicleControl readback only; absent terminating readback is counted and excluded, never filled with a requested action.",
+      "cruise": "Active transitions after the startup exclusion and more than five metres from own goal; blocked transitions are excluded from efficiency, not safety or overspeed.",
+      "first_motion": "Stationary starts only: accumulated unblocked elapsed time until measured speed first reaches 0.5 m/s; rolling starts are not scored as fast startup.",
+      "lateral": "Absolute distance to road reference lane, including own terminating transition; never distance to whichever lane happens to be nearest.",
+      "qualification": "Every vehicle and every registered stratum must pass; aggregate joint arrival alone cannot qualify.",
+      "scope": "Known training screens and validation selected models must remain labelled separately; neither grants held-out or population-level generalization.",
+      "symmetry": "Physical template and numbered mirror are grouped together; no constraint on simultaneous arrival or arrival gap.",
+      "unblocked": "Explicit diagnostic pace_front_blocker_exempt is false; no missing diagnostic is interpreted as clear road."
+    },
+    "evaluation": {
+      "minimum_both_reached_fraction": 0.95,
+      "minimum_cases": 32,
+      "minimum_cases_per_stratum": 2,
+      "minimum_qualified_case_fraction": 0.9,
+      "minimum_seeds": 2,
+      "mode": "deterministic",
+      "required_directions": [
+        "northbound",
+        "southbound",
+        "eastbound",
+        "westbound"
+      ],
+      "required_startup_modes": [
+        "stationary",
+        "rolling"
+      ],
+      "seeds": [
+        63001,
+        63002
+      ],
+      "stratum_fields": [
+        "task_family",
+        "direction",
+        "startup_mode",
+        "role"
+      ]
+    },
+    "protocol": "base_driving_vnext_v1",
+    "purpose": "Per-vehicle engineering qualification and validation selection; this is not a legal speed limit or a generalization claim.",
+    "schema": "base_driving_qualification_vnext_v1",
+    "status": "IMPLEMENTED_OFFLINE_NOT_CARLA_VALIDATED",
+    "thresholds": {
+      "low_speed_mps": 0.2,
+      "max_above_preferred_speed_fraction": 0.05,
+      "max_actual_steer_rate_p95_per_second": 1.5,
+      "max_peak_speed_mps": 8.333333333333334,
+      "max_reference_lateral_p95_m": 0.6,
+      "max_reference_lateral_peak_m": 1.2,
+      "max_unblocked_low_speed_continuous_seconds": 1.0,
+      "max_unblocked_low_speed_fraction": 0.05,
+      "minimum_actual_control_fraction": 0.95,
+      "minimum_cruise_samples": 5,
+      "minimum_preferred_speed_fraction": 0.8,
+      "near_goal_exclusion_m": 5.0,
+      "preferred_speed_max_mps": 4.166666666666667,
+      "preferred_speed_min_mps": 2.0,
+      "startup_exclusion_seconds": 2.0,
+      "startup_speed_mps": 0.5,
+      "stationary_start_max_unblocked_first_motion_seconds": 2.0
+    }
+  },
+  "contract_sha256": "e640b7ea4b5bb5ad4d0b0f850d73d0db3ad64eac99d680c2bf120307b64bbae6",
+  "geometry_preflight": {
+    "report_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\preflight_train_live.json",
+    "report_sha256": "a9f72bbedd4c5eb77885f29c7bd2a931594b8cba012f3cd0009b62a65073022a",
+    "status": "PASS_GEOMETRY_ONLY"
+  },
+  "mode": "deterministic",
+  "parallel_regression": true,
+  "protocol": "base_driving_vnext_v1",
+  "scenario_manifest_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\protocol\\manifest.json",
+  "scenario_pool_manifest": {
+    "coordinate_convention": "CARLA left-handed, physical left=(sin(yaw),-cos(yaw))",
+    "direction_counts": {
+      "eastbound": 12,
+      "northbound": 12,
+      "southbound": 12,
+      "westbound": 12
+    },
+    "directions": [
+      "northbound",
+      "southbound",
+      "eastbound",
+      "westbound"
+    ],
+    "evaluation_scope": "same-corridor engineering validation of new combinations; not formal heldout/generalization evidence",
+    "goal_entry_distance_m": 29.0,
+    "initial_speed_mps": [
+      0.0,
+      2.5
+    ],
+    "initial_speed_semantics": "requested physical speed at first policy observation, committed by existing environment velocity warm-start/readback; not an ongoing target controller",
+    "legacy_r8a_12": "unchanged separate regression evaluation, excluded from this pool and its sampling",
+    "physical_template_count": 24,
+    "physical_template_groups": {
+      "bd1_eastbound_rolling_left_+00": [
+        "scenario_bd1_eastbound_rolling_z00_a0l.json",
+        "scenario_bd1_eastbound_rolling_z00_a0r.json"
+      ],
+      "bd1_eastbound_rolling_left_+08": [
+        "scenario_bd1_eastbound_rolling_m08_a0r.json",
+        "scenario_bd1_eastbound_rolling_p08_a0l.json"
+      ],
+      "bd1_eastbound_rolling_left_-08": [
+        "scenario_bd1_eastbound_rolling_m08_a0l.json",
+        "scenario_bd1_eastbound_rolling_p08_a0r.json"
+      ],
+      "bd1_eastbound_stationary_left_+00": [
+        "scenario_bd1_eastbound_stationary_z00_a0l.json",
+        "scenario_bd1_eastbound_stationary_z00_a0r.json"
+      ],
+      "bd1_eastbound_stationary_left_+08": [
+        "scenario_bd1_eastbound_stationary_m08_a0r.json",
+        "scenario_bd1_eastbound_stationary_p08_a0l.json"
+      ],
+      "bd1_eastbound_stationary_left_-08": [
+        "scenario_bd1_eastbound_stationary_m08_a0l.json",
+        "scenario_bd1_eastbound_stationary_p08_a0r.json"
+      ],
+      "bd1_northbound_rolling_left_+00": [
+        "scenario_bd1_northbound_rolling_z00_a0l.json",
+        "scenario_bd1_northbound_rolling_z00_a0r.json"
+      ],
+      "bd1_northbound_rolling_left_+08": [
+        "scenario_bd1_northbound_rolling_m08_a0r.json",
+        "scenario_bd1_northbound_rolling_p08_a0l.json"
+      ],
+      "bd1_northbound_rolling_left_-08": [
+        "scenario_bd1_northbound_rolling_m08_a0l.json",
+        "scenario_bd1_northbound_rolling_p08_a0r.json"
+      ],
+      "bd1_northbound_stationary_left_+00": [
+        "scenario_bd1_northbound_stationary_z00_a0l.json",
+        "scenario_bd1_northbound_stationary_z00_a0r.json"
+      ],
+      "bd1_northbound_stationary_left_+08": [
+        "scenario_bd1_northbound_stationary_m08_a0r.json",
+        "scenario_bd1_northbound_stationary_p08_a0l.json"
+      ],
+      "bd1_northbound_stationary_left_-08": [
+        "scenario_bd1_northbound_stationary_m08_a0l.json",
+        "scenario_bd1_northbound_stationary_p08_a0r.json"
+      ],
+      "bd1_southbound_rolling_left_+00": [
+        "scenario_bd1_southbound_rolling_z00_a0l.json",
+        "scenario_bd1_southbound_rolling_z00_a0r.json"
+      ],
+      "bd1_southbound_rolling_left_+08": [
+        "scenario_bd1_southbound_rolling_m08_a0r.json",
+        "scenario_bd1_southbound_rolling_p08_a0l.json"
+      ],
+      "bd1_southbound_rolling_left_-08": [
+        "scenario_bd1_southbound_rolling_m08_a0l.json",
+        "scenario_bd1_southbound_rolling_p08_a0r.json"
+      ],
+      "bd1_southbound_stationary_left_+00": [
+        "scenario_bd1_southbound_stationary_z00_a0l.json",
+        "scenario_bd1_southbound_stationary_z00_a0r.json"
+      ],
+      "bd1_southbound_stationary_left_+08": [
+        "scenario_bd1_southbound_stationary_m08_a0r.json",
+        "scenario_bd1_southbound_stationary_p08_a0l.json"
+      ],
+      "bd1_southbound_stationary_left_-08": [
+        "scenario_bd1_southbound_stationary_m08_a0l.json",
+        "scenario_bd1_southbound_stationary_p08_a0r.json"
+      ],
+      "bd1_westbound_rolling_left_+00": [
+        "scenario_bd1_westbound_rolling_z00_a0l.json",
+        "scenario_bd1_westbound_rolling_z00_a0r.json"
+      ],
+      "bd1_westbound_rolling_left_+08": [
+        "scenario_bd1_westbound_rolling_m08_a0r.json",
+        "scenario_bd1_westbound_rolling_p08_a0l.json"
+      ],
+      "bd1_westbound_rolling_left_-08": [
+        "scenario_bd1_westbound_rolling_m08_a0l.json",
+        "scenario_bd1_westbound_rolling_p08_a0r.json"
+      ],
+      "bd1_westbound_stationary_left_+00": [
+        "scenario_bd1_westbound_stationary_z00_a0l.json",
+        "scenario_bd1_westbound_stationary_z00_a0r.json"
+      ],
+      "bd1_westbound_stationary_left_+08": [
+        "scenario_bd1_westbound_stationary_m08_a0r.json",
+        "scenario_bd1_westbound_stationary_p08_a0l.json"
+      ],
+      "bd1_westbound_stationary_left_-08": [
+        "scenario_bd1_westbound_stationary_m08_a0l.json",
+        "scenario_bd1_westbound_stationary_p08_a0r.json"
+      ]
+    },
+    "pool_protocol": "town05_base_driving_matrix_v1",
+    "relative_longitudinal_deltas_m": [
+      -8,
+      0,
+      8
+    ],
+    "route_length_m": 32.0,
+    "sampling": {
+      "actor_weights_are_not_swapped": true,
+      "complete_pairs_per_direction_per_update": 2,
+      "rollout_episodes": 16,
+      "support_phase": "safely_completed_update"
+    },
+    "sampling_protocol": "town05_base_driving_complete_pairs_v1",
+    "scenario_count": 48,
+    "scenario_sha256": {
+      "scenario_bd1_eastbound_rolling_m08_a0l.json": "85814b509e8305ab3b2743b167087b260a77fdd0e6f783532dd116fa4565b749",
+      "scenario_bd1_eastbound_rolling_m08_a0r.json": "6c3eef3501c50583b6484c6c5be5cd5ceb07c4ea108b1ad0e00f6be2ff36d6c8",
+      "scenario_bd1_eastbound_rolling_p08_a0l.json": "67f4e5e4004313ef43a84e2ce324800deaadf24864b4329d4d26a467f9b02758",
+      "scenario_bd1_eastbound_rolling_p08_a0r.json": "530856283d52d6d1821bcd200e120411336e3be860bdd29f72645d5114886853",
+      "scenario_bd1_eastbound_rolling_z00_a0l.json": "8f5bc26f863190584f3f3ee5ef9eeabe03464117cfdc8476b750a7b630900332",
+      "scenario_bd1_eastbound_rolling_z00_a0r.json": "f42474dc6904b6bfc59d6b3563a56de6baca83fcd487cdecc3b960ecca44e5d2",
+      "scenario_bd1_eastbound_stationary_m08_a0l.json": "a62584bd44348b49793bb27d882d0f5e87f82e4ca6ca37c068933ca77405fe97",
+      "scenario_bd1_eastbound_stationary_m08_a0r.json": "a2fc57b0bcd11ad96a84cf720a1339e1f849749f0528a7148520b2d72a2676a0",
+      "scenario_bd1_eastbound_stationary_p08_a0l.json": "a9bdba10c73dc452c22f8d77ae9c8a511cd8de45b53a260e3b0a59867bc69459",
+      "scenario_bd1_eastbound_stationary_p08_a0r.json": "619eba72ddc6db91e359ae1dca13ac537918a6d2eb5796d4a2bfd83a0be821e0",
+      "scenario_bd1_eastbound_stationary_z00_a0l.json": "3bcc11c8351ea1ae46037adf00c627a4b7b9db97b5e29c914d52c8a6f5f38ee4",
+      "scenario_bd1_eastbound_stationary_z00_a0r.json": "1b252bfaa11b591d70ab89b206f2e2e1b6e53c7a22545a994728678bcb06c18c",
+      "scenario_bd1_northbound_rolling_m08_a0l.json": "a676dcf81514fc238284c814892eaad0bf08084fd2edc7bd12b3de8cb1590c9f",
+      "scenario_bd1_northbound_rolling_m08_a0r.json": "ed9a0e28a885ff21ce9c31df26d2fca31a31479c4968ca62c22e6e2b2cd13aec",
+      "scenario_bd1_northbound_rolling_p08_a0l.json": "594824a055e5ac7323fd236aef9151dfec6294c3fc82d349a0daee138e314d18",
+      "scenario_bd1_northbound_rolling_p08_a0r.json": "f0b993449eefd49a7f566d7292f7560d7bf7a88011ccf709a3f7494c6f6624d9",
+      "scenario_bd1_northbound_rolling_z00_a0l.json": "3194485a62479a7ec9eb7fb8edd5bbb7bea319db359a7ea6dc73c77faa255a36",
+      "scenario_bd1_northbound_rolling_z00_a0r.json": "ec5f9b52b2bf166d0896d6abb81114630239ef440e7e5bd8d0076cd3eb9833e8",
+      "scenario_bd1_northbound_stationary_m08_a0l.json": "c8d3c0c21ec0b8188d1285ed582bc7fd19d872bd15d7f8e6e7ce396b38414851",
+      "scenario_bd1_northbound_stationary_m08_a0r.json": "6c6c2d308279377f12191ab60c076ed52651a825f7465ac157b31f3d0c5b987d",
+      "scenario_bd1_northbound_stationary_p08_a0l.json": "02cb7e15f6e655700770dc75161243f2422554453d66204bcaad615c73270d6c",
+      "scenario_bd1_northbound_stationary_p08_a0r.json": "12504b6753ea111c491bc16866ea177fd4733ec23bb480e45d85148e770c0be9",
+      "scenario_bd1_northbound_stationary_z00_a0l.json": "629de6dab04711f59aabb5128bb4f54d7a00e0224f6c8a5464d0d4afaef48c40",
+      "scenario_bd1_northbound_stationary_z00_a0r.json": "7b8fafca7f82a7c7b53bcfc8280902427d02673388097bf8fb556b22b863c389",
+      "scenario_bd1_southbound_rolling_m08_a0l.json": "ef4eb09d252ecd34b2ce357b52eafac762b681cfeb1b2af057353fa77c1bd654",
+      "scenario_bd1_southbound_rolling_m08_a0r.json": "dc2f8703723cb0d5f590a7d10a120dfd8253ea8c1c9192e3139ad630ccf51793",
+      "scenario_bd1_southbound_rolling_p08_a0l.json": "ffbf5a6561ae829ea5f7b88be23f90d27c89aa7a91cd591c49156928a480bb73",
+      "scenario_bd1_southbound_rolling_p08_a0r.json": "3598ccbbbd19052c6d8062f13c95da7d2f452610127ef0cac288a03560a223a0",
+      "scenario_bd1_southbound_rolling_z00_a0l.json": "2d530107ade6d51d39e761681aed8e31b0450f9252de003e8ecfbae9cd43800b",
+      "scenario_bd1_southbound_rolling_z00_a0r.json": "78c88f13ddda9c2922bca2dbc98247596bdd9b5baef95581931e0bac4ab6f21e",
+      "scenario_bd1_southbound_stationary_m08_a0l.json": "0be79711a6bb2fd3d76603338777eae0fbcef102a8758f89caddac5522f46431",
+      "scenario_bd1_southbound_stationary_m08_a0r.json": "b1144daac72dd739dadbe3e302c395ba0dfa130536031893e6274b1adeba0f3b",
+      "scenario_bd1_southbound_stationary_p08_a0l.json": "38a86e9b71c7fb2fe57ebf42c93829fef5b6e7d54dd37ef7381370b34604a77c",
+      "scenario_bd1_southbound_stationary_p08_a0r.json": "f026e209f1f6287ced31632ba18bbbcbb3882eddda10205b42aef33082cb9a45",
+      "scenario_bd1_southbound_stationary_z00_a0l.json": "78b221dcf757a67ec97dc2510785d6a2df367057b4d73989c9e697e5e9723a96",
+      "scenario_bd1_southbound_stationary_z00_a0r.json": "e4d16afcfe0904aae1bfe68e15a7aaf35ed6e082d176f4d148fbbfcb9cc132dd",
+      "scenario_bd1_westbound_rolling_m08_a0l.json": "2b3a937e306daf94605a385917828999d7d5709c99a66b348dfe8bf3746d968d",
+      "scenario_bd1_westbound_rolling_m08_a0r.json": "9140a5e669abf4aa280c87014b400e715369b3fe6e46bbda082883724165acad",
+      "scenario_bd1_westbound_rolling_p08_a0l.json": "ffa0ef3d73b6df0fcb91cc7106e65eb5a69153ff68f2bf520459b02e7563c196",
+      "scenario_bd1_westbound_rolling_p08_a0r.json": "ead421401654e95126718ae6ecc4e428c4df80d864852fcedac1c7542d3622de",
+      "scenario_bd1_westbound_rolling_z00_a0l.json": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+      "scenario_bd1_westbound_rolling_z00_a0r.json": "072e339165429689e764872e0f69acd60c5aa0dc6b8802bcc82d1f2b968a612f",
+      "scenario_bd1_westbound_stationary_m08_a0l.json": "d1e07d647b961bdffed985d724576fafe38852a56b09fced21a5b855805f282d",
+      "scenario_bd1_westbound_stationary_m08_a0r.json": "3e4c0f4ce5dfda2d592984c41572aa5929fda6855a9348ce417bdb1a8cb3137e",
+      "scenario_bd1_westbound_stationary_p08_a0l.json": "6131026770ba10a11d144b8f74a3d071c079b2bcf88c2107db30a63501658308",
+      "scenario_bd1_westbound_stationary_p08_a0r.json": "243911a0931956b88d6534a1dcd886b2b9178bcb5993228bd187da8b80168611",
+      "scenario_bd1_westbound_stationary_z00_a0l.json": "ecc4a0852ec2c0a0fe6df04c647680960fd5b9e28e05edb6b153f662c8bd846a",
+      "scenario_bd1_westbound_stationary_z00_a0r.json": "c074b1f78dbaf7596c4d33c9a69a8d1420893b9b3c65b4eafcd9788246303e1c"
+    },
+    "split": "train",
+    "split_rule": "whole actor-swap physical-template groups; validation uses +/-4m offsets absent from training's 0/+/-8m",
+    "stage_support_sets": {
+      "0": [
+        "scenario_bd1_eastbound_rolling_z00_a0l.json",
+        "scenario_bd1_eastbound_rolling_z00_a0r.json",
+        "scenario_bd1_eastbound_stationary_z00_a0l.json",
+        "scenario_bd1_eastbound_stationary_z00_a0r.json",
+        "scenario_bd1_northbound_rolling_z00_a0l.json",
+        "scenario_bd1_northbound_rolling_z00_a0r.json",
+        "scenario_bd1_northbound_stationary_z00_a0l.json",
+        "scenario_bd1_northbound_stationary_z00_a0r.json",
+        "scenario_bd1_southbound_rolling_z00_a0l.json",
+        "scenario_bd1_southbound_rolling_z00_a0r.json",
+        "scenario_bd1_southbound_stationary_z00_a0l.json",
+        "scenario_bd1_southbound_stationary_z00_a0r.json",
+        "scenario_bd1_westbound_rolling_z00_a0l.json",
+        "scenario_bd1_westbound_rolling_z00_a0r.json",
+        "scenario_bd1_westbound_stationary_z00_a0l.json",
+        "scenario_bd1_westbound_stationary_z00_a0r.json"
+      ],
+      "1": [
+        "scenario_bd1_eastbound_rolling_m08_a0l.json",
+        "scenario_bd1_eastbound_rolling_m08_a0r.json",
+        "scenario_bd1_eastbound_rolling_p08_a0l.json",
+        "scenario_bd1_eastbound_rolling_p08_a0r.json",
+        "scenario_bd1_eastbound_rolling_z00_a0l.json",
+        "scenario_bd1_eastbound_rolling_z00_a0r.json",
+        "scenario_bd1_eastbound_stationary_m08_a0l.json",
+        "scenario_bd1_eastbound_stationary_m08_a0r.json",
+        "scenario_bd1_eastbound_stationary_p08_a0l.json",
+        "scenario_bd1_eastbound_stationary_p08_a0r.json",
+        "scenario_bd1_eastbound_stationary_z00_a0l.json",
+        "scenario_bd1_eastbound_stationary_z00_a0r.json",
+        "scenario_bd1_northbound_rolling_m08_a0l.json",
+        "scenario_bd1_northbound_rolling_m08_a0r.json",
+        "scenario_bd1_northbound_rolling_p08_a0l.json",
+        "scenario_bd1_northbound_rolling_p08_a0r.json",
+        "scenario_bd1_northbound_rolling_z00_a0l.json",
+        "scenario_bd1_northbound_rolling_z00_a0r.json",
+        "scenario_bd1_northbound_stationary_m08_a0l.json",
+        "scenario_bd1_northbound_stationary_m08_a0r.json",
+        "scenario_bd1_northbound_stationary_p08_a0l.json",
+        "scenario_bd1_northbound_stationary_p08_a0r.json",
+        "scenario_bd1_northbound_stationary_z00_a0l.json",
+        "scenario_bd1_northbound_stationary_z00_a0r.json",
+        "scenario_bd1_southbound_rolling_m08_a0l.json",
+        "scenario_bd1_southbound_rolling_m08_a0r.json",
+        "scenario_bd1_southbound_rolling_p08_a0l.json",
+        "scenario_bd1_southbound_rolling_p08_a0r.json",
+        "scenario_bd1_southbound_rolling_z00_a0l.json",
+        "scenario_bd1_southbound_rolling_z00_a0r.json",
+        "scenario_bd1_southbound_stationary_m08_a0l.json",
+        "scenario_bd1_southbound_stationary_m08_a0r.json",
+        "scenario_bd1_southbound_stationary_p08_a0l.json",
+        "scenario_bd1_southbound_stationary_p08_a0r.json",
+        "scenario_bd1_southbound_stationary_z00_a0l.json",
+        "scenario_bd1_southbound_stationary_z00_a0r.json",
+        "scenario_bd1_westbound_rolling_m08_a0l.json",
+        "scenario_bd1_westbound_rolling_m08_a0r.json",
+        "scenario_bd1_westbound_rolling_p08_a0l.json",
+        "scenario_bd1_westbound_rolling_p08_a0r.json",
+        "scenario_bd1_westbound_rolling_z00_a0l.json",
+        "scenario_bd1_westbound_rolling_z00_a0r.json",
+        "scenario_bd1_westbound_stationary_m08_a0l.json",
+        "scenario_bd1_westbound_stationary_m08_a0r.json",
+        "scenario_bd1_westbound_stationary_p08_a0l.json",
+        "scenario_bd1_westbound_stationary_p08_a0r.json",
+        "scenario_bd1_westbound_stationary_z00_a0l.json",
+        "scenario_bd1_westbound_stationary_z00_a0r.json"
+      ]
+    },
+    "validation_status": "OFFLINE_INVARIANTS_PASS_LIVE_CARLA_PREFLIGHT_PENDING"
+  },
+  "scenario_pool_manifest_sha256": "865959723b6f92bb4ed48632ff076baa20905c28d3d2ab284efb9342dc51921d",
+  "scenario_suite_definition": {
+    "kind": "parallel_stage0_regression",
+    "pool_manifest_sha256": "865959723b6f92bb4ed48632ff076baa20905c28d3d2ab284efb9342dc51921d",
+    "scenario_names": [
+      "scenario_bd1_eastbound_rolling_z00_a0l",
+      "scenario_bd1_eastbound_rolling_z00_a0r",
+      "scenario_bd1_eastbound_stationary_z00_a0l",
+      "scenario_bd1_eastbound_stationary_z00_a0r",
+      "scenario_bd1_northbound_rolling_z00_a0l",
+      "scenario_bd1_northbound_rolling_z00_a0r",
+      "scenario_bd1_northbound_stationary_z00_a0l",
+      "scenario_bd1_northbound_stationary_z00_a0r",
+      "scenario_bd1_southbound_rolling_z00_a0l",
+      "scenario_bd1_southbound_rolling_z00_a0r",
+      "scenario_bd1_southbound_stationary_z00_a0l",
+      "scenario_bd1_southbound_stationary_z00_a0r",
+      "scenario_bd1_westbound_rolling_z00_a0l",
+      "scenario_bd1_westbound_rolling_z00_a0r",
+      "scenario_bd1_westbound_stationary_z00_a0l",
+      "scenario_bd1_westbound_stationary_z00_a0r"
+    ],
+    "source_scenario_count": 48
+  },
+  "scenario_suite_sha256": "4a50cf0583a83e10149208fff86bd358184a298d6072d70cdd273433cb12ae49",
+  "scenarios": {
+    "scenario_bd1_eastbound_rolling_z00_a0l": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -215.344386507,
+            "y": 3.069597259,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -215.335834402,
+            "y": 6.569586811,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "left_parallel",
+          "agent1": "right_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.5,
+            "x": -247.344290979,
+            "y": 3.147787932,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.5,
+            "x": -247.335738874,
+            "y": 6.647777483,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "eastbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_19_eastbound_free_flow.json",
+          "source_sha256": "61a069246c82e39e5e36420129e71770f6a946ab838c04096dc861e3dbd38245",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -215.340110455,
+          "y": 4.819592035,
+          "yaw": 359.86,
+          "z": 0.5
+        },
+        "pair_id": "bd1_eastbound_rolling_left_+00",
+        "physical_template_id": "bd1_eastbound_rolling_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "rolling",
+        "symmetry_partner": "scenario_bd1_eastbound_rolling_z00_a0r.json",
+        "tags": [
+          "eastbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "rolling_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_eastbound_rolling_z00_a0l.json",
+      "sha256": "8f5bc26f863190584f3f3ee5ef9eeabe03464117cfdc8476b750a7b630900332"
+    },
+    "scenario_bd1_eastbound_rolling_z00_a0r": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -215.335834402,
+            "y": 6.569586811,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -215.344386507,
+            "y": 3.069597259,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "right_parallel",
+          "agent1": "left_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.5,
+            "x": -247.335738874,
+            "y": 6.647777483,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.5,
+            "x": -247.344290979,
+            "y": 3.147787932,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "eastbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_19_eastbound_free_flow.json",
+          "source_sha256": "61a069246c82e39e5e36420129e71770f6a946ab838c04096dc861e3dbd38245",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -215.340110455,
+          "y": 4.819592035,
+          "yaw": 359.86,
+          "z": 0.5
+        },
+        "pair_id": "bd1_eastbound_rolling_left_+00",
+        "physical_template_id": "bd1_eastbound_rolling_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "rolling",
+        "symmetry_partner": "scenario_bd1_eastbound_rolling_z00_a0l.json",
+        "tags": [
+          "eastbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "rolling_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_eastbound_rolling_z00_a0r.json",
+      "sha256": "f42474dc6904b6bfc59d6b3563a56de6baca83fcd487cdecc3b960ecca44e5d2"
+    },
+    "scenario_bd1_eastbound_stationary_z00_a0l": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -215.344386507,
+            "y": 3.069597259,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -215.335834402,
+            "y": 6.569586811,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "left_parallel",
+          "agent1": "right_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -247.344290979,
+            "y": 3.147787932,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -247.335738874,
+            "y": 6.647777483,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "eastbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_19_eastbound_free_flow.json",
+          "source_sha256": "61a069246c82e39e5e36420129e71770f6a946ab838c04096dc861e3dbd38245",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -215.340110455,
+          "y": 4.819592035,
+          "yaw": 359.86,
+          "z": 0.5
+        },
+        "pair_id": "bd1_eastbound_stationary_left_+00",
+        "physical_template_id": "bd1_eastbound_stationary_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "stationary",
+        "symmetry_partner": "scenario_bd1_eastbound_stationary_z00_a0r.json",
+        "tags": [
+          "eastbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "stationary_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_eastbound_stationary_z00_a0l.json",
+      "sha256": "3bcc11c8351ea1ae46037adf00c627a4b7b9db97b5e29c914d52c8a6f5f38ee4"
+    },
+    "scenario_bd1_eastbound_stationary_z00_a0r": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -215.335834402,
+            "y": 6.569586811,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -215.344386507,
+            "y": 3.069597259,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "right_parallel",
+          "agent1": "left_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -247.335738874,
+            "y": 6.647777483,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -247.344290979,
+            "y": 3.147787932,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "eastbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_19_eastbound_free_flow.json",
+          "source_sha256": "61a069246c82e39e5e36420129e71770f6a946ab838c04096dc861e3dbd38245",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -215.340110455,
+          "y": 4.819592035,
+          "yaw": 359.86,
+          "z": 0.5
+        },
+        "pair_id": "bd1_eastbound_stationary_left_+00",
+        "physical_template_id": "bd1_eastbound_stationary_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "stationary",
+        "symmetry_partner": "scenario_bd1_eastbound_stationary_z00_a0l.json",
+        "tags": [
+          "eastbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "stationary_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_eastbound_stationary_z00_a0r.json",
+      "sha256": "1b252bfaa11b591d70ab89b206f2e2e1b6e53c7a22545a994728678bcb06c18c"
+    },
+    "scenario_bd1_northbound_rolling_z00_a0l": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -191.57708467,
+            "y": -27.580613119,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -195.077084457,
+            "y": -27.579391389,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "left_parallel",
+          "agent1": "right_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.5,
+            "x": -191.588254777,
+            "y": -59.58061117,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.5,
+            "x": -195.088254564,
+            "y": -59.579389439,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "northbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_17_northbound_free_flow.json",
+          "source_sha256": "f393d3c135d857d7af84061806065d8fc4958cab395c9f60f170933e506069d6",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -193.327084564,
+          "y": -27.580002254,
+          "yaw": 89.98,
+          "z": 0.5
+        },
+        "pair_id": "bd1_northbound_rolling_left_+00",
+        "physical_template_id": "bd1_northbound_rolling_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "rolling",
+        "symmetry_partner": "scenario_bd1_northbound_rolling_z00_a0r.json",
+        "tags": [
+          "northbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "rolling_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_northbound_rolling_z00_a0l.json",
+      "sha256": "3194485a62479a7ec9eb7fb8edd5bbb7bea319db359a7ea6dc73c77faa255a36"
+    },
+    "scenario_bd1_northbound_rolling_z00_a0r": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -195.077084457,
+            "y": -27.579391389,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -191.57708467,
+            "y": -27.580613119,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "right_parallel",
+          "agent1": "left_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.5,
+            "x": -195.088254564,
+            "y": -59.579389439,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.5,
+            "x": -191.588254777,
+            "y": -59.58061117,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "northbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_17_northbound_free_flow.json",
+          "source_sha256": "f393d3c135d857d7af84061806065d8fc4958cab395c9f60f170933e506069d6",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -193.327084564,
+          "y": -27.580002254,
+          "yaw": 89.98,
+          "z": 0.5
+        },
+        "pair_id": "bd1_northbound_rolling_left_+00",
+        "physical_template_id": "bd1_northbound_rolling_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "rolling",
+        "symmetry_partner": "scenario_bd1_northbound_rolling_z00_a0l.json",
+        "tags": [
+          "northbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "rolling_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_northbound_rolling_z00_a0r.json",
+      "sha256": "ec5f9b52b2bf166d0896d6abb81114630239ef440e7e5bd8d0076cd3eb9833e8"
+    },
+    "scenario_bd1_northbound_stationary_z00_a0l": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -191.57708467,
+            "y": -27.580613119,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -195.077084457,
+            "y": -27.579391389,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "left_parallel",
+          "agent1": "right_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -191.588254777,
+            "y": -59.58061117,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -195.088254564,
+            "y": -59.579389439,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "northbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_17_northbound_free_flow.json",
+          "source_sha256": "f393d3c135d857d7af84061806065d8fc4958cab395c9f60f170933e506069d6",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -193.327084564,
+          "y": -27.580002254,
+          "yaw": 89.98,
+          "z": 0.5
+        },
+        "pair_id": "bd1_northbound_stationary_left_+00",
+        "physical_template_id": "bd1_northbound_stationary_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "stationary",
+        "symmetry_partner": "scenario_bd1_northbound_stationary_z00_a0r.json",
+        "tags": [
+          "northbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "stationary_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_northbound_stationary_z00_a0l.json",
+      "sha256": "629de6dab04711f59aabb5128bb4f54d7a00e0224f6c8a5464d0d4afaef48c40"
+    },
+    "scenario_bd1_northbound_stationary_z00_a0r": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -195.077084457,
+            "y": -27.579391389,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -191.57708467,
+            "y": -27.580613119,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "right_parallel",
+          "agent1": "left_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -195.088254564,
+            "y": -59.579389439,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -191.588254777,
+            "y": -59.58061117,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "northbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_17_northbound_free_flow.json",
+          "source_sha256": "f393d3c135d857d7af84061806065d8fc4958cab395c9f60f170933e506069d6",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -193.327084564,
+          "y": -27.580002254,
+          "yaw": 89.98,
+          "z": 0.5
+        },
+        "pair_id": "bd1_northbound_stationary_left_+00",
+        "physical_template_id": "bd1_northbound_stationary_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "stationary",
+        "symmetry_partner": "scenario_bd1_northbound_stationary_z00_a0l.json",
+        "tags": [
+          "northbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "stationary_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_northbound_stationary_z00_a0r.json",
+      "sha256": "7b8fafca7f82a7c7b53bcfc8280902427d02673388097bf8fb556b22b863c389"
+    },
+    "scenario_bd1_southbound_rolling_z00_a0l": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -188.09291533,
+            "y": -56.584386881,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -184.592915543,
+            "y": -56.585608611,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "left_parallel",
+          "agent1": "right_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.5,
+            "x": -188.081745223,
+            "y": -24.58438883,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.5,
+            "x": -184.581745436,
+            "y": -24.585610561,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "southbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_18_southbound_free_flow.json",
+          "source_sha256": "b004807d04437fdb71c041fb625064c2a331b20a08981d9184fcfa1244e522eb",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -186.342915436,
+          "y": -56.584997746,
+          "yaw": -90.02,
+          "z": 0.5
+        },
+        "pair_id": "bd1_southbound_rolling_left_+00",
+        "physical_template_id": "bd1_southbound_rolling_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "rolling",
+        "symmetry_partner": "scenario_bd1_southbound_rolling_z00_a0r.json",
+        "tags": [
+          "southbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "rolling_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_southbound_rolling_z00_a0l.json",
+      "sha256": "2d530107ade6d51d39e761681aed8e31b0450f9252de003e8ecfbae9cd43800b"
+    },
+    "scenario_bd1_southbound_rolling_z00_a0r": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -184.592915543,
+            "y": -56.585608611,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -188.09291533,
+            "y": -56.584386881,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "right_parallel",
+          "agent1": "left_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.5,
+            "x": -184.581745436,
+            "y": -24.585610561,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.5,
+            "x": -188.081745223,
+            "y": -24.58438883,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "southbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_18_southbound_free_flow.json",
+          "source_sha256": "b004807d04437fdb71c041fb625064c2a331b20a08981d9184fcfa1244e522eb",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -186.342915436,
+          "y": -56.584997746,
+          "yaw": -90.02,
+          "z": 0.5
+        },
+        "pair_id": "bd1_southbound_rolling_left_+00",
+        "physical_template_id": "bd1_southbound_rolling_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "rolling",
+        "symmetry_partner": "scenario_bd1_southbound_rolling_z00_a0l.json",
+        "tags": [
+          "southbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "rolling_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_southbound_rolling_z00_a0r.json",
+      "sha256": "78c88f13ddda9c2922bca2dbc98247596bdd9b5baef95581931e0bac4ab6f21e"
+    },
+    "scenario_bd1_southbound_stationary_z00_a0l": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -188.09291533,
+            "y": -56.584386881,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -184.592915543,
+            "y": -56.585608611,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "left_parallel",
+          "agent1": "right_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -188.081745223,
+            "y": -24.58438883,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -184.581745436,
+            "y": -24.585610561,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "southbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_18_southbound_free_flow.json",
+          "source_sha256": "b004807d04437fdb71c041fb625064c2a331b20a08981d9184fcfa1244e522eb",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -186.342915436,
+          "y": -56.584997746,
+          "yaw": -90.02,
+          "z": 0.5
+        },
+        "pair_id": "bd1_southbound_stationary_left_+00",
+        "physical_template_id": "bd1_southbound_stationary_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "stationary",
+        "symmetry_partner": "scenario_bd1_southbound_stationary_z00_a0r.json",
+        "tags": [
+          "southbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "stationary_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_southbound_stationary_z00_a0l.json",
+      "sha256": "78b221dcf757a67ec97dc2510785d6a2df367057b4d73989c9e697e5e9723a96"
+    },
+    "scenario_bd1_southbound_stationary_z00_a0r": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -184.592915543,
+            "y": -56.585608611,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -188.09291533,
+            "y": -56.584386881,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "right_parallel",
+          "agent1": "left_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -184.581745436,
+            "y": -24.585610561,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -188.081745223,
+            "y": -24.58438883,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "southbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_18_southbound_free_flow.json",
+          "source_sha256": "b004807d04437fdb71c041fb625064c2a331b20a08981d9184fcfa1244e522eb",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -186.342915436,
+          "y": -56.584997746,
+          "yaw": -90.02,
+          "z": 0.5
+        },
+        "pair_id": "bd1_southbound_stationary_left_+00",
+        "physical_template_id": "bd1_southbound_stationary_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "stationary",
+        "symmetry_partner": "scenario_bd1_southbound_stationary_z00_a0l.json",
+        "tags": [
+          "southbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "stationary_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_southbound_stationary_z00_a0r.json",
+      "sha256": "e4d16afcfe0904aae1bfe68e15a7aaf35ed6e082d176f4d148fbbfcb9cc132dd"
+    },
+    "scenario_bd1_westbound_rolling_z00_a0l": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -244.350613493,
+            "y": -0.359597259,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -244.359165598,
+            "y": -3.859586811,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "left_parallel",
+          "agent1": "right_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.5,
+            "x": -212.350709021,
+            "y": -0.437787932,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.5,
+            "x": -212.359261126,
+            "y": -3.937777483,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "westbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_20_westbound_free_flow.json",
+          "source_sha256": "1816546f9d255bd46ddee83cb0108cebb7c85d7f6ff938d0e5151fcd127f6bd4",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -244.354889545,
+          "y": -2.109592035,
+          "yaw": 179.86,
+          "z": 0.5
+        },
+        "pair_id": "bd1_westbound_rolling_left_+00",
+        "physical_template_id": "bd1_westbound_rolling_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "rolling",
+        "symmetry_partner": "scenario_bd1_westbound_rolling_z00_a0r.json",
+        "tags": [
+          "westbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "rolling_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_westbound_rolling_z00_a0l.json",
+      "sha256": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f"
+    },
+    "scenario_bd1_westbound_rolling_z00_a0r": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -244.359165598,
+            "y": -3.859586811,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -244.350613493,
+            "y": -0.359597259,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "right_parallel",
+          "agent1": "left_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.5,
+            "x": -212.359261126,
+            "y": -3.937777483,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.5,
+            "x": -212.350709021,
+            "y": -0.437787932,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "westbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_20_westbound_free_flow.json",
+          "source_sha256": "1816546f9d255bd46ddee83cb0108cebb7c85d7f6ff938d0e5151fcd127f6bd4",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -244.354889545,
+          "y": -2.109592035,
+          "yaw": 179.86,
+          "z": 0.5
+        },
+        "pair_id": "bd1_westbound_rolling_left_+00",
+        "physical_template_id": "bd1_westbound_rolling_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "rolling",
+        "symmetry_partner": "scenario_bd1_westbound_rolling_z00_a0l.json",
+        "tags": [
+          "westbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "rolling_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_westbound_rolling_z00_a0r.json",
+      "sha256": "072e339165429689e764872e0f69acd60c5aa0dc6b8802bcc82d1f2b968a612f"
+    },
+    "scenario_bd1_westbound_stationary_z00_a0l": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -244.350613493,
+            "y": -0.359597259,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -244.359165598,
+            "y": -3.859586811,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "left_parallel",
+          "agent1": "right_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -212.350709021,
+            "y": -0.437787932,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -212.359261126,
+            "y": -3.937777483,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "westbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_20_westbound_free_flow.json",
+          "source_sha256": "1816546f9d255bd46ddee83cb0108cebb7c85d7f6ff938d0e5151fcd127f6bd4",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -244.354889545,
+          "y": -2.109592035,
+          "yaw": 179.86,
+          "z": 0.5
+        },
+        "pair_id": "bd1_westbound_stationary_left_+00",
+        "physical_template_id": "bd1_westbound_stationary_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "stationary",
+        "symmetry_partner": "scenario_bd1_westbound_stationary_z00_a0r.json",
+        "tags": [
+          "westbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "stationary_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_westbound_stationary_z00_a0l.json",
+      "sha256": "ecc4a0852ec2c0a0fe6df04c647680960fd5b9e28e05edb6b153f662c8bd846a"
+    },
+    "scenario_bd1_westbound_stationary_z00_a0r": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -244.359165598,
+            "y": -3.859586811,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -244.350613493,
+            "y": -0.359597259,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "agent_roles": {
+          "agent0": "right_parallel",
+          "agent1": "left_parallel"
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -212.359261126,
+            "y": -3.937777483,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -212.350709021,
+            "y": -0.437787932,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": 0,
+        "delta_s_m": 0,
+        "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+        "difficulty": 1,
+        "direction": "westbound",
+        "episode_max_steps": 400,
+        "family": "free_flow",
+        "geometry_provenance": {
+          "is_live_map_projection": false,
+          "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+          "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+          "source": "data/training_scenarios_town05_v2/scenario_20_westbound_free_flow.json",
+          "source_sha256": "1816546f9d255bd46ddee83cb0108cebb7c85d7f6ff938d0e5151fcd127f6bd4",
+          "source_start_advance_m": 5.0
+        },
+        "goal_entry_distance_m": 29.0,
+        "goal_mode": "per_agent_explicit",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -244.354889545,
+          "y": -2.109592035,
+          "yaw": 179.86,
+          "z": 0.5
+        },
+        "pair_id": "bd1_westbound_stationary_left_+00",
+        "physical_template_id": "bd1_westbound_stationary_left_+00",
+        "route_length_m": 32.0,
+        "schema_version": 3,
+        "split": "train",
+        "startup_mode": "stationary",
+        "symmetry_partner": "scenario_bd1_westbound_stationary_z00_a0l.json",
+        "tags": [
+          "westbound",
+          "two_lane",
+          "free_flow",
+          "non_interactive",
+          "non_adversarial",
+          "same_speed",
+          "stationary_start",
+          "base_driving_v1"
+        ],
+        "task_family": "adjacent_free_flow",
+        "town": "Town05",
+        "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_base_vnext_v1\\scenario_bd1_westbound_stationary_z00_a0r.json",
+      "sha256": "c074b1f78dbaf7596c4d33c9a69a8d1420893b9b3c65b4eafcd9788246303e1c"
+    }
+  },
+  "seeds": [
+    63001,
+    63002
+  ],
+  "suite_role": "training_screen",
+  "thresholds": {
+    "low_speed_mps": 0.2,
+    "startup_speed_mps": 0.5
+  },
+  "version": "base_driving_frozen_evaluation_vnext_v1"
+}

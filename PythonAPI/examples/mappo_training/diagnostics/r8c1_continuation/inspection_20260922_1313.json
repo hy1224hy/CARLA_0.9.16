@@ -1,0 +1,383 @@
+{
+  "at": "2026-09-22T05:12:44.889234+00:00",
+  "safe_update": 280,
+  "completed_episodes": 4480,
+  "trainer_alive": true,
+  "session": {
+    "status": "RUNNING",
+    "started_at": "2026-09-22T03:45:33.613473+00:00",
+    "supervisor_pid": 9344,
+    "run_id": "P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224",
+    "command": [
+      "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+      "-u",
+      "-m",
+      "training.train_no_rllib_mappo_robust_v2",
+      "--experiment-contract",
+      "configs/base_mappo/p0_base_town05_r8c1_pace_v1.json",
+      "--continuation-contract",
+      "configs/base_mappo/p0_r8c1_continue_u600_v1.json",
+      "--updates",
+      "600",
+      "--run-id",
+      "P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224",
+      "--save-dir",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224",
+      "--resume",
+      "latest",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "2000",
+      "--follow-spectator",
+      "--stop-request-file",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224\\continuation_u600\\STOP_REQUESTED"
+    ],
+    "log_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224\\continuation_u600\\segment_20260922_114533_613473.log",
+    "stop_update": 600,
+    "interrupt_after_episodes": 0,
+    "trainer_pid": 11584,
+    "checked_at": "2026-09-22T05:12:44.711835+00:00",
+    "camera": {
+      "status": "FOLLOWING",
+      "vehicles": 2,
+      "at": "2026-09-22T05:12:44.618264+00:00"
+    }
+  },
+  "numeric_or_integrity_issues": [],
+  "last_20_update_range": [
+    261,
+    280
+  ],
+  "last_20_team_rates": {
+    "success": 0.665625,
+    "collision": 0.05,
+    "offroad": 0.1125,
+    "road_violation": 0.028125,
+    "timeout": 0.14375
+  },
+  "stage_index": 3.0,
+  "mastery": {
+    "consecutive_passes": 1,
+    "failures": [],
+    "passed": true,
+    "previous_stage": 3,
+    "promoted": false,
+    "protocol_version": "town05_r8a_stratified_mastery_v1",
+    "required_scenarios": [],
+    "scenario_windows": {
+      "scenario_01_north_short_rolling_a0_left.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.18,
+          "1": 0.3026315789473684
+        },
+        "agent_mean_completion": {
+          "0": 0.7975303125482032,
+          "1": 0.8059462490071885
+        },
+        "agent_mean_speed_mps": {
+          "0": 2.492152095454571,
+          "1": 1.6260871067598972
+        },
+        "episode_count": 1,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 1.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_02_south_short_rolling_a1_left.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.10714285714285714,
+          "1": 0.4178082191780822
+        },
+        "agent_mean_completion": {
+          "0": 0.8024761393397373,
+          "1": 0.799824343719752
+        },
+        "agent_mean_speed_mps": {
+          "0": 4.439518524463433,
+          "1": 0.863385194955399
+        },
+        "episode_count": 1,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 1.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_03_north_short_stationary_a0_left.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.20930232558139536,
+          "1": 0.2125
+        },
+        "agent_mean_completion": {
+          "0": 0.7866045216757814,
+          "1": 0.8052875450599443
+        },
+        "agent_mean_speed_mps": {
+          "0": 2.8788452738545796,
+          "1": 1.5661946321177964
+        },
+        "episode_count": 1,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 1.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_04_south_short_stationary_a1_left.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.16176470588235295,
+          "1": 0.3141592920353982
+        },
+        "agent_mean_completion": {
+          "0": 0.8287263186045417,
+          "1": 0.8100426377926961
+        },
+        "agent_mean_speed_mps": {
+          "0": 3.7673264914165436,
+          "1": 1.1165507486929895
+        },
+        "episode_count": 2,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 1.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_05_northbound_free_flow.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.405,
+          "1": 0.23555555555555555
+        },
+        "agent_mean_completion": {
+          "0": 0.5889442838359094,
+          "1": 0.9303299904076787
+        },
+        "agent_mean_speed_mps": {
+          "0": 0.5470156078190056,
+          "1": 3.808866145852438
+        },
+        "episode_count": 2,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 0.0,
+        "team_timeout_rate": 1.0,
+        "update": 280
+      },
+      "scenario_06_southbound_free_flow.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.19540229885057472,
+          "1": 0.35544430538172717
+        },
+        "agent_mean_completion": {
+          "0": 0.9330869004223141,
+          "1": 0.9394174827598454
+        },
+        "agent_mean_speed_mps": {
+          "0": 4.863937178449169,
+          "1": 1.085952134385409
+        },
+        "episode_count": 2,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 1.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_07_eastbound_free_flow.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.12418300653594772,
+          "1": 0.3456521739130435
+        },
+        "agent_mean_completion": {
+          "0": 0.9300608182964478,
+          "1": 0.7292445535693449
+        },
+        "agent_mean_speed_mps": {
+          "0": 5.181551845285554,
+          "1": 1.3659808306134307
+        },
+        "episode_count": 2,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.5,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 0.5,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_08_westbound_free_flow.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.3,
+          "1": 0.3983050847457627
+        },
+        "agent_mean_completion": {
+          "0": 0.9615179665565246,
+          "1": 0.9357236229510114
+        },
+        "agent_mean_speed_mps": {
+          "0": 1.9675972445700833,
+          "1": 1.822783848629938
+        },
+        "episode_count": 1,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 1.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_09_north_parallel_stationary_a0_left.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.33472803347280333,
+          "1": 0.28688524590163933
+        },
+        "agent_mean_completion": {
+          "0": 0.9357760525022648,
+          "1": 0.8943937841933913
+        },
+        "agent_mean_speed_mps": {
+          "0": 1.7900247743520488,
+          "1": 1.7200373907455726
+        },
+        "episode_count": 1,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 1.0,
+        "team_success_rate": 0.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_10_south_parallel_stationary_a1_left.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.18269230769230768,
+          "1": 0.41123595505617977
+        },
+        "agent_mean_completion": {
+          "0": 0.9315095203445742,
+          "1": 0.9289521441458425
+        },
+        "agent_mean_speed_mps": {
+          "0": 4.1205273184615585,
+          "1": 0.9744039897907484
+        },
+        "episode_count": 1,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 1.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_11_east_parallel_stationary_a1_left.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.27102803738317754,
+          "1": 0.41739130434782606
+        },
+        "agent_mean_completion": {
+          "0": 0.9239738620900384,
+          "1": 0.9255746092782445
+        },
+        "agent_mean_speed_mps": {
+          "0": 3.4545039157953576,
+          "1": 1.0828387387194864
+        },
+        "episode_count": 1,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 1.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      },
+      "scenario_12_west_parallel_stationary_a0_left.json": {
+        "agent_brake_mode_rate": {
+          "0": 0.19607843137254902,
+          "1": 0.3076923076923077
+        },
+        "agent_mean_completion": {
+          "0": 0.926231511663109,
+          "1": 0.9263425058787105
+        },
+        "agent_mean_speed_mps": {
+          "0": 3.6480249033916925,
+          "1": 1.693111860672843
+        },
+        "episode_count": 1,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.0,
+        "team_road_violation_rate": 0.0,
+        "team_success_rate": 1.0,
+        "team_timeout_rate": 0.0,
+        "update": 280
+      }
+    },
+    "stage_index": 3,
+    "update": 280,
+    "window": {
+      "agent_brake_mode_rate": {
+        "0": 0.30765883376849434,
+        "1": 0.3502711961176135
+      },
+      "agent_mean_completion": {
+        "0": 0.8517035330649161,
+        "1": 0.865007133330826
+      },
+      "agent_mean_speed_mps": {
+        "0": 2.117332188174477,
+        "1": 1.4306387929679116
+      },
+      "episode_count": 16,
+      "team_collision_rate": 0.0,
+      "team_offroad_rate": 0.0625,
+      "team_road_violation_rate": 0.0625,
+      "team_success_rate": 0.75,
+      "team_timeout_rate": 0.125,
+      "update": 280
+    }
+  },
+  "scenario_counts": {
+    "scenario_01_north_short_rolling_a0_left.json": 1540,
+    "scenario_02_south_short_rolling_a1_left.json": 1540,
+    "scenario_03_north_short_stationary_a0_left.json": 300,
+    "scenario_04_south_short_stationary_a1_left.json": 300,
+    "scenario_05_northbound_free_flow.json": 175,
+    "scenario_06_southbound_free_flow.json": 174,
+    "scenario_07_eastbound_free_flow.json": 173,
+    "scenario_08_westbound_free_flow.json": 172,
+    "scenario_09_north_parallel_stationary_a0_left.json": 25,
+    "scenario_10_south_parallel_stationary_a1_left.json": 26,
+    "scenario_11_east_parallel_stationary_a1_left.json": 27,
+    "scenario_12_west_parallel_stationary_a0_left.json": 28
+  },
+  "unseen_scenarios": [],
+  "latest_agent_and_optimizer_metrics": {
+    "critic/agent_0/explained_variance": 0.9436485459910622,
+    "critic/agent_1/explained_variance": 0.3790406070895048,
+    "critic/explained_variance": 0.7289153337478638,
+    "curriculum/agent_0/brake_mode_rate": 0.30765883376849434,
+    "curriculum/agent_0/mean_completion": 0.8517035330649161,
+    "curriculum/agent_0/mean_speed_mps": 2.117332188174477,
+    "curriculum/agent_1/brake_mode_rate": 0.3502711961176135,
+    "curriculum/agent_1/mean_completion": 0.865007133330826,
+    "curriculum/agent_1/mean_speed_mps": 1.4306387929679116,
+    "policy/agent_0/approx_kl": 0.0005380595607432758,
+    "policy/agent_0/post_tanh_entropy": 0.8792935132980346,
+    "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+    "policy/agent_1/approx_kl": 0.0010458640960234523,
+    "policy/agent_1/post_tanh_entropy": 1.0240411281585693,
+    "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+    "policy/entropy_coefficient": 0.005808013355592654,
+    "reward_audit/max_abs_step_residual": 0.0
+  },
+  "updates_since_previous_inspection": 8,
+  "previous_inspection_at": "2026-09-22T04:51:16.072073+00:00",
+  "interpretation": "Training diagnostics only; prior evaluation repeatability HOLD remains."
+}

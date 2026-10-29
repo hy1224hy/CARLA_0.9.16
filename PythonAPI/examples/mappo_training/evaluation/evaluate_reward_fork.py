@@ -26,7 +26,7 @@ def checkpoint_environment(checkpoint):
     validate_checkpoint_header(checkpoint)
     cfg = checkpoint["training_config"]
     profile = cfg.get("pace_profile", "frozen_v6")
-    if cfg["reward_version"] != "v6" or profile not in {"frozen_v6", "route_pace_v1"}:
+    if cfg["reward_version"] != "v6" or profile not in {"frozen_v6", "route_pace_v1", "instant_pace_v2", "instant_pace_v3", "instant_pace_v4", "instant_pace_v5", "instant_pace_v6"}:
         raise ValueError("this evaluator supports only registered v6 reward profiles")
     expected = checkpoint_protocol_versions("v6", cfg["lidar_range_m"], cfg["curriculum_protocol"])
     if profile != "frozen_v6":
@@ -92,7 +92,12 @@ def evaluate(paths, output, seeds=(62001, 62002), mode="deterministic", validate
                                 for p,h,c,e,_ in loaded],
                 "source_sha256": {str(p.relative_to(ROOT)): sha256_file(p) for p in (
                     Path(__file__), ROOT/"evaluation/diagnose_r8c1_behavior.py",
-                    ROOT/"environment/carla_multi_agent_env.py", ROOT/"environment/route_pace_reward.py")}}
+                    ROOT/"environment/carla_multi_agent_env.py", ROOT/"environment/route_pace_reward.py",
+                    ROOT/"environment/instant_pace_reward.py",
+                    ROOT/"environment/instant_pace_reward_v3.py",
+                    ROOT/"environment/instant_pace_reward_v4.py",
+                    ROOT/"environment/instant_pace_reward_v5.py",
+                    ROOT/"environment/instant_pace_reward_v6.py")}}
     atomic_write_json(config, output / "resolved_config.json")
     atomic_write_json(manifest, output / "manifest.json")
     try:

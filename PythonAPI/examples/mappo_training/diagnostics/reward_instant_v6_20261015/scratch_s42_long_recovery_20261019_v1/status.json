@@ -1,0 +1,204 @@
+{
+  "adapter_sha256": "0818886d1600c99c86ff00221b750a1f77f239a019769762031355dfa4778f5f",
+  "authorized_on": "2026-10-19 Asia/Shanghai",
+  "automatic_restart": false,
+  "changed_at": "2026-10-19T03:40:56.464146+00:00",
+  "completed_references": [
+    {
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_long_u600_20261018_v1\\u000100_summary.json",
+      "sha256": "e40a0c191b851d0c316f02193afbc97209102eaae6dbef97a4f8f05a081216a9",
+      "update": 100
+    }
+  ],
+  "completed_stages": [
+    {
+      "aggregate": {
+        "agents": {
+          "0": {
+            "above_15_fraction_pooled": 0.7959641255605381,
+            "above_15_seconds": 35.5,
+            "above_30_fraction_pooled": 0.4080717488789238,
+            "above_30_seconds": 18.2,
+            "case_arrival_seconds_reached_only": {
+              "count": 9,
+              "mean": 3.866666666666667,
+              "p10": 2.2800000000000002,
+              "p50": 4.6000000000000005,
+              "p90": 5.220000000000001,
+              "peak": 6.1000000000000005
+            },
+            "case_first_motion_seconds": {
+              "count": 12,
+              "mean": 0.35000000000000003,
+              "p10": 0.1,
+              "p50": 0.3500000000000001,
+              "p90": 0.6000000000000001,
+              "peak": 0.6000000000000001
+            },
+            "case_mean_speed_kmh": {
+              "count": 12,
+              "mean": 24.554304808745613,
+              "p10": 16.94882332439893,
+              "p50": 23.789906857434268,
+              "p90": 33.0123759259993,
+              "peak": 36.022848968062256
+            },
+            "reached_goal_count": 9,
+            "recorded_overspeed_reward_sum": -126.73090130553965,
+            "recorded_pace_reward_sum": -0.3263422804005508,
+            "route_closing_speed_mps_pooled_active_transitions": {
+              "count": 446,
+              "mean": 7.040829302647072,
+              "p10": 1.7995623347659175,
+              "p50": 7.065332750237717,
+              "p90": 12.205884945795757,
+              "peak": 13.44468772020684
+            },
+            "speed_kmh_pooled_active_transitions": {
+              "count": 446,
+              "mean": 26.826754966691187,
+              "p10": 7.094890312106553,
+              "p50": 26.64279720076017,
+              "p90": 46.06620413688853,
+              "peak": 51.5688252772897
+            }
+          },
+          "1": {
+            "above_15_fraction_pooled": 0.4470588235294118,
+            "above_15_seconds": 38.0,
+            "above_30_fraction_pooled": 0.0,
+            "above_30_seconds": 0.0,
+            "case_arrival_seconds_reached_only": {
+              "count": 9,
+              "mean": 8.355555555555556,
+              "p10": 4.44,
+              "p50": 8.9,
+              "p90": 12.32,
+              "peak": 12.8
+            },
+            "case_first_motion_seconds": {
+              "count": 11,
+              "mean": 1.281818181818182,
+              "p10": 0.1,
+              "p50": 0.1,
+              "p90": 2.7,
+              "peak": 3.6
+            },
+            "case_mean_speed_kmh": {
+              "count": 12,
+              "mean": 10.720663707081071,
+              "p10": 7.98896761756904,
+              "p50": 11.2142624428025,
+              "p90": 14.491672674274955,
+              "peak": 16.270945061344683
+            },
+            "reached_goal_count": 9,
+            "recorded_overspeed_reward_sum": -7.695908510268885,
+            "recorded_pace_reward_sum": -2.0910524817992435,
+            "route_closing_speed_mps_pooled_active_transitions": {
+              "count": 850,
+              "mean": 3.1959963486107634,
+              "p10": 4.944395282091563e-10,
+              "p50": 3.8227158905692304,
+              "p90": 5.016867871331501,
+              "peak": 5.125539152160924
+            },
+            "speed_kmh_pooled_active_transitions": {
+              "count": 850,
+              "mean": 11.630186275864107,
+              "p10": 1.7935273402886722e-05,
+              "p50": 13.825320082967524,
+              "p90": 18.188023746673114,
+              "peak": 19.415348110838146
+            }
+          }
+        },
+        "both_reached_count_valid_cases": 9,
+        "episode_reasons": {
+          "all_agents_reached": 9,
+          "cooperative_collision": 1,
+          "cooperative_offroad": 2
+        },
+        "expected_case_count": 12,
+        "recorded_case_count": 12,
+        "valid_case_count": 12
+      },
+      "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_long_recovery_20261019_v1\\u000200.pt",
+      "completed_at": "2026-10-19T03:40:55.729864+00:00",
+      "lateral": {
+        "active_boundary": "include own terminal, exclude subsequent mask rows",
+        "agents": {
+          "0": {
+            "active_rows": 446,
+            "max_abs_reference_lateral_m": 1.745895452430521,
+            "mean_abs_applied_steer_delta_readable_only": 0.07195989565523205,
+            "mean_abs_reference_lateral_m": 0.47749819402381555,
+            "missing_terminal_control": 9,
+            "outside_035_fraction": 0.5246636771300448,
+            "p95_abs_reference_lateral_m": 1.4504139163140095
+          },
+          "1": {
+            "active_rows": 850,
+            "max_abs_reference_lateral_m": 1.7438959957786464,
+            "mean_abs_applied_steer_delta_readable_only": 0.0387865395090836,
+            "mean_abs_reference_lateral_m": 0.5601110385043266,
+            "missing_terminal_control": 9,
+            "outside_035_fraction": 0.49529411764705883,
+            "p95_abs_reference_lateral_m": 1.6013844596291469
+          }
+        },
+        "scope": "known-scene deterministic trajectories; no held-out qualification",
+        "steer_boundary": "applied post controls only; missing terminal controls excluded, not reconstructed from requested actions"
+      },
+      "qualification": "NOT_ASSIGNED_KNOWN_SCENE_PILOT_ONLY",
+      "sha256": "b976b8aebb97a22a2315fbb9c5e8efca794e1f761bc4e141013f94b4ba961ef7",
+      "source_type": "fresh",
+      "training_integrity": {
+        "episodes": 3200,
+        "maxima": {
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "train/update_skipped": 0.0
+        },
+        "outcomes": {
+          "collision": 135,
+          "offroad": 550,
+          "road_violation": 277,
+          "success": 1971,
+          "timeout": 267
+        },
+        "updates": 200
+      },
+      "update": 200
+    }
+  ],
+  "control_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_long_recovery_20261019_v1",
+  "ended_at": "2026-10-19T07:46:40.267626+00:00",
+  "error": "RuntimeError: trainer exited 3221226505; no automatic restart",
+  "long_plan": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_long_u600_20261018_v1\\plan.json",
+  "pid": 28884,
+  "previous_plan": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_long_u600_20261018_v1\\plan.json",
+  "previous_plan_sha256": "4cda15c3fdb9a23d44726d99d090a385e0f2814bbdaf32a496180ae045fd6bc4",
+  "remaining_episodes": 7504,
+  "remaining_updates": 469,
+  "resume_from_update": 200,
+  "run_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\R8C1_InstantPaceV6_scratch_s42_20261015_v1",
+  "schedule_horizon": 600,
+  "source_resume_count": 5,
+  "source_sha256": "00fb22c5140925b5b7c828f3f937d3774cc7289f14bd8cf35eab8c96562b03e2",
+  "source_update": 131,
+  "started_at": "2026-10-19T02:36:48.099645+00:00",
+  "status": "FAILED_NO_RESTART",
+  "stop_updates": [
+    200,
+    400,
+    600
+  ],
+  "target_update": 400,
+  "total_budget_episodes": 9600,
+  "total_budget_updates": 600,
+  "uncommitted_episode_rows_at_prepare": 11,
+  "version": "v6_long_recovery_v1"
+}

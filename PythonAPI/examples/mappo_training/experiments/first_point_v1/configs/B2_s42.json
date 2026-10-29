@@ -1,0 +1,125 @@
+{
+  "algorithm": "mappo",
+  "case_manifest": "experiments/first_point_v1/cases.json",
+  "communication": {
+    "enabled": false,
+    "message_dim": 8,
+    "status": "planned_not_implemented"
+  },
+  "device": "cpu",
+  "evaluation": {
+    "max_invalid_retries": 1,
+    "mode": "deterministic",
+    "selection_max_bad_rate": 0.125,
+    "selection_metric": "safe_efficiency_utility"
+  },
+  "host": "127.0.0.1",
+  "learning": {
+    "anchor_beta": 0.0,
+    "beta": 0.01,
+    "clip_eps": 0.15,
+    "distillation": {
+      "direction": "student_to_teacher",
+      "gate_variant": "evidence",
+      "reduction": "all_valid"
+    },
+    "ent_coef": 0.01,
+    "gae_lambda": 0.95,
+    "gamma": 0.999,
+    "hidden_dim": 128,
+    "init_log_std": -0.5,
+    "lr_actor": 0.0003,
+    "lr_critic": 0.0003,
+    "max_grad_norm": 0.5,
+    "max_log_std": 0.0,
+    "min_log_std": -2.0,
+    "minibatch_size": 128,
+    "ppo_epochs": 2,
+    "target_kl": 0.02
+  },
+  "method": "selective",
+  "model_spec": {
+    "action_dim": 2,
+    "critic_num_agents": 4,
+    "learner_ids": [
+      2,
+      3
+    ],
+    "obs_dim": 20,
+    "physical_ids": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "state_dim": 80
+  },
+  "mutual": {
+    "gate_max_bad_rate": 0.125,
+    "gate_min_cases": 8,
+    "gate_min_q_gap": 0.25,
+    "min_efficiency_gap": 0.02,
+    "quality_metric": "efficiency",
+    "refresh_rounds": 10,
+    "refresh_train_ticks": 20000,
+    "schedule_clock": "train_ticks",
+    "warmup_rounds": 5,
+    "warmup_train_ticks": 10000
+  },
+  "port": 2000,
+  "protocol": "mut_mappo_four_car_20_2_v1",
+  "red_checkpoint": {
+    "capability_status": "requires_independent_driving_qualification",
+    "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\BD_vNext_V6_scratch_s42_u600_20261020_v1\\periodic\\ckpt_update_000370.pt",
+    "sha256": "f0aba30af9f3048278e31100f3892df79351a32401f6c16439fb3c055b293c60"
+  },
+  "research_status": "candidate",
+  "run": {
+    "cost_down": 0.95,
+    "cost_max": 10.0,
+    "cost_min": 1.0,
+    "cost_target": 0.05,
+    "cost_up": 1.2,
+    "episodes_per_team_update": 4,
+    "lr_horizon_rounds": 1000,
+    "rounds": 1000,
+    "schedule_clock": "train_ticks",
+    "stop_rule": "train_ticks",
+    "train_tick_budget": 120000
+  },
+  "schema_version": "mut_mappo_config_v1",
+  "seed": 42,
+  "task": {
+    "follow_spectator": true,
+    "max_steps": 500,
+    "reward": {
+      "base_driving_weight": 0.3,
+      "birth_protect_secs": 3.0,
+      "cap_slowdown": 3,
+      "free_flow_target_mps": 2.5,
+      "overspeed_start_mps": 4.1666666667,
+      "reward_slowdown": 5.0,
+      "reward_timeout": 15.0,
+      "safety_lambda": 1.0,
+      "slowdown_drop_thresh": 2.0,
+      "slowdown_persistence_secs": 0.5,
+      "slowdown_window_secs": 2.0,
+      "threat_cap_per_episode": 20.0
+    },
+    "reward_profile": "c1_progress_team_v1",
+    "stall": {
+      "enabled": true,
+      "seconds": 3.0,
+      "speed_mps": 0.2
+    },
+    "team_reward": {
+      "attack_weight": 10.0,
+      "driving_weight": 1.0,
+      "gamma": 0.999,
+      "reference_dir": "experiments/first_point_v1/references"
+    },
+    "timestep": 0.1
+  },
+  "team_count": 2,
+  "town": "Town05"
+}

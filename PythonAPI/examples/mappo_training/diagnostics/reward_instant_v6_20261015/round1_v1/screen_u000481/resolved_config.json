@@ -1,0 +1,737 @@
+{
+  "mode": "deterministic",
+  "scenarios": {
+    "scenario_01_north_short_rolling_a0_left": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -195.09,
+            "y": -49.58,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -191.59,
+            "y": -49.58,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.0,
+            "x": -195.09,
+            "y": -64.58,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.0,
+            "x": -191.59,
+            "y": -64.58,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S0-A",
+        "description": "R8-A S0-A Road 44 northbound mirrored short free-flow",
+        "difficulty": 1,
+        "episode_max_steps": 200,
+        "family": "r8a_short_free_flow_rolling",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 3.4,
+          "x": -193.34,
+          "y": -49.58,
+          "yaw": 89.98,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "northbound",
+          "two_lane",
+          "free_flow",
+          "short_route",
+          "non_interactive",
+          "rolling_start",
+          "same_speed",
+          "agent0_left",
+          "r8a",
+          "s0-a"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_01_north_short_rolling_a0_left.json",
+      "sha256": "1496f0764c5c1112c484d2fdf98a491ab3566286f0c49c7642154ef3092b6cb0"
+    },
+    "scenario_02_south_short_rolling_a1_left": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -188.08,
+            "y": -34.585,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -184.58,
+            "y": -34.585,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.0,
+            "x": -188.08,
+            "y": -19.585,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.0,
+            "x": -184.58,
+            "y": -19.585,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S0-A",
+        "description": "R8-A S0-A Road 44 southbound mirrored short free-flow",
+        "difficulty": 1,
+        "episode_max_steps": 200,
+        "family": "r8a_short_free_flow_rolling",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 3.4,
+          "x": -186.33,
+          "y": -34.585,
+          "yaw": -90.02,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "southbound",
+          "two_lane",
+          "free_flow",
+          "short_route",
+          "non_interactive",
+          "rolling_start",
+          "same_speed",
+          "agent1_left",
+          "r8a",
+          "s0-a"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_02_south_short_rolling_a1_left.json",
+      "sha256": "2ec1297a5aa5e6b70c926ddd1e145a0e3c0e99cc9992d4c382382b08c4b6a58a"
+    },
+    "scenario_03_north_short_stationary_a0_left": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -195.09,
+            "y": -49.58,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -191.59,
+            "y": -49.58,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -195.09,
+            "y": -64.58,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -191.59,
+            "y": -64.58,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S0-B",
+        "description": "R8-A S0-B Road 44 northbound mirrored short free-flow",
+        "difficulty": 2,
+        "episode_max_steps": 200,
+        "family": "r8a_short_free_flow_stationary",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 3.4,
+          "x": -193.34,
+          "y": -49.58,
+          "yaw": 89.98,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "northbound",
+          "two_lane",
+          "free_flow",
+          "short_route",
+          "non_interactive",
+          "stationary_start",
+          "same_speed",
+          "agent0_left",
+          "r8a",
+          "s0-b"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_03_north_short_stationary_a0_left.json",
+      "sha256": "b377efaa41b099a9240bc249dd633188aaac0f419d12f894df1bfb9c21d8cc03"
+    },
+    "scenario_04_south_short_stationary_a1_left": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -188.08,
+            "y": -34.585,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -184.58,
+            "y": -34.585,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -188.08,
+            "y": -19.585,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -184.58,
+            "y": -19.585,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S0-B",
+        "description": "R8-A S0-B Road 44 southbound mirrored short free-flow",
+        "difficulty": 2,
+        "episode_max_steps": 200,
+        "family": "r8a_short_free_flow_stationary",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 3.4,
+          "x": -186.33,
+          "y": -34.585,
+          "yaw": -90.02,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "southbound",
+          "two_lane",
+          "free_flow",
+          "short_route",
+          "non_interactive",
+          "stationary_start",
+          "same_speed",
+          "agent1_left",
+          "r8a",
+          "s0-b"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_04_south_short_stationary_a1_left.json",
+      "sha256": "d4793adf90f588db389dc1a7599ab4cefaee42bbfb836785d0871d46a2a749ad"
+    },
+    "scenario_05_northbound_free_flow": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -195.08,
+            "y": -19.58,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -191.58,
+            "y": -19.58,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.0,
+            "x": -195.09,
+            "y": -64.58,
+            "yaw": 89.98,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 4.0,
+            "x": -191.59,
+            "y": -64.58,
+            "yaw": 89.98,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S1",
+        "description": "R8-A S1: Road 44 northbound independent free-flow cruising",
+        "difficulty": 3,
+        "episode_max_steps": 500,
+        "family": "free_flow",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -195.08,
+          "y": -19.58,
+          "yaw": 89.98,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "northbound",
+          "two_lane",
+          "free_flow",
+          "rolling_start",
+          "different_speed",
+          "non_adversarial",
+          "r8a",
+          "s1"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_05_northbound_free_flow.json",
+      "sha256": "223ec843c6eb4652f7338d145d874a2d6557ef6e8417d4c4b32754453b7a24b7"
+    },
+    "scenario_06_southbound_free_flow": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -188.09,
+            "y": -64.58,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -184.59,
+            "y": -64.59,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 4.0,
+            "x": -188.08,
+            "y": -19.58,
+            "yaw": -90.02,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.0,
+            "x": -184.58,
+            "y": -19.59,
+            "yaw": -90.02,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S1",
+        "description": "R8-A S1: Road 44 southbound independent free-flow cruising",
+        "difficulty": 3,
+        "episode_max_steps": 500,
+        "family": "free_flow",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -184.59,
+          "y": -64.59,
+          "yaw": -90.02,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "southbound",
+          "two_lane",
+          "free_flow",
+          "rolling_start",
+          "different_speed",
+          "non_adversarial",
+          "r8a",
+          "s1"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_06_southbound_free_flow.json",
+      "sha256": "0fd0fc0b0c6030e3b03ad30f7a0f225f834fe3bff2f8c2db35b3485bd89a44c1"
+    },
+    "scenario_07_eastbound_free_flow": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -210.35,
+            "y": 3.06,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -210.34,
+            "y": 6.56,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 2.0,
+            "x": -252.34,
+            "y": 3.16,
+            "yaw": 359.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 4.0,
+            "x": -252.34,
+            "y": 6.66,
+            "yaw": 359.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S1",
+        "description": "R8-A S1: Road 3 eastbound independent free-flow cruising",
+        "difficulty": 3,
+        "episode_max_steps": 500,
+        "family": "free_flow",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -210.35,
+          "y": 3.06,
+          "yaw": 359.86,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "eastbound",
+          "two_lane",
+          "free_flow",
+          "rolling_start",
+          "different_speed",
+          "non_adversarial",
+          "r8a",
+          "s1"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_07_eastbound_free_flow.json",
+      "sha256": "fefb17c3b163b190b9dc49f699b4a2e94de926bb9f5f63306695c625798459d4"
+    },
+    "scenario_08_westbound_free_flow": {
+      "config": {
+        "agent_goal_zones": {
+          "agent0": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -252.35,
+            "y": -0.34,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "half_length": 3.0,
+            "half_width": 1.6,
+            "x": -252.36,
+            "y": -3.84,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 4.0,
+            "x": -207.35,
+            "y": -0.45,
+            "yaw": 179.86,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 2.0,
+            "x": -207.36,
+            "y": -3.95,
+            "yaw": 179.86,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S1",
+        "description": "R8-A S1: Road 3 westbound independent free-flow cruising",
+        "difficulty": 3,
+        "episode_max_steps": 500,
+        "family": "free_flow",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 1.6,
+          "x": -252.36,
+          "y": -3.84,
+          "yaw": 179.86,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "westbound",
+          "two_lane",
+          "free_flow",
+          "rolling_start",
+          "different_speed",
+          "non_adversarial",
+          "r8a",
+          "s1"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_08_westbound_free_flow.json",
+      "sha256": "4afaeb80af8124136b9d676b4e3b6f642bd73aa14b018fd378374fdeb35613ad"
+    },
+    "scenario_09_north_parallel_stationary_a0_left": {
+      "config": {
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -195.09,
+            "y": -64.58,
+            "yaw": 90.0,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -191.59,
+            "y": -64.58,
+            "yaw": 90.0,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S2",
+        "description": "R8-A S2: Road 44 北向静止并排起步，Agent 0 位于左车道",
+        "difficulty": 4,
+        "episode_max_steps": 500,
+        "family": "parallel_stationary",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 3.4,
+          "x": -193.33,
+          "y": -19.58,
+          "yaw": 90.0,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "northbound",
+          "parallel",
+          "stationary_start",
+          "two_lane",
+          "agent0_left",
+          "r8a",
+          "s2"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_09_north_parallel_stationary_a0_left.json",
+      "sha256": "c60e73426faf7a0f6d129097f4f685cd65155c1d12227da3229e9fb1043dddd2"
+    },
+    "scenario_10_south_parallel_stationary_a1_left": {
+      "config": {
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -184.58,
+            "y": -19.59,
+            "yaw": -90.0,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -188.08,
+            "y": -19.59,
+            "yaw": -90.0,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S2",
+        "description": "R8-A S2: Road 44 南向静止并排起步，Agent 1 位于左车道",
+        "difficulty": 4,
+        "episode_max_steps": 500,
+        "family": "parallel_stationary",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 3.4,
+          "x": -186.34,
+          "y": -64.59,
+          "yaw": -90.0,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "southbound",
+          "parallel",
+          "stationary_start",
+          "two_lane",
+          "agent1_left",
+          "r8a",
+          "s2"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_10_south_parallel_stationary_a1_left.json",
+      "sha256": "1b5c2a9b668e2baf0bfb05584c85308d87da79c42f2314b6419a1741cc516a56"
+    },
+    "scenario_11_east_parallel_stationary_a1_left": {
+      "config": {
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -249.85,
+            "y": 3.16,
+            "yaw": 0.0,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -249.84,
+            "y": 6.66,
+            "yaw": 0.0,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S2",
+        "description": "R8-A S2: Road 3 东向静止并排起步，Agent 1 位于左车道",
+        "difficulty": 4,
+        "episode_max_steps": 500,
+        "family": "parallel_stationary",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 3.4,
+          "x": -210.34,
+          "y": 4.81,
+          "yaw": 0.0,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "eastbound",
+          "parallel",
+          "stationary_start",
+          "two_lane",
+          "agent1_left",
+          "r8a",
+          "s2"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_11_east_parallel_stationary_a1_left.json",
+      "sha256": "4542c2de5918a01ae986e59f2c31444d385724dbbef869040fcc70681c7bc770"
+    },
+    "scenario_12_west_parallel_stationary_a0_left": {
+      "config": {
+        "agents": {
+          "agent0": {
+            "initial_speed_mps": 0.0,
+            "x": -210.36,
+            "y": -3.94,
+            "yaw": 180.0,
+            "z": 0.5
+          },
+          "agent1": {
+            "initial_speed_mps": 0.0,
+            "x": -210.35,
+            "y": -0.44,
+            "yaw": 180.0,
+            "z": 0.5
+          }
+        },
+        "curriculum_stage": "S2",
+        "description": "R8-A S2: Road 3 西向静止并排起步，Agent 0 位于左车道",
+        "difficulty": 4,
+        "episode_max_steps": 500,
+        "family": "parallel_stationary",
+        "goal_mode": "preserve_start_lane",
+        "goal_zone": {
+          "half_length": 3.0,
+          "half_width": 3.4,
+          "x": -249.86,
+          "y": -2.09,
+          "yaw": 180.0,
+          "z": 0.5
+        },
+        "schema_version": 3,
+        "tags": [
+          "westbound",
+          "parallel",
+          "stationary_start",
+          "two_lane",
+          "agent0_left",
+          "r8a",
+          "s2"
+        ],
+        "town": "Town05"
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_12_west_parallel_stationary_a0_left.json",
+      "sha256": "32419f45c7f3d52e8e595e50569e17a99c72df8379f85e564b311d6fff62d5a3"
+    }
+  },
+  "seeds": [
+    62001
+  ],
+  "thresholds": {
+    "low_speed_mps": 0.2,
+    "startup_speed_mps": 0.5
+  },
+  "version": "reward_fork_behavior_v1"
+}

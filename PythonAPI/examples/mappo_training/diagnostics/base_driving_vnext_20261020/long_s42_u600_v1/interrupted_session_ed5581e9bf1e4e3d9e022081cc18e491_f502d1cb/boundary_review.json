@@ -1,0 +1,211 @@
+{
+  "at": "2026-10-21T01:14:36.542487Z",
+  "exit_present": false,
+  "meaning": "raw evidence; absence of matching exit is not success",
+  "safe_update": 40,
+  "uncommitted_episodes": [
+    {
+      "agents": {
+        "0": {
+          "active_decision_steps": 400,
+          "bootstrap_enabled": false,
+          "done": true,
+          "episode_return": -40.283882340868544,
+          "first_offroad_evidence": null,
+          "max_footprint_outside_fraction": 0.0,
+          "max_offroad_consecutive_ticks": 0,
+          "offroad_terminated": false,
+          "road_rule_terminated": false,
+          "terminated": true,
+          "transition_count": 400,
+          "truncated": false
+        },
+        "1": {
+          "active_decision_steps": 400,
+          "bootstrap_enabled": false,
+          "done": true,
+          "episode_return": -39.8940068561781,
+          "first_offroad_evidence": null,
+          "max_footprint_outside_fraction": 0.0,
+          "max_offroad_consecutive_ticks": 0,
+          "offroad_terminated": false,
+          "road_rule_terminated": false,
+          "terminated": true,
+          "transition_count": 400,
+          "truncated": false
+        }
+      },
+      "collision": false,
+      "created_at": "2026-10-20T13:31:48.734608+00:00",
+      "episode_end_reason": "mission_timeout",
+      "episode_index": 0,
+      "episode_length": 400,
+      "episode_record_version": "mappo_episode_record_road_rule_v4",
+      "offroad": false,
+      "road_violation": false,
+      "run_id": "BD_vNext_V6_scratch_s42_u600_20261020_v1",
+      "scenario_name": "scenario_bd1_northbound_rolling_z00_a0l.json",
+      "success": false,
+      "timeout": true,
+      "update": 41
+    },
+    {
+      "agents": {
+        "0": {
+          "active_decision_steps": 55,
+          "bootstrap_enabled": false,
+          "done": true,
+          "episode_return": -57.78921871614067,
+          "first_offroad_evidence": null,
+          "max_footprint_outside_fraction": 0.0,
+          "max_offroad_consecutive_ticks": 0,
+          "offroad_terminated": false,
+          "road_rule_terminated": true,
+          "terminated": true,
+          "transition_count": 55,
+          "truncated": false
+        },
+        "1": {
+          "active_decision_steps": 55,
+          "bootstrap_enabled": true,
+          "done": true,
+          "episode_return": -1.1122165098865016,
+          "first_offroad_evidence": null,
+          "max_footprint_outside_fraction": 0.0,
+          "max_offroad_consecutive_ticks": 0,
+          "offroad_terminated": false,
+          "road_rule_terminated": false,
+          "terminated": false,
+          "transition_count": 55,
+          "truncated": true
+        }
+      },
+      "collision": false,
+      "created_at": "2026-10-20T13:31:51.717960+00:00",
+      "episode_end_reason": "cooperative_road_violation",
+      "episode_index": 1,
+      "episode_length": 55,
+      "episode_record_version": "mappo_episode_record_road_rule_v4",
+      "offroad": false,
+      "road_violation": true,
+      "run_id": "BD_vNext_V6_scratch_s42_u600_20261020_v1",
+      "scenario_name": "scenario_bd1_northbound_rolling_z00_a0r.json",
+      "success": false,
+      "timeout": false,
+      "update": 41
+    },
+    {
+      "agents": {
+        "0": {
+          "active_decision_steps": 400,
+          "bootstrap_enabled": false,
+          "done": true,
+          "episode_return": -69.31248882265011,
+          "first_offroad_evidence": {
+            "episode_step": 398,
+            "footprint_outside_count": 3,
+            "footprint_outside_fraction": 0.375,
+            "location": {
+              "x": -183.60227966308594,
+              "y": -54.68964385986328,
+              "z": 0.057242851704359055
+            },
+            "world_frame": 354351,
+            "yaw": -52.75871658325195
+          },
+          "max_footprint_outside_fraction": 0.5,
+          "max_offroad_consecutive_ticks": 3,
+          "offroad_terminated": true,
+          "road_rule_terminated": false,
+          "terminated": true,
+          "transition_count": 400,
+          "truncated": false
+        },
+        "1": {
+          "active_decision_steps": 400,
+          "bootstrap_enabled": false,
+          "done": true,
+          "episode_return": -40.352585679926,
+          "first_offroad_evidence": null,
+          "max_footprint_outside_fraction": 0.0,
+          "max_offroad_consecutive_ticks": 0,
+          "offroad_terminated": false,
+          "road_rule_terminated": false,
+          "terminated": true,
+          "transition_count": 400,
+          "truncated": false
+        }
+      },
+      "collision": false,
+      "created_at": "2026-10-20T13:32:08.548651+00:00",
+      "episode_end_reason": "cooperative_offroad",
+      "episode_index": 2,
+      "episode_length": 400,
+      "episode_record_version": "mappo_episode_record_road_rule_v4",
+      "offroad": true,
+      "road_violation": false,
+      "run_id": "BD_vNext_V6_scratch_s42_u600_20261020_v1",
+      "scenario_name": "scenario_bd1_southbound_rolling_z00_a0l.json",
+      "success": false,
+      "timeout": false,
+      "update": 41
+    },
+    {
+      "agents": {
+        "0": {
+          "active_decision_steps": 253,
+          "bootstrap_enabled": false,
+          "done": true,
+          "episode_return": -66.72156135193163,
+          "first_offroad_evidence": {
+            "episode_step": 251,
+            "footprint_outside_count": 3,
+            "footprint_outside_fraction": 0.375,
+            "location": {
+              "x": -183.559814453125,
+              "y": -41.196617126464844,
+              "z": 0.056896209716796875
+            },
+            "world_frame": 354617,
+            "yaw": -84.55110168457031
+          },
+          "max_footprint_outside_fraction": 0.375,
+          "max_offroad_consecutive_ticks": 3,
+          "offroad_terminated": true,
+          "road_rule_terminated": false,
+          "terminated": true,
+          "transition_count": 253,
+          "truncated": false
+        },
+        "1": {
+          "active_decision_steps": 253,
+          "bootstrap_enabled": true,
+          "done": true,
+          "episode_return": -10.957981976692007,
+          "first_offroad_evidence": null,
+          "max_footprint_outside_fraction": 0.0,
+          "max_offroad_consecutive_ticks": 0,
+          "offroad_terminated": false,
+          "road_rule_terminated": false,
+          "terminated": false,
+          "transition_count": 253,
+          "truncated": true
+        }
+      },
+      "collision": false,
+      "created_at": "2026-10-20T13:32:20.000683+00:00",
+      "episode_end_reason": "cooperative_offroad",
+      "episode_index": 3,
+      "episode_length": 253,
+      "episode_record_version": "mappo_episode_record_road_rule_v4",
+      "offroad": true,
+      "road_violation": false,
+      "run_id": "BD_vNext_V6_scratch_s42_u600_20261020_v1",
+      "scenario_name": "scenario_bd1_southbound_rolling_z00_a0r.json",
+      "success": false,
+      "timeout": false,
+      "update": 41
+    }
+  ],
+  "uncommitted_metrics": []
+}

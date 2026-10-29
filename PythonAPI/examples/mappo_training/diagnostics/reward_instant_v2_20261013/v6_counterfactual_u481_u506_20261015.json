@@ -1,0 +1,497 @@
+{
+  "evidence_status": "COUNTERFACTUAL_SCORING_ONLY",
+  "evaluations": [
+    {
+      "evidence_status": "COUNTERFACTUAL_SCORING_ONLY",
+      "scope": "fixed V5 trajectories; no new driving, policy update or efficacy/generalization claim",
+      "evaluation_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481",
+      "checkpoint": {
+        "environment": {
+          "disable_tensorboard": true,
+          "follow_spectator": true,
+          "lidar_range_m": 20.0,
+          "max_steps": 500,
+          "num_agents": 2,
+          "pace_profile": "instant_pace_v5",
+          "reward_gamma": 0.999,
+          "reward_version": "v6",
+          "spawn_vehicles": false,
+          "straight_road_length": 50.0,
+          "timestep": 0.1,
+          "town": "Town05",
+          "ttc_max_range_m": 20.0
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\u000481.pt",
+        "sha256": "2e1ef144426f20828ed316bf2867022bed54b7f6a1d57ca5b0584c93acaf3a42",
+        "update": 481
+      },
+      "case_count": 12,
+      "active_boundary": "pre-transition active; include own terminal",
+      "steer_evidence": "use applied post control; missing terminal post with saturated old risk yields physical command bounds, never an invented exact cost",
+      "input_sha256": {
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\manifest.json": "562f717d8b4a2a783e6e5a4c9cc23855fc7b85c99ddbd3898f2b4c99138f5c3e",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_01_north_short_rolling_a0_left_s62001_deterministic.jsonl": "608a398337c5d2b49a828b1d62605e1bd83375fda5ff17faed0e1dc975afb355",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_02_south_short_rolling_a1_left_s62001_deterministic.jsonl": "e2ef8c7d9fb0d654bf3fd22898bf639a1be4151364ae4d8242ef64e1e846fd7f",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_03_north_short_stationary_a0_left_s62001_deterministic.jsonl": "c31dc2d0efb9b5751d6c39dcc7fefb1c39de549ca6f4e3d6e3cb3a84913a2ff9",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_04_south_short_stationary_a1_left_s62001_deterministic.jsonl": "e4c7293540b04ef6a9d9888be4fb78caab87a79986414ea1dfd218e502c9dd22",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_05_northbound_free_flow_s62001_deterministic.jsonl": "f470d61e6731010303f58be774b34286fd58df06562df81ecbcd89e4da0f6f40",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_06_southbound_free_flow_s62001_deterministic.jsonl": "23af768943a5f1b4b1c8185899f1ec703d3bccc1c5bba84a59750ca58c4a8c64",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_07_eastbound_free_flow_s62001_deterministic.jsonl": "9b127de5e3408be57116020ec843332e80db301f5931805baaee7ba933db2b09",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_08_westbound_free_flow_s62001_deterministic.jsonl": "1413c8e43aa98422aac102f572f12863e5918dad6955d2fbe141edebf2d0f765",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_09_north_parallel_stationary_a0_left_s62001_deterministic.jsonl": "350bbfc694efb22bdb24e12ec48280d048a0b7a54940e65aa714c9fe9930e242",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_10_south_parallel_stationary_a1_left_s62001_deterministic.jsonl": "7e3096115b906bad9bab2d1dc9006facca323413dfe5a1d85d8bd18e89b7c3a6",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_11_east_parallel_stationary_a1_left_s62001_deterministic.jsonl": "efe125e244bd4b4235a3c40fedcbbc8574416fcd4a6b1527b1b06582eadfc6c5",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000481\\traces\\c0_u481_scenario_12_west_parallel_stationary_a0_left_s62001_deterministic.jsonl": "903f65b306d1b9ac370d37d1c6f2ae466963b753894274faed569cf162f53fda"
+      },
+      "recorded_source_sha256": {
+        "environment\\carla_multi_agent_env.py": "1afd089884c0e1dba32abfa027c84f613b8fba0bc3fc6de35b908cb8b67e1745",
+        "environment\\instant_pace_reward.py": "8a382e016aa5f032a11010f4f253a071e1577d6dc4910db11f8c31af316caa02",
+        "environment\\instant_pace_reward_v3.py": "a69b2b36851ffdbae551f5417d7de5fb80f10d78d248479cc01f06958cc250bc",
+        "environment\\instant_pace_reward_v4.py": "0369f3f7625987f68c4e8cc052f7716ec00c3787c4e29cbcc7eda48f932eb543",
+        "environment\\instant_pace_reward_v5.py": "950300894e71ee48b0e59d817facc042e04fdf6b516fb296afaac624541b9763",
+        "environment\\route_pace_reward.py": "a9b9a14b107013b010c730c520d90027046dfd5f662a27bbf8b2837a426a2fe5",
+        "evaluation\\diagnose_r8c1_behavior.py": "e18add949b6548281bc6d42c6fb4675562b00d08ce36abd396bd5aad53de06c2",
+        "evaluation\\evaluate_reward_fork.py": "18b4c4bbb462b0330faac80a63a5cb9a6d1cacb394696d4305d40be1715ec19b"
+      },
+      "cost_source_sha256": {
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\environment\\instant_pace_reward_v5.py": "950300894e71ee48b0e59d817facc042e04fdf6b516fb296afaac624541b9763",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\environment\\instant_pace_reward_v6.py": "1c83c12b3890ea3af5c33c825f795d19cad12b7239c1a5a68f2a3d4fed8fc1dd"
+      },
+      "reward_spec": {
+        "profile": "instant_pace_v6",
+        "status": "implemented_candidate_pending_new_policy_live_validation",
+        "parameters": {
+          "reference_speed_mps": 2.5,
+          "cost_per_second": 0.5,
+          "grace_seconds": 2.0,
+          "near_goal_distance_m": 5.0,
+          "overspeed_start_mps": 4.166666666666667,
+          "overspeed_scale_mps": 4.166666666666667,
+          "overspeed_linear_cost_per_second": 1.0,
+          "overspeed_quadratic_cost_per_second": 1.0,
+          "approach_reference_speed_mps": 0.5,
+          "lane_deviation_deadzone_m": 0.35,
+          "lane_deviation_reference_m": 1.25,
+          "lane_deviation_scale_m": 0.9,
+          "lane_deviation_cost_per_second": 0.1,
+          "overspeed_shoulder_cost_per_second": 2.0,
+          "overspeed_shoulder_normalized_excess": 1.0,
+          "lane_center_cost_per_second": 0.1,
+          "steer_rate_cost_per_second": 0.01,
+          "steer_reference_rate_per_second": 2.0
+        },
+        "parent": "instant_pace_v5; replaces overspeed, lane_deviation and steer_rate",
+        "replaced_components": [
+          "free_flow_pace_deficit",
+          "overspeed",
+          "lane_deviation",
+          "steer_rate"
+        ],
+        "retained_components": "V5 instantaneous pace, progress, longitudinal control, safety and terminal definitions",
+        "pace": {
+          "formula": "-cost_per_second * dt * clip((effective_ref - max(0, v_forward))/effective_ref, 0, 1)",
+          "raw_deficit_units": "m/s",
+          "direction": "actual velocity projected toward route goal; lateral speed alone does not count",
+          "clock": "elapsed episode seconds only for startup grace; no accumulated pace debt",
+          "eligibility": "explicit free-flow scene allowlist supplied by caller",
+          "exemptions": [
+            "startup_grace",
+            "front_blocker",
+            "complex_interaction",
+            "terminal"
+          ],
+          "grace_boundary": "elapsed_seconds <= grace_seconds",
+          "near_goal_boundary": "distance_to_goal_m <= near_goal_distance_m selects lower reference; does not establish successful arrival",
+          "effective_reference": "approach_reference_speed_mps when distance_to_goal_m <= near_goal_distance_m; reference_speed_mps otherwise",
+          "approach_reference_status": "0.5 m/s is a candidate slow approach preference",
+          "near_goal_exemption": false,
+          "near_goal_exempt_diagnostic": "always false; slow reference is not an exemption",
+          "success_handling": "successful goal-box arrival must set terminal_event and has zero pace cost"
+        },
+        "overspeed": {
+          "formula": "-dt*(e + e^2 + 2*max(0,e-1)^2); e=max(0,speed-upper)/scale",
+          "normalized_excess": "max(0, speed - upper) / scale",
+          "risk_diagnostic": "e^2; unchanged from V5",
+          "risk_range": "[0, infinity); no finite saturation threshold",
+          "threshold_slope": "nonzero right-hand reward slope: -dt * linear_cost_per_second / scale",
+          "threshold_meaning": "task speed preference; not a claim about legal road speed limit",
+          "shoulder_meaning": "extra cost above upper+scale (30 km/h under default config)"
+        },
+        "positive_dense_components": [
+          "progress"
+        ],
+        "policy_invariance_guarantee": false,
+        "observation_action_change": false,
+        "anti_hacking_invariants": [
+          "current_speed_recovery_clears_pace_cost_immediately",
+          "negative_forward_speed_does_not_count_as_progress",
+          "speed_alone_has_no_positive_reward",
+          "no_teammate_speed_or_arrival_gap_component",
+          "costs_scale_with_elapsed_simulation_time",
+          "unfinished_near_goal_stopping_is_not_blanket_exempt",
+          "confirmed_nonjunction_opposing_lane_cannot_keep_dense_lane_cost_exemption"
+        ],
+        "lane_deviation": {
+          "formula": "-dt*0.1*(u+u^2+(d/scale)^2) unless effectively exempt; u=max(0,d-deadzone)/scale",
+          "geometry": "lateral distance from the task reference lane supplied by the environment",
+          "distance_units": "m",
+          "risk_range": "[0, infinity); no finite saturation threshold",
+          "risk_diagnostic": "unclipped u+u^2+(d/scale)^2 before effective exemption",
+          "effective_exemption": "exempt and not ((road_violation or opposing_lane) and not in_junction)",
+          "road_grace_validity": "confirmed non-junction violation or opposing-lane evidence cancels only the dense lane-cost exemption",
+          "junction_handling": "retain the caller's original exemption in ambiguous junction geometry",
+          "termination_change": false,
+          "new_terminal_penalty": false,
+          "parameter_status": "candidate deadzone, scale and strength pending live validation",
+          "center_feedback": "zero at center; negative for every nonzero distance outside valid exemption"
+        },
+        "difference_from_v5": {
+          "changed_components": [
+            "overspeed",
+            "lane_deviation",
+            "steer_rate"
+          ],
+          "pace_math_and_exemptions_unchanged": true,
+          "terminal_math_unchanged": true,
+          "causal_scope": "combined engineering candidate; component attribution requires matched ablations"
+        },
+        "steer_rate": {
+          "formula": "-dt*0.01*(abs(current_steer-previous_steer)/(2*dt))^2",
+          "risk_diagnostic": "unclipped squared normalized command rate; may exceed 1",
+          "first_control": "zero cost without a previous valid control",
+          "history": "existing environment prev_controls; episode reset; no inactive-agent updates",
+          "action_filter": false
+        }
+      },
+      "max_abs_accounting_error": {
+        "overspeed": 0.0,
+        "lane_deviation": 0.0,
+        "steer_rate": 1.0842021724855044e-19,
+        "recorded_decomposition": 0.0,
+        "replacement": 3.552713678800501e-15
+      },
+      "agents": {
+        "0": {
+          "active_rows": 465,
+          "recorded_total": 347.46309979479213,
+          "rescored_total_upper": 229.2121130284102,
+          "steer_uncertainty_lower_adjustment": -0.693,
+          "steer_evidence": {
+            "applied_readback": 453,
+            "terminal_unsaturated_risk": 5,
+            "terminal_clipped_risk_bounds": 7
+          },
+          "requested_applied_steer_differing_rows": 0,
+          "recorded_components": {
+            "overspeed": -71.89163371890062,
+            "lane_deviation": -2.5936690665418034,
+            "steer_rate": -0.19426170160431716
+          },
+          "rescored_components_upper": {
+            "overspeed": -187.25902009127327,
+            "lane_deviation": -5.251509367260102,
+            "steer_rate": -0.42002179489530844
+          },
+          "case_mean_recorded_return": 28.955258316232676,
+          "case_mean_rescored_return_bounds": [
+            19.043259419034182,
+            19.10100941903418
+          ],
+          "case_mean_recorded_components": {
+            "overspeed": -5.990969476575052,
+            "lane_deviation": -0.21613908887848363,
+            "steer_rate": -0.016188475133693096
+          },
+          "case_mean_rescored_components_upper": {
+            "overspeed": -15.60491834093944,
+            "lane_deviation": -0.4376257806050085,
+            "steer_rate": -0.035001816241275706
+          }
+        },
+        "1": {
+          "active_rows": 909,
+          "recorded_total": 382.3290371462509,
+          "rescored_total_upper": 358.04176648239047,
+          "steer_uncertainty_lower_adjustment": -0.7919999999999999,
+          "steer_evidence": {
+            "applied_readback": 897,
+            "terminal_clipped_risk_bounds": 8,
+            "terminal_unsaturated_risk": 4
+          },
+          "requested_applied_steer_differing_rows": 10,
+          "recorded_components": {
+            "overspeed": -16.810983820096567,
+            "lane_deviation": -5.2908942086186395,
+            "steer_rate": -0.7778098631921666
+          },
+          "rescored_components_upper": {
+            "overspeed": -33.66518284334803,
+            "lane_deviation": -10.749579801684256,
+            "steer_rate": -2.752195910734987
+          },
+          "case_mean_recorded_return": 31.86075309552091,
+          "case_mean_rescored_return_bounds": [
+            29.770813873532543,
+            29.836813873532538
+          ],
+          "case_mean_recorded_components": {
+            "overspeed": -1.4009153183413805,
+            "lane_deviation": -0.44090785071822,
+            "steer_rate": -0.06481748859934722
+          },
+          "case_mean_rescored_components_upper": {
+            "overspeed": -2.8054319036123356,
+            "lane_deviation": -0.8957983168070213,
+            "steer_rate": -0.2293496592279156
+          }
+        }
+      }
+    },
+    {
+      "evidence_status": "COUNTERFACTUAL_SCORING_ONLY",
+      "scope": "fixed V5 trajectories; no new driving, policy update or efficacy/generalization claim",
+      "evaluation_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506",
+      "checkpoint": {
+        "environment": {
+          "disable_tensorboard": true,
+          "follow_spectator": true,
+          "lidar_range_m": 20.0,
+          "max_steps": 500,
+          "num_agents": 2,
+          "pace_profile": "instant_pace_v5",
+          "reward_gamma": 0.999,
+          "reward_version": "v6",
+          "spawn_vehicles": false,
+          "straight_road_length": 50.0,
+          "timestep": 0.1,
+          "town": "Town05",
+          "ttc_max_range_m": 20.0
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\u000506.pt",
+        "sha256": "924ebd7263f5db405cdc04d93c9bbd2983fcde7f81da343be2fd7ac89d4f0530",
+        "update": 506
+      },
+      "case_count": 12,
+      "active_boundary": "pre-transition active; include own terminal",
+      "steer_evidence": "use applied post control; missing terminal post with saturated old risk yields physical command bounds, never an invented exact cost",
+      "input_sha256": {
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\manifest.json": "1918bb4bb15bf96120954710155178a14df49b15732d1b25f2e1e1346626b930",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_01_north_short_rolling_a0_left_s62001_deterministic.jsonl": "7d766cbb58551cbe104770af7255541de91aa68ff2dce264ecd60ebdca02325d",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_02_south_short_rolling_a1_left_s62001_deterministic.jsonl": "64659d291b5231e5fc5631bcb4d766b8da6874977e9b1692f10fbd767aa0de46",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_03_north_short_stationary_a0_left_s62001_deterministic.jsonl": "072e0c4429e4d034a1ee50955008c34667456c726718a7b9ab1e38272ced0681",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_04_south_short_stationary_a1_left_s62001_deterministic.jsonl": "e2d1ca71d2e2ec3bce52b7546637d9d6676b83f2b5660119d587a11cd86e3c5a",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_05_northbound_free_flow_s62001_deterministic.jsonl": "6df6ee7ab253f0bcbeb626d7430b59b858705e2078522dc710284d51ec46a367",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_06_southbound_free_flow_s62001_deterministic.jsonl": "204af74a6ab62b505a2f86050a07fce27235bdf5de2dcdf963cc1d3ec3e43a07",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_07_eastbound_free_flow_s62001_deterministic.jsonl": "d1a1271148f95063c6a4b5e44769509d68b3fd3ea2faa87ca173ec9e937f12e4",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_08_westbound_free_flow_s62001_deterministic.jsonl": "31b288a7cb78f5180a10ce4a22813825f28e99a32447f98d489dbec237db2d32",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_09_north_parallel_stationary_a0_left_s62001_deterministic.jsonl": "66a09b8d47da96313148947eea1b949227ca5f5462af3c3fdb4368595181000a",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_10_south_parallel_stationary_a1_left_s62001_deterministic.jsonl": "232d7ebc1889de23d420e7de5348cf56805d6b915a411047e9974f3d6e428fc0",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_11_east_parallel_stationary_a1_left_s62001_deterministic.jsonl": "64dfc5e2504ce2fe83aa4f3894e488bfc2b80764ab3fe414a3304250fd45fcc2",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v2_20261013\\adaptation_20261015_v2\\screen_u000506\\traces\\c0_u506_scenario_12_west_parallel_stationary_a0_left_s62001_deterministic.jsonl": "31230afc37b4d522dc8c781f47387cc2b41a6cfa7512533f693fc61a7dbca677"
+      },
+      "recorded_source_sha256": {
+        "environment\\carla_multi_agent_env.py": "1afd089884c0e1dba32abfa027c84f613b8fba0bc3fc6de35b908cb8b67e1745",
+        "environment\\instant_pace_reward.py": "8a382e016aa5f032a11010f4f253a071e1577d6dc4910db11f8c31af316caa02",
+        "environment\\instant_pace_reward_v3.py": "a69b2b36851ffdbae551f5417d7de5fb80f10d78d248479cc01f06958cc250bc",
+        "environment\\instant_pace_reward_v4.py": "0369f3f7625987f68c4e8cc052f7716ec00c3787c4e29cbcc7eda48f932eb543",
+        "environment\\instant_pace_reward_v5.py": "950300894e71ee48b0e59d817facc042e04fdf6b516fb296afaac624541b9763",
+        "environment\\route_pace_reward.py": "a9b9a14b107013b010c730c520d90027046dfd5f662a27bbf8b2837a426a2fe5",
+        "evaluation\\diagnose_r8c1_behavior.py": "e18add949b6548281bc6d42c6fb4675562b00d08ce36abd396bd5aad53de06c2",
+        "evaluation\\evaluate_reward_fork.py": "18b4c4bbb462b0330faac80a63a5cb9a6d1cacb394696d4305d40be1715ec19b"
+      },
+      "cost_source_sha256": {
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\environment\\instant_pace_reward_v5.py": "950300894e71ee48b0e59d817facc042e04fdf6b516fb296afaac624541b9763",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\environment\\instant_pace_reward_v6.py": "1c83c12b3890ea3af5c33c825f795d19cad12b7239c1a5a68f2a3d4fed8fc1dd"
+      },
+      "reward_spec": {
+        "profile": "instant_pace_v6",
+        "status": "implemented_candidate_pending_new_policy_live_validation",
+        "parameters": {
+          "reference_speed_mps": 2.5,
+          "cost_per_second": 0.5,
+          "grace_seconds": 2.0,
+          "near_goal_distance_m": 5.0,
+          "overspeed_start_mps": 4.166666666666667,
+          "overspeed_scale_mps": 4.166666666666667,
+          "overspeed_linear_cost_per_second": 1.0,
+          "overspeed_quadratic_cost_per_second": 1.0,
+          "approach_reference_speed_mps": 0.5,
+          "lane_deviation_deadzone_m": 0.35,
+          "lane_deviation_reference_m": 1.25,
+          "lane_deviation_scale_m": 0.9,
+          "lane_deviation_cost_per_second": 0.1,
+          "overspeed_shoulder_cost_per_second": 2.0,
+          "overspeed_shoulder_normalized_excess": 1.0,
+          "lane_center_cost_per_second": 0.1,
+          "steer_rate_cost_per_second": 0.01,
+          "steer_reference_rate_per_second": 2.0
+        },
+        "parent": "instant_pace_v5; replaces overspeed, lane_deviation and steer_rate",
+        "replaced_components": [
+          "free_flow_pace_deficit",
+          "overspeed",
+          "lane_deviation",
+          "steer_rate"
+        ],
+        "retained_components": "V5 instantaneous pace, progress, longitudinal control, safety and terminal definitions",
+        "pace": {
+          "formula": "-cost_per_second * dt * clip((effective_ref - max(0, v_forward))/effective_ref, 0, 1)",
+          "raw_deficit_units": "m/s",
+          "direction": "actual velocity projected toward route goal; lateral speed alone does not count",
+          "clock": "elapsed episode seconds only for startup grace; no accumulated pace debt",
+          "eligibility": "explicit free-flow scene allowlist supplied by caller",
+          "exemptions": [
+            "startup_grace",
+            "front_blocker",
+            "complex_interaction",
+            "terminal"
+          ],
+          "grace_boundary": "elapsed_seconds <= grace_seconds",
+          "near_goal_boundary": "distance_to_goal_m <= near_goal_distance_m selects lower reference; does not establish successful arrival",
+          "effective_reference": "approach_reference_speed_mps when distance_to_goal_m <= near_goal_distance_m; reference_speed_mps otherwise",
+          "approach_reference_status": "0.5 m/s is a candidate slow approach preference",
+          "near_goal_exemption": false,
+          "near_goal_exempt_diagnostic": "always false; slow reference is not an exemption",
+          "success_handling": "successful goal-box arrival must set terminal_event and has zero pace cost"
+        },
+        "overspeed": {
+          "formula": "-dt*(e + e^2 + 2*max(0,e-1)^2); e=max(0,speed-upper)/scale",
+          "normalized_excess": "max(0, speed - upper) / scale",
+          "risk_diagnostic": "e^2; unchanged from V5",
+          "risk_range": "[0, infinity); no finite saturation threshold",
+          "threshold_slope": "nonzero right-hand reward slope: -dt * linear_cost_per_second / scale",
+          "threshold_meaning": "task speed preference; not a claim about legal road speed limit",
+          "shoulder_meaning": "extra cost above upper+scale (30 km/h under default config)"
+        },
+        "positive_dense_components": [
+          "progress"
+        ],
+        "policy_invariance_guarantee": false,
+        "observation_action_change": false,
+        "anti_hacking_invariants": [
+          "current_speed_recovery_clears_pace_cost_immediately",
+          "negative_forward_speed_does_not_count_as_progress",
+          "speed_alone_has_no_positive_reward",
+          "no_teammate_speed_or_arrival_gap_component",
+          "costs_scale_with_elapsed_simulation_time",
+          "unfinished_near_goal_stopping_is_not_blanket_exempt",
+          "confirmed_nonjunction_opposing_lane_cannot_keep_dense_lane_cost_exemption"
+        ],
+        "lane_deviation": {
+          "formula": "-dt*0.1*(u+u^2+(d/scale)^2) unless effectively exempt; u=max(0,d-deadzone)/scale",
+          "geometry": "lateral distance from the task reference lane supplied by the environment",
+          "distance_units": "m",
+          "risk_range": "[0, infinity); no finite saturation threshold",
+          "risk_diagnostic": "unclipped u+u^2+(d/scale)^2 before effective exemption",
+          "effective_exemption": "exempt and not ((road_violation or opposing_lane) and not in_junction)",
+          "road_grace_validity": "confirmed non-junction violation or opposing-lane evidence cancels only the dense lane-cost exemption",
+          "junction_handling": "retain the caller's original exemption in ambiguous junction geometry",
+          "termination_change": false,
+          "new_terminal_penalty": false,
+          "parameter_status": "candidate deadzone, scale and strength pending live validation",
+          "center_feedback": "zero at center; negative for every nonzero distance outside valid exemption"
+        },
+        "difference_from_v5": {
+          "changed_components": [
+            "overspeed",
+            "lane_deviation",
+            "steer_rate"
+          ],
+          "pace_math_and_exemptions_unchanged": true,
+          "terminal_math_unchanged": true,
+          "causal_scope": "combined engineering candidate; component attribution requires matched ablations"
+        },
+        "steer_rate": {
+          "formula": "-dt*0.01*(abs(current_steer-previous_steer)/(2*dt))^2",
+          "risk_diagnostic": "unclipped squared normalized command rate; may exceed 1",
+          "first_control": "zero cost without a previous valid control",
+          "history": "existing environment prev_controls; episode reset; no inactive-agent updates",
+          "action_filter": false
+        }
+      },
+      "max_abs_accounting_error": {
+        "overspeed": 0.0,
+        "lane_deviation": 0.0,
+        "steer_rate": 2.168404344971009e-19,
+        "recorded_decomposition": 0.0,
+        "replacement": 3.552713678800501e-15
+      },
+      "agents": {
+        "0": {
+          "active_rows": 485,
+          "recorded_total": 348.79162964003325,
+          "rescored_total_upper": 245.26569258851674,
+          "steer_uncertainty_lower_adjustment": -0.594,
+          "steer_evidence": {
+            "applied_readback": 473,
+            "terminal_unsaturated_risk": 6,
+            "terminal_clipped_risk_bounds": 6
+          },
+          "requested_applied_steer_differing_rows": 0,
+          "recorded_components": {
+            "overspeed": -66.62807188099409,
+            "lane_deviation": -2.7713432382835266,
+            "steer_rate": -0.1668383364524598
+          },
+          "rescored_components_upper": {
+            "overspeed": -167.17070453341952,
+            "lane_deviation": -5.597111956405905,
+            "steer_rate": -0.3243740174216075
+          },
+          "case_mean_recorded_return": 29.065969136669437,
+          "case_mean_rescored_return_bounds": [
+            20.38930771570973,
+            20.43880771570973
+          ],
+          "case_mean_recorded_components": {
+            "overspeed": -5.552339323416174,
+            "lane_deviation": -0.23094526985696054,
+            "steer_rate": -0.01390319470437165
+          },
+          "case_mean_rescored_components_upper": {
+            "overspeed": -13.930892044451626,
+            "lane_deviation": -0.4664259963671587,
+            "steer_rate": -0.02703116811846729
+          }
+        },
+        "1": {
+          "active_rows": 1066,
+          "recorded_total": 388.99336075941716,
+          "rescored_total_upper": 372.2033820741535,
+          "steer_uncertainty_lower_adjustment": -0.8909999999999999,
+          "steer_evidence": {
+            "applied_readback": 1054,
+            "terminal_clipped_risk_bounds": 9,
+            "terminal_unsaturated_risk": 3
+          },
+          "requested_applied_steer_differing_rows": 7,
+          "recorded_components": {
+            "overspeed": -7.568863521431912,
+            "lane_deviation": -6.411025015155513,
+            "steer_rate": -0.9486157327199257
+          },
+          "rescored_components_upper": {
+            "overspeed": -15.137727042863824,
+            "lane_deviation": -13.047521262758911,
+            "steer_rate": -3.533234648949119
+          },
+          "case_mean_recorded_return": 32.416113396618094,
+          "case_mean_rescored_return_bounds": [
+            30.942698506179457,
+            31.01694850617946
+          ],
+          "case_mean_recorded_components": {
+            "overspeed": -0.6307386267859927,
+            "lane_deviation": -0.5342520845962927,
+            "steer_rate": -0.07905131105999381
+          },
+          "case_mean_rescored_components_upper": {
+            "overspeed": -1.2614772535719854,
+            "lane_deviation": -1.0872934385632427,
+            "steer_rate": -0.2944362207457599
+          }
+        }
+      }
+    }
+  ]
+}

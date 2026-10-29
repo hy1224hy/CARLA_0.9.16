@@ -1,0 +1,76 @@
+{
+  "case_count": 4,
+  "checkpoint_sha256": "8d702aae3a292553c2254aec22480a689e4b17df3930afa1b326f45561b9d280",
+  "comparison_mode": "r8c1_road_outcome_strict_tick_tolerant_v1",
+  "continuous_fields": [
+    "agent_0_episode_return",
+    "agent_1_episode_return"
+  ],
+  "contract_sha256": "0654a931a0387ffdbf3884bf83ef5ae63899fcf0aa5ba922a9acc6f4748e736d",
+  "evaluation_purpose": "diagnostic_only",
+  "gate_pass": false,
+  "hard_fields": [
+    "case_id",
+    "outcome",
+    "episode_end_reason",
+    "agent_0_reached",
+    "agent_0_collision",
+    "agent_0_offroad_terminated",
+    "agent_0_final_done",
+    "agent_0_final_terminated",
+    "agent_0_final_truncated",
+    "agent_0_first_offroad_evidence_present",
+    "agent_0_lifecycle_transition",
+    "agent_1_reached",
+    "agent_1_collision",
+    "agent_1_offroad_terminated",
+    "agent_1_final_done",
+    "agent_1_final_terminated",
+    "agent_1_final_truncated",
+    "agent_1_first_offroad_evidence_present",
+    "agent_1_lifecycle_transition",
+    "agent_0_road_rule_terminated",
+    "agent_0_road_violation_confirmed",
+    "agent_0_road_classification",
+    "agent_0_road_violation_reason",
+    "agent_0_road_reference_lane",
+    "agent_0_road_success_eligible",
+    "agent_1_road_rule_terminated",
+    "agent_1_road_violation_confirmed",
+    "agent_1_road_classification",
+    "agent_1_road_violation_reason",
+    "agent_1_road_reference_lane",
+    "agent_1_road_success_eligible"
+  ],
+  "left_eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092242",
+  "max_warning_case_fraction": 0.5,
+  "mismatches": [
+    {
+      "case_id": "short_probe:scenario_03_north_short_stationary_a0_left:s61001",
+      "case_ordinal": 3,
+      "continuous_excesses": {
+        "agent_1_episode_return": {
+          "absolute_delta": 4.0000000000000036,
+          "hold_above": 0.1,
+          "left": 35.92406395826414,
+          "right": 31.92406395826414
+        }
+      },
+      "hard_differences": {},
+      "tolerance_excesses": {}
+    }
+  ],
+  "performance_decision": "NOT_EVALUATED",
+  "right_eval_id": "P0_BASE_C0_short_probe_u000060_20260915_092309",
+  "selection_allowed": false,
+  "status": "HOLD",
+  "systematic_drift_min_case_count": 8,
+  "systematic_drift_status": "NOT_APPLICABLE_INSUFFICIENT_CASES",
+  "tolerant_fields": [
+    "episode_length",
+    "agent_0_active_decision_steps",
+    "agent_1_active_decision_steps"
+  ],
+  "warning_case_fraction": 0.0,
+  "warnings": []
+}

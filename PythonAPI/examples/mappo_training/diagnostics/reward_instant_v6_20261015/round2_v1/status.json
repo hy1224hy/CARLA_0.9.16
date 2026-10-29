@@ -1,0 +1,187 @@
+{
+  "started_at": "2026-10-15T10:55:48.239453+00:00",
+  "pid": 24564,
+  "status": "COMPLETED",
+  "completed_stages": [
+    {
+      "update": 506,
+      "new_updates_from_u456": 50,
+      "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+      "sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "evaluation_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\screen_u000506",
+      "aggregate": {
+        "valid_case_count": 12,
+        "recorded_case_count": 12,
+        "expected_case_count": 12,
+        "episode_reasons": {
+          "all_agents_reached": 12
+        },
+        "both_reached_count_valid_cases": 12,
+        "agents": {
+          "0": {
+            "reached_goal_count": 12,
+            "speed_kmh_pooled_active_transitions": {
+              "count": 668,
+              "mean": 20.69191352966902,
+              "p10": 9.973962455742164,
+              "p50": 19.5577650586672,
+              "p90": 31.46914800984834,
+              "peak": 32.51377690384105
+            },
+            "route_closing_speed_mps_pooled_active_transitions": {
+              "count": 668,
+              "mean": 5.657424977319769,
+              "p10": 2.622530240465174,
+              "p50": 5.207699105877563,
+              "p90": 8.740923630731018,
+              "peak": 9.008621617040415
+            },
+            "case_mean_speed_kmh": {
+              "count": 12,
+              "mean": 20.48512153975533,
+              "p10": 14.530357763670422,
+              "p50": 19.769063820776456,
+              "p90": 26.88002154277525,
+              "peak": 28.588773957547232
+            },
+            "case_first_motion_seconds": {
+              "count": 12,
+              "mean": 0.34166666666666673,
+              "p10": 0.1,
+              "p50": 0.30000000000000004,
+              "p90": 0.6000000000000001,
+              "peak": 0.7000000000000001
+            },
+            "case_arrival_seconds_reached_only": {
+              "count": 12,
+              "mean": 5.566666666666666,
+              "p10": 2.5700000000000003,
+              "p50": 5.4,
+              "p90": 8.350000000000001,
+              "peak": 9.4
+            },
+            "above_15_seconds": 55.7,
+            "above_30_seconds": 10.3,
+            "above_15_fraction_pooled": 0.8338323353293413,
+            "above_30_fraction_pooled": 0.15419161676646706,
+            "recorded_pace_reward_sum": 0.0,
+            "recorded_overspeed_reward_sum": -55.02266367115322
+          },
+          "1": {
+            "reached_goal_count": 12,
+            "speed_kmh_pooled_active_transitions": {
+              "count": 1206,
+              "mean": 11.25510780833219,
+              "p10": 1.8384967727621675e-05,
+              "p50": 12.477851252416745,
+              "p90": 18.406325657767162,
+              "peak": 26.660127468989234
+            },
+            "route_closing_speed_mps_pooled_active_transitions": {
+              "count": 1206,
+              "mean": 3.1000945154643227,
+              "p10": 2.9216358499173367e-10,
+              "p50": 3.4323384064308264,
+              "p90": 5.068863491613898,
+              "peak": 6.864624562682761
+            },
+            "case_mean_speed_kmh": {
+              "count": 12,
+              "mean": 10.986833400998007,
+              "p10": 8.288614226674705,
+              "p50": 11.513977563946623,
+              "p90": 13.056749972642253,
+              "peak": 13.121447625295199
+            },
+            "case_first_motion_seconds": {
+              "count": 12,
+              "mean": 1.5583333333333333,
+              "p10": 0.1,
+              "p50": 0.6,
+              "p90": 3.3700000000000006,
+              "peak": 4.9
+            },
+            "case_arrival_seconds_reached_only": {
+              "count": 12,
+              "mean": 10.05,
+              "p10": 4.61,
+              "p50": 11.75,
+              "p90": 13.290000000000001,
+              "peak": 15.3
+            },
+            "above_15_seconds": 40.099999999999994,
+            "above_30_seconds": 0.0,
+            "above_15_fraction_pooled": 0.33250414593698174,
+            "above_30_fraction_pooled": 0.0,
+            "recorded_pace_reward_sum": -4.956048152757003,
+            "recorded_overspeed_reward_sum": -11.031498212758752
+          }
+        }
+      },
+      "lateral": {
+        "scope": "known-scene deterministic trajectories; no held-out qualification",
+        "active_boundary": "include own terminal, exclude subsequent mask rows",
+        "steer_boundary": "applied post controls only; missing terminal controls excluded, not reconstructed from requested actions",
+        "agents": {
+          "0": {
+            "active_rows": 668,
+            "mean_abs_reference_lateral_m": 0.6221694736066807,
+            "p95_abs_reference_lateral_m": 1.6834962668503393,
+            "max_abs_reference_lateral_m": 1.7472261794854755,
+            "outside_035_fraction": 0.4655688622754491,
+            "mean_abs_applied_steer_delta_readable_only": 0.2182779342663888,
+            "missing_terminal_control": 12
+          },
+          "1": {
+            "active_rows": 1206,
+            "mean_abs_reference_lateral_m": 0.47603145557724547,
+            "p95_abs_reference_lateral_m": 1.357331054861791,
+            "max_abs_reference_lateral_m": 1.7670965313684914,
+            "outside_035_fraction": 0.5049751243781094,
+            "mean_abs_applied_steer_delta_readable_only": 0.38621677570033175,
+            "missing_terminal_control": 12
+          }
+        }
+      },
+      "training_integrity": {
+        "updates": 50,
+        "episodes": 800,
+        "maxima": {
+          "train/update_skipped": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0
+        }
+      },
+      "completed_at": "2026-10-15T11:32:57.845455+00:00",
+      "qualification": "NOT_ASSIGNED_ENGINEERING_DESCRIPTION_ONLY"
+    }
+  ],
+  "authorized_on": "2026-10-15 Asia/Shanghai",
+  "source_update": 456,
+  "resume_update": 481,
+  "stop_updates": [
+    506
+  ],
+  "new_updates_from_source": [
+    50
+  ],
+  "run_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\R8C1_InstantPaceV6_u456_candidate_s42_20261015_v1",
+  "profile": "instant_pace_v6",
+  "reward_and_scenes": "unchanged",
+  "evaluation_seeds": [
+    62001
+  ],
+  "automatic_restart": false,
+  "monitor": "files only; never advances CARLA",
+  "driver_sha256": "db08bf11a76b197fa61b1270e440f387619ee5de59bea08b1fa13e688bbf9155",
+  "scope": "user-authorized 25-update continuation to cumulative 50 V6 updates; scratch initialization is a separate experiment, never strict resume",
+  "target_update": 506,
+  "changed_at": "2026-10-15T11:31:51.442603+00:00",
+  "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+  "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+  "evaluation_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\screen_u000506",
+  "ended_at": "2026-10-15T11:32:57.854321+00:00",
+  "qualification": "REQUIRES_MAIN_TASK_REVIEW"
+}

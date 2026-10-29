@@ -1,0 +1,85 @@
+{
+  "agent_goal_zones": {
+    "agent0": {
+      "half_length": 3.0,
+      "half_width": 1.6,
+      "x": -252.35057067871094,
+      "y": -0.3364495038986206,
+      "yaw": 179.86053466796875,
+      "z": 0.5
+    },
+    "agent1": {
+      "half_length": 3.0,
+      "half_width": 1.6,
+      "x": -252.35914611816406,
+      "y": -3.8364388942718506,
+      "yaw": 179.86053466796875,
+      "z": 0.5
+    }
+  },
+  "agent_roles": {
+    "agent0": "left_parallel",
+    "agent1": "right_parallel"
+  },
+  "agents": {
+    "agent0": {
+      "initial_speed_mps": 2.5,
+      "x": -220.35067749023438,
+      "y": -0.4143388271331787,
+      "yaw": 179.86053466796875,
+      "z": 0.5
+    },
+    "agent1": {
+      "initial_speed_mps": 2.5,
+      "x": -220.35923767089844,
+      "y": -3.914328098297119,
+      "yaw": 179.86053466796875,
+      "z": 0.5
+    }
+  },
+  "curriculum_stage": 0,
+  "delta_s_m": 0,
+  "description": "small interaction v3: road-projected parallel red pair, complete slot exchange",
+  "difficulty": 1,
+  "direction": "westbound",
+  "episode_max_steps": 500,
+  "family": "free_flow",
+  "geometry_provenance": {
+    "carla_client_created": false,
+    "method": "local_OpenDRIVE_waypoint_projection",
+    "red_route_m": 32.0,
+    "source": "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0l.json",
+    "source_sha256": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+    "start_advance_m": 8.0
+  },
+  "goal_entry_distance_m": 29.0,
+  "goal_mode": "per_agent_explicit",
+  "goal_zone": {
+    "half_length": 3.0,
+    "half_width": 1.6,
+    "x": -252.3548583984375,
+    "y": -2.0864441990852356,
+    "yaw": 179.86,
+    "z": 0.5
+  },
+  "pair_id": "bd1_westbound_rolling_left_+00",
+  "physical_template_id": "bd1_westbound_rolling_left_+00",
+  "route_length_m": 32.0,
+  "schema_version": 3,
+  "split": "shared_interaction_base",
+  "startup_mode": "rolling",
+  "symmetry_partner": "scenario_bd1_westbound_rolling_z00_a0r.json",
+  "tags": [
+    "westbound",
+    "two_lane",
+    "free_flow",
+    "non_interactive",
+    "non_adversarial",
+    "same_speed",
+    "rolling_start",
+    "base_driving_v1"
+  ],
+  "task_family": "adjacent_free_flow",
+  "town": "Town05",
+  "validation_status": "OFFLINE_GEOMETRY_ONLY_LIVE_INITIAL_STATE_PENDING"
+}

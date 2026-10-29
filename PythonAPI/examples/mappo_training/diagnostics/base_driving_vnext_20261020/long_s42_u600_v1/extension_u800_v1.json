@@ -1,0 +1,70 @@
+{
+  "additional_episodes": 3200,
+  "additional_updates": 200,
+  "authorization": "Human explicitly requested continuing the same training from u600 to u800 on 2026-10-26.",
+  "authorized_at": "2026-10-26T08:37:05.782244Z",
+  "automatic_restart": false,
+  "complete_source_state": {
+    "actor_adam_steps": {
+      "0": [
+        3000
+      ],
+      "1": [
+        3000
+      ]
+    },
+    "base_driving_state_keys": [
+      "runtime_protocol_version",
+      "pool_manifest_sha256",
+      "base_gate",
+      "sampler_state",
+      "scenario_success_history",
+      "scenario_total_sample_counts"
+    ],
+    "critic_adam_steps": [
+      3000
+    ],
+    "episodes": 9600,
+    "lr_schedule": {
+      "actor_final_lr": 1.5e-05,
+      "critic_final_lr": 0.0001,
+      "critic_hold_updates": 300,
+      "current_actor_lrs": {
+        "0": 1.4999999999999985e-05,
+        "1": 1.4999999999999985e-05
+      },
+      "current_critic_lr": 9.999999999999999e-05,
+      "decay_horizon": 600,
+      "enabled": true,
+      "initial_actor_lr": 0.0003,
+      "initial_critic_lr": 0.0003,
+      "protocol_version": "separate_actor_critic_lr_r7_v1"
+    },
+    "rng_components": [
+      "python",
+      "numpy",
+      "torch_cpu",
+      "torch_cuda"
+    ],
+    "safe_update": 600,
+    "sha256": "4fd6193e34cdf29ca111d537f99f94c7bae425d6b14279939b14aef6db525498",
+    "source_fingerprint": "8d35d03c4a09111331b00ed308fa08f04a659070b2205e4ff61e6749fb865700"
+  },
+  "controller_source": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\continue_base_u800.py",
+  "controller_source_sha256": "8ee53b91fde868f88058aad21421760564f193bcc6bdd1482bd694caf7e4512e",
+  "initialization_sha256": "514c50b3b5200ee82ed04e8e36b46d8c2c77c6de89c3951ddf1eb0c2e5c39320",
+  "new_frozen_stops": [
+    800
+  ],
+  "original_plan": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\plan.json",
+  "original_plan_sha256": "c864d7b67deb747abf7bcfb9e913c78717352ce596cca0254a7d570d1e123ba0",
+  "original_status_archive": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\completed_controller_u600_before_u800.json",
+  "schedule_policy": "Preserve cumulative LR/entropy clock and existing 600 horizon; retain terminal schedule values after u600.",
+  "source_checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u000600.pt",
+  "source_checkpoint_sha256": "4fd6193e34cdf29ca111d537f99f94c7bae425d6b14279939b14aef6db525498",
+  "source_episodes": 9600,
+  "source_update": 600,
+  "total_budget_episodes": 12800,
+  "total_budget_updates": 800,
+  "version": "base_driving_explicit_u800_extension_v1"
+}

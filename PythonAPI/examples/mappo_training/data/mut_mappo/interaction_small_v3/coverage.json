@@ -1,0 +1,64 @@
+{
+  "blue_front_initial_mps": 2.5,
+  "blue_rear_initial_mps": 3.5,
+  "case_set_version": "interaction_small_v3",
+  "limits": [
+    "constant-speed windows are geometric screening, not live safety/reachability guarantees",
+    "red u1000 and ordinary blue are not driving-qualified; actual red may outrun rear blue",
+    "blue shares same-lane red goal and may retire earlier; actual interaction exposure must be measured",
+    "directions use real road geometry, not exact global-coordinate rotations; paired cases are dependent"
+  ],
+  "nominal_3s_min_same_lane_center_gap_m": 7.0,
+  "nominal_rear_time_to_6m_gap_s": {
+    "gate": 5.0,
+    "selection": 6.0,
+    "test": 7.0,
+    "train": 4.0
+  },
+  "physical_layouts_per_direction": [
+    "both_front",
+    "left_front_right_rear",
+    "left_rear_right_front"
+  ],
+  "red_initial_mps": 2.5,
+  "red_route_m": 32.0,
+  "sampling": "equal family exposure; 8 updates x 4 episodes cover all 24 train templates; sequential pairs repeat",
+  "smoke_templates": 12,
+  "source_start_advance_m": 8.0,
+  "splits": {
+    "gate": {
+      "families": {
+        "blocking": 8,
+        "cut_in": 16
+      },
+      "n": 24,
+      "signed_gap_m": 11.0
+    },
+    "selection": {
+      "families": {
+        "blocking": 8,
+        "cut_in": 16
+      },
+      "n": 24,
+      "signed_gap_m": 12.0
+    },
+    "test": {
+      "families": {
+        "blocking": 8,
+        "cut_in": 16
+      },
+      "n": 24,
+      "signed_gap_m": 13.0
+    },
+    "train": {
+      "families": {
+        "blocking": 8,
+        "cut_in": 16
+      },
+      "n": 24,
+      "signed_gap_m": 10.0
+    }
+  },
+  "status": "OFFLINE_CANDIDATE_LIVE_C0_C1_REQUIRED",
+  "train_templates": 24
+}

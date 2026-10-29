@@ -1,0 +1,200 @@
+{
+  "adapter_sha256": "9f89bb4c284e42f617c7116139023642d82f3365f997aa68ea9461ffcfc9b5c3",
+  "authorized_on": "2026-10-18 Asia/Shanghai",
+  "automatic_restart": false,
+  "changed_at": "2026-10-18T05:26:21.966360+00:00",
+  "completed_stages": [
+    {
+      "aggregate": {
+        "agents": {
+          "0": {
+            "above_15_fraction_pooled": 0.7907488986784141,
+            "above_15_seconds": 35.900000000000006,
+            "above_30_fraction_pooled": 0.43612334801762115,
+            "above_30_seconds": 19.8,
+            "case_arrival_seconds_reached_only": {
+              "count": 8,
+              "mean": 3.5250000000000004,
+              "p10": 2.3400000000000003,
+              "p50": 3.55,
+              "p90": 4.65,
+              "peak": 5.0
+            },
+            "case_first_motion_seconds": {
+              "count": 12,
+              "mean": 0.35000000000000003,
+              "p10": 0.1,
+              "p50": 0.3500000000000001,
+              "p90": 0.6000000000000001,
+              "peak": 0.6000000000000001
+            },
+            "case_mean_speed_kmh": {
+              "count": 12,
+              "mean": 25.9131482220776,
+              "p10": 17.429499890523967,
+              "p50": 24.09382780690244,
+              "p90": 35.91037819711366,
+              "peak": 37.02481025459938
+            },
+            "reached_goal_count": 8,
+            "recorded_overspeed_reward_sum": -161.31466238369495,
+            "recorded_pace_reward_sum": -0.55,
+            "route_closing_speed_mps_pooled_active_transitions": {
+              "count": 454,
+              "mean": 7.170765182119298,
+              "p10": 1.0387429726387516,
+              "p50": 7.100133735760444,
+              "p90": 13.023418130691546,
+              "peak": 15.338208338858339
+            },
+            "speed_kmh_pooled_active_transitions": {
+              "count": 454,
+              "mean": 28.050304276458437,
+              "p10": 7.044179523302601,
+              "p50": 27.11700068537265,
+              "p90": 50.10783007713803,
+              "peak": 55.221069851375056
+            }
+          },
+          "1": {
+            "above_15_fraction_pooled": 0.42327365728900257,
+            "above_15_seconds": 33.1,
+            "above_30_fraction_pooled": 0.0,
+            "above_30_seconds": 0.0,
+            "case_arrival_seconds_reached_only": {
+              "count": 8,
+              "mean": 7.625,
+              "p10": 4.25,
+              "p50": 7.550000000000001,
+              "p90": 11.14,
+              "peak": 11.700000000000001
+            },
+            "case_first_motion_seconds": {
+              "count": 12,
+              "mean": 1.1250000000000002,
+              "p10": 0.1,
+              "p50": 0.6,
+              "p90": 2.7800000000000002,
+              "peak": 2.9000000000000004
+            },
+            "case_mean_speed_kmh": {
+              "count": 12,
+              "mean": 11.419496669764717,
+              "p10": 7.260014189278509,
+              "p50": 11.548020661954105,
+              "p90": 15.967607587002657,
+              "peak": 17.381290036086884
+            },
+            "reached_goal_count": 8,
+            "recorded_overspeed_reward_sum": -8.974680196991553,
+            "recorded_pace_reward_sum": -1.4663383191908588,
+            "route_closing_speed_mps_pooled_active_transitions": {
+              "count": 782,
+              "mean": 3.2028386190796905,
+              "p10": 1.7648498218392206e-09,
+              "p50": 3.617569768703077,
+              "p90": 5.145092152774218,
+              "peak": 5.702411189648204
+            },
+            "speed_kmh_pooled_active_transitions": {
+              "count": 782,
+              "mean": 11.935218634925068,
+              "p10": 0.00019972457991214085,
+              "p50": 13.548560260568753,
+              "p90": 19.10035171846727,
+              "peak": 21.09872876817651
+            }
+          }
+        },
+        "both_reached_count_valid_cases": 8,
+        "episode_reasons": {
+          "all_agents_reached": 8,
+          "cooperative_collision": 1,
+          "cooperative_offroad": 3
+        },
+        "expected_case_count": 12,
+        "recorded_case_count": 12,
+        "valid_case_count": 12
+      },
+      "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_long_u600_20261018_v1\\u000100.pt",
+      "completed_at": "2026-10-18T05:26:21.513950+00:00",
+      "lateral": {
+        "active_boundary": "include own terminal, exclude subsequent mask rows",
+        "agents": {
+          "0": {
+            "active_rows": 454,
+            "max_abs_reference_lateral_m": 2.8692226575967466,
+            "mean_abs_applied_steer_delta_readable_only": 0.09367825182515287,
+            "mean_abs_reference_lateral_m": 0.41385175096310495,
+            "missing_terminal_control": 8,
+            "outside_035_fraction": 0.48237885462555063,
+            "p95_abs_reference_lateral_m": 1.238188981238977
+          },
+          "1": {
+            "active_rows": 782,
+            "max_abs_reference_lateral_m": 1.7272171607856817,
+            "mean_abs_applied_steer_delta_readable_only": 0.03080306419390168,
+            "mean_abs_reference_lateral_m": 0.5525601296605432,
+            "missing_terminal_control": 8,
+            "outside_035_fraction": 0.5,
+            "p95_abs_reference_lateral_m": 1.5713925928963852
+          }
+        },
+        "scope": "known-scene deterministic trajectories; no held-out qualification",
+        "steer_boundary": "applied post controls only; missing terminal controls excluded, not reconstructed from requested actions"
+      },
+      "qualification": "NOT_ASSIGNED_KNOWN_SCENE_PILOT_ONLY",
+      "sha256": "82caa67945a5fa7033581ecb2ab3356a4fe768225ae7e546815632153b7d20c0",
+      "source_type": "fresh",
+      "training_integrity": {
+        "episodes": 1600,
+        "maxima": {
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "train/update_skipped": 0.0
+        },
+        "outcomes": {
+          "collision": 93,
+          "offroad": 368,
+          "road_violation": 177,
+          "success": 716,
+          "timeout": 246
+        },
+        "updates": 100
+      },
+      "update": 100
+    }
+  ],
+  "control_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_long_u600_20261018_v1",
+  "evaluation_seeds": [
+    62001
+  ],
+  "human_budget": "continue unchanged V6 from complete u50 to cumulative u600",
+  "new_episodes": 8800,
+  "new_updates": 550,
+  "pid": 10896,
+  "previous_plan": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_final_recovery_20261018_v1\\plan.json",
+  "previous_plan_sha256": "6c7677af442e30b115f4a7c5de43aa1b26135a79c56b0563dc11a285d854b4a0",
+  "resume_from_update": 100,
+  "run_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\R8C1_InstantPaceV6_scratch_s42_20261015_v1",
+  "schedule_horizon": 600,
+  "scientific_configuration": "unchanged original 40 sources, 12 scenes, V6 and 20/2",
+  "source_resume_count": 3,
+  "source_sha256": "365c8fd77acd60d13880275667e388b616f33a79f2d5c10ee7c643c76f2019a9",
+  "source_summary": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\scratch_s42_final_recovery_20261018_v1\\u000050_summary.json",
+  "source_summary_sha256": "7ab90bc404a077cf6344aab79bd8239a5d2eded3748650130b97ce508bbc49c2",
+  "source_update": 50,
+  "started_at": "2026-10-18T04:44:56.817702+00:00",
+  "status": "TRAINING_DISPATCHED",
+  "stop_updates": [
+    100,
+    200,
+    400,
+    600
+  ],
+  "target_update": 200,
+  "total_budget_episodes": 9600,
+  "version": "v6_long_full_state_v1"
+}

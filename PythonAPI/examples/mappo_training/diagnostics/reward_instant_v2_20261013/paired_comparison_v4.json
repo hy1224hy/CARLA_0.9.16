@@ -1,0 +1,2181 @@
+{
+  "schema": "reward_fork_matched_behavior_comparison_v4_v1",
+  "created_at_utc": "2026-10-13T05:47:59.065382+00:00",
+  "evidence_status": "MATCHED_COMPLETE_ENGINEERING_SCREEN",
+  "qualification": "NOT_QUALIFIED_FOR_NORMAL_DRIVING",
+  "scope": "12knowntraining scenes,seed62001deterministic; no heldout-generalization or confidence claim.",
+  "causal_limit": "V3andV4each5updates fromu456/s42, equally sized engineering pilots but one seed and reward-dependent trajectories; not conclusive rewardcausality. V2uses20updates and is descriptiveonly.",
+  "performance_source": "Frozenpolicy CARLA evaluation only; trainingwindows andcounterfactuals excluded.",
+  "input_sha256": {
+    "baseline": {
+      "manifest": "dbc66c6cf658479b6c7a54c4408a93528b6f320b95ab1d34b5c3f2b57dd2e7a6",
+      "resolved_config": "d0c639d21406163769157bc591fde1efe1ebfea296217d2c2dc0aaa6d8262c41",
+      "analysis": "eba8aece6746a4b2ea71f07e2dc6effc56433130a798aa8c159e3a9f14ee1570"
+    },
+    "v2": {
+      "manifest": "69ba682da46c976da6a36a609db62149fe848cab8cd1000cbaba36da2d559cbc",
+      "resolved_config": "d0c639d21406163769157bc591fde1efe1ebfea296217d2c2dc0aaa6d8262c41",
+      "analysis": "6c3ee5181bf7ad97074114dc9ee9b833cfa5e6f19460d9105ead15b68c93584f"
+    },
+    "v3": {
+      "manifest": "7982a4ed499e059fb44917beba88d7378d3dd17f6d27a91fabc1aa0bf423efcf",
+      "resolved_config": "d0c639d21406163769157bc591fde1efe1ebfea296217d2c2dc0aaa6d8262c41",
+      "analysis": "3eba4fc3c73d42a5eb7f6efe4bfafd38d59902df200a3240d12f05816741dd28"
+    },
+    "v4": {
+      "manifest": "070ab05a3116d857a88dd44c4298f9de04e289dfbddced66a624d8c39cd4faba",
+      "resolved_config": "d0c639d21406163769157bc591fde1efe1ebfea296217d2c2dc0aaa6d8262c41",
+      "analysis": "e29c7d55bd0fe83c7bff387f8efbe175cfb5f9f2825cd20db8a8d20d20e55aa2"
+    }
+  },
+  "pairing": {
+    "v2": {
+      "case_seed_mode_set_match": true,
+      "resolved_config_file_sha_match": true,
+      "all_initial_scenario_sha_and_canonical_config_match": true
+    },
+    "v3": {
+      "case_seed_mode_set_match": true,
+      "resolved_config_file_sha_match": true,
+      "all_initial_scenario_sha_and_canonical_config_match": true
+    },
+    "v4": {
+      "case_seed_mode_set_match": true,
+      "resolved_config_file_sha_match": true,
+      "all_initial_scenario_sha_and_canonical_config_match": true
+    }
+  },
+  "all_case_summary": {
+    "baseline": {
+      "training_updates_after_u456": 0,
+      "checkpoint_sha256": "8b9cb173cd70aacc201f0cb68183fdfeeb593cc8f29863c096a5f59076954545",
+      "both_reached_count": 12,
+      "episode_reasons": {
+        "all_agents_reached": 12
+      },
+      "agents": {
+        "0": {
+          "pooled_active_mean_kmh": 26.47159040783124,
+          "case_equal_mean_kmh": 25.546225922291303,
+          "peak_kmh": 48.700888473389945,
+          "above15_fraction": 0.8252788104089219,
+          "above30_fraction": 0.43308550185873607,
+          "above15_seconds": 44.400000000000006,
+          "above30_seconds": 23.3,
+          "first_motion_mean_seconds": 0.325,
+          "first_motion_max_seconds": 0.6000000000000001,
+          "reached_goal_count": 12,
+          "arrival_reached_only_mean_seconds": 4.483333333333333,
+          "below_low_seconds_total": 2.7,
+          "recorded_pace_reward_sum": 0.0,
+          "terminal_events": {
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "pooled_active_mean_kmh": 12.158117246095992,
+          "case_equal_mean_kmh": 11.96792498207418,
+          "peak_kmh": 28.140317535601433,
+          "above15_fraction": 0.42488888888888887,
+          "above30_fraction": 0.0,
+          "above15_seconds": 47.8,
+          "above30_seconds": 0.0,
+          "first_motion_mean_seconds": 1.4666666666666668,
+          "first_motion_max_seconds": 4.4,
+          "reached_goal_count": 12,
+          "arrival_reached_only_mean_seconds": 9.375,
+          "below_low_seconds_total": 19.8,
+          "recorded_pace_reward_sum": -3.7489624786376963,
+          "terminal_events": {
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      }
+    },
+    "v2": {
+      "training_updates_after_u456": 20,
+      "checkpoint_sha256": "382436d7c36ad99909b70f8109aa23b1eda21f7cbd6a0e962e481957fb7b2153",
+      "both_reached_count": 12,
+      "episode_reasons": {
+        "all_agents_reached": 12
+      },
+      "agents": {
+        "0": {
+          "pooled_active_mean_kmh": 29.339399592853376,
+          "case_equal_mean_kmh": 28.02311622296745,
+          "peak_kmh": 54.21922400508786,
+          "above15_fraction": 0.8166311300639659,
+          "above30_fraction": 0.5266524520255863,
+          "above15_seconds": 38.300000000000004,
+          "above30_seconds": 24.7,
+          "first_motion_mean_seconds": 0.3166666666666667,
+          "first_motion_max_seconds": 0.6000000000000001,
+          "reached_goal_count": 12,
+          "arrival_reached_only_mean_seconds": 3.9083333333333337,
+          "below_low_seconds_total": 2.5,
+          "recorded_pace_reward_sum": 0.0,
+          "terminal_events": {
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "pooled_active_mean_kmh": 12.18536324248855,
+          "case_equal_mean_kmh": 11.830726522481728,
+          "peak_kmh": 26.868101051226358,
+          "above15_fraction": 0.4120287253141831,
+          "above30_fraction": 0.0,
+          "above15_seconds": 45.900000000000006,
+          "above30_seconds": 0.0,
+          "first_motion_mean_seconds": 1.366666666666667,
+          "first_motion_max_seconds": 4.3,
+          "reached_goal_count": 12,
+          "arrival_reached_only_mean_seconds": 9.283333333333333,
+          "below_low_seconds_total": 17.1,
+          "recorded_pace_reward_sum": -3.133425155525009,
+          "terminal_events": {
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      }
+    },
+    "v3": {
+      "training_updates_after_u456": 5,
+      "checkpoint_sha256": "ae5ae7abd0e2240e6b0bbcc52a0deee9b64bfce57b7fa8627f4e2a33bf993245",
+      "both_reached_count": 10,
+      "episode_reasons": {
+        "cooperative_collision": 1,
+        "all_agents_reached": 10,
+        "mission_timeout": 1
+      },
+      "agents": {
+        "0": {
+          "pooled_active_mean_kmh": 12.988136915025354,
+          "case_equal_mean_kmh": 19.93132933368735,
+          "peak_kmh": 37.01556060004458,
+          "above15_fraction": 0.4745762711864407,
+          "above30_fraction": 0.128060263653484,
+          "above15_seconds": 50.400000000000006,
+          "above30_seconds": 13.6,
+          "first_motion_mean_seconds": 0.34166666666666673,
+          "first_motion_max_seconds": 0.7000000000000001,
+          "reached_goal_count": 10,
+          "arrival_reached_only_mean_seconds": 5.390000000000001,
+          "below_low_seconds_total": 40.1,
+          "recorded_pace_reward_sum": -1.1842909572435147,
+          "terminal_events": {
+            "collision_event": 1,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 1
+          }
+        },
+        "1": {
+          "pooled_active_mean_kmh": 10.880277046761057,
+          "case_equal_mean_kmh": 10.793763730003382,
+          "peak_kmh": 25.94950231173976,
+          "above15_fraction": 0.3470209339774557,
+          "above30_fraction": 0.0,
+          "above15_seconds": 43.1,
+          "above30_seconds": 0.0,
+          "first_motion_mean_seconds": 1.7833333333333334,
+          "first_motion_max_seconds": 5.7,
+          "reached_goal_count": 11,
+          "arrival_reached_only_mean_seconds": 11.081818181818182,
+          "below_low_seconds_total": 24.3,
+          "recorded_pace_reward_sum": -7.088604284618479,
+          "terminal_events": {
+            "collision_event": 1,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      }
+    },
+    "v4": {
+      "training_updates_after_u456": 5,
+      "checkpoint_sha256": "d87cb4cd9099548158a839a77ee926e92ede9a5211ecb777246addcfafba5610",
+      "both_reached_count": 11,
+      "episode_reasons": {
+        "all_agents_reached": 11,
+        "cooperative_road_violation": 1
+      },
+      "agents": {
+        "0": {
+          "pooled_active_mean_kmh": 22.928809335328715,
+          "case_equal_mean_kmh": 22.616978749817445,
+          "peak_kmh": 41.02715400120338,
+          "above15_fraction": 0.8246205733558178,
+          "above30_fraction": 0.2984822934232715,
+          "above15_seconds": 48.9,
+          "above30_seconds": 17.700000000000003,
+          "first_motion_mean_seconds": 0.34166666666666673,
+          "first_motion_max_seconds": 0.7000000000000001,
+          "reached_goal_count": 11,
+          "arrival_reached_only_mean_seconds": 4.818181818181818,
+          "below_low_seconds_total": 2.8000000000000003,
+          "recorded_pace_reward_sum": 0.0,
+          "terminal_events": {
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "pooled_active_mean_kmh": 10.83326078787747,
+          "case_equal_mean_kmh": 10.642570106653215,
+          "peak_kmh": 26.457100620066758,
+          "above15_fraction": 0.33305369127516776,
+          "above30_fraction": 0.0,
+          "above15_seconds": 39.7,
+          "above30_seconds": 0.0,
+          "first_motion_mean_seconds": 1.75,
+          "first_motion_max_seconds": 5.4,
+          "reached_goal_count": 11,
+          "arrival_reached_only_mean_seconds": 10.263636363636364,
+          "below_low_seconds_total": 24.900000000000002,
+          "recorded_pace_reward_sum": -6.914283848473551,
+          "terminal_events": {
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 1,
+            "mission_timeout_event": 0
+          }
+        }
+      }
+    }
+  },
+  "common_success_subset": {
+    "case_count": 10,
+    "scenarios": [
+      "scenario_02_south_short_rolling_a1_left",
+      "scenario_03_north_short_stationary_a0_left",
+      "scenario_04_south_short_stationary_a1_left",
+      "scenario_06_southbound_free_flow",
+      "scenario_07_eastbound_free_flow",
+      "scenario_08_westbound_free_flow",
+      "scenario_09_north_parallel_stationary_a0_left",
+      "scenario_10_south_parallel_stationary_a1_left",
+      "scenario_11_east_parallel_stationary_a1_left",
+      "scenario_12_west_parallel_stationary_a0_left"
+    ],
+    "selection_note": "Descriptive matched-success subset; use allcase completion/safety alongside it, never hide failures.",
+    "agents": {
+      "0": {
+        "baseline": {
+          "case_equal_mean_speed_kmh": 26.413900942718136,
+          "case_equal_mean_arrival_seconds": 4.470000000000001,
+          "max_peak_kmh": 48.700888473389945
+        },
+        "v3": {
+          "case_equal_mean_speed_kmh": 22.291246950506675,
+          "case_equal_mean_arrival_seconds": 5.390000000000001,
+          "max_peak_kmh": 37.01556060004458
+        },
+        "v4": {
+          "case_equal_mean_speed_kmh": 23.647181378939315,
+          "case_equal_mean_arrival_seconds": 5.01,
+          "max_peak_kmh": 41.02715400120338
+        }
+      },
+      "1": {
+        "baseline": {
+          "case_equal_mean_speed_kmh": 11.48310753652182,
+          "case_equal_mean_arrival_seconds": 9.9,
+          "max_peak_kmh": 28.140317535601433
+        },
+        "v3": {
+          "case_equal_mean_speed_kmh": 10.127429417691394,
+          "case_equal_mean_arrival_seconds": 11.32,
+          "max_peak_kmh": 25.94950231173976
+        },
+        "v4": {
+          "case_equal_mean_speed_kmh": 10.446621696796887,
+          "case_equal_mean_arrival_seconds": 10.85,
+          "max_peak_kmh": 26.457100620066758
+        }
+      }
+    }
+  },
+  "pairs": [
+    {
+      "scenario": "scenario_01_north_short_rolling_a0_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "1496f0764c5c1112c484d2fdf98a491ab3566286f0c49c7642154ef3092b6cb0",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "cooperative_collision",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": false,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 2.7,
+            "speed_mean_kmh": 16.653796250615475,
+            "speed_peak_kmh": 26.057787942018912,
+            "above15_fraction": 0.6666666666666666,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.8,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 2.7,
+            "reached_goal": true,
+            "final_completion": 0.7823381600637737
+          },
+          "v3": {
+            "active_seconds": 2.3000000000000003,
+            "speed_mean_kmh": 13.206759450153974,
+            "speed_peak_kmh": 18.2068471297683,
+            "above15_fraction": 0.43478260869565216,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.0,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": null,
+            "reached_goal": false,
+            "final_completion": 0.5384811935650032
+          },
+          "v4": {
+            "active_seconds": 2.9000000000000004,
+            "speed_mean_kmh": 16.01117694447853,
+            "speed_peak_kmh": 25.126114050244432,
+            "above15_fraction": 0.6206896551724138,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.8,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 2.9000000000000004,
+            "reached_goal": true,
+            "final_completion": 0.8049174158721011
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 3.3000000000000003,
+            "speed_mean_kmh": 13.752373506329064,
+            "speed_peak_kmh": 20.79727048166341,
+            "above15_fraction": 0.5151515151515151,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.7000000000000002,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 3.3000000000000003,
+            "reached_goal": true,
+            "final_completion": 0.8219523459386268
+          },
+          "v3": {
+            "active_seconds": 2.3000000000000003,
+            "speed_mean_kmh": 10.827414365587346,
+            "speed_peak_kmh": 16.676448585369183,
+            "above15_fraction": 0.17391304347826086,
+            "above30_fraction": 0.0,
+            "above15_seconds": 0.4,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": null,
+            "reached_goal": false,
+            "final_completion": 0.44959986703426236
+          },
+          "v4": {
+            "active_seconds": 4.4,
+            "speed_mean_kmh": 10.15245420440691,
+            "speed_peak_kmh": 14.7855985561028,
+            "above15_fraction": 0.0,
+            "above30_fraction": 0.0,
+            "above15_seconds": 0.0,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 4.4,
+            "reached_goal": true,
+            "final_completion": 0.7877611608020716
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_02_south_short_rolling_a1_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "2ec1297a5aa5e6b70c926ddd1e145a0e3c0e99cc9992d4c382382b08c4b6a58a",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 2.1,
+            "speed_mean_kmh": 21.478768124125935,
+            "speed_peak_kmh": 34.01686694207096,
+            "above15_fraction": 0.7142857142857143,
+            "above30_fraction": 0.2857142857142857,
+            "above15_seconds": 1.5,
+            "above30_seconds": 0.6000000000000001,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 2.1,
+            "reached_goal": true,
+            "final_completion": 0.8068251952078908
+          },
+          "v3": {
+            "active_seconds": 2.2,
+            "speed_mean_kmh": 20.326908638244642,
+            "speed_peak_kmh": 29.36628107512663,
+            "above15_fraction": 0.7272727272727273,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.6,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 2.2,
+            "reached_goal": true,
+            "final_completion": 0.8058282999461034
+          },
+          "v4": {
+            "active_seconds": 2.2,
+            "speed_mean_kmh": 20.777638148744813,
+            "speed_peak_kmh": 30.700664686533145,
+            "above15_fraction": 0.7272727272727273,
+            "above30_fraction": 0.18181818181818182,
+            "above15_seconds": 1.6,
+            "above30_seconds": 0.4,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 2.2,
+            "reached_goal": true,
+            "final_completion": 0.8213966020689097
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 4.3,
+            "speed_mean_kmh": 10.407178560061913,
+            "speed_peak_kmh": 18.53816081591546,
+            "above15_fraction": 0.27906976744186046,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.2000000000000002,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 4.3,
+            "reached_goal": true,
+            "final_completion": 0.80895398400753
+          },
+          "v3": {
+            "active_seconds": 5.1000000000000005,
+            "speed_mean_kmh": 8.91357990284318,
+            "speed_peak_kmh": 18.011734884198308,
+            "above15_fraction": 0.2549019607843137,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.3,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 5.1000000000000005,
+            "reached_goal": true,
+            "final_completion": 0.8186404733110708
+          },
+          "v4": {
+            "active_seconds": 5.0,
+            "speed_mean_kmh": 8.849624654959365,
+            "speed_peak_kmh": 18.1552346284589,
+            "above15_fraction": 0.26,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.3,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 1.1,
+            "below_low_longest_seconds": 1.1,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 5.0,
+            "reached_goal": true,
+            "final_completion": 0.7993165513010744
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_03_north_short_stationary_a0_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "b377efaa41b099a9240bc249dd633188aaac0f419d12f894df1bfb9c21d8cc03",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 2.9000000000000004,
+            "speed_mean_kmh": 16.320834660339546,
+            "speed_peak_kmh": 30.282932334401295,
+            "above15_fraction": 0.6551724137931034,
+            "above30_fraction": 0.034482758620689655,
+            "above15_seconds": 1.9000000000000001,
+            "above30_seconds": 0.1,
+            "below_low_seconds": 0.5,
+            "below_low_longest_seconds": 0.5,
+            "first_motion_seconds": 0.6000000000000001,
+            "arrival_seconds": 2.9000000000000004,
+            "reached_goal": true,
+            "final_completion": 0.8128483339356617
+          },
+          "v3": {
+            "active_seconds": 3.3000000000000003,
+            "speed_mean_kmh": 14.252075434590113,
+            "speed_peak_kmh": 23.75022683175691,
+            "above15_fraction": 0.5454545454545454,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.8,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.5,
+            "below_low_longest_seconds": 0.5,
+            "first_motion_seconds": 0.6000000000000001,
+            "arrival_seconds": 3.3000000000000003,
+            "reached_goal": true,
+            "final_completion": 0.8102015949637513
+          },
+          "v4": {
+            "active_seconds": 3.1,
+            "speed_mean_kmh": 14.880654078967755,
+            "speed_peak_kmh": 25.807775285386565,
+            "above15_fraction": 0.6129032258064516,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.9000000000000001,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.5,
+            "below_low_longest_seconds": 0.5,
+            "first_motion_seconds": 0.6000000000000001,
+            "arrival_seconds": 3.1,
+            "reached_goal": true,
+            "final_completion": 0.7956128519815862
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 4.9,
+            "speed_mean_kmh": 9.322787995918027,
+            "speed_peak_kmh": 18.706556782803627,
+            "above15_fraction": 0.20408163265306123,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.0,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.9,
+            "below_low_longest_seconds": 0.9,
+            "first_motion_seconds": 1.1,
+            "arrival_seconds": 4.9,
+            "reached_goal": true,
+            "final_completion": 0.8148393857389252
+          },
+          "v3": {
+            "active_seconds": 5.7,
+            "speed_mean_kmh": 8.004677866354182,
+            "speed_peak_kmh": 18.217237397354406,
+            "above15_fraction": 0.15789473684210525,
+            "above30_fraction": 0.0,
+            "above15_seconds": 0.9,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 1.1,
+            "below_low_longest_seconds": 1.1,
+            "first_motion_seconds": 1.2000000000000002,
+            "arrival_seconds": 5.7,
+            "reached_goal": true,
+            "final_completion": 0.8144221755078671
+          },
+          "v4": {
+            "active_seconds": 5.4,
+            "speed_mean_kmh": 8.568888242499916,
+            "speed_peak_kmh": 18.53871537461471,
+            "above15_fraction": 0.18518518518518517,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.0,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 1.1,
+            "below_low_longest_seconds": 1.1,
+            "first_motion_seconds": 1.2000000000000002,
+            "arrival_seconds": 5.4,
+            "reached_goal": true,
+            "final_completion": 0.8244598478805644
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_04_south_short_stationary_a1_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "d4793adf90f588db389dc1a7599ab4cefaee42bbfb836785d0871d46a2a749ad",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 2.4000000000000004,
+            "speed_mean_kmh": 19.468418155374618,
+            "speed_peak_kmh": 36.91708131939723,
+            "above15_fraction": 0.6666666666666666,
+            "above30_fraction": 0.25,
+            "above15_seconds": 1.6,
+            "above30_seconds": 0.6000000000000001,
+            "below_low_seconds": 0.4,
+            "below_low_longest_seconds": 0.4,
+            "first_motion_seconds": 0.5,
+            "arrival_seconds": 2.4000000000000004,
+            "reached_goal": true,
+            "final_completion": 0.8314519125766061
+          },
+          "v3": {
+            "active_seconds": 2.5,
+            "speed_mean_kmh": 18.664193116582986,
+            "speed_peak_kmh": 33.22158484118226,
+            "above15_fraction": 0.64,
+            "above30_fraction": 0.2,
+            "above15_seconds": 1.6,
+            "above30_seconds": 0.5,
+            "below_low_seconds": 0.4,
+            "below_low_longest_seconds": 0.4,
+            "first_motion_seconds": 0.5,
+            "arrival_seconds": 2.5,
+            "reached_goal": true,
+            "final_completion": 0.8333725826703526
+          },
+          "v4": {
+            "active_seconds": 2.5,
+            "speed_mean_kmh": 19.020246365972078,
+            "speed_peak_kmh": 34.3742204622058,
+            "above15_fraction": 0.68,
+            "above30_fraction": 0.24,
+            "above15_seconds": 1.7000000000000002,
+            "above30_seconds": 0.6000000000000001,
+            "below_low_seconds": 0.4,
+            "below_low_longest_seconds": 0.4,
+            "first_motion_seconds": 0.5,
+            "arrival_seconds": 2.5,
+            "reached_goal": true,
+            "final_completion": 0.8470238209104071
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 5.6000000000000005,
+            "speed_mean_kmh": 8.234852124362328,
+            "speed_peak_kmh": 20.214910794070125,
+            "above15_fraction": 0.30357142857142855,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.7000000000000002,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 2.4000000000000004,
+            "below_low_longest_seconds": 2.4000000000000004,
+            "first_motion_seconds": 2.6,
+            "arrival_seconds": 5.6000000000000005,
+            "reached_goal": true,
+            "final_completion": 0.827945078966866
+          },
+          "v3": {
+            "active_seconds": 5.9,
+            "speed_mean_kmh": 7.553746903271248,
+            "speed_peak_kmh": 18.272526753210528,
+            "above15_fraction": 0.2542372881355932,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.5,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 2.6,
+            "below_low_longest_seconds": 2.6,
+            "first_motion_seconds": 2.7,
+            "arrival_seconds": 5.9,
+            "reached_goal": true,
+            "final_completion": 0.8016853638407395
+          },
+          "v4": {
+            "active_seconds": 5.800000000000001,
+            "speed_mean_kmh": 7.62811102095597,
+            "speed_peak_kmh": 18.52701709002137,
+            "above15_fraction": 0.25862068965517243,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.5,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 2.6,
+            "below_low_longest_seconds": 2.6,
+            "first_motion_seconds": 2.7,
+            "arrival_seconds": 5.800000000000001,
+            "reached_goal": true,
+            "final_completion": 0.7963328339949837
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_05_northbound_free_flow",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "223ec843c6eb4652f7338d145d874a2d6557ef6e8417d4c4b32754453b7a24b7",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "mission_timeout",
+        "v4": "cooperative_road_violation"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": false,
+        "v4": false
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 6.4,
+            "speed_mean_kmh": 25.76190538969879,
+            "speed_peak_kmh": 36.5887834191057,
+            "above15_fraction": 0.875,
+            "above30_fraction": 0.421875,
+            "above15_seconds": 5.6000000000000005,
+            "above30_seconds": 2.7,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 6.4,
+            "reached_goal": true,
+            "final_completion": 0.9650740393669093
+          },
+          "v3": {
+            "active_seconds": 50.0,
+            "speed_mean_kmh": 3.056723049027499,
+            "speed_peak_kmh": 18.89932473901799,
+            "above15_fraction": 0.09,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.5,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 37.300000000000004,
+            "below_low_longest_seconds": 36.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": null,
+            "reached_goal": false,
+            "final_completion": 0.9293079175835804
+          },
+          "v4": {
+            "active_seconds": 6.300000000000001,
+            "speed_mean_kmh": 18.92075426393769,
+            "speed_peak_kmh": 28.462146800293315,
+            "above15_fraction": 0.8571428571428571,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.4,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": null,
+            "reached_goal": false,
+            "final_completion": 0.7228040326209553
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 10.200000000000001,
+            "speed_mean_kmh": 15.031650913342908,
+            "speed_peak_kmh": 24.017134895524784,
+            "above15_fraction": 0.45098039215686275,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.6000000000000005,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 10.200000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9362543987759663
+          },
+          "v3": {
+            "active_seconds": 8.700000000000001,
+            "speed_mean_kmh": 17.4234562175393,
+            "speed_peak_kmh": 22.354289967395754,
+            "above15_fraction": 0.7701149425287356,
+            "above30_fraction": 0.0,
+            "above15_seconds": 6.7,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 8.700000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9318797402767569
+          },
+          "v4": {
+            "active_seconds": 6.300000000000001,
+            "speed_mean_kmh": 13.092170107462797,
+            "speed_peak_kmh": 16.19783560735284,
+            "above15_fraction": 0.25396825396825395,
+            "above30_fraction": 0.0,
+            "above15_seconds": 1.6,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": null,
+            "reached_goal": false,
+            "final_completion": 0.5043951951606832
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_06_southbound_free_flow",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "0fd0fc0b0c6030e3b03ad30f7a0f225f834fe3bff2f8c2db35b3485bd89a44c1",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 4.4,
+            "speed_mean_kmh": 35.557057549021174,
+            "speed_peak_kmh": 48.700888473389945,
+            "above15_fraction": 0.9090909090909091,
+            "above30_fraction": 0.7045454545454546,
+            "above15_seconds": 4.0,
+            "above30_seconds": 3.1,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 4.4,
+            "reached_goal": true,
+            "final_completion": 0.954114936568138
+          },
+          "v3": {
+            "active_seconds": 5.0,
+            "speed_mean_kmh": 30.801400980673357,
+            "speed_peak_kmh": 37.01556060004458,
+            "above15_fraction": 0.92,
+            "above30_fraction": 0.7,
+            "above15_seconds": 4.6000000000000005,
+            "above30_seconds": 3.5,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 5.0,
+            "reached_goal": true,
+            "final_completion": 0.9425459406489267
+          },
+          "v4": {
+            "active_seconds": 4.7,
+            "speed_mean_kmh": 32.48942273892642,
+            "speed_peak_kmh": 41.02715400120338,
+            "above15_fraction": 0.9148936170212766,
+            "above30_fraction": 0.7021276595744681,
+            "above15_seconds": 4.3,
+            "above30_seconds": 3.3000000000000003,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 4.7,
+            "reached_goal": true,
+            "final_completion": 0.9336190616304174
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 12.8,
+            "speed_mean_kmh": 11.981914979484767,
+            "speed_peak_kmh": 22.00576960682138,
+            "above15_fraction": 0.421875,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.4,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 2.6,
+            "below_low_longest_seconds": 2.6,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 12.8,
+            "reached_goal": true,
+            "final_completion": 0.9344033685102189
+          },
+          "v3": {
+            "active_seconds": 14.5,
+            "speed_mean_kmh": 10.570182913381965,
+            "speed_peak_kmh": 18.629810419575968,
+            "above15_fraction": 0.33793103448275863,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.9,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 3.1,
+            "below_low_longest_seconds": 3.1,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 14.5,
+            "reached_goal": true,
+            "final_completion": 0.9325541060008986
+          },
+          "v4": {
+            "active_seconds": 13.700000000000001,
+            "speed_mean_kmh": 11.100605464381994,
+            "speed_peak_kmh": 21.327356403608505,
+            "above15_fraction": 0.36496350364963503,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.0,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 3.0,
+            "below_low_longest_seconds": 3.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 13.700000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9276131809872757
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_07_eastbound_free_flow",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "fefb17c3b163b190b9dc49f699b4a2e94de926bb9f5f63306695c625798459d4",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 4.4,
+            "speed_mean_kmh": 33.050029228462726,
+            "speed_peak_kmh": 46.237418297824135,
+            "above15_fraction": 0.8636363636363636,
+            "above30_fraction": 0.6818181818181818,
+            "above15_seconds": 3.8000000000000003,
+            "above30_seconds": 3.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 4.4,
+            "reached_goal": true,
+            "final_completion": 0.9471455490376745
+          },
+          "v3": {
+            "active_seconds": 5.1000000000000005,
+            "speed_mean_kmh": 28.38676854852527,
+            "speed_peak_kmh": 34.73915827692876,
+            "above15_fraction": 0.8823529411764706,
+            "above30_fraction": 0.6862745098039216,
+            "above15_seconds": 4.5,
+            "above30_seconds": 3.5,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 5.1000000000000005,
+            "reached_goal": true,
+            "final_completion": 0.9470840105593671
+          },
+          "v4": {
+            "active_seconds": 4.800000000000001,
+            "speed_mean_kmh": 29.80356573080004,
+            "speed_peak_kmh": 38.77895336805577,
+            "above15_fraction": 0.875,
+            "above30_fraction": 0.6666666666666666,
+            "above15_seconds": 4.2,
+            "above30_seconds": 3.2,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 4.800000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9355298376692149
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 10.3,
+            "speed_mean_kmh": 13.779515067098234,
+            "speed_peak_kmh": 18.558902417908886,
+            "above15_fraction": 0.3883495145631068,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.0,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 10.3,
+            "reached_goal": true,
+            "final_completion": 0.9218613553201862
+          },
+          "v3": {
+            "active_seconds": 11.4,
+            "speed_mean_kmh": 12.980210995497037,
+            "speed_peak_kmh": 16.976607814766595,
+            "above15_fraction": 0.24561403508771928,
+            "above30_fraction": 0.0,
+            "above15_seconds": 2.8000000000000003,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 11.4,
+            "reached_goal": true,
+            "final_completion": 0.9523309795189454
+          },
+          "v4": {
+            "active_seconds": 11.200000000000001,
+            "speed_mean_kmh": 12.783151795987104,
+            "speed_peak_kmh": 18.242751449050576,
+            "above15_fraction": 0.33035714285714285,
+            "above30_fraction": 0.0,
+            "above15_seconds": 3.7,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 11.200000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9287536595039774
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_08_westbound_free_flow",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "4afaeb80af8124136b9d676b4e3b6f642bd73aa14b018fd378374fdeb35613ad",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 4.9,
+            "speed_mean_kmh": 31.756968260265197,
+            "speed_peak_kmh": 40.820272981507905,
+            "above15_fraction": 0.8979591836734694,
+            "above30_fraction": 0.673469387755102,
+            "above15_seconds": 4.4,
+            "above30_seconds": 3.3000000000000003,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 4.9,
+            "reached_goal": true,
+            "final_completion": 0.9498164445745773
+          },
+          "v3": {
+            "active_seconds": 6.0,
+            "speed_mean_kmh": 25.57379223128616,
+            "speed_peak_kmh": 29.524494359485665,
+            "above15_fraction": 0.9166666666666666,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.5,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 6.0,
+            "reached_goal": true,
+            "final_completion": 0.9406748017569626
+          },
+          "v4": {
+            "active_seconds": 5.6000000000000005,
+            "speed_mean_kmh": 27.546821959011023,
+            "speed_peak_kmh": 31.7549150079633,
+            "above15_fraction": 0.9107142857142857,
+            "above30_fraction": 0.6607142857142857,
+            "above15_seconds": 5.1000000000000005,
+            "above30_seconds": 3.7,
+            "below_low_seconds": 0.0,
+            "below_low_longest_seconds": 0.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 5.6000000000000005,
+            "reached_goal": true,
+            "final_completion": 0.9446907804805291
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 10.8,
+            "speed_mean_kmh": 14.158794580662006,
+            "speed_peak_kmh": 21.468611794272753,
+            "above15_fraction": 0.6018518518518519,
+            "above30_fraction": 0.0,
+            "above15_seconds": 6.5,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 1.0,
+            "below_low_longest_seconds": 1.0,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 10.8,
+            "reached_goal": true,
+            "final_completion": 0.9325324116503781
+          },
+          "v3": {
+            "active_seconds": 12.100000000000001,
+            "speed_mean_kmh": 12.707807584017504,
+            "speed_peak_kmh": 18.645054894151922,
+            "above15_fraction": 0.4049586776859504,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.9,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 1.1,
+            "below_low_longest_seconds": 1.1,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 12.100000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9328085357382054
+          },
+          "v4": {
+            "active_seconds": 11.5,
+            "speed_mean_kmh": 13.265283634399918,
+            "speed_peak_kmh": 19.728978509326375,
+            "above15_fraction": 0.4608695652173913,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.300000000000001,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 1.1,
+            "below_low_longest_seconds": 1.1,
+            "first_motion_seconds": 0.1,
+            "arrival_seconds": 11.5,
+            "reached_goal": true,
+            "final_completion": 0.9299869412178721
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_09_north_parallel_stationary_a0_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "c60e73426faf7a0f6d129097f4f685cd65155c1d12227da3229e9fb1043dddd2",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 7.1000000000000005,
+            "speed_mean_kmh": 22.978234470555822,
+            "speed_peak_kmh": 33.55856047645347,
+            "above15_fraction": 0.8450704225352113,
+            "above30_fraction": 0.2535211267605634,
+            "above15_seconds": 6.0,
+            "above30_seconds": 1.8,
+            "below_low_seconds": 0.5,
+            "below_low_longest_seconds": 0.5,
+            "first_motion_seconds": 0.6000000000000001,
+            "arrival_seconds": 7.1000000000000005,
+            "reached_goal": true,
+            "final_completion": 0.9638608631748963
+          },
+          "v3": {
+            "active_seconds": 9.5,
+            "speed_mean_kmh": 16.76811583039088,
+            "speed_peak_kmh": 22.31592370554148,
+            "above15_fraction": 0.8210526315789474,
+            "above30_fraction": 0.0,
+            "above15_seconds": 7.800000000000001,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.6000000000000001,
+            "below_low_longest_seconds": 0.6000000000000001,
+            "first_motion_seconds": 0.7000000000000001,
+            "arrival_seconds": 9.5,
+            "reached_goal": true,
+            "final_completion": 0.9543466120309877
+          },
+          "v4": {
+            "active_seconds": 8.6,
+            "speed_mean_kmh": 18.499991462985136,
+            "speed_peak_kmh": 25.090725837369007,
+            "above15_fraction": 0.8255813953488372,
+            "above30_fraction": 0.0,
+            "above15_seconds": 7.1000000000000005,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.6000000000000001,
+            "below_low_longest_seconds": 0.6000000000000001,
+            "first_motion_seconds": 0.7000000000000001,
+            "arrival_seconds": 8.6,
+            "reached_goal": true,
+            "final_completion": 0.9596612470716204
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 11.4,
+            "speed_mean_kmh": 13.554822362623598,
+            "speed_peak_kmh": 25.9002668669655,
+            "above15_fraction": 0.5614035087719298,
+            "above30_fraction": 0.0,
+            "above15_seconds": 6.4,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 2.1,
+            "below_low_longest_seconds": 2.1,
+            "first_motion_seconds": 2.2,
+            "arrival_seconds": 11.4,
+            "reached_goal": true,
+            "final_completion": 0.9447273664448231
+          },
+          "v3": {
+            "active_seconds": 13.100000000000001,
+            "speed_mean_kmh": 11.738345547307448,
+            "speed_peak_kmh": 22.286751293935954,
+            "above15_fraction": 0.42748091603053434,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.6000000000000005,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 3.0,
+            "below_low_longest_seconds": 3.0,
+            "first_motion_seconds": 3.1,
+            "arrival_seconds": 13.100000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9436450516497638
+          },
+          "v4": {
+            "active_seconds": 12.200000000000001,
+            "speed_mean_kmh": 12.728246346441598,
+            "speed_peak_kmh": 25.912914072840216,
+            "above15_fraction": 0.4918032786885246,
+            "above30_fraction": 0.0,
+            "above15_seconds": 6.0,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 2.7,
+            "below_low_longest_seconds": 2.7,
+            "first_motion_seconds": 2.9000000000000004,
+            "arrival_seconds": 12.200000000000001,
+            "reached_goal": true,
+            "final_completion": 0.946355008110924
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_10_south_parallel_stationary_a1_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "1b5c2a9b668e2baf0bfb05584c85308d87da79c42f2314b6419a1741cc516a56",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 5.7,
+            "speed_mean_kmh": 29.988684911051866,
+            "speed_peak_kmh": 44.91532251714031,
+            "above15_fraction": 0.8421052631578947,
+            "above30_fraction": 0.5964912280701754,
+            "above15_seconds": 4.800000000000001,
+            "above30_seconds": 3.4000000000000004,
+            "below_low_seconds": 0.4,
+            "below_low_longest_seconds": 0.4,
+            "first_motion_seconds": 0.5,
+            "arrival_seconds": 5.7,
+            "reached_goal": true,
+            "final_completion": 0.9507627308076628
+          },
+          "v3": {
+            "active_seconds": 6.800000000000001,
+            "speed_mean_kmh": 24.818586731017064,
+            "speed_peak_kmh": 31.690925255033893,
+            "above15_fraction": 0.8676470588235294,
+            "above30_fraction": 0.45588235294117646,
+            "above15_seconds": 5.9,
+            "above30_seconds": 3.1,
+            "below_low_seconds": 0.4,
+            "below_low_longest_seconds": 0.4,
+            "first_motion_seconds": 0.6000000000000001,
+            "arrival_seconds": 6.800000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9577635741115662
+          },
+          "v4": {
+            "active_seconds": 6.300000000000001,
+            "speed_mean_kmh": 26.652800623436942,
+            "speed_peak_kmh": 36.24611229086018,
+            "above15_fraction": 0.8571428571428571,
+            "above30_fraction": 0.5714285714285714,
+            "above15_seconds": 5.4,
+            "above30_seconds": 3.6,
+            "below_low_seconds": 0.4,
+            "below_low_longest_seconds": 0.4,
+            "first_motion_seconds": 0.6000000000000001,
+            "arrival_seconds": 6.300000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9594343066598333
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 13.8,
+            "speed_mean_kmh": 11.19640276168426,
+            "speed_peak_kmh": 28.140317535601433,
+            "above15_fraction": 0.391304347826087,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.4,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 3.8000000000000003,
+            "below_low_longest_seconds": 3.8000000000000003,
+            "first_motion_seconds": 3.9000000000000004,
+            "arrival_seconds": 13.8,
+            "reached_goal": true,
+            "final_completion": 0.9382600680661576
+          },
+          "v3": {
+            "active_seconds": 16.2,
+            "speed_mean_kmh": 9.513774245348806,
+            "speed_peak_kmh": 25.94950231173976,
+            "above15_fraction": 0.30864197530864196,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.0,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 4.6000000000000005,
+            "below_low_longest_seconds": 4.6000000000000005,
+            "first_motion_seconds": 4.800000000000001,
+            "arrival_seconds": 16.2,
+            "reached_goal": true,
+            "final_completion": 0.9440113672042812
+          },
+          "v4": {
+            "active_seconds": 16.0,
+            "speed_mean_kmh": 9.619477657486037,
+            "speed_peak_kmh": 26.457100620066758,
+            "above15_fraction": 0.31875,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.1000000000000005,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 4.800000000000001,
+            "below_low_longest_seconds": 4.800000000000001,
+            "first_motion_seconds": 4.9,
+            "arrival_seconds": 16.0,
+            "reached_goal": true,
+            "final_completion": 0.9336235071694182
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_11_east_parallel_stationary_a1_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "4542c2de5918a01ae986e59f2c31444d385724dbbef869040fcc70681c7bc770",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 4.5,
+            "speed_mean_kmh": 29.829611798019165,
+            "speed_peak_kmh": 45.946706439022854,
+            "above15_fraction": 0.8222222222222222,
+            "above30_fraction": 0.6,
+            "above15_seconds": 3.7,
+            "above30_seconds": 2.7,
+            "below_low_seconds": 0.4,
+            "below_low_longest_seconds": 0.4,
+            "first_motion_seconds": 0.5,
+            "arrival_seconds": 4.5,
+            "reached_goal": true,
+            "final_completion": 0.9275187449285031
+          },
+          "v3": {
+            "active_seconds": 5.1000000000000005,
+            "speed_mean_kmh": 26.20064628379524,
+            "speed_peak_kmh": 35.230068792403735,
+            "above15_fraction": 0.8235294117647058,
+            "above30_fraction": 0.5882352941176471,
+            "above15_seconds": 4.2,
+            "above30_seconds": 3.0,
+            "below_low_seconds": 0.4,
+            "below_low_longest_seconds": 0.4,
+            "first_motion_seconds": 0.5,
+            "arrival_seconds": 5.1000000000000005,
+            "reached_goal": true,
+            "final_completion": 0.9273583878758097
+          },
+          "v4": {
+            "active_seconds": 4.9,
+            "speed_mean_kmh": 27.48134904016568,
+            "speed_peak_kmh": 38.837597726584555,
+            "above15_fraction": 0.8163265306122449,
+            "above30_fraction": 0.5918367346938775,
+            "above15_seconds": 4.0,
+            "above30_seconds": 2.9000000000000004,
+            "below_low_seconds": 0.4,
+            "below_low_longest_seconds": 0.4,
+            "first_motion_seconds": 0.5,
+            "arrival_seconds": 4.9,
+            "reached_goal": true,
+            "final_completion": 0.9325983997119173
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 14.0,
+            "speed_mean_kmh": 9.974010003247422,
+            "speed_peak_kmh": 20.449215171716148,
+            "above15_fraction": 0.35,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.9,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 4.3,
+            "below_low_longest_seconds": 4.3,
+            "first_motion_seconds": 4.4,
+            "arrival_seconds": 14.0,
+            "reached_goal": true,
+            "final_completion": 0.9485200518757396
+          },
+          "v3": {
+            "active_seconds": 16.900000000000002,
+            "speed_mean_kmh": 8.47761980569296,
+            "speed_peak_kmh": 18.337766866430407,
+            "above15_fraction": 0.2485207100591716,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.2,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 5.6000000000000005,
+            "below_low_longest_seconds": 5.6000000000000005,
+            "first_motion_seconds": 5.7,
+            "arrival_seconds": 16.900000000000002,
+            "reached_goal": true,
+            "final_completion": 0.9585217122229073
+          },
+          "v4": {
+            "active_seconds": 15.5,
+            "speed_mean_kmh": 8.895437537345556,
+            "speed_peak_kmh": 18.990049233524278,
+            "above15_fraction": 0.2838709677419355,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.4,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 5.300000000000001,
+            "below_low_longest_seconds": 5.300000000000001,
+            "first_motion_seconds": 5.4,
+            "arrival_seconds": 15.5,
+            "reached_goal": true,
+            "final_completion": 0.9420107003369702
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_12_west_parallel_stationary_a0_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_file_sha256": "32419f45c7f3d52e8e595e50569e17a99c72df8379f85e564b311d6fff62d5a3",
+      "end_reason": {
+        "baseline": "all_agents_reached",
+        "v3": "all_agents_reached",
+        "v4": "all_agents_reached"
+      },
+      "both_reached": {
+        "baseline": true,
+        "v3": true,
+        "v4": true
+      },
+      "agents": {
+        "0": {
+          "baseline": {
+            "active_seconds": 6.300000000000001,
+            "speed_mean_kmh": 23.710402269965325,
+            "speed_peak_kmh": 34.414445739537925,
+            "above15_fraction": 0.8412698412698413,
+            "above30_fraction": 0.31746031746031744,
+            "above15_seconds": 5.300000000000001,
+            "above30_seconds": 2.0,
+            "below_low_seconds": 0.5,
+            "below_low_longest_seconds": 0.5,
+            "first_motion_seconds": 0.6000000000000001,
+            "arrival_seconds": 6.300000000000001,
+            "reached_goal": true,
+            "final_completion": 0.948575119151486
+          },
+          "v3": {
+            "active_seconds": 8.4,
+            "speed_mean_kmh": 17.119981709961042,
+            "speed_peak_kmh": 20.610597924204143,
+            "above15_fraction": 0.8809523809523809,
+            "above30_fraction": 0.0,
+            "above15_seconds": 7.4,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.5,
+            "below_low_longest_seconds": 0.5,
+            "first_motion_seconds": 0.6000000000000001,
+            "arrival_seconds": 8.4,
+            "reached_goal": true,
+            "final_completion": 0.9599903167539229
+          },
+          "v4": {
+            "active_seconds": 7.4,
+            "speed_mean_kmh": 19.31932364038324,
+            "speed_peak_kmh": 24.78205489180455,
+            "above15_fraction": 0.8648648648648649,
+            "above30_fraction": 0.0,
+            "above15_seconds": 6.4,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 0.5,
+            "below_low_longest_seconds": 0.5,
+            "first_motion_seconds": 0.6000000000000001,
+            "arrival_seconds": 7.4,
+            "reached_goal": true,
+            "final_completion": 0.9574523876890719
+          }
+        },
+        "1": {
+          "baseline": {
+            "active_seconds": 11.100000000000001,
+            "speed_mean_kmh": 12.220796930075643,
+            "speed_peak_kmh": 26.483525087830756,
+            "above15_fraction": 0.45045045045045046,
+            "above30_fraction": 0.0,
+            "above15_seconds": 5.0,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 2.7,
+            "below_low_longest_seconds": 2.7,
+            "first_motion_seconds": 2.8000000000000003,
+            "arrival_seconds": 11.100000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9384823675855286
+          },
+          "v3": {
+            "active_seconds": 12.3,
+            "speed_mean_kmh": 10.81434841319961,
+            "speed_peak_kmh": 23.232919868959115,
+            "above15_fraction": 0.3983739837398374,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.9,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 3.2,
+            "below_low_longest_seconds": 3.2,
+            "first_motion_seconds": 3.3000000000000003,
+            "arrival_seconds": 12.3,
+            "reached_goal": true,
+            "final_completion": 0.9247261320300877
+          },
+          "v4": {
+            "active_seconds": 12.200000000000001,
+            "speed_mean_kmh": 11.027390613511415,
+            "speed_peak_kmh": 24.583289354886954,
+            "above15_fraction": 0.39344262295081966,
+            "above30_fraction": 0.0,
+            "above15_seconds": 4.800000000000001,
+            "above30_seconds": 0.0,
+            "below_low_seconds": 3.2,
+            "below_low_longest_seconds": 3.2,
+            "first_motion_seconds": 3.3000000000000003,
+            "arrival_seconds": 12.200000000000001,
+            "reached_goal": true,
+            "final_completion": 0.9323356613577014
+          }
+        }
+      }
+    }
+  ],
+  "V4_actual_pace_audit": {
+    "per_case": [
+      {
+        "scenario": "scenario_01_north_short_rolling_a0_left",
+        "agents": {
+          "0": {
+            "active_rows": 29,
+            "near_goal_active_rows": 4,
+            "near_goal_eligible_rows": 3,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 44,
+            "near_goal_active_rows": 5,
+            "near_goal_eligible_rows": 4,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 7,
+            "total_recorded_pace_sum": -0.01768157020575066,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_02_south_short_rolling_a1_left",
+        "agents": {
+          "0": {
+            "active_rows": 22,
+            "near_goal_active_rows": 3,
+            "near_goal_eligible_rows": 1,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 50,
+            "near_goal_active_rows": 5,
+            "near_goal_eligible_rows": 4,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 9,
+            "total_recorded_pace_sum": -0.3213076032575999,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_03_north_short_stationary_a0_left",
+        "agents": {
+          "0": {
+            "active_rows": 31,
+            "near_goal_active_rows": 4,
+            "near_goal_eligible_rows": 3,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 54,
+            "near_goal_active_rows": 5,
+            "near_goal_eligible_rows": 4,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 15,
+            "total_recorded_pace_sum": -0.11560734964540505,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_04_south_short_stationary_a1_left",
+        "agents": {
+          "0": {
+            "active_rows": 25,
+            "near_goal_active_rows": 3,
+            "near_goal_eligible_rows": 2,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 58,
+            "near_goal_active_rows": 4,
+            "near_goal_eligible_rows": 3,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 11,
+            "total_recorded_pace_sum": -0.36983251357275815,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_05_northbound_free_flow",
+        "agents": {
+          "0": {
+            "active_rows": 63,
+            "near_goal_active_rows": 0,
+            "near_goal_eligible_rows": 0,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 63,
+            "near_goal_active_rows": 0,
+            "near_goal_eligible_rows": 0,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0,
+            "far_goal_nonzero_pace_rows": 6,
+            "total_recorded_pace_sum": -0.027295557137951898,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_06_southbound_free_flow",
+        "agents": {
+          "0": {
+            "active_rows": 47,
+            "near_goal_active_rows": 2,
+            "near_goal_eligible_rows": 1,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 137,
+            "near_goal_active_rows": 4,
+            "near_goal_eligible_rows": 3,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 28,
+            "total_recorded_pace_sum": -0.8064525051585539,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_07_eastbound_free_flow",
+        "agents": {
+          "0": {
+            "active_rows": 48,
+            "near_goal_active_rows": 3,
+            "near_goal_eligible_rows": 2,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 112,
+            "near_goal_active_rows": 5,
+            "near_goal_eligible_rows": 4,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 24,
+            "total_recorded_pace_sum": -0.28213531955310706,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_08_westbound_free_flow",
+        "agents": {
+          "0": {
+            "active_rows": 56,
+            "near_goal_active_rows": 3,
+            "near_goal_eligible_rows": 2,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 115,
+            "near_goal_active_rows": 4,
+            "near_goal_eligible_rows": 3,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 6,
+            "total_recorded_pace_sum": -0.12393370260307406,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_09_north_parallel_stationary_a0_left",
+        "agents": {
+          "0": {
+            "active_rows": 86,
+            "near_goal_active_rows": 6,
+            "near_goal_eligible_rows": 5,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 122,
+            "near_goal_active_rows": 4,
+            "near_goal_eligible_rows": 3,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 12,
+            "total_recorded_pace_sum": -0.4504143114649747,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_10_south_parallel_stationary_a1_left",
+        "agents": {
+          "0": {
+            "active_rows": 63,
+            "near_goal_active_rows": 6,
+            "near_goal_eligible_rows": 5,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 160,
+            "near_goal_active_rows": 3,
+            "near_goal_eligible_rows": 2,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 67,
+            "total_recorded_pace_sum": -1.8509521890118232,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_11_east_parallel_stationary_a1_left",
+        "agents": {
+          "0": {
+            "active_rows": 49,
+            "near_goal_active_rows": 3,
+            "near_goal_eligible_rows": 2,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 155,
+            "near_goal_active_rows": 6,
+            "near_goal_eligible_rows": 5,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 55,
+            "total_recorded_pace_sum": -1.8522531344946354,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      },
+      {
+        "scenario": "scenario_12_west_parallel_stationary_a0_left",
+        "agents": {
+          "0": {
+            "active_rows": 74,
+            "near_goal_active_rows": 7,
+            "near_goal_eligible_rows": 6,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 0,
+            "total_recorded_pace_sum": 0.0,
+            "terminal_nonzero_pace_rows": 0
+          },
+          "1": {
+            "active_rows": 122,
+            "near_goal_active_rows": 4,
+            "near_goal_eligible_rows": 3,
+            "near_goal_nonzero_pace_rows": 0,
+            "near_goal_recorded_pace_sum": 0.0,
+            "far_goal_nonzero_pace_rows": 36,
+            "total_recorded_pace_sum": -0.6964180923679176,
+            "terminal_nonzero_pace_rows": 0
+          }
+        }
+      }
+    ],
+    "max_abs_recorded_vs_pure_pace_error": 0.0,
+    "agents": {
+      "0": {
+        "active_rows": 593,
+        "near_goal_active_rows": 44,
+        "near_goal_eligible_rows": 32,
+        "near_goal_nonzero_pace_rows": 0,
+        "near_goal_recorded_pace_sum": 0.0,
+        "far_goal_nonzero_pace_rows": 0,
+        "total_recorded_pace_sum": 0.0,
+        "terminal_nonzero_pace_rows": 0
+      },
+      "1": {
+        "active_rows": 1192,
+        "near_goal_active_rows": 49,
+        "near_goal_eligible_rows": 38,
+        "near_goal_nonzero_pace_rows": 0,
+        "near_goal_recorded_pace_sum": 0.0,
+        "far_goal_nonzero_pace_rows": 276,
+        "total_recorded_pace_sum": -6.914283848473551,
+        "terminal_nonzero_pace_rows": 0
+      }
+    }
+  },
+  "SC05failure_and_coverage": {
+    "end_reason": "cooperative_road_violation",
+    "steps": 63,
+    "terminal_step": 63,
+    "terminal_frame": 50769,
+    "terminal_elapsed_seconds": 6.300000000000001,
+    "first_road_violation_step": 59,
+    "first_road_violation_frame": 50765,
+    "first_road_legality": {
+      "0": {
+        "classification": "legal_lane_change",
+        "reference_lane": [
+          44,
+          1
+        ],
+        "legal_lane_change": true,
+        "lane_deviation_exempted": true,
+        "violation_reason": "",
+        "violation_raw": false,
+        "consecutive_violation_ticks": 0,
+        "violation_confirmed": false,
+        "legal_transition_grace_remaining": 10,
+        "success_eligible": true,
+        "update_reference_lane": true,
+        "same_reference_lane": false,
+        "adjacent_to_reference": true,
+        "lane_change_permitted": true,
+        "current_to_reference_cosine": 0.999999956794272,
+        "vehicle_to_current_cosine": 0.9980831454156099,
+        "in_junction": false
+      },
+      "1": {
+        "classification": "wrong_way_heading",
+        "reference_lane": [
+          44,
+          1
+        ],
+        "legal_lane_change": false,
+        "lane_deviation_exempted": false,
+        "violation_reason": "wrong_way_heading",
+        "violation_raw": true,
+        "consecutive_violation_ticks": 1,
+        "violation_confirmed": false,
+        "legal_transition_grace_remaining": 0,
+        "success_eligible": false,
+        "update_reference_lane": false,
+        "same_reference_lane": false,
+        "adjacent_to_reference": true,
+        "lane_change_permitted": false,
+        "current_to_reference_cosine": -0.9999999567854798,
+        "vehicle_to_current_cosine": -0.9771037246616383,
+        "in_junction": false
+      }
+    },
+    "terminal_road_legality": {
+      "0": {
+        "classification": "reference_lane",
+        "reference_lane": [
+          44,
+          1
+        ],
+        "legal_lane_change": false,
+        "lane_deviation_exempted": true,
+        "violation_reason": "",
+        "violation_raw": false,
+        "consecutive_violation_ticks": 0,
+        "violation_confirmed": false,
+        "legal_transition_grace_remaining": 6,
+        "success_eligible": true,
+        "update_reference_lane": true,
+        "same_reference_lane": true,
+        "adjacent_to_reference": false,
+        "lane_change_permitted": false,
+        "current_to_reference_cosine": 0.999999956794272,
+        "vehicle_to_current_cosine": 0.9992976544191214,
+        "in_junction": false
+      },
+      "1": {
+        "classification": "wrong_way_heading",
+        "reference_lane": [
+          44,
+          1
+        ],
+        "legal_lane_change": false,
+        "lane_deviation_exempted": false,
+        "violation_reason": "wrong_way_heading",
+        "violation_raw": true,
+        "consecutive_violation_ticks": 5,
+        "violation_confirmed": true,
+        "legal_transition_grace_remaining": 0,
+        "success_eligible": false,
+        "update_reference_lane": false,
+        "same_reference_lane": false,
+        "adjacent_to_reference": true,
+        "lane_change_permitted": false,
+        "current_to_reference_cosine": -0.9999999567854798,
+        "vehicle_to_current_cosine": -0.9794917749829392,
+        "in_junction": false
+      }
+    },
+    "terminal_post_kinematics": {
+      "0": {
+        "x": -193.18960571289062,
+        "y": -31.904489517211914,
+        "z": 0.0572320930659771,
+        "yaw": 87.83667755126953,
+        "vx": 0.43735355138778687,
+        "vy": 7.894045829772949,
+        "speed": 7.906151888970365,
+        "control": [
+          0.37039709091186523,
+          -0.0596923790872097,
+          0.0
+        ]
+      },
+      "1": {
+        "x": -189.64756774902344,
+        "y": -41.80046844482422,
+        "z": 0.057187993079423904,
+        "yaw": 78.3604507446289,
+        "vx": 0.2893863022327423,
+        "vy": 2.0663042068481445,
+        "speed": 2.086470106940974,
+        "control": [
+          0.07205287367105484,
+          0.10805271565914154,
+          0.0
+        ]
+      }
+    },
+    "terminal_distance_to_goal_m": {
+      "0": 12.475619316101074,
+      "1": 22.30702018737793
+    },
+    "terminal_route_completion": {
+      "0": 0.7228040326209553,
+      "1": 0.5043951951606832
+    },
+    "near_goal_coverage": {
+      "0": {
+        "active_rows": 63,
+        "near_goal_active_rows": 0,
+        "near_goal_eligible_rows": 0,
+        "near_goal_nonzero_pace_rows": 0,
+        "near_goal_recorded_pace_sum": 0,
+        "far_goal_nonzero_pace_rows": 0,
+        "total_recorded_pace_sum": 0.0,
+        "terminal_nonzero_pace_rows": 0
+      },
+      "1": {
+        "active_rows": 63,
+        "near_goal_active_rows": 0,
+        "near_goal_eligible_rows": 0,
+        "near_goal_nonzero_pace_rows": 0,
+        "near_goal_recorded_pace_sum": 0,
+        "far_goal_nonzero_pace_rows": 6,
+        "total_recorded_pace_sum": -0.027295557137951898,
+        "terminal_nonzero_pace_rows": 0
+      }
+    },
+    "road_violation_terminated": {
+      "0": false,
+      "1": true
+    },
+    "interpretation": "SC05terminatedat6.3s before either car reached the5mnear-goal regime; A1wrong_way_heading classification on opposite-direction adjacentlane. No parking recurrence was tested, so cannot claim the V3parking failure is fixed."
+  },
+  "observations": [
+    "V4SC01no longercollides in this screen, botharrive2.9/4.4s; onecase is not a replicated safety guarantee.",
+    "V4commoncompletion11/12versusV3 10/12andbaseline12/12; SC05stillfails due roadviolation beforegoal approach.",
+    "A0V4case-equalmean22.62kmh/peak41.03stillabovepreferred15kmh; reduction frombaseline but fasterthanV3.",
+    "A1SC10/11startup4.9/5.4s andstationaryactive4.8/5.3s persist; baseline3.9/4.4s.",
+    "V4near-goal cost functionmatchesrecorded rewards, but SC05haszero near-goal activecoverage; no liveclaim thatgoalparkingwasfixed.",
+    "No timeout in V4so its pooled speedisnot diluted by36sofgoalstandstill, while V3pooledspeed12.99was. Prefercase-equalandcommon-success views plusallcasefailure counts."
+  ],
+  "minimal_next_priorities": [
+    {
+      "priority": 1,
+      "candidate": "InvestigateSC05A1side drift intoopposite-direction adjacentlane and currentcenter/lanechangegrace reward before furtherpenaltyescalation; preserve success/safetydefinitions.",
+      "evidence": "firstrawviolationstep59,terminationstep63 after5ticks; headingcosrelativecurrentlane−.97949, whereasvehicleworldyaw78.36deg.",
+      "status": "candidate_not_applied_here"
+    },
+    {
+      "priority": 2,
+      "candidate": "Repeatgoal-approach coverage only after lanecontrol permits reachingit; retainV4slowapproach referencecandidate withoutclaiming behaviorrepair fromcounterfactual or earlyterminatedtest.",
+      "evidence": "SC05stopsatdistances12.48/22.31m,zero <=5mcoverage.",
+      "status": "candidate_not_applied_here"
+    },
+    {
+      "priority": 3,
+      "candidate": "Checkactualfrontblocker gates andlongitudinal commands inSC10/11 to isolateunblockedstartup delay; keep short matched-validation budget and avoidfullretraining or allcost escalation.",
+      "evidence": "A1firstmotion4.9/5.4s; slowstartup remains despite activepacecost.",
+      "status": "candidate_not_applied_here"
+    }
+  ],
+  "errors": []
+}

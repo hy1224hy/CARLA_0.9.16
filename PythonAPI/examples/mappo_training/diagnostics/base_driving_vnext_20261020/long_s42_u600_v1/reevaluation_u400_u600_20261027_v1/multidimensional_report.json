@@ -1,0 +1,3848 @@
+{
+  "reevaluation": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\reevaluation_u400_u600_20261027_v1",
+  "stages": {
+    "400": {
+      "sha256": "26573b6c7ffc994cf1c4527eb4d7163c97d1de3c5d342c18dbba9b47bae5f610",
+      "selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "suites": {
+        "parallel": {
+          "cases": 32,
+          "joint_arrivals": 32,
+          "events": {},
+          "agents": {
+            "0": {
+              "qualified": false,
+              "qualified_cases": 0,
+              "own_arrivals": 32,
+              "speed_mean_kmh": 18.239586729186605,
+              "peak_kmh": 29.484164782584518,
+              "above15_step_weighted": 0.8186582809224319,
+              "preferred_cruise_fraction_mean": 0.0,
+              "unblocked_low_fraction_mean": 0.0,
+              "unblocked_low_available_cases": 32,
+              "unblocked_low_longest_s": 0.0,
+              "final_completion_mean": 0.9086053712535147,
+              "episode_return_mean": 30.025606078492768,
+              "brake_fraction_mean": 0.0,
+              "stationary_start_s_mean": 0.6749999999999999,
+              "stationary_start_observed_cases": 16,
+              "lane_case_p95_mean_m": 1.2586113178065974,
+              "lane_peak_m": 1.7459717458471637,
+              "actual_steer_case_p95_mean_per_s": 2.0347195513313627,
+              "actual_control_fraction_mean": 0.9828909308135346,
+              "missing_terminal_readback_cases": 32,
+              "failed_checks": {
+                "preferred_cruise_speed": 32,
+                "upper_task_speed": 32,
+                "reference_lane_stability": 30,
+                "actual_steering_stability": 25
+              },
+              "strata": [
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 1,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 1,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 1,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                }
+              ]
+            },
+            "1": {
+              "qualified": false,
+              "qualified_cases": 0,
+              "own_arrivals": 32,
+              "speed_mean_kmh": 12.372151468429541,
+              "peak_kmh": 27.813415984189593,
+              "above15_step_weighted": 0.43697771587743733,
+              "preferred_cruise_fraction_mean": 0.30707869365680496,
+              "unblocked_low_fraction_mean": 0.1184033388122313,
+              "unblocked_low_available_cases": 32,
+              "unblocked_low_longest_s": 3.6,
+              "final_completion_mean": 0.9158107219089057,
+              "episode_return_mean": 31.179730451790704,
+              "brake_fraction_mean": 0.08198281209558,
+              "stationary_start_s_mean": 1.8875000000000006,
+              "stationary_start_observed_cases": 16,
+              "lane_case_p95_mean_m": 0.7119523327173849,
+              "lane_peak_m": 1.746536322072569,
+              "actual_steer_case_p95_mean_per_s": 2.6129223445896046,
+              "actual_control_fraction_mean": 0.9884319054389067,
+              "missing_terminal_readback_cases": 32,
+              "failed_checks": {
+                "preferred_cruise_speed": 32,
+                "unblocked_low_speed": 16,
+                "upper_task_speed": 32,
+                "actual_steering_stability": 30,
+                "reference_lane_stability": 18,
+                "stationary_unblocked_startup": 8
+              },
+              "strata": [
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                }
+              ]
+            }
+          },
+          "grouped_joint_arrival": {
+            "direction": {
+              "eastbound": {
+                "cases": 8,
+                "joint_arrivals": 8
+              },
+              "northbound": {
+                "cases": 8,
+                "joint_arrivals": 8
+              },
+              "southbound": {
+                "cases": 8,
+                "joint_arrivals": 8
+              },
+              "westbound": {
+                "cases": 8,
+                "joint_arrivals": 8
+              }
+            },
+            "startup_mode": {
+              "rolling": {
+                "cases": 16,
+                "joint_arrivals": 16
+              },
+              "stationary": {
+                "cases": 16,
+                "joint_arrivals": 16
+              }
+            },
+            "role": {
+              "left_parallel": {
+                "cases": 16,
+                "joint_arrivals": 16
+              },
+              "right_parallel": {
+                "cases": 16,
+                "joint_arrivals": 16
+              }
+            }
+          },
+          "previous_joint_arrivals": 32,
+          "repeat_joint_outcome_differences": [],
+          "directory": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\reevaluation_u400_u600_20261027_v1\\screen_u000400\\parallel"
+        },
+        "validation": {
+          "cases": 64,
+          "joint_arrivals": 42,
+          "events": {
+            "road_violation_terminated": 12,
+            "offroad_terminated": 8,
+            "collision_event": 2
+          },
+          "agents": {
+            "0": {
+              "qualified": false,
+              "qualified_cases": 0,
+              "own_arrivals": 42,
+              "speed_mean_kmh": 13.693506454740003,
+              "peak_kmh": 21.40407346295434,
+              "above15_step_weighted": 0.5811449579831933,
+              "preferred_cruise_fraction_mean": 0.34345662324922743,
+              "unblocked_low_fraction_mean": 0.011897513952308472,
+              "unblocked_low_available_cases": 64,
+              "unblocked_low_longest_s": 0.8,
+              "final_completion_mean": 0.7120382431584902,
+              "episode_return_mean": 3.7981583049096175,
+              "brake_fraction_mean": 0.07883569376026273,
+              "stationary_start_s_mean": 1.1843750000000002,
+              "stationary_start_observed_cases": 32,
+              "lane_case_p95_mean_m": 1.3005143269927013,
+              "lane_peak_m": 2.1199627444295506,
+              "actual_steer_case_p95_mean_per_s": 2.103731238432373,
+              "actual_control_fraction_mean": 0.9906969358557346,
+              "missing_terminal_readback_cases": 42,
+              "failed_checks": {
+                "own_goal_reached": 22,
+                "safe": 22,
+                "preferred_cruise_speed": 47,
+                "upper_task_speed": 50,
+                "reference_lane_stability": 58,
+                "actual_steering_stability": 29,
+                "stationary_unblocked_startup": 8,
+                "unblocked_low_speed": 5
+              },
+              "strata": [
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 1,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 1,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 1,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                }
+              ]
+            },
+            "1": {
+              "qualified": false,
+              "qualified_cases": 0,
+              "own_arrivals": 42,
+              "speed_mean_kmh": 13.567006627683753,
+              "peak_kmh": 28.86324033116655,
+              "above15_step_weighted": 0.48327759197324416,
+              "preferred_cruise_fraction_mean": 0.32833156899446914,
+              "unblocked_low_fraction_mean": 0.04173800922068308,
+              "unblocked_low_available_cases": 64,
+              "unblocked_low_longest_s": 1.9000000000000001,
+              "final_completion_mean": 0.7401322697451446,
+              "episode_return_mean": 20.96343264131272,
+              "brake_fraction_mean": 0.03314504237908577,
+              "stationary_start_s_mean": 1.5406250000000004,
+              "stationary_start_observed_cases": 32,
+              "lane_case_p95_mean_m": 1.0489708666496809,
+              "lane_peak_m": 1.7486489830679606,
+              "actual_steer_case_p95_mean_per_s": 1.3928450368111944,
+              "actual_control_fraction_mean": 0.9917198024145031,
+              "missing_terminal_readback_cases": 42,
+              "failed_checks": {
+                "own_goal_reached": 22,
+                "preferred_cruise_speed": 56,
+                "upper_task_speed": 56,
+                "reference_lane_stability": 48,
+                "unblocked_low_speed": 18,
+                "actual_steering_stability": 29,
+                "stationary_unblocked_startup": 10,
+                "safe": 2
+              },
+              "strata": [
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 1,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                }
+              ]
+            }
+          },
+          "grouped_joint_arrival": {
+            "direction": {
+              "eastbound": {
+                "cases": 16,
+                "joint_arrivals": 10
+              },
+              "northbound": {
+                "cases": 16,
+                "joint_arrivals": 12
+              },
+              "southbound": {
+                "cases": 16,
+                "joint_arrivals": 10
+              },
+              "westbound": {
+                "cases": 16,
+                "joint_arrivals": 10
+              }
+            },
+            "startup_mode": {
+              "rolling": {
+                "cases": 32,
+                "joint_arrivals": 16
+              },
+              "stationary": {
+                "cases": 32,
+                "joint_arrivals": 26
+              }
+            },
+            "role": {
+              "left_behind": {
+                "cases": 16,
+                "joint_arrivals": 2
+              },
+              "right_behind": {
+                "cases": 16,
+                "joint_arrivals": 8
+              },
+              "left_ahead": {
+                "cases": 16,
+                "joint_arrivals": 16
+              },
+              "right_ahead": {
+                "cases": 16,
+                "joint_arrivals": 16
+              }
+            }
+          },
+          "previous_joint_arrivals": 42,
+          "repeat_joint_outcome_differences": [],
+          "directory": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\reevaluation_u400_u600_20261027_v1\\screen_u000400\\validation"
+        }
+      }
+    },
+    "600": {
+      "sha256": "4fd6193e34cdf29ca111d537f99f94c7bae425d6b14279939b14aef6db525498",
+      "selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "suites": {
+        "parallel": {
+          "cases": 32,
+          "joint_arrivals": 32,
+          "events": {},
+          "agents": {
+            "0": {
+              "qualified": false,
+              "qualified_cases": 0,
+              "own_arrivals": 32,
+              "speed_mean_kmh": 24.15054765187766,
+              "peak_kmh": 37.012782127427414,
+              "above15_step_weighted": 0.8259052924791086,
+              "preferred_cruise_fraction_mean": 0.0,
+              "unblocked_low_fraction_mean": 0.0,
+              "unblocked_low_available_cases": 32,
+              "unblocked_low_longest_s": 0.0,
+              "final_completion_mean": 0.9120144826482399,
+              "episode_return_mean": 26.48225786784296,
+              "brake_fraction_mean": 0.0,
+              "stationary_start_s_mean": 0.575,
+              "stationary_start_observed_cases": 16,
+              "lane_case_p95_mean_m": 1.3474815919176117,
+              "lane_peak_m": 1.7486420359347343,
+              "actual_steer_case_p95_mean_per_s": 2.5936887717180066,
+              "actual_control_fraction_mean": 0.9775384100409941,
+              "missing_terminal_readback_cases": 32,
+              "failed_checks": {
+                "preferred_cruise_speed": 32,
+                "upper_task_speed": 32,
+                "reference_lane_stability": 32,
+                "actual_steering_stability": 32
+              },
+              "strata": [
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                }
+              ]
+            },
+            "1": {
+              "qualified": false,
+              "qualified_cases": 0,
+              "own_arrivals": 32,
+              "speed_mean_kmh": 13.392479923111653,
+              "peak_kmh": 23.637612854724654,
+              "above15_step_weighted": 0.5260919984538075,
+              "preferred_cruise_fraction_mean": 0.2618400610010142,
+              "unblocked_low_fraction_mean": 0.07167820301881632,
+              "unblocked_low_available_cases": 32,
+              "unblocked_low_longest_s": 1.9000000000000001,
+              "final_completion_mean": 0.9134953803526729,
+              "episode_return_mean": 30.92522525421592,
+              "brake_fraction_mean": 0.07480380585935364,
+              "stationary_start_s_mean": 1.6625000000000005,
+              "stationary_start_observed_cases": 16,
+              "lane_case_p95_mean_m": 0.6538795668392188,
+              "lane_peak_m": 0.950729406552565,
+              "actual_steer_case_p95_mean_per_s": 2.8403670395673526,
+              "actual_control_fraction_mean": 0.9874342061364092,
+              "missing_terminal_readback_cases": 32,
+              "failed_checks": {
+                "preferred_cruise_speed": 32,
+                "unblocked_low_speed": 14,
+                "upper_task_speed": 32,
+                "actual_steering_stability": 30,
+                "reference_lane_stability": 20,
+                "stationary_unblocked_startup": 8
+              },
+              "strata": [
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_parallel",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_parallel",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                }
+              ]
+            }
+          },
+          "grouped_joint_arrival": {
+            "direction": {
+              "eastbound": {
+                "cases": 8,
+                "joint_arrivals": 8
+              },
+              "northbound": {
+                "cases": 8,
+                "joint_arrivals": 8
+              },
+              "southbound": {
+                "cases": 8,
+                "joint_arrivals": 8
+              },
+              "westbound": {
+                "cases": 8,
+                "joint_arrivals": 8
+              }
+            },
+            "startup_mode": {
+              "rolling": {
+                "cases": 16,
+                "joint_arrivals": 16
+              },
+              "stationary": {
+                "cases": 16,
+                "joint_arrivals": 16
+              }
+            },
+            "role": {
+              "left_parallel": {
+                "cases": 16,
+                "joint_arrivals": 16
+              },
+              "right_parallel": {
+                "cases": 16,
+                "joint_arrivals": 16
+              }
+            }
+          },
+          "previous_joint_arrivals": 32,
+          "repeat_joint_outcome_differences": [],
+          "directory": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\reevaluation_u400_u600_20261027_v1\\screen_u000600\\parallel"
+        },
+        "validation": {
+          "cases": 64,
+          "joint_arrivals": 44,
+          "events": {
+            "road_violation_terminated": 12,
+            "offroad_terminated": 6,
+            "collision_event": 2
+          },
+          "agents": {
+            "0": {
+              "qualified": false,
+              "qualified_cases": 0,
+              "own_arrivals": 44,
+              "speed_mean_kmh": 18.220414934583502,
+              "peak_kmh": 32.873350993520255,
+              "above15_step_weighted": 0.7018794556059624,
+              "preferred_cruise_fraction_mean": 0.17905961791831357,
+              "unblocked_low_fraction_mean": 0.0,
+              "unblocked_low_available_cases": 64,
+              "unblocked_low_longest_s": 0.0,
+              "final_completion_mean": 0.7485795894331876,
+              "episode_return_mean": 3.304662233623497,
+              "brake_fraction_mean": 0.005327733860342556,
+              "stationary_start_s_mean": 0.8375,
+              "stationary_start_observed_cases": 32,
+              "lane_case_p95_mean_m": 1.3343182006214789,
+              "lane_peak_m": 2.2466971925048345,
+              "actual_steer_case_p95_mean_per_s": 3.510311016132617,
+              "actual_control_fraction_mean": 0.9869233004153247,
+              "missing_terminal_readback_cases": 44,
+              "failed_checks": {
+                "own_goal_reached": 20,
+                "safe": 20,
+                "preferred_cruise_speed": 58,
+                "upper_task_speed": 58,
+                "reference_lane_stability": 62,
+                "actual_steering_stability": 42,
+                "stationary_unblocked_startup": 2
+              },
+              "strata": [
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                }
+              ]
+            },
+            "1": {
+              "qualified": false,
+              "qualified_cases": 0,
+              "own_arrivals": 44,
+              "speed_mean_kmh": 14.341174198607645,
+              "peak_kmh": 27.429942939022286,
+              "above15_step_weighted": 0.5950012132977432,
+              "preferred_cruise_fraction_mean": 0.10077352016145956,
+              "unblocked_low_fraction_mean": 0.02613812164514699,
+              "unblocked_low_available_cases": 64,
+              "unblocked_low_longest_s": 0.9,
+              "final_completion_mean": 0.7653846681521326,
+              "episode_return_mean": 22.411268313489625,
+              "brake_fraction_mean": 0.03661194791754649,
+              "stationary_start_s_mean": 1.2531250000000003,
+              "stationary_start_observed_cases": 32,
+              "lane_case_p95_mean_m": 1.0544594816493151,
+              "lane_peak_m": 1.7492089367975794,
+              "actual_steer_case_p95_mean_per_s": 2.1570408720945116,
+              "actual_control_fraction_mean": 0.991055280407866,
+              "missing_terminal_readback_cases": 44,
+              "failed_checks": {
+                "own_goal_reached": 20,
+                "preferred_cruise_speed": 64,
+                "upper_task_speed": 64,
+                "reference_lane_stability": 40,
+                "actual_steering_stability": 53,
+                "unblocked_low_speed": 15,
+                "stationary_unblocked_startup": 8,
+                "safe": 2
+              },
+              "strata": [
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "eastbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "northbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "safe": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 1,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "unblocked_low_speed": 1,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "southbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "own_goal_reached": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_ahead",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_behind",
+                    "startup_mode": "rolling",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "left_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "unblocked_low_speed": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_ahead",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                },
+                {
+                  "cases": 2,
+                  "failed_checks": {
+                    "actual_steering_stability": 2,
+                    "preferred_cruise_speed": 2,
+                    "reference_lane_stability": 2,
+                    "stationary_unblocked_startup": 2,
+                    "upper_task_speed": 2
+                  },
+                  "labels": {
+                    "direction": "westbound",
+                    "role": "right_behind",
+                    "startup_mode": "stationary",
+                    "task_family": "adjacent_free_flow"
+                  },
+                  "passed": false,
+                  "qualified_fraction": 0.0
+                }
+              ]
+            }
+          },
+          "grouped_joint_arrival": {
+            "direction": {
+              "eastbound": {
+                "cases": 16,
+                "joint_arrivals": 12
+              },
+              "northbound": {
+                "cases": 16,
+                "joint_arrivals": 10
+              },
+              "southbound": {
+                "cases": 16,
+                "joint_arrivals": 8
+              },
+              "westbound": {
+                "cases": 16,
+                "joint_arrivals": 14
+              }
+            },
+            "startup_mode": {
+              "rolling": {
+                "cases": 32,
+                "joint_arrivals": 18
+              },
+              "stationary": {
+                "cases": 32,
+                "joint_arrivals": 26
+              }
+            },
+            "role": {
+              "left_behind": {
+                "cases": 16,
+                "joint_arrivals": 4
+              },
+              "right_behind": {
+                "cases": 16,
+                "joint_arrivals": 8
+              },
+              "left_ahead": {
+                "cases": 16,
+                "joint_arrivals": 16
+              },
+              "right_ahead": {
+                "cases": 16,
+                "joint_arrivals": 16
+              }
+            }
+          },
+          "previous_joint_arrivals": 44,
+          "repeat_joint_outcome_differences": [],
+          "directory": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\reevaluation_u400_u600_20261027_v1\\screen_u000600\\validation"
+        }
+      }
+    }
+  },
+  "critic_baseline": [
+    {
+      "lo": 541,
+      "hi": 600,
+      "critic/explained_variance": 0.2823204567035039,
+      "critic/critic_loss": 0.10109105372879033,
+      "critic/value_error_abs_mean": 4.274937496582667,
+      "critic/grad_norm_critic": 0.26322782908255854,
+      "critic/grad_clip_activation_rate": 0.14333333333333334,
+      "critic/agent_0/explained_variance": 0.11911092883798191,
+      "critic/agent_1/explained_variance": 0.05956900436089464,
+      "critic/agent_0/signed_bias": 0.25284431626799625,
+      "critic/agent_1/signed_bias": -0.2719009186456023
+    },
+    {
+      "lo": 601,
+      "hi": 660,
+      "critic/explained_variance": 0.43940017422040306,
+      "critic/critic_loss": 0.09152294342406093,
+      "critic/value_error_abs_mean": 4.2136658747990925,
+      "critic/grad_norm_critic": 0.29881340426703296,
+      "critic/grad_clip_activation_rate": 0.12333333333333334,
+      "critic/agent_0/explained_variance": 0.21806306474249035,
+      "critic/agent_1/explained_variance": 0.1492021888517477,
+      "critic/agent_0/signed_bias": -0.10225353839317013,
+      "critic/agent_1/signed_bias": 0.016977747445462214
+    },
+    {
+      "lo": 661,
+      "hi": 720,
+      "critic/explained_variance": 0.4068828652302424,
+      "critic/critic_loss": 0.07377397107581297,
+      "critic/value_error_abs_mean": 3.4802884737650555,
+      "critic/grad_norm_critic": 0.23311377342790365,
+      "critic/grad_clip_activation_rate": 0.056666666666666664,
+      "critic/agent_0/explained_variance": 0.22693049051976538,
+      "critic/agent_1/explained_variance": 0.16126832244562272,
+      "critic/agent_0/signed_bias": -0.1927845991515698,
+      "critic/agent_1/signed_bias": 0.027187430641756983
+    },
+    {
+      "lo": 721,
+      "hi": 780,
+      "critic/explained_variance": 0.358741757273674,
+      "critic/critic_loss": 0.08433906252961605,
+      "critic/value_error_abs_mean": 3.5791390955448152,
+      "critic/grad_norm_critic": 0.2743034696330627,
+      "critic/grad_clip_activation_rate": 0.10666666666666667,
+      "critic/agent_0/explained_variance": 0.22958055337048974,
+      "critic/agent_1/explained_variance": 0.15539643646632598,
+      "critic/agent_0/signed_bias": -0.06628718319186515,
+      "critic/agent_1/signed_bias": 0.03672784540290007
+    },
+    {
+      "lo": 781,
+      "hi": 800,
+      "critic/explained_variance": 0.3257153630256653,
+      "critic/critic_loss": 0.07581287438049912,
+      "critic/value_error_abs_mean": 3.3756706416606903,
+      "critic/grad_norm_critic": 0.20629938311874865,
+      "critic/grad_clip_activation_rate": 0.02,
+      "critic/agent_0/explained_variance": 0.15366172153968008,
+      "critic/agent_1/explained_variance": 0.15645062582388794,
+      "critic/agent_0/signed_bias": -0.2210315436432931,
+      "critic/agent_1/signed_bias": -0.009272193571948044
+    }
+  ],
+  "semantics": {
+    "speed": "mean of per-case active speed",
+    "above15": "weighted by active steps",
+    "low_speed": "mean of observed per-case fractions; missing never filled zero",
+    "lane": "mean of per-case P95; not pooled P95",
+    "steer": "actual VehicleControl only, missing terminal counted",
+    "scope": "fixed known corridors x2 seeds; not cross-map/formal heldout"
+  }
+}

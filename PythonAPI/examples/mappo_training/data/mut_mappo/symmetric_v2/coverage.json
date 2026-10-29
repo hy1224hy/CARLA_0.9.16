@@ -1,0 +1,108 @@
+{
+  "axes_per_parameter_orbit": {
+    "blue2_near": 2,
+    "direction": 4,
+    "family": 2,
+    "red0_left": 2
+  },
+  "case_set_version": "symmetric_v2",
+  "coordinate_convention": "CARLA physical left=(sin(yaw),-cos(yaw)); source filename role tags are not trusted",
+  "limits": [
+    "four real corridors have different route lengths, not exact world-coordinate rotations",
+    "mirrored cases are correlated evidence, not independent training seeds",
+    "no new map, traffic density, weather or compulsory merge task",
+    "family labels do not guarantee that a learned policy actually changes lanes"
+  ],
+  "n_bases": 8,
+  "n_cases": 192,
+  "parameter_profiles": {
+    "gate": [
+      {
+        "far_blue_speed_mps": 2.6,
+        "far_gap_m": 17.5,
+        "id": "g0",
+        "near_blue_speed_mps": 2.45,
+        "near_gap_m": 11.0,
+        "red_speed_mps": 3.1
+      }
+    ],
+    "selection": [
+      {
+        "far_blue_speed_mps": 2.75,
+        "far_gap_m": 20.5,
+        "id": "s0",
+        "near_blue_speed_mps": 2.6,
+        "near_gap_m": 13.0,
+        "red_speed_mps": 3.4
+      }
+    ],
+    "test": [
+      {
+        "far_blue_speed_mps": 2.95,
+        "far_gap_m": 23.0,
+        "id": "e0",
+        "near_blue_speed_mps": 2.8,
+        "near_gap_m": 15.0,
+        "red_speed_mps": 3.7
+      }
+    ],
+    "train": [
+      {
+        "far_blue_speed_mps": 2.55,
+        "far_gap_m": 16.0,
+        "id": "t0",
+        "near_blue_speed_mps": 2.4,
+        "near_gap_m": 10.0,
+        "red_speed_mps": 3.0
+      },
+      {
+        "far_blue_speed_mps": 2.65,
+        "far_gap_m": 19.0,
+        "id": "t1",
+        "near_blue_speed_mps": 2.5,
+        "near_gap_m": 12.0,
+        "red_speed_mps": 3.3
+      },
+      {
+        "far_blue_speed_mps": 2.85,
+        "far_gap_m": 22.0,
+        "id": "t2",
+        "near_blue_speed_mps": 2.7,
+        "near_gap_m": 14.0,
+        "red_speed_mps": 3.6
+      }
+    ]
+  },
+  "splits": {
+    "gate": {
+      "families": {
+        "blocking": 16,
+        "cut_in": 16
+      },
+      "n": 32
+    },
+    "selection": {
+      "families": {
+        "blocking": 16,
+        "cut_in": 16
+      },
+      "n": 32
+    },
+    "test": {
+      "families": {
+        "blocking": 16,
+        "cut_in": 16
+      },
+      "n": 32
+    },
+    "train": {
+      "families": {
+        "blocking": 48,
+        "cut_in": 48
+      },
+      "n": 96
+    }
+  },
+  "training_rounds_for_one_complete_pass_at_four_episodes": 24,
+  "validation_status": "OFFLINE_INVARIANTS_PASS_LIVE_SPAWN_PENDING"
+}

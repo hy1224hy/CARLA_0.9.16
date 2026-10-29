@@ -1,0 +1,85 @@
+{
+  "agent_goal_zones": {
+    "agent0": {
+      "half_length": 3.0,
+      "half_width": 1.6,
+      "x": -217.335828431,
+      "y": 6.574473728,
+      "yaw": 359.86,
+      "z": 0.5
+    },
+    "agent1": {
+      "half_length": 3.0,
+      "half_width": 1.6,
+      "x": -213.344392477,
+      "y": 3.064710342,
+      "yaw": 359.86,
+      "z": 0.5
+    }
+  },
+  "agent_roles": {
+    "agent0": "right_behind",
+    "agent1": "left_ahead"
+  },
+  "agents": {
+    "agent0": {
+      "initial_speed_mps": 0.0,
+      "x": -249.335732903,
+      "y": 6.6526644,
+      "yaw": 359.86,
+      "z": 0.5
+    },
+    "agent1": {
+      "initial_speed_mps": 0.0,
+      "x": -245.344296949,
+      "y": 3.142901015,
+      "yaw": 359.86,
+      "z": 0.5
+    }
+  },
+  "curriculum_stage": 1,
+  "delta_s_m": -4,
+  "description": "Symmetric actor-slot pair, independent adjacent-lane driving, equal individual route lengths",
+  "difficulty": 2,
+  "direction": "eastbound",
+  "episode_max_steps": 400,
+  "family": "free_flow",
+  "geometry_provenance": {
+    "is_live_map_projection": false,
+    "method": "source_start_midpoint_plus_source_yaw_tangent_and_3.5m_lane_spacing",
+    "physical_left_vector": "(sin(yaw), -cos(yaw)); negative CARLA right vector",
+    "source": "data/training_scenarios_town05_v2/scenario_19_eastbound_free_flow.json",
+    "source_sha256": "61a069246c82e39e5e36420129e71770f6a946ab838c04096dc861e3dbd38245",
+    "source_start_advance_m": 5.0
+  },
+  "goal_entry_distance_m": 29.0,
+  "goal_mode": "per_agent_explicit",
+  "goal_zone": {
+    "half_length": 3.0,
+    "half_width": 1.6,
+    "x": -215.340110454,
+    "y": 4.819592035,
+    "yaw": 359.86,
+    "z": 0.5
+  },
+  "pair_id": "bd1_eastbound_stationary_left_+04",
+  "physical_template_id": "bd1_eastbound_stationary_left_+04",
+  "route_length_m": 32.0,
+  "schema_version": 3,
+  "split": "validation",
+  "startup_mode": "stationary",
+  "symmetry_partner": "scenario_bd1_eastbound_stationary_p04_a0l.json",
+  "tags": [
+    "eastbound",
+    "two_lane",
+    "free_flow",
+    "non_interactive",
+    "non_adversarial",
+    "same_speed",
+    "stationary_start",
+    "base_driving_v1"
+  ],
+  "task_family": "adjacent_free_flow",
+  "town": "Town05",
+  "validation_status": "PENDING_CARLA_INITIAL_STATE_AND_ROUTE_PREFLIGHT"
+}

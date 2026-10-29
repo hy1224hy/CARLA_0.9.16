@@ -1,0 +1,234 @@
+{
+  "config": {
+    "full_scenario_updates": 200,
+    "mode": "metadata",
+    "protocol": "r8a_mastery_v1",
+    "scenario_sampling_mode": "r8a_balanced",
+    "transition_window": 10,
+    "warmup_updates": 40
+  },
+  "curriculum_protocol_version": "town05_r8a_stratified_mastery_v1",
+  "mastery_state": {
+    "agent_ids": [
+      0,
+      1
+    ],
+    "config": {
+      "consecutive_passing_windows": 2,
+      "maximum_agent_brake_mode_rate": 0.8,
+      "maximum_team_collision_rate": 0.1,
+      "maximum_team_offroad_rate": 0.1,
+      "maximum_team_road_violation_rate": 0.1,
+      "maximum_team_timeout_rate": 0.9,
+      "minimum_agent_mean_completion": 0.15,
+      "minimum_agent_mean_speed_mps": 0.3,
+      "minimum_team_success_rate": 0.1
+    },
+    "consecutive_passes": 0,
+    "curriculum_protocol_version": "town05_r8a_stratified_mastery_v1",
+    "last_evidence": {
+      "consecutive_passes": 0,
+      "failures": [
+        "pooled.team.offroad_rate",
+        "scenario.scenario_01_north_short_rolling_a0_left.json.team.offroad_rate",
+        "scenario.scenario_01_north_short_rolling_a0_left.json.team.road_violation_rate",
+        "scenario.scenario_02_south_short_rolling_a1_left.json.team.offroad_rate"
+      ],
+      "passed": false,
+      "previous_stage": 0,
+      "promoted": false,
+      "protocol_version": "town05_r8a_stratified_mastery_v1",
+      "required_scenarios": [
+        "scenario_01_north_short_rolling_a0_left.json",
+        "scenario_02_south_short_rolling_a1_left.json"
+      ],
+      "scenario_windows": {
+        "scenario_01_north_short_rolling_a0_left.json": {
+          "agent_brake_mode_rate": {
+            "0": 0.15680473372781065,
+            "1": 0.19618528610354224
+          },
+          "agent_mean_completion": {
+            "0": 0.5276697749342243,
+            "1": 0.6980281403259672
+          },
+          "agent_mean_speed_mps": {
+            "0": 4.518184322107065,
+            "1": 2.6044995408945453
+          },
+          "episode_count": 8,
+          "team_collision_rate": 0.0,
+          "team_offroad_rate": 0.5,
+          "team_road_violation_rate": 0.125,
+          "team_success_rate": 0.375,
+          "team_timeout_rate": 0.0,
+          "update": 50
+        },
+        "scenario_02_south_short_rolling_a1_left.json": {
+          "agent_brake_mode_rate": {
+            "0": 0.12313432835820895,
+            "1": 0.2571428571428571
+          },
+          "agent_mean_completion": {
+            "0": 0.8118307579653126,
+            "1": 0.7175312017095318
+          },
+          "agent_mean_speed_mps": {
+            "0": 3.749419242067324,
+            "1": 1.8363110042200101
+          },
+          "episode_count": 8,
+          "team_collision_rate": 0.0,
+          "team_offroad_rate": 0.375,
+          "team_road_violation_rate": 0.0,
+          "team_success_rate": 0.625,
+          "team_timeout_rate": 0.0,
+          "update": 50
+        }
+      },
+      "stage_index": 0,
+      "update": 50,
+      "window": {
+        "agent_brake_mode_rate": {
+          "0": 0.1419141914191419,
+          "1": 0.2310385064177363
+        },
+        "agent_mean_completion": {
+          "0": 0.6697502664497685,
+          "1": 0.7077796710177494
+        },
+        "agent_mean_speed_mps": {
+          "0": 4.178202405521832,
+          "1": 2.165278557264999
+        },
+        "episode_count": 16,
+        "team_collision_rate": 0.0,
+        "team_offroad_rate": 0.4375,
+        "team_road_violation_rate": 0.0625,
+        "team_success_rate": 0.5,
+        "team_timeout_rate": 0.0,
+        "update": 50
+      }
+    },
+    "last_update": 50,
+    "stage_count": 4,
+    "stage_index": 0,
+    "stage_names": [
+      "S0-A",
+      "S0-B",
+      "S1",
+      "S2"
+    ]
+  },
+  "sampler_state": {
+    "completed_update": 50,
+    "protocol_version": "town05_r8a_exact_balanced_v1"
+  },
+  "scenario_pool_fingerprint": "1bc0013442f2f6107089fdd5c5829d991f9cdd3bd1e862c6a657cc8eb0965232",
+  "stages": [
+    [
+      "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_02_south_short_rolling_a1_left.json"
+    ],
+    [
+      "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_04_south_short_stationary_a1_left.json"
+    ],
+    [
+      "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_04_south_short_stationary_a1_left.json",
+      "scenario_05_northbound_free_flow.json",
+      "scenario_06_southbound_free_flow.json",
+      "scenario_07_eastbound_free_flow.json",
+      "scenario_08_westbound_free_flow.json"
+    ],
+    [
+      "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_04_south_short_stationary_a1_left.json",
+      "scenario_05_northbound_free_flow.json",
+      "scenario_06_southbound_free_flow.json",
+      "scenario_07_eastbound_free_flow.json",
+      "scenario_08_westbound_free_flow.json",
+      "scenario_09_north_parallel_stationary_a0_left.json",
+      "scenario_10_south_parallel_stationary_a1_left.json",
+      "scenario_11_east_parallel_stationary_a1_left.json",
+      "scenario_12_west_parallel_stationary_a0_left.json"
+    ]
+  ],
+  "success_history": {
+    "scenario_01_north_short_rolling_a0_left.json": [
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "scenario_02_south_short_rolling_a1_left.json": [
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      1.0
+    ],
+    "scenario_03_north_short_stationary_a0_left.json": [],
+    "scenario_04_south_short_stationary_a1_left.json": [],
+    "scenario_05_northbound_free_flow.json": [],
+    "scenario_06_southbound_free_flow.json": [],
+    "scenario_07_eastbound_free_flow.json": [],
+    "scenario_08_westbound_free_flow.json": [],
+    "scenario_09_north_parallel_stationary_a0_left.json": [],
+    "scenario_10_south_parallel_stationary_a1_left.json": [],
+    "scenario_11_east_parallel_stationary_a1_left.json": [],
+    "scenario_12_west_parallel_stationary_a0_left.json": []
+  },
+  "total_sample_counts": {
+    "scenario_01_north_short_rolling_a0_left.json": 400,
+    "scenario_02_south_short_rolling_a1_left.json": 400,
+    "scenario_03_north_short_stationary_a0_left.json": 0,
+    "scenario_04_south_short_stationary_a1_left.json": 0,
+    "scenario_05_northbound_free_flow.json": 0,
+    "scenario_06_southbound_free_flow.json": 0,
+    "scenario_07_eastbound_free_flow.json": 0,
+    "scenario_08_westbound_free_flow.json": 0,
+    "scenario_09_north_parallel_stationary_a0_left.json": 0,
+    "scenario_10_south_parallel_stationary_a1_left.json": 0,
+    "scenario_11_east_parallel_stationary_a1_left.json": 0,
+    "scenario_12_west_parallel_stationary_a0_left.json": 0
+  }
+}

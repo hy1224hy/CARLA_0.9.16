@@ -1,0 +1,900 @@
+{
+  "C0_C1_preflight": {
+    "gate": {
+      "carla_connected": false,
+      "case_keys": [
+        "gate_eastbound_rolling_z00_a0l",
+        "gate_eastbound_rolling_z00_a0r",
+        "gate_northbound_rolling_z00_a0l",
+        "gate_northbound_rolling_z00_a0r",
+        "gate_southbound_rolling_z00_a0l",
+        "gate_southbound_rolling_z00_a0r",
+        "gate_westbound_rolling_z00_a0l",
+        "gate_westbound_rolling_z00_a0r",
+        "gate_eastbound_rolling_m04_a0r",
+        "gate_eastbound_rolling_p04_a0l",
+        "gate_northbound_rolling_m04_a0r",
+        "gate_northbound_rolling_p04_a0l",
+        "gate_southbound_rolling_m04_a0l",
+        "gate_southbound_rolling_p04_a0r",
+        "gate_westbound_rolling_m04_a0l",
+        "gate_westbound_rolling_p04_a0r"
+      ],
+      "case_manifest_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_pilot_20261028_v1\\cases.json",
+      "case_manifest_schema": "mut_mappo_cases_v1",
+      "case_manifest_sha256": "bc9def5d6b10689e75aead55e1b857bf9dd672c867a50e2d5fe86d823aaae383",
+      "checkpoint_algorithm": "mappo",
+      "checkpoint_completed_round": null,
+      "checkpoint_path": null,
+      "checkpoint_purpose": null,
+      "checkpoint_schema": null,
+      "checkpoint_sha256": null,
+      "checkpoint_validation": "NOT_REQUIRED_FOR_C0_C1",
+      "conditions": [
+        "C0",
+        "C1"
+      ],
+      "config_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_pilot_20261028_v1\\configs\\B0_s42.json",
+      "config_sha256": "f3f057ee9c5555e893296fd5d28166949cc8c7f2304c7fbad689a269d223eeaa",
+      "configuration_identity": {
+        "case_manifest_sha256": "bc9def5d6b10689e75aead55e1b857bf9dd672c867a50e2d5fe86d823aaae383",
+        "cases": 72,
+        "config_sha256": "2497fa4fe7b226fa39f5d9a0d674e88cc63fdfcd9b03e9dde7d96b476072b530",
+        "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+        "scenario_hashes": {
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_m08_a0l.json": "85814b509e8305ab3b2743b167087b260a77fdd0e6f783532dd116fa4565b749",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_m08_a0r.json": "6c3eef3501c50583b6484c6c5be5cd5ceb07c4ea108b1ad0e00f6be2ff36d6c8",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_p08_a0l.json": "67f4e5e4004313ef43a84e2ce324800deaadf24864b4329d4d26a467f9b02758",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_p08_a0r.json": "530856283d52d6d1821bcd200e120411336e3be860bdd29f72645d5114886853",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0l.json": "8f5bc26f863190584f3f3ee5ef9eeabe03464117cfdc8476b750a7b630900332",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0r.json": "f42474dc6904b6bfc59d6b3563a56de6baca83fcd487cdecc3b960ecca44e5d2",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_m08_a0l.json": "a676dcf81514fc238284c814892eaad0bf08084fd2edc7bd12b3de8cb1590c9f",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_m08_a0r.json": "ed9a0e28a885ff21ce9c31df26d2fca31a31479c4968ca62c22e6e2b2cd13aec",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_p08_a0l.json": "594824a055e5ac7323fd236aef9151dfec6294c3fc82d349a0daee138e314d18",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_p08_a0r.json": "f0b993449eefd49a7f566d7292f7560d7bf7a88011ccf709a3f7494c6f6624d9",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0l.json": "3194485a62479a7ec9eb7fb8edd5bbb7bea319db359a7ea6dc73c77faa255a36",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0r.json": "ec5f9b52b2bf166d0896d6abb81114630239ef440e7e5bd8d0076cd3eb9833e8",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_m08_a0l.json": "ef4eb09d252ecd34b2ce357b52eafac762b681cfeb1b2af057353fa77c1bd654",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_m08_a0r.json": "dc2f8703723cb0d5f590a7d10a120dfd8253ea8c1c9192e3139ad630ccf51793",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_p08_a0l.json": "ffbf5a6561ae829ea5f7b88be23f90d27c89aa7a91cd591c49156928a480bb73",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_p08_a0r.json": "3598ccbbbd19052c6d8062f13c95da7d2f452610127ef0cac288a03560a223a0",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0l.json": "2d530107ade6d51d39e761681aed8e31b0450f9252de003e8ecfbae9cd43800b",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0r.json": "78c88f13ddda9c2922bca2dbc98247596bdd9b5baef95581931e0bac4ab6f21e",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_m08_a0l.json": "2b3a937e306daf94605a385917828999d7d5709c99a66b348dfe8bf3746d968d",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_m08_a0r.json": "9140a5e669abf4aa280c87014b400e715369b3fe6e46bbda082883724165acad",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_p08_a0l.json": "ffa0ef3d73b6df0fcb91cc7106e65eb5a69153ff68f2bf520459b02e7563c196",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_p08_a0r.json": "ead421401654e95126718ae6ecc4e428c4df80d864852fcedac1c7542d3622de",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0l.json": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0r.json": "072e339165429689e764872e0f69acd60c5aa0dc6b8802bcc82d1f2b968a612f",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_eastbound_rolling_m04_a0r.json": "23f1439c4f58b13a1a991a50a832a4669919eaa61740c4f2499749ec9f1f72be",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_eastbound_rolling_p04_a0l.json": "89baf223db5823b63207fe38e329c78b0841c269043d1f2313e47e6f0b7c35bd",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_northbound_rolling_m04_a0r.json": "093afed306fdc960c4afde6e53dc63770e6f0d3471afae32a4d44fb75c46e6ca",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_northbound_rolling_p04_a0l.json": "0c0d612430abcba5fa03b153ecea6bc86d8fb2da7a4b1008d1045dcc8cc7f7b3",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_southbound_rolling_m04_a0l.json": "66870154ae544e9845baf2b53d4facf6e191ed4355754275ed03aef60e536aa0",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_southbound_rolling_p04_a0r.json": "77dcbec89c73f8f4c14670ebb7f5a4e2467e547d0f6d2a46e202fe3c129b0fb9",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_westbound_rolling_m04_a0l.json": "5ea2739b69bdce7a8666c39b54c1ccf8c0acb616071d501927016cfd50f2cf25",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_westbound_rolling_p04_a0r.json": "2bdc707546f3063f69d22005587478ad2d00839bf18aee3ff4425c591d65b1cf"
+        },
+        "split_counts": {
+          "gate": 16,
+          "selection": 16,
+          "test": 16,
+          "train": 24
+        },
+        "status": "OFFLINE_COMPATIBLE_NOT_LIVE_VALIDATED",
+        "task_contract_sha256": "e5a349e271bdf394c695adc6e69a630ac371f1ec0434764233643e1b763848b7"
+      },
+      "configuration_validation": "OFFLINE_VALIDATED",
+      "planned_episodes": 32,
+      "reference_curve_sha256": {},
+      "schema_version": "mut_mappo_evaluation_v1",
+      "split": "gate",
+      "status": "OFFLINE_VALIDATED",
+      "teams": [
+        "A"
+      ]
+    },
+    "train": {
+      "carla_connected": false,
+      "case_keys": [
+        "train_eastbound_rolling_m08_a0l",
+        "train_eastbound_rolling_m08_a0r",
+        "train_eastbound_rolling_p08_a0l",
+        "train_eastbound_rolling_p08_a0r",
+        "train_eastbound_rolling_z00_a0l",
+        "train_eastbound_rolling_z00_a0r",
+        "train_northbound_rolling_m08_a0l",
+        "train_northbound_rolling_m08_a0r",
+        "train_northbound_rolling_p08_a0l",
+        "train_northbound_rolling_p08_a0r",
+        "train_northbound_rolling_z00_a0l",
+        "train_northbound_rolling_z00_a0r",
+        "train_southbound_rolling_m08_a0l",
+        "train_southbound_rolling_m08_a0r",
+        "train_southbound_rolling_p08_a0l",
+        "train_southbound_rolling_p08_a0r",
+        "train_southbound_rolling_z00_a0l",
+        "train_southbound_rolling_z00_a0r",
+        "train_westbound_rolling_m08_a0l",
+        "train_westbound_rolling_m08_a0r",
+        "train_westbound_rolling_p08_a0l",
+        "train_westbound_rolling_p08_a0r",
+        "train_westbound_rolling_z00_a0l",
+        "train_westbound_rolling_z00_a0r"
+      ],
+      "case_manifest_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_pilot_20261028_v1\\cases.json",
+      "case_manifest_schema": "mut_mappo_cases_v1",
+      "case_manifest_sha256": "bc9def5d6b10689e75aead55e1b857bf9dd672c867a50e2d5fe86d823aaae383",
+      "checkpoint_algorithm": "mappo",
+      "checkpoint_completed_round": null,
+      "checkpoint_path": null,
+      "checkpoint_purpose": null,
+      "checkpoint_schema": null,
+      "checkpoint_sha256": null,
+      "checkpoint_validation": "NOT_REQUIRED_FOR_C0_C1",
+      "conditions": [
+        "C0",
+        "C1"
+      ],
+      "config_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_pilot_20261028_v1\\configs\\B0_s42.json",
+      "config_sha256": "f3f057ee9c5555e893296fd5d28166949cc8c7f2304c7fbad689a269d223eeaa",
+      "configuration_identity": {
+        "case_manifest_sha256": "bc9def5d6b10689e75aead55e1b857bf9dd672c867a50e2d5fe86d823aaae383",
+        "cases": 72,
+        "config_sha256": "2497fa4fe7b226fa39f5d9a0d674e88cc63fdfcd9b03e9dde7d96b476072b530",
+        "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+        "scenario_hashes": {
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_m08_a0l.json": "85814b509e8305ab3b2743b167087b260a77fdd0e6f783532dd116fa4565b749",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_m08_a0r.json": "6c3eef3501c50583b6484c6c5be5cd5ceb07c4ea108b1ad0e00f6be2ff36d6c8",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_p08_a0l.json": "67f4e5e4004313ef43a84e2ce324800deaadf24864b4329d4d26a467f9b02758",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_p08_a0r.json": "530856283d52d6d1821bcd200e120411336e3be860bdd29f72645d5114886853",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0l.json": "8f5bc26f863190584f3f3ee5ef9eeabe03464117cfdc8476b750a7b630900332",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0r.json": "f42474dc6904b6bfc59d6b3563a56de6baca83fcd487cdecc3b960ecca44e5d2",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_m08_a0l.json": "a676dcf81514fc238284c814892eaad0bf08084fd2edc7bd12b3de8cb1590c9f",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_m08_a0r.json": "ed9a0e28a885ff21ce9c31df26d2fca31a31479c4968ca62c22e6e2b2cd13aec",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_p08_a0l.json": "594824a055e5ac7323fd236aef9151dfec6294c3fc82d349a0daee138e314d18",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_p08_a0r.json": "f0b993449eefd49a7f566d7292f7560d7bf7a88011ccf709a3f7494c6f6624d9",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0l.json": "3194485a62479a7ec9eb7fb8edd5bbb7bea319db359a7ea6dc73c77faa255a36",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0r.json": "ec5f9b52b2bf166d0896d6abb81114630239ef440e7e5bd8d0076cd3eb9833e8",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_m08_a0l.json": "ef4eb09d252ecd34b2ce357b52eafac762b681cfeb1b2af057353fa77c1bd654",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_m08_a0r.json": "dc2f8703723cb0d5f590a7d10a120dfd8253ea8c1c9192e3139ad630ccf51793",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_p08_a0l.json": "ffbf5a6561ae829ea5f7b88be23f90d27c89aa7a91cd591c49156928a480bb73",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_p08_a0r.json": "3598ccbbbd19052c6d8062f13c95da7d2f452610127ef0cac288a03560a223a0",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0l.json": "2d530107ade6d51d39e761681aed8e31b0450f9252de003e8ecfbae9cd43800b",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0r.json": "78c88f13ddda9c2922bca2dbc98247596bdd9b5baef95581931e0bac4ab6f21e",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_m08_a0l.json": "2b3a937e306daf94605a385917828999d7d5709c99a66b348dfe8bf3746d968d",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_m08_a0r.json": "9140a5e669abf4aa280c87014b400e715369b3fe6e46bbda082883724165acad",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_p08_a0l.json": "ffa0ef3d73b6df0fcb91cc7106e65eb5a69153ff68f2bf520459b02e7563c196",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_p08_a0r.json": "ead421401654e95126718ae6ecc4e428c4df80d864852fcedac1c7542d3622de",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0l.json": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0r.json": "072e339165429689e764872e0f69acd60c5aa0dc6b8802bcc82d1f2b968a612f",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_eastbound_rolling_m04_a0r.json": "23f1439c4f58b13a1a991a50a832a4669919eaa61740c4f2499749ec9f1f72be",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_eastbound_rolling_p04_a0l.json": "89baf223db5823b63207fe38e329c78b0841c269043d1f2313e47e6f0b7c35bd",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_northbound_rolling_m04_a0r.json": "093afed306fdc960c4afde6e53dc63770e6f0d3471afae32a4d44fb75c46e6ca",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_northbound_rolling_p04_a0l.json": "0c0d612430abcba5fa03b153ecea6bc86d8fb2da7a4b1008d1045dcc8cc7f7b3",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_southbound_rolling_m04_a0l.json": "66870154ae544e9845baf2b53d4facf6e191ed4355754275ed03aef60e536aa0",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_southbound_rolling_p04_a0r.json": "77dcbec89c73f8f4c14670ebb7f5a4e2467e547d0f6d2a46e202fe3c129b0fb9",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_westbound_rolling_m04_a0l.json": "5ea2739b69bdce7a8666c39b54c1ccf8c0acb616071d501927016cfd50f2cf25",
+          "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_westbound_rolling_p04_a0r.json": "2bdc707546f3063f69d22005587478ad2d00839bf18aee3ff4425c591d65b1cf"
+        },
+        "split_counts": {
+          "gate": 16,
+          "selection": 16,
+          "test": 16,
+          "train": 24
+        },
+        "status": "OFFLINE_COMPATIBLE_NOT_LIVE_VALIDATED",
+        "task_contract_sha256": "e5a349e271bdf394c695adc6e69a630ac371f1ec0434764233643e1b763848b7"
+      },
+      "configuration_validation": "OFFLINE_VALIDATED",
+      "planned_episodes": 48,
+      "reference_curve_sha256": {},
+      "schema_version": "mut_mappo_evaluation_v1",
+      "split": "train",
+      "status": "OFFLINE_VALIDATED",
+      "teams": [
+        "A"
+      ]
+    }
+  },
+  "carla_client_forbidden": true,
+  "carla_connected": false,
+  "checkpoint_checks": {
+    "1000": {
+      "blue_source_roles": {
+        "2": 0,
+        "3": 1
+      },
+      "fresh_critic_input": 84,
+      "fresh_optimizers_and_valuenorm": true,
+      "gamma": 0.999,
+      "hidden_dim": 128,
+      "model_spec": {
+        "action_dim": 2,
+        "agent_ids": [
+          0,
+          1
+        ],
+        "critic_output_semantics": "normalized_value",
+        "critic_type": "AgentConditionedCritic",
+        "hidden_dim": 128,
+        "num_agents": 2,
+        "obs_dim": 20,
+        "state_dim": 40
+      },
+      "pilot_max_steps": 500,
+      "sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+      "source_environment": {
+        "base_driving_reward_profile": "v6",
+        "lidar_range_m": 20.0,
+        "max_steps": 400,
+        "pace_profile": "instant_pace_v6",
+        "reward_version": "v6",
+        "ttc_max_range_m": 20.0
+      },
+      "strict_roles_and_frozen_red": true
+    },
+    "1200": {
+      "blue_source_roles": {
+        "2": 0,
+        "3": 1
+      },
+      "fresh_critic_input": 84,
+      "fresh_optimizers_and_valuenorm": true,
+      "gamma": 0.999,
+      "hidden_dim": 128,
+      "model_spec": {
+        "action_dim": 2,
+        "agent_ids": [
+          0,
+          1
+        ],
+        "critic_output_semantics": "normalized_value",
+        "critic_type": "AgentConditionedCritic",
+        "hidden_dim": 128,
+        "num_agents": 2,
+        "obs_dim": 20,
+        "state_dim": 40
+      },
+      "pilot_max_steps": 500,
+      "sha256": "e6b1f93b770e2bb6cf7b40d3cba33b50bbc16e46ea4da2b4023f283498736163",
+      "source_environment": {
+        "base_driving_reward_profile": "v6",
+        "lidar_range_m": 20.0,
+        "max_steps": 400,
+        "pace_profile": "instant_pace_v6",
+        "reward_version": "v6",
+        "ttc_max_range_m": 20.0
+      },
+      "strict_roles_and_frozen_red": true
+    }
+  },
+  "configuration": {
+    "case_manifest_sha256": "bc9def5d6b10689e75aead55e1b857bf9dd672c867a50e2d5fe86d823aaae383",
+    "cases": 72,
+    "config_sha256": "2497fa4fe7b226fa39f5d9a0d674e88cc63fdfcd9b03e9dde7d96b476072b530",
+    "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+    "scenario_hashes": {
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_m08_a0l.json": "85814b509e8305ab3b2743b167087b260a77fdd0e6f783532dd116fa4565b749",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_m08_a0r.json": "6c3eef3501c50583b6484c6c5be5cd5ceb07c4ea108b1ad0e00f6be2ff36d6c8",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_p08_a0l.json": "67f4e5e4004313ef43a84e2ce324800deaadf24864b4329d4d26a467f9b02758",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_p08_a0r.json": "530856283d52d6d1821bcd200e120411336e3be860bdd29f72645d5114886853",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0l.json": "8f5bc26f863190584f3f3ee5ef9eeabe03464117cfdc8476b750a7b630900332",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0r.json": "f42474dc6904b6bfc59d6b3563a56de6baca83fcd487cdecc3b960ecca44e5d2",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_m08_a0l.json": "a676dcf81514fc238284c814892eaad0bf08084fd2edc7bd12b3de8cb1590c9f",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_m08_a0r.json": "ed9a0e28a885ff21ce9c31df26d2fca31a31479c4968ca62c22e6e2b2cd13aec",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_p08_a0l.json": "594824a055e5ac7323fd236aef9151dfec6294c3fc82d349a0daee138e314d18",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_p08_a0r.json": "f0b993449eefd49a7f566d7292f7560d7bf7a88011ccf709a3f7494c6f6624d9",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0l.json": "3194485a62479a7ec9eb7fb8edd5bbb7bea319db359a7ea6dc73c77faa255a36",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0r.json": "ec5f9b52b2bf166d0896d6abb81114630239ef440e7e5bd8d0076cd3eb9833e8",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_m08_a0l.json": "ef4eb09d252ecd34b2ce357b52eafac762b681cfeb1b2af057353fa77c1bd654",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_m08_a0r.json": "dc2f8703723cb0d5f590a7d10a120dfd8253ea8c1c9192e3139ad630ccf51793",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_p08_a0l.json": "ffbf5a6561ae829ea5f7b88be23f90d27c89aa7a91cd591c49156928a480bb73",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_p08_a0r.json": "3598ccbbbd19052c6d8062f13c95da7d2f452610127ef0cac288a03560a223a0",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0l.json": "2d530107ade6d51d39e761681aed8e31b0450f9252de003e8ecfbae9cd43800b",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0r.json": "78c88f13ddda9c2922bca2dbc98247596bdd9b5baef95581931e0bac4ab6f21e",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_m08_a0l.json": "2b3a937e306daf94605a385917828999d7d5709c99a66b348dfe8bf3746d968d",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_m08_a0r.json": "9140a5e669abf4aa280c87014b400e715369b3fe6e46bbda082883724165acad",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_p08_a0l.json": "ffa0ef3d73b6df0fcb91cc7106e65eb5a69153ff68f2bf520459b02e7563c196",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_p08_a0r.json": "ead421401654e95126718ae6ecc4e428c4df80d864852fcedac1c7542d3622de",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0l.json": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+      "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0r.json": "072e339165429689e764872e0f69acd60c5aa0dc6b8802bcc82d1f2b968a612f",
+      "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_eastbound_rolling_m04_a0r.json": "23f1439c4f58b13a1a991a50a832a4669919eaa61740c4f2499749ec9f1f72be",
+      "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_eastbound_rolling_p04_a0l.json": "89baf223db5823b63207fe38e329c78b0841c269043d1f2313e47e6f0b7c35bd",
+      "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_northbound_rolling_m04_a0r.json": "093afed306fdc960c4afde6e53dc63770e6f0d3471afae32a4d44fb75c46e6ca",
+      "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_northbound_rolling_p04_a0l.json": "0c0d612430abcba5fa03b153ecea6bc86d8fb2da7a4b1008d1045dcc8cc7f7b3",
+      "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_southbound_rolling_m04_a0l.json": "66870154ae544e9845baf2b53d4facf6e191ed4355754275ed03aef60e536aa0",
+      "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_southbound_rolling_p04_a0r.json": "77dcbec89c73f8f4c14670ebb7f5a4e2467e547d0f6d2a46e202fe3c129b0fb9",
+      "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_westbound_rolling_m04_a0l.json": "5ea2739b69bdce7a8666c39b54c1ccf8c0acb616071d501927016cfd50f2cf25",
+      "data/training_scenarios_town05_base_vnext_v1_validation/scenario_bd1_westbound_rolling_p04_a0r.json": "2bdc707546f3063f69d22005587478ad2d00839bf18aee3ff4425c591d65b1cf"
+    },
+    "split_counts": {
+      "gate": 16,
+      "selection": 16,
+      "test": 16,
+      "train": 24
+    },
+    "status": "OFFLINE_COMPATIBLE_NOT_LIVE_VALIDATED",
+    "task_contract_sha256": "e5a349e271bdf394c695adc6e69a630ac371f1ec0434764233643e1b763848b7"
+  },
+  "created_at": "2026-10-28T11:12:15.716179+00:00",
+  "historical_base_evidence": {
+    "1000": {
+      "parallel": {
+        "both_reached": 32,
+        "cases": 32,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 32,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 32,
+            "upper_task_speed": 32
+          },
+          "1": {
+            "actual_steering_stability": 32,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 16,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 16,
+            "upper_task_speed": 32
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.2712718411319521,
+          "1": 0.6586995245761543
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u001000\\parallel\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "SCREEN_OR_TEST_NOT_USED_FOR_SELECTION",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "7050193817a87782555542cf4b19e4341fae535b3d40fdfc4f59e9e2afecb455",
+        "terminal_event_episode_counts": {
+          "collision_event": 0,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 0,
+          "road_violation_terminated": 0
+        }
+      },
+      "validation": {
+        "both_reached": 62,
+        "cases": 64,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 54,
+            "own_goal_reached": 2,
+            "preferred_cruise_speed": 64,
+            "reference_lane_stability": 64,
+            "safe": 2,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 8,
+            "upper_task_speed": 64
+          },
+          "1": {
+            "actual_steering_stability": 58,
+            "own_goal_reached": 2,
+            "preferred_cruise_speed": 64,
+            "reference_lane_stability": 24,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 12,
+            "upper_task_speed": 64
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.2474409660145707,
+          "1": 0.8081964862698533
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u001000\\validation\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "NO_QUALIFIED_CANDIDATE",
+          "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "c341ff2acaaf0e942ab4ce2171cbfad4275deeb226251f483c80df52b3ed63c9",
+        "terminal_event_episode_counts": {
+          "collision_event": 0,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 0,
+          "road_violation_terminated": 2
+        }
+      }
+    },
+    "1200": {
+      "parallel": {
+        "both_reached": 32,
+        "cases": 32,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 32,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 32,
+            "upper_task_speed": 32
+          },
+          "1": {
+            "actual_steering_stability": 32,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 30,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 16,
+            "upper_task_speed": 32
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.2497058174162328,
+          "1": 1.0584916773382294
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u001200\\parallel\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "SCREEN_OR_TEST_NOT_USED_FOR_SELECTION",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "639ee6191deafb7bdea539755c43e2fc052689da2d7086cf82de377c621f694c",
+        "terminal_event_episode_counts": {
+          "collision_event": 0,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 0,
+          "road_violation_terminated": 0
+        }
+      },
+      "validation": {
+        "both_reached": 60,
+        "cases": 64,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 58,
+            "own_goal_reached": 4,
+            "preferred_cruise_speed": 64,
+            "reference_lane_stability": 64,
+            "safe": 4,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 5,
+            "upper_task_speed": 64
+          },
+          "1": {
+            "actual_steering_stability": 58,
+            "own_goal_reached": 4,
+            "preferred_cruise_speed": 64,
+            "reference_lane_stability": 52,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 12,
+            "upper_task_speed": 64
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.203367439791033,
+          "1": 1.020598180685128
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u001200\\validation\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "NO_QUALIFIED_CANDIDATE",
+          "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "9f2532126481b61611d87f9efe70bdfc2b0ecc6e3a537f0da996c126eee4f07b",
+        "terminal_event_episode_counts": {
+          "collision_event": 0,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 0,
+          "road_violation_terminated": 4
+        }
+      }
+    },
+    "400": {
+      "parallel": {
+        "both_reached": 32,
+        "cases": 32,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 25,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 30,
+            "upper_task_speed": 32
+          },
+          "1": {
+            "actual_steering_stability": 30,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 18,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 16,
+            "upper_task_speed": 32
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.2586113178065974,
+          "1": 0.711952332717385
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\reevaluation_u400_u600_20261027_v1\\screen_u000400\\parallel\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "SCREEN_OR_TEST_NOT_USED_FOR_SELECTION",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "696bddb6c90fe685f7b5fcd4b866a90dd567c025ccdb7b0c88cfae31527fea64",
+        "terminal_event_episode_counts": {
+          "collision_event": 0,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 0,
+          "road_violation_terminated": 0
+        }
+      },
+      "validation": {
+        "both_reached": 42,
+        "cases": 64,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 29,
+            "own_goal_reached": 22,
+            "preferred_cruise_speed": 47,
+            "reference_lane_stability": 58,
+            "safe": 22,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 5,
+            "upper_task_speed": 50
+          },
+          "1": {
+            "actual_steering_stability": 29,
+            "own_goal_reached": 22,
+            "preferred_cruise_speed": 56,
+            "reference_lane_stability": 48,
+            "safe": 2,
+            "stationary_unblocked_startup": 10,
+            "unblocked_low_speed": 18,
+            "upper_task_speed": 56
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.3005143269927013,
+          "1": 1.0489708666496806
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\reevaluation_u400_u600_20261027_v1\\screen_u000400\\validation\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "NO_QUALIFIED_CANDIDATE",
+          "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "c29f6495de6886e2953e2f343af8245f82eba2130c9c30c120417e4865ea2471",
+        "terminal_event_episode_counts": {
+          "collision_event": 2,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 8,
+          "road_violation_terminated": 12
+        }
+      }
+    },
+    "600": {
+      "parallel": {
+        "both_reached": 32,
+        "cases": 32,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 32,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 32,
+            "upper_task_speed": 32
+          },
+          "1": {
+            "actual_steering_stability": 30,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 20,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 14,
+            "upper_task_speed": 32
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.3474815919176115,
+          "1": 0.6538795668392191
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\reevaluation_u400_u600_20261027_v1\\screen_u000600\\parallel\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "SCREEN_OR_TEST_NOT_USED_FOR_SELECTION",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "21084f1171847470a5aa7265e39cafa47459a4427a383c068d550fadf2615ae5",
+        "terminal_event_episode_counts": {
+          "collision_event": 0,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 0,
+          "road_violation_terminated": 0
+        }
+      },
+      "validation": {
+        "both_reached": 44,
+        "cases": 64,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 42,
+            "own_goal_reached": 20,
+            "preferred_cruise_speed": 58,
+            "reference_lane_stability": 62,
+            "safe": 20,
+            "stationary_unblocked_startup": 2,
+            "upper_task_speed": 58
+          },
+          "1": {
+            "actual_steering_stability": 53,
+            "own_goal_reached": 20,
+            "preferred_cruise_speed": 64,
+            "reference_lane_stability": 40,
+            "safe": 2,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 15,
+            "upper_task_speed": 64
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.3343182006214789,
+          "1": 1.054459481649315
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\reevaluation_u400_u600_20261027_v1\\screen_u000600\\validation\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "NO_QUALIFIED_CANDIDATE",
+          "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "a4ee3ad2a4c49fcc72bdace957d692c0d17af1a89a2eb3ffe0601639d3403ee7",
+        "terminal_event_episode_counts": {
+          "collision_event": 2,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 6,
+          "road_violation_terminated": 12
+        }
+      }
+    },
+    "800": {
+      "parallel": {
+        "both_reached": 32,
+        "cases": 32,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 32,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 32,
+            "upper_task_speed": 32
+          },
+          "1": {
+            "actual_steering_stability": 32,
+            "preferred_cruise_speed": 32,
+            "reference_lane_stability": 24,
+            "stationary_unblocked_startup": 8,
+            "unblocked_low_speed": 16,
+            "upper_task_speed": 32
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.2972879934146382,
+          "1": 0.6932590704576757
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000800\\parallel\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "SCREEN_OR_TEST_NOT_USED_FOR_SELECTION",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "270fce93025a7016fba3591459131fadba2dacc4fce23f5532da8521205c4224",
+        "terminal_event_episode_counts": {
+          "collision_event": 0,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 0,
+          "road_violation_terminated": 0
+        }
+      },
+      "validation": {
+        "both_reached": 54,
+        "cases": 64,
+        "decision": "NOT_QUALIFIED",
+        "failed_checks_per_agent": {
+          "0": {
+            "actual_steering_stability": 52,
+            "own_goal_reached": 10,
+            "preferred_cruise_speed": 59,
+            "reference_lane_stability": 61,
+            "safe": 10,
+            "stationary_unblocked_startup": 4,
+            "unblocked_low_speed": 4,
+            "upper_task_speed": 61
+          },
+          "1": {
+            "actual_steering_stability": 61,
+            "own_goal_reached": 10,
+            "preferred_cruise_speed": 61,
+            "reference_lane_stability": 48,
+            "safe": 5,
+            "stationary_unblocked_startup": 10,
+            "unblocked_low_speed": 20,
+            "upper_task_speed": 61
+          }
+        },
+        "mean_case_lane_p95_m": {
+          "0": 1.21372196578585,
+          "1": 1.0239273943876157
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u000800\\validation\\qualification.json",
+        "qualified": false,
+        "selection": {
+          "decision": "NO_QUALIFIED_CANDIDATE",
+          "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+          "selected_checkpoint_sha256": null
+        },
+        "sha256": "0edcacc9bd4c7b18f5a0d1a2f28b202052fe2876799cea59f6106b3185305e33",
+        "terminal_event_episode_counts": {
+          "collision_event": 5,
+          "mission_timeout_event": 0,
+          "offroad_terminated": 3,
+          "road_violation_terminated": 2
+        }
+      }
+    },
+    "base_status": {
+      "automatic_restart": false,
+      "changed_at": "2026-10-28T03:38:00.497137Z",
+      "completed_stages": [
+        50,
+        100,
+        200,
+        400,
+        600,
+        800,
+        1000,
+        1200
+      ],
+      "ended_at": "2026-10-28T03:43:25.868552Z",
+      "explicit_interruption_recovery": true,
+      "extension_sha256": "4bd640c454fc393dcd9425e984cede232a98928728feda8b1bd4aecdfe62e189",
+      "initial_safe_update": 1051,
+      "interrupted_session_archive": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\interrupted_session_106f3ce262a24ecbb3b812e9ba606a70_0b3c74b1",
+      "last_stage_selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "pid": 11540,
+      "recovery_record": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\recovery_u1051_to_u1200_20261028_v4.json",
+      "recovery_record_sha256": "4da071be393d0e8008558807ba20d9fbbe375dc712c94c8ab8eb3954adca2baa",
+      "started_at": "2026-10-28T00:40:11.433407Z",
+      "status": "COMPLETED",
+      "target_update": 1200,
+      "total_budget_episodes": 19200,
+      "total_budget_updates": 1200,
+      "version": "base_driving_u1051_crash_recovery_u1200_20261028_v4"
+    },
+    "critic_nodes": {
+      "1000": {
+        "critic/explained_variance": 0.16245949268341064,
+        "critic/return_target_std": 9.061688423156738,
+        "critic/value_error_abs_mean": 3.268929958343506
+      },
+      "1200": {
+        "critic/explained_variance": 0.06964170932769775,
+        "critic/return_target_std": 5.093520641326904,
+        "critic/value_error_abs_mean": 2.216662883758545
+      }
+    },
+    "integrity_maxima": {
+      "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+      "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+      "reward_audit/max_abs_step_residual": 0.0,
+      "reward_audit/nonfinite_count": 0.0,
+      "train/update_skipped": 0.0
+    },
+    "matching_u1200_exit": {
+      "actual_worker_pid": 1716,
+      "launch_id": "2f0ae0788941442585e4b669d4e1812b",
+      "returncode": 0
+    },
+    "training_windows": {
+      "1001-1200": {
+        "collision": 0.02375,
+        "critic_window_means": {
+          "critic/explained_variance": 0.1684853819012642,
+          "critic/return_target_std": 5.85915105342865,
+          "critic/value_error_abs_mean": 2.5576781952381134
+        },
+        "episodes": 3200,
+        "offroad": 0.0340625,
+        "road_violation": 0.025,
+        "success": 0.914375
+      },
+      "801-1000": {
+        "collision": 0.023125,
+        "critic_window_means": {
+          "critic/explained_variance": 0.2175183939933777,
+          "critic/return_target_std": 7.050343337655067,
+          "critic/value_error_abs_mean": 3.119851443171501
+        },
+        "episodes": 3200,
+        "offroad": 0.0478125,
+        "road_violation": 0.046875,
+        "success": 0.8759375
+      }
+    },
+    "u1000_to_u1200_pairs": {
+      "0->0": 2,
+      "1->0": 2,
+      "1->1": 60
+    },
+    "u1200_completion_summary": {
+      "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u001200.pt",
+      "checkpoint_sha256": "e6b1f93b770e2bb6cf7b40d3cba33b50bbc16e46ea4da2b4023f283498736163",
+      "ended_at": "2026-10-28T03:43:22.563768Z",
+      "explicit_safe_boundary_recovery": false,
+      "normal_training_matching_exit_0": true,
+      "parallel_directory": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u001200\\parallel",
+      "parallel_qualification_sha256": "639ee6191deafb7bdea539755c43e2fc052689da2d7086cf82de377c621f694c",
+      "prior_session_archive": null,
+      "qualification_scope": "engineering validation and training regression; not formal generalization",
+      "selection": {
+        "decision": "NO_QUALIFIED_CANDIDATE",
+        "reason": "Continue development; joint arrival alone cannot qualify either vehicle.",
+        "selected_checkpoint_sha256": null
+      },
+      "status": "COMPLETED",
+      "training_integrity": {
+        "episodes": 19200,
+        "maxima": {
+          "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+          "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+          "reward_audit/max_abs_step_residual": 0.0,
+          "reward_audit/nonfinite_count": 0.0,
+          "train/update_skipped": 0.0
+        },
+        "outcomes": {
+          "collision": 663,
+          "offroad": 1290,
+          "road_violation": 854,
+          "success": 14957,
+          "timeout": 1436
+        },
+        "updates": 1200
+      },
+      "update": 1200,
+      "validation_directory": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\screen_u001200\\validation",
+      "validation_qualification_sha256": "9f2532126481b61611d87f9efe70bdfc2b0ecc6e3a537f0da996c126eee4f07b"
+    }
+  },
+  "historical_input_hashes_unchanged": true,
+  "live_started": false,
+  "prior_test_report": {
+    "errors": 0,
+    "failures": 0,
+    "modules": [
+      "tests.test_mut_mappo_algorithm_switch",
+      "tests.test_mut_mappo_checkpoint",
+      "tests.test_mut_mappo_events",
+      "tests.test_mut_mappo_experiment_registry",
+      "tests.test_mut_mappo_geometry_evidence",
+      "tests.test_mut_mappo_ippo",
+      "tests.test_mut_mappo_learning",
+      "tests.test_mut_mappo_metrics",
+      "tests.test_mut_mappo_runner",
+      "tests.test_mut_mappo_selection",
+      "tests.test_mut_mappo_session",
+      "tests.test_mut_mappo_symmetric_cases",
+      "tests.test_first_point_experiment",
+      "tests.test_mutual_distillation_controls"
+    ],
+    "run": 81,
+    "scope": "CPU/synthetic environment/local OpenDRIVE only; carla.Client forbidden",
+    "skipped": 0,
+    "successful": true
+  },
+  "status": "OFFLINE_COMPATIBLE_NOT_LIVE_VALIDATED",
+  "weak_red_authorized": false,
+  "world_ticks": 0
+}

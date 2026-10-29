@@ -1,0 +1,3471 @@
+{
+  "schema": "reward_screen_file_analysis_v1",
+  "created_at_utc": "2026-10-15T11:32:57.405483+00:00",
+  "evaluation_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\screen_u000506",
+  "analysis_evidence_status": "COMPLETE_VALID_EVIDENCE",
+  "qualification_decision": "NOT_ASSIGNED_ENGINEERING_DESCRIPTION_ONLY",
+  "scope": "Known-scene behavioral engineering screen; no population confidence or held-out generalization claim.",
+  "definitions": {
+    "active_transition": "Agent active in reset/previous info.active_mask; includes own terminating step, excludes all later rows.",
+    "speed": "Post-step reward_diagnostics.speed_mps, converted to km/h; active-transition weighted pooled summaries.",
+    "duration": "Count of qualifying active transitions times fixed_delta timestep; discrete sampling, not interpolated crossing duration.",
+    "arrival": "First success_event on an active transition; completion may be below 1 because rectangular goal zones terminate early.",
+    "first_motion": "First post-step speed at or above resolved-config startup_speed_mps; includes rolling starts.",
+    "pace_reward": "Sum of recorded reward component only; no counterfactual rescoring of the trace.",
+    "physical_jerk": "Not computed; command changes are not physical jerk.",
+    "first_arrival": "Observed partner completion/speed at first success; does not infer waiting intentions."
+  },
+  "input_sha256": {
+    "manifest.json": "88afe0c0fad865967f275adfce5fe2d590dc0f53cb63fcbd020c6d2d2df3b1d4",
+    "resolved_config.json": "d0c639d21406163769157bc591fde1efe1ebfea296217d2c2dc0aaa6d8262c41",
+    "episodes.jsonl": "787392f624e056fb04ea68286c9f83eeb872fe6f54f6ed0819c39ee7d2bcee7b"
+  },
+  "analysis_source_sha256": "6e3289018cf32dc43907da972d4235966d955ad279b55cabf7abbb7c53dcb92c",
+  "manifest_status": "COMPLETED",
+  "manifest_formal_eligibility": false,
+  "manifest_source_sha256": {
+    "environment\\carla_multi_agent_env.py": "af03ff79e8f89230faddaf4bfefb71e9a97cf1df3158b067f30c8e0ff0c7b203",
+    "environment\\instant_pace_reward.py": "8a382e016aa5f032a11010f4f253a071e1577d6dc4910db11f8c31af316caa02",
+    "environment\\instant_pace_reward_v3.py": "a69b2b36851ffdbae551f5417d7de5fb80f10d78d248479cc01f06958cc250bc",
+    "environment\\instant_pace_reward_v4.py": "0369f3f7625987f68c4e8cc052f7716ec00c3787c4e29cbcc7eda48f932eb543",
+    "environment\\instant_pace_reward_v5.py": "950300894e71ee48b0e59d817facc042e04fdf6b516fb296afaac624541b9763",
+    "environment\\instant_pace_reward_v6.py": "1c83c12b3890ea3af5c33c825f795d19cad12b7239c1a5a68f2a3d4fed8fc1dd",
+    "environment\\route_pace_reward.py": "a9b9a14b107013b010c730c520d90027046dfd5f662a27bbf8b2837a426a2fe5",
+    "evaluation\\diagnose_r8c1_behavior.py": "e18add949b6548281bc6d42c6fb4675562b00d08ce36abd396bd5aad53de06c2",
+    "evaluation\\evaluate_reward_fork.py": "a9d764ff2318c093f4f5df898cfbb346f392a78fc3cd8d07da5f3a36649402cc"
+  },
+  "checkpoint_identities": [
+    {
+      "environment": {
+        "disable_tensorboard": true,
+        "follow_spectator": true,
+        "lidar_range_m": 20.0,
+        "max_steps": 500,
+        "num_agents": 2,
+        "pace_profile": "instant_pace_v6",
+        "reward_gamma": 0.999,
+        "reward_version": "v6",
+        "spawn_vehicles": false,
+        "straight_road_length": 50.0,
+        "timestep": 0.1,
+        "town": "Town05",
+        "ttc_max_range_m": 20.0
+      },
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+      "sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "update": 506
+    }
+  ],
+  "aggregate": {
+    "valid_case_count": 12,
+    "recorded_case_count": 12,
+    "expected_case_count": 12,
+    "episode_reasons": {
+      "all_agents_reached": 12
+    },
+    "both_reached_count_valid_cases": 12,
+    "agents": {
+      "0": {
+        "reached_goal_count": 12,
+        "speed_kmh_pooled_active_transitions": {
+          "count": 668,
+          "mean": 20.69191352966902,
+          "p10": 9.973962455742164,
+          "p50": 19.5577650586672,
+          "p90": 31.46914800984834,
+          "peak": 32.51377690384105
+        },
+        "route_closing_speed_mps_pooled_active_transitions": {
+          "count": 668,
+          "mean": 5.657424977319769,
+          "p10": 2.622530240465174,
+          "p50": 5.207699105877563,
+          "p90": 8.740923630731018,
+          "peak": 9.008621617040415
+        },
+        "case_mean_speed_kmh": {
+          "count": 12,
+          "mean": 20.48512153975533,
+          "p10": 14.530357763670422,
+          "p50": 19.769063820776456,
+          "p90": 26.88002154277525,
+          "peak": 28.588773957547232
+        },
+        "case_first_motion_seconds": {
+          "count": 12,
+          "mean": 0.34166666666666673,
+          "p10": 0.1,
+          "p50": 0.30000000000000004,
+          "p90": 0.6000000000000001,
+          "peak": 0.7000000000000001
+        },
+        "case_arrival_seconds_reached_only": {
+          "count": 12,
+          "mean": 5.566666666666666,
+          "p10": 2.5700000000000003,
+          "p50": 5.4,
+          "p90": 8.350000000000001,
+          "peak": 9.4
+        },
+        "above_15_seconds": 55.7,
+        "above_30_seconds": 10.3,
+        "above_15_fraction_pooled": 0.8338323353293413,
+        "above_30_fraction_pooled": 0.15419161676646706,
+        "recorded_pace_reward_sum": 0.0,
+        "recorded_overspeed_reward_sum": -55.02266367115322
+      },
+      "1": {
+        "reached_goal_count": 12,
+        "speed_kmh_pooled_active_transitions": {
+          "count": 1206,
+          "mean": 11.25510780833219,
+          "p10": 1.8384967727621675e-05,
+          "p50": 12.477851252416745,
+          "p90": 18.406325657767162,
+          "peak": 26.660127468989234
+        },
+        "route_closing_speed_mps_pooled_active_transitions": {
+          "count": 1206,
+          "mean": 3.1000945154643227,
+          "p10": 2.9216358499173367e-10,
+          "p50": 3.4323384064308264,
+          "p90": 5.068863491613898,
+          "peak": 6.864624562682761
+        },
+        "case_mean_speed_kmh": {
+          "count": 12,
+          "mean": 10.986833400998007,
+          "p10": 8.288614226674705,
+          "p50": 11.513977563946623,
+          "p90": 13.056749972642253,
+          "peak": 13.121447625295199
+        },
+        "case_first_motion_seconds": {
+          "count": 12,
+          "mean": 1.5583333333333333,
+          "p10": 0.1,
+          "p50": 0.6,
+          "p90": 3.3700000000000006,
+          "peak": 4.9
+        },
+        "case_arrival_seconds_reached_only": {
+          "count": 12,
+          "mean": 10.05,
+          "p10": 4.61,
+          "p50": 11.75,
+          "p90": 13.290000000000001,
+          "peak": 15.3
+        },
+        "above_15_seconds": 40.099999999999994,
+        "above_30_seconds": 0.0,
+        "above_15_fraction_pooled": 0.33250414593698174,
+        "above_30_fraction_pooled": 0.0,
+        "recorded_pace_reward_sum": -4.956048152757003,
+        "recorded_overspeed_reward_sum": -11.031498212758752
+      }
+    }
+  },
+  "cases": [
+    {
+      "case": {
+        "id": "c0_u506_scenario_01_north_short_rolling_a0_left_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_01_north_short_rolling_a0_left",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "7f6908b2d95fb32d027d662d2201dd3ee3fb2f231d217271f6738d924e4eb99a",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 32,
+          "active_seconds": 3.2,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 32,
+          "arrival_seconds": 3.2,
+          "termination_step": 32,
+          "reached_goal": true,
+          "final_completion": 0.8078404955416146,
+          "speed_kmh_active_transition": {
+            "count": 32,
+            "mean": 14.32324341713291,
+            "p10": 6.971055565926031,
+            "p50": 15.70082141233203,
+            "p90": 18.333767314255677,
+            "peak": 18.780778993491005
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 32,
+            "mean": 3.831495744686115,
+            "p10": 1.901175475890579,
+            "p50": 4.274882873123703,
+            "p90": 4.7752598397028825,
+            "peak": 4.92419390443082
+          },
+          "above_15_kmh": {
+            "steps": 18,
+            "fraction": 0.5625,
+            "seconds": 1.8,
+            "longest_continuous_seconds": 1.8,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.625,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.03125,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 11,
+              "fraction": 0.34375,
+              "seconds": 1.1,
+              "longest_continuous_seconds": 1.1,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 31.034320031330097,
+          "reward_terms_sum": {
+            "progress": 15.928699211202876,
+            "overspeed": -0.33214031802329114,
+            "longitudinal_rate": -0.0019699499425426923,
+            "steer_rate": -0.06194256966141579,
+            "safety_lidar": -0.0030710887028720857,
+            "ttc": 0.0,
+            "lane_deviation": -0.4952552535426574,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -0.33214031802329114,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 40,
+          "active_seconds": 4.0,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 40,
+          "arrival_seconds": 4.0,
+          "termination_step": 40,
+          "reached_goal": true,
+          "final_completion": 0.8130145965603629,
+          "speed_kmh_active_transition": {
+            "count": 40,
+            "mean": 11.294518168585672,
+            "p10": 6.8174698359168415,
+            "p50": 11.908912642649625,
+            "p90": 14.428083802017229,
+            "peak": 14.987902843206921
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 40,
+            "mean": 3.082282821306906,
+            "p10": 1.8893659779273255,
+            "p50": 3.2897624168502873,
+            "p90": 3.962167018585552,
+            "peak": 4.129195064249733
+          },
+          "above_15_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.5,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.025,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 19,
+              "fraction": 0.475,
+              "seconds": 1.9000000000000001,
+              "longest_continuous_seconds": 1.9000000000000001,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 29.327909965922053,
+          "reward_terms_sum": {
+            "progress": 15.949302272330321,
+            "overspeed": 0.0,
+            "longitudinal_rate": -0.006361073083406249,
+            "steer_rate": -0.3753696988289979,
+            "safety_lidar": -0.0035159956225984386,
+            "ttc": 0.0,
+            "lane_deviation": -0.23614553887327366,
+            "lane_invasion": -6.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": 0.0,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 32,
+        "seconds": 3.2,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.8078404955416146,
+            "speed_kmh": 18.780778993491005
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.6476891135509483,
+            "speed_kmh": 10.712402501091724
+          }
+        }
+      },
+      "arrival_gap_seconds": 0.8,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_02_south_short_rolling_a1_left_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_02_south_short_rolling_a1_left",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "6c143c8d03b25718bac0e7965d1f5f3fdc32df855ab66576b8a6516631731788",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 23,
+          "active_seconds": 2.3000000000000003,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 23,
+          "arrival_seconds": 2.3000000000000003,
+          "termination_step": 23,
+          "reached_goal": true,
+          "final_completion": 0.8324860806329288,
+          "speed_kmh_active_transition": {
+            "count": 23,
+            "mean": 20.093469141437293,
+            "p10": 7.0630613438500935,
+            "p50": 22.263978036471354,
+            "p90": 28.06579309220886,
+            "peak": 28.168042732116273
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 23,
+            "mean": 5.567211117779503,
+            "p10": 1.9507743156798811,
+            "p50": 6.179888810112354,
+            "p90": 7.764561413547065,
+            "peak": 7.821168827062749
+          },
+          "above_15_kmh": {
+            "steps": 17,
+            "fraction": 0.7391304347826086,
+            "seconds": 1.7000000000000002,
+            "longest_continuous_seconds": 1.7000000000000002,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.8695652173913043,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.043478260869565216,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 2,
+              "fraction": 0.08695652173913043,
+              "seconds": 0.2,
+              "longest_continuous_seconds": 0.2,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 34.62621891249016,
+          "reward_terms_sum": {
+            "progress": 16.49310112405167,
+            "overspeed": -1.820228994173573,
+            "longitudinal_rate": -0.0013303947473094035,
+            "steer_rate": -0.039984431331992705,
+            "safety_lidar": -0.001334753352502105,
+            "ttc": 0.0,
+            "lane_deviation": -0.004003637956132572,
+            "lane_invasion": 0.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -1.820228994173573,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 45,
+          "active_seconds": 4.5,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 45,
+          "arrival_seconds": 4.5,
+          "termination_step": 45,
+          "reached_goal": true,
+          "final_completion": 0.821316754722984,
+          "speed_kmh_active_transition": {
+            "count": 45,
+            "mean": 10.099350584011026,
+            "p10": 5.534343291824902,
+            "p50": 6.832271105181663,
+            "p90": 18.17319353702745,
+            "peak": 18.415867743217557
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 45,
+            "mean": 2.7855077571999938,
+            "p10": 1.529525412538139,
+            "p50": 1.891235571324989,
+            "p90": 4.999572775507421,
+            "peak": 5.076784938913547
+          },
+          "above_15_kmh": {
+            "steps": 12,
+            "fraction": 0.26666666666666666,
+            "seconds": 1.2000000000000002,
+            "longest_continuous_seconds": 1.2000000000000002,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.4444444444444444,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.022222222222222223,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 24,
+              "fraction": 0.5333333333333333,
+              "seconds": 2.4000000000000004,
+              "longest_continuous_seconds": 2.4000000000000004,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 35.52369287355415,
+          "reward_terms_sum": {
+            "progress": 16.137581734376976,
+            "overspeed": -0.23841830328176802,
+            "longitudinal_rate": -0.0030491640197164737,
+            "steer_rate": -0.17763296997300893,
+            "safety_lidar": -0.004960497412257489,
+            "ttc": 0.0,
+            "lane_deviation": -0.05215091649702755,
+            "lane_invasion": 0.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.13767700963904778
+          },
+          "recorded_pace_reward_sum": -0.13767700963904778,
+          "recorded_overspeed_reward_sum": -0.23841830328176802,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 23,
+        "seconds": 2.3000000000000003,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.8324860806329288,
+            "speed_kmh": 27.705432532284746
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.2651360639728235,
+            "speed_kmh": 5.483786259284164
+          }
+        }
+      },
+      "arrival_gap_seconds": 2.2,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_03_north_short_stationary_a0_left_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_03_north_short_stationary_a0_left",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "8d90e3c1d1e31148c92b6673d0f8e56cd3fbb35eae4959b2ca857b5b4ffc102e",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 34,
+          "active_seconds": 3.4000000000000004,
+          "first_motion_step": 6,
+          "first_motion_seconds": 0.6000000000000001,
+          "arrival_step": 34,
+          "arrival_seconds": 3.4000000000000004,
+          "termination_step": 34,
+          "reached_goal": true,
+          "final_completion": 0.8077812295594153,
+          "speed_kmh_active_transition": {
+            "count": 34,
+            "mean": 13.666709778939238,
+            "p10": 0.0056841922497941995,
+            "p50": 15.984506834220507,
+            "p90": 20.13424754355464,
+            "peak": 21.011942301823776
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 34,
+            "mean": 3.647519360886863,
+            "p10": 9.078260196993727e-09,
+            "p50": 4.32536612724913,
+            "p90": 5.202536034086491,
+            "peak": 5.314933587658391
+          },
+          "above_15_kmh": {
+            "steps": 19,
+            "fraction": 0.5588235294117647,
+            "seconds": 1.9000000000000001,
+            "longest_continuous_seconds": 1.9000000000000001,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 5,
+            "fraction": 0.14705882352941177,
+            "seconds": 0.5,
+            "longest_continuous_seconds": 0.5,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.5882352941176471,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.029411764705882353,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 13,
+              "fraction": 0.38235294117647056,
+              "seconds": 1.3,
+              "longest_continuous_seconds": 1.3,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 30.766102518047557,
+          "reward_terms_sum": {
+            "progress": 15.946965944734792,
+            "overspeed": -0.5831568028103689,
+            "longitudinal_rate": -0.002605154750870751,
+            "steer_rate": -0.0440358404519245,
+            "safety_lidar": -0.004858658161493836,
+            "ttc": 0.0,
+            "lane_deviation": -0.5462069705125729,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -0.5831568028103689,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 56,
+          "active_seconds": 5.6000000000000005,
+          "first_motion_step": 11,
+          "first_motion_seconds": 1.1,
+          "arrival_step": 56,
+          "arrival_seconds": 5.6000000000000005,
+          "termination_step": 56,
+          "reached_goal": true,
+          "final_completion": 0.8293462394008518,
+          "speed_kmh_active_transition": {
+            "count": 56,
+            "mean": 8.245874186908132,
+            "p10": 0.0012213535312322462,
+            "p50": 7.2024260653123005,
+            "p90": 16.939390323275656,
+            "peak": 18.56050529472024
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 56,
+            "mean": 2.268647109371924,
+            "p10": 7.967186430471849e-09,
+            "p50": 1.9650273261133573,
+            "p90": 4.6975222671685675,
+            "peak": 5.15563463270465
+          },
+          "above_15_kmh": {
+            "steps": 10,
+            "fraction": 0.17857142857142858,
+            "seconds": 1.0,
+            "longest_continuous_seconds": 1.0,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 10,
+            "fraction": 0.17857142857142858,
+            "seconds": 1.0,
+            "longest_continuous_seconds": 1.0,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.35714285714285715,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.017857142857142856,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 35,
+              "fraction": 0.625,
+              "seconds": 3.5,
+              "longest_continuous_seconds": 3.5,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 31.537607855990125,
+          "reward_terms_sum": {
+            "progress": 16.28538447148572,
+            "overspeed": -0.17310475727030822,
+            "longitudinal_rate": -0.0039053817428023117,
+            "steer_rate": -0.19769691836267203,
+            "safety_lidar": -0.0031420051027440873,
+            "ttc": 0.0,
+            "lane_deviation": -0.17130427556770997,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.19862327744936156
+          },
+          "recorded_pace_reward_sum": -0.19862327744936156,
+          "recorded_overspeed_reward_sum": -0.17310475727030822,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 34,
+        "seconds": 3.4000000000000004,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.8077812295594153,
+            "speed_kmh": 21.011942301823776
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.2919601575430574,
+            "speed_kmh": 6.844856337914289
+          }
+        }
+      },
+      "arrival_gap_seconds": 2.2,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_04_south_short_stationary_a1_left_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_04_south_short_stationary_a1_left",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "fe1da7ed5c71660e0949e8c8cd6abe781c102f5ef08414f6a4c3d4e13f3ce449",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 25,
+          "active_seconds": 2.5,
+          "first_motion_step": 5,
+          "first_motion_seconds": 0.5,
+          "arrival_step": 25,
+          "arrival_seconds": 2.5,
+          "termination_step": 25,
+          "reached_goal": true,
+          "final_completion": 0.7994335734390738,
+          "speed_kmh_active_transition": {
+            "count": 25,
+            "mean": 17.86705616786657,
+            "p10": 0.0062389571418129414,
+            "p50": 20.392931069035885,
+            "p90": 29.772849413639264,
+            "peak": 31.075096179342015
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 25,
+            "mean": 4.958788698713881,
+            "p10": 7.278186584336014e-09,
+            "p50": 5.664018513398931,
+            "p90": 8.269144368936587,
+            "peak": 8.630473754048895
+          },
+          "above_15_kmh": {
+            "steps": 16,
+            "fraction": 0.64,
+            "seconds": 1.6,
+            "longest_continuous_seconds": 1.6,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 3,
+            "fraction": 0.12,
+            "seconds": 0.30000000000000004,
+            "longest_continuous_seconds": 0.30000000000000004,
+            "interval_count": 1
+          },
+          "below_low_speed": {
+            "steps": 4,
+            "fraction": 0.16,
+            "seconds": 0.4,
+            "longest_continuous_seconds": 0.4,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.8,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.04,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 4,
+              "fraction": 0.16,
+              "seconds": 0.4,
+              "longest_continuous_seconds": 0.4,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 33.89221787846533,
+          "reward_terms_sum": {
+            "progress": 15.85145518619693,
+            "overspeed": -1.9373850029622794,
+            "longitudinal_rate": -0.00036323885098010766,
+            "steer_rate": -0.019334996825523712,
+            "safety_lidar": -0.001689350275489467,
+            "ttc": 0.0,
+            "lane_deviation": -0.0004647188173226251,
+            "lane_invasion": 0.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -1.9373850029622794,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 56,
+          "active_seconds": 5.6000000000000005,
+          "first_motion_step": 26,
+          "first_motion_seconds": 2.6,
+          "arrival_step": 56,
+          "arrival_seconds": 5.6000000000000005,
+          "termination_step": 56,
+          "reached_goal": true,
+          "final_completion": 0.8110786833151195,
+          "speed_kmh_active_transition": {
+            "count": 56,
+            "mean": 7.9979266228958945,
+            "p10": 2.2399522016339236e-06,
+            "p50": 8.21768820121641,
+            "p90": 18.137982257786575,
+            "peak": 18.45694451711633
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 56,
+            "mean": 2.2114160287907993,
+            "p10": 0.0,
+            "p50": 2.276650511369664,
+            "p90": 5.006731064104043,
+            "peak": 5.111698585444172
+          },
+          "above_15_kmh": {
+            "steps": 17,
+            "fraction": 0.30357142857142855,
+            "seconds": 1.7000000000000002,
+            "longest_continuous_seconds": 1.7000000000000002,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 25,
+            "fraction": 0.44642857142857145,
+            "seconds": 2.5,
+            "longest_continuous_seconds": 2.5,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.35714285714285715,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.017857142857142856,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 35,
+              "fraction": 0.625,
+              "seconds": 3.5,
+              "longest_continuous_seconds": 3.5,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 35.135031897570634,
+          "reward_terms_sum": {
+            "progress": 16.002663737404248,
+            "overspeed": -0.3461307817383121,
+            "longitudinal_rate": -0.003422911025906007,
+            "steer_rate": -0.20740528613534046,
+            "safety_lidar": -0.005212117175647365,
+            "ttc": 0.0,
+            "lane_deviation": -0.008173366012908802,
+            "lane_invasion": 0.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.2972873777454943
+          },
+          "recorded_pace_reward_sum": -0.2972873777454943,
+          "recorded_overspeed_reward_sum": -0.3461307817383121,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 25,
+        "seconds": 2.5,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.7994335734390738,
+            "speed_kmh": 31.075096179342015
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 1.398054175488971e-06,
+            "speed_kmh": 4.007054720772874e-07
+          }
+        }
+      },
+      "arrival_gap_seconds": 3.1,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_05_northbound_free_flow_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_05_northbound_free_flow",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "16f845882097fb4742c90cdf0a2e5e89ca5ed6dde8b986c9e92bab7c69ce35ae",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 79,
+          "active_seconds": 7.9,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 79,
+          "arrival_seconds": 7.9,
+          "termination_step": 79,
+          "reached_goal": true,
+          "final_completion": 0.9256247974794085,
+          "speed_kmh_active_transition": {
+            "count": 79,
+            "mean": 19.44465850011562,
+            "p10": 14.211994095658868,
+            "p50": 19.832163409156003,
+            "p90": 23.435745480989144,
+            "peak": 23.654045142903588
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 79,
+            "mean": 5.328857918629056,
+            "p10": 3.9273288252707204,
+            "p50": 5.425521590840194,
+            "p90": 6.430064317685148,
+            "peak": 6.507137037528461
+          },
+          "above_15_kmh": {
+            "steps": 70,
+            "fraction": 0.8860759493670886,
+            "seconds": 7.0,
+            "longest_continuous_seconds": 7.0,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.25316455696202533,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.012658227848101266,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 58,
+              "fraction": 0.7341772151898734,
+              "seconds": 5.800000000000001,
+              "longest_continuous_seconds": 5.800000000000001,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 24.244458375670305,
+          "reward_terms_sum": {
+            "progress": 17.85283644301415,
+            "overspeed": -3.932931414494706,
+            "longitudinal_rate": -0.0031852923898259993,
+            "steer_rate": -0.09483597754704727,
+            "safety_lidar": -0.008026743352687292,
+            "ttc": 0.0,
+            "lane_deviation": -1.5693986395595756,
+            "lane_invasion": -8.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -3.932931414494706,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 118,
+          "active_seconds": 11.8,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 118,
+          "arrival_seconds": 11.8,
+          "termination_step": 118,
+          "reached_goal": true,
+          "final_completion": 0.9431273370585015,
+          "speed_kmh_active_transition": {
+            "count": 118,
+            "mean": 13.121447625295199,
+            "p10": 5.741519216766361,
+            "p50": 13.254448265265971,
+            "p90": 19.005261163731785,
+            "peak": 23.356806740931848
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 118,
+            "mean": 3.6161710753246976,
+            "p10": 1.5635686478189987,
+            "p50": 3.638331377135219,
+            "p90": 5.275748688734742,
+            "peak": 6.480128918064492
+          },
+          "above_15_kmh": {
+            "steps": 40,
+            "fraction": 0.3389830508474576,
+            "seconds": 4.0,
+            "longest_continuous_seconds": 3.1,
+            "interval_count": 2
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.1694915254237288,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.00847457627118644,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 97,
+              "fraction": 0.8220338983050848,
+              "seconds": 9.700000000000001,
+              "longest_continuous_seconds": 9.700000000000001,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 27.203020154193773,
+          "reward_terms_sum": {
+            "progress": 17.825077413950474,
+            "overspeed": -1.1183728833728588,
+            "longitudinal_rate": -0.004343222466599262,
+            "steer_rate": -0.3077119695908411,
+            "safety_lidar": -0.01377826543902652,
+            "ttc": 0.0,
+            "lane_deviation": -2.7512402867996784,
+            "lane_invasion": -6.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.4266106320877025
+          },
+          "recorded_pace_reward_sum": -0.4266106320877025,
+          "recorded_overspeed_reward_sum": -1.1183728833728588,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 79,
+        "seconds": 7.9,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.9256247974794085,
+            "speed_kmh": 20.732345012403876
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.5217495181803234,
+            "speed_kmh": 11.704612424438661
+          }
+        }
+      },
+      "arrival_gap_seconds": 3.9000000000000004,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_06_southbound_free_flow_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_06_southbound_free_flow",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "1c2f9cdd8ab19010bb8d6d27d37961765f3836e09daf93af8bfec9b453736416",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 54,
+          "active_seconds": 5.4,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 54,
+          "arrival_seconds": 5.4,
+          "termination_step": 54,
+          "reached_goal": true,
+          "final_completion": 0.9462303809046878,
+          "speed_kmh_active_transition": {
+            "count": 54,
+            "mean": 28.588773957547232,
+            "p10": 18.53172072043994,
+            "p50": 31.91632623519989,
+            "p90": 32.31181849520352,
+            "peak": 32.51377690384105
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 54,
+            "mean": 7.93502036097889,
+            "p10": 5.144153219515301,
+            "p50": 8.864121076020396,
+            "p90": 8.967250327954485,
+            "peak": 9.008621617040415
+          },
+          "above_15_kmh": {
+            "steps": 49,
+            "fraction": 0.9074074074074074,
+            "seconds": 4.9,
+            "longest_continuous_seconds": 4.9,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 36,
+            "fraction": 0.6666666666666666,
+            "seconds": 3.6,
+            "longest_continuous_seconds": 3.6,
+            "interval_count": 1
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.37037037037037035,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.018518518518518517,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 33,
+              "fraction": 0.6111111111111112,
+              "seconds": 3.3000000000000003,
+              "longest_continuous_seconds": 3.3000000000000003,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 28.080543833261387,
+          "reward_terms_sum": {
+            "progress": 18.45408244680401,
+            "overspeed": -10.297810231092335,
+            "longitudinal_rate": -0.0006593996827396477,
+            "steer_rate": -0.06250302967534933,
+            "safety_lidar": -0.002286788894834083,
+            "ttc": 0.0,
+            "lane_deviation": -0.010279164197357383,
+            "lane_invasion": 0.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -10.297810231092335,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 132,
+          "active_seconds": 13.200000000000001,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 132,
+          "arrival_seconds": 13.200000000000001,
+          "termination_step": 132,
+          "reached_goal": true,
+          "final_completion": 0.9348296152890662,
+          "speed_kmh_active_transition": {
+            "count": 132,
+            "mean": 11.596822140534062,
+            "p10": 1.1293128770237286e-05,
+            "p50": 12.063578055327302,
+            "p90": 18.406356892526215,
+            "peak": 19.056419424608546
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 132,
+            "mean": 3.195071073900606,
+            "p10": 0.0,
+            "p50": 3.3449939154722466,
+            "p90": 5.043790080467218,
+            "peak": 5.170303413416019
+          },
+          "above_15_kmh": {
+            "steps": 51,
+            "fraction": 0.38636363636363635,
+            "seconds": 5.1000000000000005,
+            "longest_continuous_seconds": 5.1000000000000005,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 23,
+            "fraction": 0.17424242424242425,
+            "seconds": 2.3000000000000003,
+            "longest_continuous_seconds": 2.3000000000000003,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.15151515151515152,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.007575757575757576,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 111,
+              "fraction": 0.8409090909090909,
+              "seconds": 11.100000000000001,
+              "longest_continuous_seconds": 11.100000000000001,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 30.635773386451106,
+          "reward_terms_sum": {
+            "progress": 17.819739670506884,
+            "overspeed": -1.1757126193367187,
+            "longitudinal_rate": -0.00569115266371789,
+            "steer_rate": -0.44691329538744307,
+            "safety_lidar": -0.008712308773824723,
+            "ttc": 0.0,
+            "lane_deviation": -1.0139926374581012,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.5329442704359805
+          },
+          "recorded_pace_reward_sum": -0.5329442704359805,
+          "recorded_overspeed_reward_sum": -1.1757126193367187,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 54,
+        "seconds": 5.4,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.9462303809046878,
+            "speed_kmh": 32.51377690384105
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.16906967793261046,
+            "speed_kmh": 11.866069112648086
+          }
+        }
+      },
+      "arrival_gap_seconds": 7.800000000000001,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_07_eastbound_free_flow_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_07_eastbound_free_flow",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "18d72b53ab5a5fb141663851cd0225bca553d7398951a95bc4837bfef88f0e09",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 53,
+          "active_seconds": 5.300000000000001,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 53,
+          "arrival_seconds": 5.300000000000001,
+          "termination_step": 53,
+          "reached_goal": true,
+          "final_completion": 0.9409481701136087,
+          "speed_kmh_active_transition": {
+            "count": 53,
+            "mean": 27.116795530985264,
+            "p10": 13.536145830590652,
+            "p50": 31.37268089181501,
+            "p90": 31.914895691942046,
+            "peak": 31.942738611428
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 53,
+            "mean": 7.524936657063904,
+            "p10": 3.7443372143064115,
+            "p50": 8.70494341291396,
+            "p90": 8.86043164875614,
+            "peak": 8.87055910308404
+          },
+          "above_15_kmh": {
+            "steps": 47,
+            "fraction": 0.8867924528301887,
+            "seconds": 4.7,
+            "longest_continuous_seconds": 4.7,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 35,
+            "fraction": 0.660377358490566,
+            "seconds": 3.5,
+            "longest_continuous_seconds": 3.5,
+            "interval_count": 1
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.37735849056603776,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.018867924528301886,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 32,
+              "fraction": 0.6037735849056604,
+              "seconds": 3.2,
+              "longest_continuous_seconds": 3.2,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 28.880631254402573,
+          "reward_terms_sum": {
+            "progress": 18.378651717032543,
+            "overspeed": -9.406453406599367,
+            "longitudinal_rate": -0.0025711891015476095,
+            "steer_rate": -0.05949727404372767,
+            "safety_lidar": -0.007724266636709231,
+            "ttc": 0.0,
+            "lane_deviation": -0.021774326248620406,
+            "lane_invasion": 0.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -9.406453406599367,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 108,
+          "active_seconds": 10.8,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 108,
+          "arrival_seconds": 10.8,
+          "termination_step": 108,
+          "reached_goal": true,
+          "final_completion": 0.9226346399173395,
+          "speed_kmh_active_transition": {
+            "count": 108,
+            "mean": 13.089784980961026,
+            "p10": 9.281513688711136,
+            "p50": 13.10583667562787,
+            "p90": 16.948201278653144,
+            "peak": 17.848010711249895
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 108,
+            "mean": 3.5934409978219404,
+            "p10": 2.5719023058898314,
+            "p50": 3.612722946139044,
+            "p90": 4.601665849023355,
+            "peak": 4.829481174454922
+          },
+          "above_15_kmh": {
+            "steps": 25,
+            "fraction": 0.23148148148148148,
+            "seconds": 2.5,
+            "longest_continuous_seconds": 2.5,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.18518518518518517,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.009259259259259259,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 87,
+              "fraction": 0.8055555555555556,
+              "seconds": 8.700000000000001,
+              "longest_continuous_seconds": 8.700000000000001,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 22.083686222741072,
+          "reward_terms_sum": {
+            "progress": 17.53126593537425,
+            "overspeed": -0.3206803102776039,
+            "longitudinal_rate": -0.009950453216113203,
+            "steer_rate": -0.7249637359363653,
+            "safety_lidar": -0.005195534191341224,
+            "ttc": 0.0,
+            "lane_deviation": -2.364814518609916,
+            "lane_invasion": -12.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.021975160401833102
+          },
+          "recorded_pace_reward_sum": -0.021975160401833102,
+          "recorded_overspeed_reward_sum": -0.3206803102776039,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 53,
+        "seconds": 5.300000000000001,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.9409481701136087,
+            "speed_kmh": 31.105423558332625
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.38460044041626973,
+            "speed_kmh": 13.081672733679326
+          }
+        }
+      },
+      "arrival_gap_seconds": 5.5,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_08_westbound_free_flow_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_08_westbound_free_flow",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "a6ca85ad6bea75864470687caaaa76bc9fe0216ec5e7c70b0c844493b960d936",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 65,
+          "active_seconds": 6.5,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 65,
+          "arrival_seconds": 6.5,
+          "termination_step": 65,
+          "reached_goal": true,
+          "final_completion": 0.9313048521132788,
+          "speed_kmh_active_transition": {
+            "count": 65,
+            "mean": 23.350516188797005,
+            "p10": 19.068639303804346,
+            "p50": 23.609965413079976,
+            "p90": 27.093023437667455,
+            "peak": 27.57595609793553
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 65,
+            "mean": 6.463688290243336,
+            "p10": 5.296291675775067,
+            "p50": 6.551882168806373,
+            "p90": 7.519763838391378,
+            "peak": 7.659121949053523
+          },
+          "above_15_kmh": {
+            "steps": 60,
+            "fraction": 0.9230769230769231,
+            "seconds": 6.0,
+            "longest_continuous_seconds": 6.0,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.3076923076923077,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.015384615384615385,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 44,
+              "fraction": 0.676923076923077,
+              "seconds": 4.4,
+              "longest_continuous_seconds": 4.4,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 29.782945008961043,
+          "reward_terms_sum": {
+            "progress": 18.02962824896545,
+            "overspeed": -6.027033032818839,
+            "longitudinal_rate": -0.002896650337419308,
+            "steer_rate": -0.12786027434687328,
+            "safety_lidar": -0.007161466140573147,
+            "ttc": 0.0,
+            "lane_deviation": -0.08173181636071103,
+            "lane_invasion": -2.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -6.027033032818839,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 119,
+          "active_seconds": 11.9,
+          "first_motion_step": 1,
+          "first_motion_seconds": 0.1,
+          "arrival_step": 119,
+          "arrival_seconds": 11.9,
+          "termination_step": 119,
+          "reached_goal": true,
+          "final_completion": 0.9273340933528004,
+          "speed_kmh_active_transition": {
+            "count": 119,
+            "mean": 12.759434897773286,
+            "p10": 6.231359947058044,
+            "p50": 13.505944781781492,
+            "p90": 18.326494493281,
+            "peak": 18.68972825860459
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 119,
+            "mean": 3.510980365636938,
+            "p10": 1.7272654122965874,
+            "p50": 3.7375742466963873,
+            "p90": 4.99022321397115,
+            "peak": 5.135482227110108
+          },
+          "above_15_kmh": {
+            "steps": 47,
+            "fraction": 0.3949579831932773,
+            "seconds": 4.7,
+            "longest_continuous_seconds": 4.7,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 10,
+            "fraction": 0.08403361344537816,
+            "seconds": 1.0,
+            "longest_continuous_seconds": 1.0,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.16806722689075632,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.008403361344537815,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 98,
+              "fraction": 0.8235294117647058,
+              "seconds": 9.8,
+              "longest_continuous_seconds": 9.8,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 30.13117419558308,
+          "reward_terms_sum": {
+            "progress": 17.67550912468337,
+            "overspeed": -0.9709244722385033,
+            "longitudinal_rate": -0.010585342843892565,
+            "steer_rate": -0.6088811830924566,
+            "safety_lidar": -0.0026299241708505755,
+            "ttc": 0.0,
+            "lane_deviation": -1.8453725223623794,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.1059414843922006
+          },
+          "recorded_pace_reward_sum": -0.1059414843922006,
+          "recorded_overspeed_reward_sum": -0.9709244722385033,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 65,
+        "seconds": 6.5,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.9313048521132788,
+            "speed_kmh": 22.226895814264168
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.36120177326009617,
+            "speed_kmh": 13.809039481258973
+          }
+        }
+      },
+      "arrival_gap_seconds": 5.4,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_09_north_parallel_stationary_a0_left_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_09_north_parallel_stationary_a0_left",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "6c3dc86030ccfe2896ad886dc89d85e2eb1ea9122544dc48426ee202a3813ef1",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 94,
+          "active_seconds": 9.4,
+          "first_motion_step": 7,
+          "first_motion_seconds": 0.7000000000000001,
+          "arrival_step": 94,
+          "arrival_seconds": 9.4,
+          "termination_step": 94,
+          "reached_goal": true,
+          "final_completion": 0.934361604970326,
+          "speed_kmh_active_transition": {
+            "count": 94,
+            "mean": 16.394386882508037,
+            "p10": 11.453165510047024,
+            "p50": 18.023954087850917,
+            "p90": 18.71692128318898,
+            "peak": 19.05090751655361
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 94,
+            "mean": 4.50168187136323,
+            "p10": 3.175578116658326,
+            "p50": 4.968163573850871,
+            "p90": 5.058785313918135,
+            "peak": 5.134778785970123
+          },
+          "above_15_kmh": {
+            "steps": 81,
+            "fraction": 0.8617021276595744,
+            "seconds": 8.1,
+            "longest_continuous_seconds": 8.1,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 6,
+            "fraction": 0.06382978723404255,
+            "seconds": 0.6000000000000001,
+            "longest_continuous_seconds": 0.6000000000000001,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.2127659574468085,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.010638297872340425,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 73,
+              "fraction": 0.776595744680851,
+              "seconds": 7.300000000000001,
+              "longest_continuous_seconds": 7.300000000000001,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 28.257081955522118,
+          "reward_terms_sum": {
+            "progress": 17.887890301077736,
+            "overspeed": -2.0375207368910453,
+            "longitudinal_rate": -0.004039078161868597,
+            "steer_rate": -0.17066748809063645,
+            "safety_lidar": -0.006547561641890838,
+            "ttc": 0.0,
+            "lane_deviation": -3.412033480770175,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -2.0375207368910453,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 129,
+          "active_seconds": 12.9,
+          "first_motion_step": 31,
+          "first_motion_seconds": 3.1,
+          "arrival_step": 129,
+          "arrival_seconds": 12.9,
+          "termination_step": 129,
+          "reached_goal": true,
+          "final_completion": 0.9410725500682247,
+          "speed_kmh_active_transition": {
+            "count": 129,
+            "mean": 11.92312549969187,
+            "p10": 3.853474720107967e-06,
+            "p50": 13.800699695937173,
+            "p90": 20.084236258814844,
+            "peak": 24.873673960487253
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 129,
+            "mean": 3.3007556837015004,
+            "p10": 0.0,
+            "p50": 3.8325628563591128,
+            "p90": 5.563276438546844,
+            "peak": 6.689786584044636
+          },
+          "above_15_kmh": {
+            "steps": 57,
+            "fraction": 0.4418604651162791,
+            "seconds": 5.7,
+            "longest_continuous_seconds": 5.7,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 30,
+            "fraction": 0.23255813953488372,
+            "seconds": 3.0,
+            "longest_continuous_seconds": 3.0,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.15503875968992248,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.007751937984496124,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 108,
+              "fraction": 0.8372093023255814,
+              "seconds": 10.8,
+              "longest_continuous_seconds": 10.8,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 34.43801421515136,
+          "reward_terms_sum": {
+            "progress": 18.036061691741992,
+            "overspeed": -1.936117761146859,
+            "longitudinal_rate": -0.005505716513404517,
+            "steer_rate": -0.5255316566909509,
+            "safety_lidar": -0.009237874265286801,
+            "ttc": 0.0,
+            "lane_deviation": -0.5202244746374163,
+            "lane_invasion": 0.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.6014299933367115
+          },
+          "recorded_pace_reward_sum": -0.6014299933367115,
+          "recorded_overspeed_reward_sum": -1.936117761146859,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 94,
+        "seconds": 9.4,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.934361604970326,
+            "speed_kmh": 17.767279746631203
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.5112654829981691,
+            "speed_kmh": 17.90048903726873
+          }
+        }
+      },
+      "arrival_gap_seconds": 3.5,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_10_south_parallel_stationary_a1_left_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_10_south_parallel_stationary_a1_left",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "3921b1e07a32a7bd2e7bb52ceb842c167b61df1edff358bb111c83bc901a0585",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 71,
+          "active_seconds": 7.1000000000000005,
+          "first_motion_step": 6,
+          "first_motion_seconds": 0.6000000000000001,
+          "arrival_step": 71,
+          "arrival_seconds": 7.1000000000000005,
+          "termination_step": 71,
+          "reached_goal": true,
+          "final_completion": 0.9648296641186289,
+          "speed_kmh_active_transition": {
+            "count": 71,
+            "mean": 23.162108859125993,
+            "p10": 11.491450085930317,
+            "p50": 27.458114874403293,
+            "p90": 28.030295156370734,
+            "peak": 28.1261308967091
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 71,
+            "mean": 6.143250406372012,
+            "p10": 2.477839398543956,
+            "p50": 7.330006535708656,
+            "p90": 7.665676333101156,
+            "peak": 7.731489796729176
+          },
+          "above_15_kmh": {
+            "steps": 62,
+            "fraction": 0.8732394366197183,
+            "seconds": 6.2,
+            "longest_continuous_seconds": 6.2,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 4,
+            "fraction": 0.056338028169014086,
+            "seconds": 0.4,
+            "longest_continuous_seconds": 0.4,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.28169014084507044,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.014084507042253521,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 50,
+              "fraction": 0.704225352112676,
+              "seconds": 5.0,
+              "longest_continuous_seconds": 5.0,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 24.88410147177406,
+          "reward_terms_sum": {
+            "progress": 18.6977574128795,
+            "overspeed": -8.054197429171733,
+            "longitudinal_rate": -0.003073481607674421,
+            "steer_rate": -0.08507589841290938,
+            "safety_lidar": -0.009884971711685687,
+            "ttc": 0.0,
+            "lane_deviation": -1.66142416020144,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -8.054197429171733,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 133,
+          "active_seconds": 13.3,
+          "first_motion_step": 34,
+          "first_motion_seconds": 3.4000000000000004,
+          "arrival_step": 133,
+          "arrival_seconds": 13.3,
+          "termination_step": 133,
+          "reached_goal": true,
+          "final_completion": 0.9424744684095654,
+          "speed_kmh_active_transition": {
+            "count": 133,
+            "mean": 11.609308533386878,
+            "p10": 3.941378188352867e-06,
+            "p50": 12.033575948203316,
+            "p90": 22.08840043031419,
+            "peak": 26.660127468989234
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 133,
+            "mean": 3.1987641127180226,
+            "p10": 7.563857318260151e-10,
+            "p50": 3.342330101480494,
+            "p90": 6.112881219727342,
+            "peak": 6.864624562682761
+          },
+          "above_15_kmh": {
+            "steps": 55,
+            "fraction": 0.41353383458646614,
+            "seconds": 5.5,
+            "longest_continuous_seconds": 5.5,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 33,
+            "fraction": 0.24812030075187969,
+            "seconds": 3.3000000000000003,
+            "longest_continuous_seconds": 3.3000000000000003,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.15037593984962405,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 5,
+              "fraction": 0.03759398496240601,
+              "seconds": 0.5,
+              "longest_continuous_seconds": 0.5,
+              "interval_count": 1
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.007518796992481203,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 107,
+              "fraction": 0.8045112781954887,
+              "seconds": 10.700000000000001,
+              "longest_continuous_seconds": 10.4,
+              "interval_count": 2
+            }
+          },
+          "return_recorded_reward": 28.734765666627943,
+          "reward_terms_sum": {
+            "progress": 18.095499633086305,
+            "overspeed": -2.591886048317897,
+            "longitudinal_rate": -0.00678275468072687,
+            "steer_rate": -0.5838339681440732,
+            "safety_lidar": -0.009766643139760485,
+            "ttc": 0.0,
+            "lane_deviation": -1.6512505097112413,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.5172140424646572
+          },
+          "recorded_pace_reward_sum": -0.5172140424646572,
+          "recorded_overspeed_reward_sum": -2.591886048317897,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 71,
+        "seconds": 7.1000000000000005,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.9648296641186289,
+            "speed_kmh": 27.367914064983896
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.21336940788257946,
+            "speed_kmh": 13.255069311426164
+          }
+        }
+      },
+      "arrival_gap_seconds": 6.2,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_11_east_parallel_stationary_a1_left_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_11_east_parallel_stationary_a1_left",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "13c84a1e46cfccc05634bf3b8a658935c18f518f0885b01c5a731782343c99ba",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 54,
+          "active_seconds": 5.4,
+          "first_motion_step": 5,
+          "first_motion_seconds": 0.5,
+          "arrival_step": 54,
+          "arrival_seconds": 5.4,
+          "termination_step": 54,
+          "reached_goal": true,
+          "final_completion": 0.9282455468576148,
+          "speed_kmh_active_transition": {
+            "count": 54,
+            "mean": 24.749055648885125,
+            "p10": 7.8554691628087046,
+            "p50": 30.58820933469424,
+            "p90": 31.551821901112664,
+            "peak": 31.59246638671927
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 54,
+            "mean": 6.867372606523439,
+            "p10": 2.172846635803868,
+            "p50": 8.439236058535268,
+            "p90": 8.762016707008716,
+            "peak": 8.772183281298679
+          },
+          "above_15_kmh": {
+            "steps": 45,
+            "fraction": 0.8333333333333334,
+            "seconds": 4.5,
+            "longest_continuous_seconds": 4.5,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 29,
+            "fraction": 0.5370370370370371,
+            "seconds": 2.9000000000000004,
+            "longest_continuous_seconds": 2.9000000000000004,
+            "interval_count": 1
+          },
+          "below_low_speed": {
+            "steps": 4,
+            "fraction": 0.07407407407407407,
+            "seconds": 0.4,
+            "longest_continuous_seconds": 0.4,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.37037037037037035,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.018518518518518517,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 33,
+              "fraction": 0.6111111111111112,
+              "seconds": 3.3000000000000003,
+              "longest_continuous_seconds": 3.3000000000000003,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 29.81952412415796,
+          "reward_terms_sum": {
+            "progress": 18.154338120713813,
+            "overspeed": -8.260390833079425,
+            "longitudinal_rate": -0.0016044090465790577,
+            "steer_rate": -0.05861584794321051,
+            "safety_lidar": -0.006832103920648112,
+            "ttc": 0.0,
+            "lane_deviation": -0.007370802565990608,
+            "lane_invasion": 0.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -8.260390833079425,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 153,
+          "active_seconds": 15.3,
+          "first_motion_step": 49,
+          "first_motion_seconds": 4.9,
+          "arrival_step": 153,
+          "arrival_seconds": 15.3,
+          "termination_step": 153,
+          "reached_goal": true,
+          "final_completion": 0.9150189174560609,
+          "speed_kmh_active_transition": {
+            "count": 153,
+            "mean": 8.673274584573857,
+            "p10": 2.780922096354508e-06,
+            "p50": 9.75809190870478,
+            "p90": 17.918113623811514,
+            "peak": 18.55182756945964
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 153,
+            "mean": 2.3786687863579616,
+            "p10": 0.0,
+            "p50": 2.7099938689951593,
+            "p90": 4.7986398244571795,
+            "peak": 5.023298933294972
+          },
+          "above_15_kmh": {
+            "steps": 33,
+            "fraction": 0.21568627450980393,
+            "seconds": 3.3000000000000003,
+            "longest_continuous_seconds": 3.3000000000000003,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 47,
+            "fraction": 0.30718954248366015,
+            "seconds": 4.7,
+            "longest_continuous_seconds": 4.7,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.13071895424836602,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.006535947712418301,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 132,
+              "fraction": 0.8627450980392157,
+              "seconds": 13.200000000000001,
+              "longest_continuous_seconds": 13.200000000000001,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 29.10064643196101,
+          "reward_terms_sum": {
+            "progress": 17.497474917471525,
+            "overspeed": -0.6032299119553626,
+            "longitudinal_rate": -0.007207386029356059,
+            "steer_rate": -0.4423871701507146,
+            "safety_lidar": -0.002283357397906311,
+            "ttc": 0.0,
+            "lane_deviation": -1.746321530339233,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -1.5953991296379386
+          },
+          "recorded_pace_reward_sum": -1.5953991296379386,
+          "recorded_overspeed_reward_sum": -0.6032299119553626,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 54,
+        "seconds": 5.4,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.9282455468576148,
+            "speed_kmh": 30.65903842082655
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.025464402301575536,
+            "speed_kmh": 6.94674645138582
+          }
+        }
+      },
+      "arrival_gap_seconds": 9.9,
+      "errors": []
+    },
+    {
+      "case": {
+        "id": "c0_u506_scenario_12_west_parallel_stationary_a0_left_s62001_deterministic",
+        "checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\reward_instant_v6_20261015\\round2_v1\\u000506.pt",
+        "scenario": "scenario_12_west_parallel_stationary_a0_left",
+        "seed": 62001,
+        "mode": "deterministic"
+      },
+      "checkpoint_sha256": "9ae5d3fb589a4f6370f896fee7a8f48f37705c4e111cd6f279125dea14a436ab",
+      "pace_profile": "instant_pace_v6",
+      "timestep_seconds": 0.1,
+      "episode_end_reason": "all_agents_reached",
+      "trace_sha256": "312363568faadcbf825c6830333ce18abea2b26a6abbebe1da21f79b18669161",
+      "evidence_status": "VALID",
+      "agents": {
+        "0": {
+          "active_steps": 84,
+          "active_seconds": 8.4,
+          "first_motion_step": 6,
+          "first_motion_seconds": 0.6000000000000001,
+          "arrival_step": 84,
+          "arrival_seconds": 8.4,
+          "termination_step": 84,
+          "reached_goal": true,
+          "final_completion": 0.9616068678139137,
+          "speed_kmh_active_transition": {
+            "count": 84,
+            "mean": 17.064684403723664,
+            "p10": 12.458169962865773,
+            "p50": 18.299368630438153,
+            "p90": 20.67495234088062,
+            "peak": 21.809961917606962
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 84,
+            "mean": 4.546684967918326,
+            "p10": 2.9133676411702867,
+            "p50": 5.015167807300827,
+            "p90": 5.244826408809715,
+            "peak": 5.615796173628652
+          },
+          "above_15_kmh": {
+            "steps": 73,
+            "fraction": 0.8690476190476191,
+            "seconds": 7.300000000000001,
+            "longest_continuous_seconds": 7.300000000000001,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 5,
+            "fraction": 0.05952380952380952,
+            "seconds": 0.5,
+            "longest_continuous_seconds": 0.5,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.23809523809523808,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.011904761904761904,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 63,
+              "fraction": 0.75,
+              "seconds": 6.300000000000001,
+              "longest_continuous_seconds": 6.300000000000001,
+              "interval_count": 1
+            }
+          },
+          "return_recorded_reward": 27.05329829742717,
+          "reward_terms_sum": {
+            "progress": 18.488363483491646,
+            "overspeed": -2.333415469036261,
+            "longitudinal_rate": -0.007251167647341974,
+            "steer_rate": -0.26261946483380283,
+            "safety_lidar": -0.00856873773577641,
+            "ttc": 0.0,
+            "lane_deviation": -2.823210346811296,
+            "lane_invasion": -6.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": 0.0
+          },
+          "recorded_pace_reward_sum": 0.0,
+          "recorded_overspeed_reward_sum": -2.333415469036261,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        },
+        "1": {
+          "active_steps": 117,
+          "active_seconds": 11.700000000000001,
+          "first_motion_step": 30,
+          "first_motion_seconds": 3.0,
+          "arrival_step": 117,
+          "arrival_seconds": 11.700000000000001,
+          "termination_step": 117,
+          "reached_goal": true,
+          "final_completion": 0.93048386877218,
+          "speed_kmh_active_transition": {
+            "count": 117,
+            "mean": 11.431132987359184,
+            "p10": 4.648876498693712e-06,
+            "p50": 13.289043044169349,
+            "p90": 19.43027539618187,
+            "peak": 22.61845689311725
+          },
+          "route_closing_speed_mps_active_transition": {
+            "count": 117,
+            "mean": 3.159538406547575,
+            "p10": 0.0,
+            "p50": 3.6611263575468302,
+            "p90": 5.377182232953225,
+            "peak": 6.008947351404439
+          },
+          "above_15_kmh": {
+            "steps": 54,
+            "fraction": 0.46153846153846156,
+            "seconds": 5.4,
+            "longest_continuous_seconds": 5.4,
+            "interval_count": 1
+          },
+          "above_30_kmh": {
+            "steps": 0,
+            "fraction": 0.0,
+            "seconds": 0.0,
+            "longest_continuous_seconds": 0.0,
+            "interval_count": 0
+          },
+          "below_low_speed": {
+            "steps": 29,
+            "fraction": 0.24786324786324787,
+            "seconds": 2.9000000000000004,
+            "longest_continuous_seconds": 2.9000000000000004,
+            "interval_count": 1
+          },
+          "pace_exemptions": {
+            "pace_grace_exempt": {
+              "steps": 20,
+              "fraction": 0.17094017094017094,
+              "seconds": 2.0,
+              "longest_continuous_seconds": 2.0,
+              "interval_count": 1
+            },
+            "pace_front_blocker_exempt": {
+              "steps": 1,
+              "fraction": 0.008547008547008548,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_near_goal_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_terminal_exempt": {
+              "steps": 1,
+              "fraction": 0.008547008547008548,
+              "seconds": 0.1,
+              "longest_continuous_seconds": 0.1,
+              "interval_count": 1
+            },
+            "pace_complex_interaction_exempt": {
+              "steps": 0,
+              "fraction": 0.0,
+              "seconds": 0.0,
+              "longest_continuous_seconds": 0.0,
+              "interval_count": 0
+            },
+            "pace_deficit_eligible": {
+              "steps": 95,
+              "fraction": 0.811965811965812,
+              "seconds": 9.5,
+              "longest_continuous_seconds": 8.4,
+              "interval_count": 2
+            }
+          },
+          "return_recorded_reward": 30.542973049740205,
+          "reward_terms_sum": {
+            "progress": 17.916681617108058,
+            "overspeed": -1.5569203638225604,
+            "longitudinal_rate": -0.008160866460298713,
+            "steer_rate": -0.6991501127959663,
+            "safety_lidar": -0.005820090972125818,
+            "ttc": 0.0,
+            "lane_deviation": -0.5827113581508205,
+            "lane_invasion": -4.0,
+            "offroad": 0.0,
+            "road_rule": 0.0,
+            "collision": 0.0,
+            "success": 20.0,
+            "mission_timeout": 0.0,
+            "free_flow_pace_deficit": -0.5209457751660748
+          },
+          "recorded_pace_reward_sum": -0.5209457751660748,
+          "recorded_overspeed_reward_sum": -1.5569203638225604,
+          "terminal_events": {
+            "success_event": 1,
+            "collision_event": 0,
+            "offroad_terminated": 0,
+            "road_violation_terminated": 0,
+            "mission_timeout_event": 0
+          }
+        }
+      },
+      "first_arrival": {
+        "step": 84,
+        "seconds": 8.4,
+        "agents": {
+          "0": {
+            "active_before": true,
+            "active_after": false,
+            "arrived": true,
+            "route_completion": 0.9616068678139137,
+            "speed_kmh": 19.453606677097625
+          },
+          "1": {
+            "active_before": true,
+            "active_after": true,
+            "arrived": false,
+            "route_completion": 0.486598895805511,
+            "speed_kmh": 18.060225847072058
+          }
+        }
+      },
+      "arrival_gap_seconds": 3.3000000000000003,
+      "errors": []
+    }
+  ],
+  "errors": []
+}

@@ -80,6 +80,26 @@ from environment.route_pace_reward import (
     CONFIG as ROUTE_PACE_CONFIG, PROFILE as ROUTE_PACE_PROFILE,
     route_pace_deficit,
 )
+from environment.instant_pace_reward import (
+    PROFILE as INSTANT_PACE_PROFILE, instant_pace_deficit,
+    continuous_overspeed_penalty,
+)
+from environment.instant_pace_reward_v3 import (
+    PROFILE as INSTANT_PACE_V3_PROFILE,
+    continuous_overspeed_penalty as continuous_overspeed_penalty_v3,
+)
+from environment.instant_pace_reward_v4 import (
+    PROFILE as INSTANT_PACE_V4_PROFILE, instant_pace_deficit as instant_pace_deficit_v4,
+)
+from environment.instant_pace_reward_v5 import (
+    PROFILE as INSTANT_PACE_V5_PROFILE, continuous_lane_deviation_penalty,
+)
+from environment.instant_pace_reward_v6 import (
+    PROFILE as INSTANT_PACE_V6_PROFILE,
+    continuous_overspeed_penalty as continuous_overspeed_penalty_v6,
+    continuous_lane_deviation_penalty as continuous_lane_deviation_penalty_v6,
+    steer_rate_penalty as steer_rate_penalty_v6,
+)
 from environment.offroad_protocol import (
     OFFROAD_PERSISTENCE_TICKS,
     classify_offroad_tick,
@@ -134,6 +154,8 @@ class CarlaMultiAgentEnv:
         lidar_range_m: float = 4.0,
         ttc_max_range_m: float = 10.0,
         pace_profile: str = "frozen_v6",
+        role_reward_mode: str = "legacy",
+        tick_audit_callback=None,
     ):
         """
         初始化CARLA多智能体环境
@@ -165,14 +187,27 @@ class CarlaMultiAgentEnv:
         self.default_max_steps = int(max_steps)
         self.max_steps = self.default_max_steps
         self.adversarial_agent_ids = adversarial_agent_ids if adversarial_agent_ids is not None else []
+        if role_reward_mode not in {"legacy", "mut_mappo"}:
+            raise ValueError(f"unsupported role_reward_mode: {role_reward_mode!r}")
+        if role_reward_mode == "mut_mappo" and not callable(
+            getattr(self, "_compute_role_rewards", None)
+        ):
+            raise ValueError("mut_mappo requires an explicit role reward provider")
+        self.role_reward_mode = role_reward_mode
+        self._computing_role_base_reward = False
+        self._world_tick_counts = {"total": 0, "decision": 0, "setup": 0}
+        self._tick_audit_callback = tick_audit_callback
         if reward_version not in {"v1", "v2", "v3", "v4", "v5", "v6"}:
             raise ValueError(f"unsupported reward_version: {reward_version!r}")
-        if reward_version in {"v3", "v4", "v5", "v6"} and self.adversarial_agent_ids:
+        if (reward_version in {"v3", "v4", "v5", "v6"}
+                and self.adversarial_agent_ids and role_reward_mode == "legacy"):
             raise ValueError(
                 f"reward {reward_version} is base-policy only"
             )
         self.reward_version = reward_version
-        if pace_profile not in {"frozen_v6", ROUTE_PACE_PROFILE}:
+        if pace_profile not in {"frozen_v6", ROUTE_PACE_PROFILE, INSTANT_PACE_PROFILE,
+                                INSTANT_PACE_V3_PROFILE, INSTANT_PACE_V4_PROFILE,
+                                INSTANT_PACE_V5_PROFILE, INSTANT_PACE_V6_PROFILE}:
             raise ValueError(f"unsupported pace profile: {pace_profile}")
         if pace_profile != "frozen_v6" and reward_version != "v6":
             raise ValueError("route pace profile requires reward v6")
@@ -234,6 +269,9 @@ class CarlaMultiAgentEnv:
          # 碰撞传感器
         self.collision_sensors = {}  # {agent_id: sensor_actor}
         self.collision_events = {}   # {agent_id: bool} 记录当前步是否发生碰撞
+        # Physical contacts keep sensor evidence. Crosswalk/road-rule evidence
+        # remains separate; no collision responsibility is inferred here.
+        self.raw_collision_events: Dict[int, List[Dict]] = {}
         #车道偏离传感器
         self.lane_sensors = {}  # {agent_id: sensor_actor}
         self.lane_invasion_events = {}   # {agent_id: bool} 记录当前步是否发生车道偏离
@@ -407,10 +445,27 @@ class CarlaMultiAgentEnv:
         
         self.collision_sensors[agent_id] = sensor
         self.collision_events[agent_id] = False
+        self.raw_collision_events[agent_id] = []
         
     # 注册回调：一旦碰撞，将标志位置为 True
         def _on_collision(event):
             self.collision_events[agent_id] = True
+            other = getattr(event, "other_actor", None)
+            impulse = getattr(event, "normal_impulse", None)
+            xyz = {axis: float(getattr(impulse, axis, 0.0))
+                   for axis in ("x", "y", "z")}
+            self.raw_collision_events.setdefault(agent_id, []).append({
+                "agent_id": agent_id,
+                "actor_id": int(vehicle.id),
+                "other_actor_id": int(other.id) if other is not None else None,
+                "other_type_id": str(getattr(other, "type_id", "unknown")),
+                "frame": int(getattr(event, "frame", -1)),
+                "timestamp": float(getattr(event, "timestamp", 0.0)),
+                "normal_impulse": xyz,
+                "impulse_magnitude": math.sqrt(sum(v * v for v in xyz.values())),
+                "classification": "physical_contact",
+                "responsibility": "unknown",
+            })
     
         sensor.listen(_on_collision)
 
@@ -1343,6 +1398,10 @@ class CarlaMultiAgentEnv:
                 (0, 1.0, 0.3),     # 前移+抬高
                 (0, -1.0, 0.3),    # 后移+抬高
             ]
+            if getattr(self, "role_reward_mode", "legacy") == "mut_mappo":
+                # A paired case must not silently move a failed spawn to a
+                # different initial state. Candidate cases fail explicitly.
+                retry_offsets = []
             retry_idx = 0
             while vehicle is None and retry_idx < len(retry_offsets):
                 dx, dy, dz = retry_offsets[retry_idx]
@@ -1375,7 +1434,7 @@ class CarlaMultiAgentEnv:
         # 先让车辆落地稳定，再在单独一帧中注入场景初速，使
         # reset 观察与 JSON 定义的初始状态一致。
         for _ in range(9):
-            self.world.tick()
+            self._tick_world()
         self._commit_initial_vehicle_states()
         time.sleep(0.5)
         if self.follow_spectator:
@@ -1515,11 +1574,11 @@ class CarlaMultiAgentEnv:
             # vehicles.  Stop all actors first so an already-moving vehicle
             # cannot traverse the pre-offset twice during the group retry.
             self._clear_vehicle_velocities()
-            self.world.tick()
+            self._tick_world()
             self._prepare_velocity_warm_start()
-            self.world.tick()
+            self._tick_world()
             self._apply_initial_vehicle_speeds()
-            self.world.tick()
+            self._tick_world()
 
             last_failures = []
             for agent_id, vehicle in enumerate(self.vehicles):
@@ -1636,6 +1695,7 @@ class CarlaMultiAgentEnv:
                 sensor.destroy()
         self.collision_sensors.clear()
         self.collision_events.clear()
+        getattr(self, "raw_collision_events", {}).clear()
 
         # 清理车道偏离传感器
         for agent_id, sensor in self.lane_sensors.items():
@@ -1655,7 +1715,7 @@ class CarlaMultiAgentEnv:
                 vehicle.destroy()
         self.vehicles.clear()
         
-        self.world.tick()
+        self._tick_world()
     
     def get_camera_images(self) -> Dict[int, np.ndarray]:
         """
@@ -1665,6 +1725,31 @@ class CarlaMultiAgentEnv:
             camera_images: {agent_id: image_array}
         """
         return self.camera_images.copy()
+
+    def _tick_world(self, phase: str = "setup"):
+        """Count each explicit client tick, including reset and cleanup work."""
+        frame = self.world.tick()
+        counts = getattr(self, "_world_tick_counts", None)
+        if counts is not None:
+            counts["total"] += 1
+            counts[phase] += 1
+            callback = getattr(self, "_tick_audit_callback", None)
+            if callback is not None:
+                callback({"kind": phase, "ticks": 1,
+                          "frame": int(frame), "counts": dict(counts)})
+        return frame
+
+    def _assert_base_reward_context(self, version: str):
+        """Legacy base rewards cannot silently score adversarial roles.
+
+        The explicit Mut provider may reuse frozen driving mathematics inside
+        its guarded base-scoring section, then replaces every blue reward.
+        """
+        if self.adversarial_agent_ids and not (
+            getattr(self, "role_reward_mode", "legacy") == "mut_mappo"
+            and getattr(self, "_computing_role_base_reward", False)
+        ):
+            raise RuntimeError(f"reward {version} cannot score adversarial agents")
 
     def set_custom_start_positions(self, positions_dict: Dict):
         """
@@ -2093,7 +2178,7 @@ class CarlaMultiAgentEnv:
         pre_tick_kinematics = self._snapshot_kinematics()
 
         # 更新世界
-        world_frame = self.world.tick()
+        world_frame = self._tick_world("decision")
         if isinstance(world_frame, int) and not isinstance(world_frame, bool):
             self._last_world_frame = int(world_frame)
         else:
@@ -2205,6 +2290,8 @@ class CarlaMultiAgentEnv:
 
     def _compute_rewards(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
         """奖励函数调度器"""
+        if getattr(self, "role_reward_mode", "legacy") == "mut_mappo":
+            return self._compute_role_rewards()
         if self.reward_version == 'v1':
             return self._compute_rewards_v1()
         if self.reward_version == 'v2':
@@ -2844,10 +2931,7 @@ class CarlaMultiAgentEnv:
         applying small frozen weights.  See ``environment/base_reward_v3.py``
         for the CARLA-independent mathematics and anti-hacking invariants.
         """
-        if self.adversarial_agent_ids:
-            raise RuntimeError(
-                "reward v3 is base-policy only and cannot score adversarial agents"
-            )
+        self._assert_base_reward_context("v3")
 
         config = DEFAULT_REWARD_V3_CONFIG
         rewards: Dict[int, float] = {}
@@ -3166,8 +3250,7 @@ class CarlaMultiAgentEnv:
 
     def _compute_rewards_v4(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
         """P0-T05-09/R6 mission reward with explicit timeout failure."""
-        if self.adversarial_agent_ids:
-            raise RuntimeError("reward v4 cannot score adversarial agents")
+        self._assert_base_reward_context("v4")
 
         config = DEFAULT_REWARD_V4_CONFIG
         rewards: Dict[int, float] = {}
@@ -3531,8 +3614,7 @@ class CarlaMultiAgentEnv:
     def _compute_rewards_v5(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
         """R7 reward: R6 mission math plus topology-frozen road legality."""
 
-        if self.adversarial_agent_ids:
-            raise RuntimeError("reward v5 cannot score adversarial agents")
+        self._assert_base_reward_context("v5")
         base_rewards, base_details = self._compute_rewards_v4()
         base_diagnostics = {
             agent_id: dict(values)
@@ -3696,8 +3778,7 @@ class CarlaMultiAgentEnv:
     def _compute_rewards_v6(self) -> Tuple[Dict[int, float], Dict[int, Dict]]:
         """R8-C1 reward: frozen v5 plus one gated free-flow pace cost."""
 
-        if self.adversarial_agent_ids:
-            raise RuntimeError("reward v6 cannot score adversarial agents")
+        self._assert_base_reward_context("v6")
         _base_rewards, base_details = self._compute_rewards_v5()
         base_diagnostics = {
             agent_id: dict(values)
@@ -3772,6 +3853,65 @@ class CarlaMultiAgentEnv:
                     eligible=scene_eligible and not front_blocker,
                     terminal_event=terminal_event,
                 )
+            elif getattr(self, "pace_profile", "frozen_v6") in {
+                    INSTANT_PACE_PROFILE, INSTANT_PACE_V3_PROFILE, INSTANT_PACE_V4_PROFILE,
+                    INSTANT_PACE_V5_PROFILE, INSTANT_PACE_V6_PROFILE}:
+                scene_eligible = (
+                    (free_flow_tag and non_interactive_tag)
+                    or self.current_scenario_family in {"free_flow", "parallel_stationary"}
+                )
+                terminal_event = terminal_event or bool(
+                    self.reached_target.get(agent_id, False)
+                ) or not self.vehicles[agent_id].is_alive
+                pace_function = (instant_pace_deficit_v4
+                    if self.pace_profile in {INSTANT_PACE_V4_PROFILE, INSTANT_PACE_V5_PROFILE,
+                                             INSTANT_PACE_V6_PROFILE}
+                    else instant_pace_deficit)
+                decision = pace_function(
+                    diagnostics.get("closing_speed_mps", 0.0),
+                    distance_to_goal_m=diagnostics.get("distance_to_goal_m", 0.0),
+                    elapsed_seconds=int(self.current_step) * float(self.timestep),
+                    timestep=float(self.timestep), eligible=scene_eligible,
+                    front_blocker=front_blocker, complex_interaction=complex_interaction,
+                    terminal_event=terminal_event,
+                )
+                overspeed_function = (continuous_overspeed_penalty_v3
+                    if self.pace_profile in {INSTANT_PACE_V3_PROFILE, INSTANT_PACE_V4_PROFILE,
+                                             INSTANT_PACE_V5_PROFILE}
+                    else continuous_overspeed_penalty)
+                if self.pace_profile == INSTANT_PACE_V6_PROFILE:
+                    overspeed_function = continuous_overspeed_penalty_v6
+                details["overspeed"], diagnostics["overspeed_risk"] = overspeed_function(
+                    diagnostics.get("speed_mps", 0.0), timestep=float(self.timestep)
+                )
+                if self.pace_profile in {INSTANT_PACE_V5_PROFILE, INSTANT_PACE_V6_PROFILE}:
+                    # v5 parent already measures distance from road_reference_waypoints,
+                    # not from whichever lane a drifting vehicle currently occupies.
+                    lane_function = (continuous_lane_deviation_penalty_v6
+                        if self.pace_profile == INSTANT_PACE_V6_PROFILE
+                        else continuous_lane_deviation_penalty)
+                    lane_cost, lane_risk, lane_exempt = lane_function(
+                        diagnostics.get("lateral_distance_m", 0.0), timestep=float(self.timestep),
+                        exempt=bool(diagnostics.get("lane_deviation_exempted", 0.0)),
+                        road_violation=bool(diagnostics.get("road_violation_raw", 0.0)),
+                        opposing_lane=diagnostics.get("road_current_to_reference_cosine", 0.0) <= -0.5,
+                        in_junction=bool(diagnostics.get("road_in_junction", 0.0)),
+                    )
+                    details["lane_deviation"] = lane_cost
+                    diagnostics["lane_deviation_risk"] = lane_risk
+                    diagnostics["lane_deviation_exempted"] = float(lane_exempt)
+                if self.pace_profile == INSTANT_PACE_V6_PROFILE:
+                    details["steer_rate"] = 0.0
+                    diagnostics["steer_rate_normalized"] = 0.0
+                    vehicle = self.vehicles[agent_id]
+                    if (vehicle is not None and vehicle.is_alive
+                            and not self.reached_target.get(agent_id, False)):
+                        previous = getattr(self, "prev_controls", {}).get(agent_id)
+                        details["steer_rate"], diagnostics["steer_rate_normalized"] = steer_rate_penalty_v6(
+                            vehicle.get_control().steer,
+                            None if previous is None else previous["steer"],
+                            timestep=float(self.timestep),
+                        )
             details[REWARD_V6_PACE_COMPONENT] = decision.reward
             diagnostics.update({
                 "pace_free_flow_tag": float(free_flow_tag),

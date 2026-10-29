@@ -1,0 +1,3495 @@
+{
+  "schema": "reward_fork_matched_behavior_comparison_v1",
+  "created_at_utc": "2026-10-13T02:59:44.917258+00:00",
+  "evidence_status": "MATCHED_COMPLETE_ENGINEERING_SCREEN",
+  "performance_source": "Frozen-policy deterministic CARLA evaluations only; training windows and counterfactual rescoring excluded.",
+  "scope": "12 known R8-A training scenarios; seed62001; deterministic; engineering screen, no population confidence or held-out generalization claim.",
+  "causal_limit": "Before-after comparison includes 20 additional PPO updates and a reward fork. No equal-budget old-reward continuation or replicated training seeds; not reward-only causal evidence.",
+  "input_sha256": {
+    "baseline_analysis": "eba8aece6746a4b2ea71f07e2dc6effc56433130a798aa8c159e3a9f14ee1570",
+    "after_analysis": "6c3ee5181bf7ad97074114dc9ee9b833cfa5e6f19460d9105ead15b68c93584f",
+    "baseline_resolved_config": "d0c639d21406163769157bc591fde1efe1ebfea296217d2c2dc0aaa6d8262c41",
+    "after_resolved_config": "d0c639d21406163769157bc591fde1efe1ebfea296217d2c2dc0aaa6d8262c41"
+  },
+  "pairing": {
+    "key": [
+      "scenario",
+      "seed",
+      "mode"
+    ],
+    "matched_case_count": 12,
+    "identical_resolved_config_file_sha": true,
+    "all_initial_scenario_fingerprints_match": true,
+    "before_checkpoint": [
+      {
+        "environment": {
+          "disable_tensorboard": true,
+          "follow_spectator": true,
+          "lidar_range_m": 20.0,
+          "max_steps": 500,
+          "num_agents": 2,
+          "pace_profile": "route_pace_v1",
+          "reward_gamma": 0.999,
+          "reward_version": "v6",
+          "spawn_vehicles": false,
+          "straight_road_length": 50.0,
+          "timestep": 0.1,
+          "town": "Town05",
+          "ttc_max_range_m": 20.0
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\R8C1_RoutePaceV1_u356_to406_s42_20260927\\latest.pt",
+        "sha256": "8b9cb173cd70aacc201f0cb68183fdfeeb593cc8f29863c096a5f59076954545",
+        "update": 456
+      }
+    ],
+    "after_checkpoint": [
+      {
+        "environment": {
+          "disable_tensorboard": true,
+          "follow_spectator": true,
+          "lidar_range_m": 20.0,
+          "max_steps": 500,
+          "num_agents": 2,
+          "pace_profile": "instant_pace_v2",
+          "reward_gamma": 0.999,
+          "reward_version": "v6",
+          "spawn_vehicles": false,
+          "straight_road_length": 50.0,
+          "timestep": 0.1,
+          "town": "Town05",
+          "ttc_max_range_m": 20.0
+        },
+        "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\R8C1_InstantPaceV2_u456_to476_s42_20261013_v2\\latest.pt",
+        "sha256": "382436d7c36ad99909b70f8109aa23b1eda21f7cbd6a0e962e481957fb7b2153",
+        "update": 476
+      }
+    ],
+    "evaluator_source_changed": true,
+    "trace_engine_source_identical": true,
+    "reward_environment_source_changes_expected": true
+  },
+  "aggregate_agents": {
+    "0": {
+      "metrics": {
+        "pooled_active_speed_mean_kmh": {
+          "before": 26.47159040783124,
+          "after": 29.339399592853376,
+          "after_minus_before": 2.8678091850221357
+        },
+        "case_equal_weight_mean_speed_kmh": {
+          "before": 25.546225922291303,
+          "after": 28.02311622296745,
+          "after_minus_before": 2.4768903006761462
+        },
+        "peak_speed_kmh": {
+          "before": 48.700888473389945,
+          "after": 54.21922400508786,
+          "after_minus_before": 5.518335531697915
+        },
+        "above15_fraction_pooled": {
+          "before": 0.8252788104089219,
+          "after": 0.8166311300639659,
+          "after_minus_before": -0.008647680344955999
+        },
+        "above30_fraction_pooled": {
+          "before": 0.43308550185873607,
+          "after": 0.5266524520255863,
+          "after_minus_before": 0.09356695016685024
+        },
+        "above15_seconds": {
+          "before": 44.400000000000006,
+          "after": 38.300000000000004,
+          "after_minus_before": -6.100000000000001
+        },
+        "above30_seconds": {
+          "before": 23.3,
+          "after": 24.7,
+          "after_minus_before": 1.3999999999999986
+        },
+        "case_first_motion_mean_seconds": {
+          "before": 0.325,
+          "after": 0.3166666666666667,
+          "after_minus_before": -0.008333333333333304
+        },
+        "case_first_motion_max_seconds": {
+          "before": 0.6000000000000001,
+          "after": 0.6000000000000001,
+          "after_minus_before": 0.0
+        },
+        "case_arrival_mean_seconds_reached_only": {
+          "before": 4.483333333333333,
+          "after": 3.9083333333333337,
+          "after_minus_before": -0.5749999999999997
+        },
+        "reached_goal_count": {
+          "before": 12,
+          "after": 12,
+          "after_minus_before": 0
+        }
+      },
+      "terminal_events": {
+        "success_event": {
+          "before": 12,
+          "after": 12
+        },
+        "collision_event": {
+          "before": 0,
+          "after": 0
+        },
+        "offroad_terminated": {
+          "before": 0,
+          "after": 0
+        },
+        "road_violation_terminated": {
+          "before": 0,
+          "after": 0
+        },
+        "mission_timeout_event": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "per_case_direction_counts": {
+        "speed_mean_kmh": {
+          "increased": 12,
+          "decreased": 0,
+          "unchanged": 0,
+          "case_equal_weight_mean_delta": 2.4768903006761467
+        },
+        "speed_peak_kmh": {
+          "increased": 12,
+          "decreased": 0,
+          "unchanged": 0,
+          "case_equal_weight_mean_delta": 6.150750578049813
+        },
+        "above30_fraction": {
+          "increased": 10,
+          "decreased": 2,
+          "unchanged": 0,
+          "case_equal_weight_mean_delta": 0.0807231217740232
+        },
+        "first_motion_seconds": {
+          "increased": 0,
+          "decreased": 1,
+          "unchanged": 11,
+          "case_equal_weight_mean_delta": -0.00833333333333334
+        },
+        "arrival_seconds": {
+          "increased": 0,
+          "decreased": 11,
+          "unchanged": 1,
+          "case_equal_weight_mean_delta": -0.5750000000000001
+        }
+      }
+    },
+    "1": {
+      "metrics": {
+        "pooled_active_speed_mean_kmh": {
+          "before": 12.158117246095992,
+          "after": 12.18536324248855,
+          "after_minus_before": 0.027245996392558425
+        },
+        "case_equal_weight_mean_speed_kmh": {
+          "before": 11.96792498207418,
+          "after": 11.830726522481728,
+          "after_minus_before": -0.1371984595924527
+        },
+        "peak_speed_kmh": {
+          "before": 28.140317535601433,
+          "after": 26.868101051226358,
+          "after_minus_before": -1.2722164843750754
+        },
+        "above15_fraction_pooled": {
+          "before": 0.42488888888888887,
+          "after": 0.4120287253141831,
+          "after_minus_before": -0.012860163574705763
+        },
+        "above30_fraction_pooled": {
+          "before": 0.0,
+          "after": 0.0,
+          "after_minus_before": 0.0
+        },
+        "above15_seconds": {
+          "before": 47.8,
+          "after": 45.900000000000006,
+          "after_minus_before": -1.8999999999999915
+        },
+        "above30_seconds": {
+          "before": 0.0,
+          "after": 0.0,
+          "after_minus_before": 0.0
+        },
+        "case_first_motion_mean_seconds": {
+          "before": 1.4666666666666668,
+          "after": 1.366666666666667,
+          "after_minus_before": -0.09999999999999987
+        },
+        "case_first_motion_max_seconds": {
+          "before": 4.4,
+          "after": 4.3,
+          "after_minus_before": -0.10000000000000053
+        },
+        "case_arrival_mean_seconds_reached_only": {
+          "before": 9.375,
+          "after": 9.283333333333333,
+          "after_minus_before": -0.09166666666666679
+        },
+        "reached_goal_count": {
+          "before": 12,
+          "after": 12,
+          "after_minus_before": 0
+        }
+      },
+      "terminal_events": {
+        "success_event": {
+          "before": 12,
+          "after": 12
+        },
+        "collision_event": {
+          "before": 0,
+          "after": 0
+        },
+        "offroad_terminated": {
+          "before": 0,
+          "after": 0
+        },
+        "road_violation_terminated": {
+          "before": 0,
+          "after": 0
+        },
+        "mission_timeout_event": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      "per_case_direction_counts": {
+        "speed_mean_kmh": {
+          "increased": 7,
+          "decreased": 5,
+          "unchanged": 0,
+          "case_equal_weight_mean_delta": -0.13719845959245372
+        },
+        "speed_peak_kmh": {
+          "increased": 0,
+          "decreased": 12,
+          "unchanged": 0,
+          "case_equal_weight_mean_delta": -1.4670944277177569
+        },
+        "above30_fraction": {
+          "increased": 0,
+          "decreased": 0,
+          "unchanged": 12,
+          "case_equal_weight_mean_delta": 0.0
+        },
+        "first_motion_seconds": {
+          "increased": 1,
+          "decreased": 4,
+          "unchanged": 7,
+          "case_equal_weight_mean_delta": -0.10000000000000005
+        },
+        "arrival_seconds": {
+          "increased": 3,
+          "decreased": 8,
+          "unchanged": 1,
+          "case_equal_weight_mean_delta": -0.0916666666666666
+        }
+      }
+    }
+  },
+  "both_reached_cases": {
+    "before": 12,
+    "after": 12
+  },
+  "observations": [
+    "A0 overspeed goal not met: pooled mean, peak and above30 fraction increased. Faster arrival is not evidence of normal speed.",
+    "A1 pace goal not clearly met: pooled mean essentially unchanged, equal-case mean lower, mean first motion improves only 0.1s; worst startup remains4.3s.",
+    "Both agents reach in all12 cases and no recorded collision/offroad/road-rule terminal failures; narrow screen remains insufficient for interaction competence."
+  ],
+  "minimal_next_revision_candidates": [
+    {
+      "priority": 1,
+      "component": "overspeed",
+      "change": "Evaluate a steeper or stronger penalty above30kmh with a small frozen-config fork and short continuation; inspect the effective marginal cost relative to retained progress, especially short15m routes. Do not globally raise all penalties.",
+      "reason": "Current non-saturating quadratic0.2-per-second cost did not suppress54.2kmh peak in this pilot.",
+      "parameter_approval": "candidate_not_applied"
+    },
+    {
+      "priority": 2,
+      "component": "startup_low_speed",
+      "change": "Audit unobstructed episodes with delayed motion after2s grace and consider a narrowly bounded stronger immediate startup deficit until forward speed recovers; preserve actual front-blocker and near-goal exemptions.",
+      "reason": "A1 late start persists; maximum4.3s, instant cost clears immediately on recovery by design.",
+      "parameter_approval": "candidate_not_applied"
+    }
+  ],
+  "pairs": [
+    {
+      "scenario": "scenario_01_north_short_rolling_a0_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "1496f0764c5c1112c484d2fdf98a491ab3566286f0c49c7642154ef3092b6cb0",
+      "initial_config_canonical_sha256": {
+        "before": "12ae896d7f1b871a09c186a06cf68f48200a5521868ff1f867d43dca9334c9ea",
+        "after": "12ae896d7f1b871a09c186a06cf68f48200a5521868ff1f867d43dca9334c9ea"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 0.6000000000000001,
+        "after": 1.7000000000000002,
+        "after_minus_before": 1.1
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 2.7,
+              "after": 2.4000000000000004,
+              "after_minus_before": -0.2999999999999998
+            },
+            "speed_mean_kmh": {
+              "before": 16.653796250615475,
+              "after": 20.037218106224504,
+              "after_minus_before": 3.383421855609029
+            },
+            "speed_p10_kmh": {
+              "before": 7.009551572840485,
+              "after": 7.103327977256992,
+              "after_minus_before": 0.09377640441650659
+            },
+            "speed_p50_kmh": {
+              "before": 18.195765370240764,
+              "after": 19.172540658703227,
+              "after_minus_before": 0.9767752884624628
+            },
+            "speed_p90_kmh": {
+              "before": 24.685008379695194,
+              "after": 32.002629971460216,
+              "after_minus_before": 7.317621591765022
+            },
+            "speed_peak_kmh": {
+              "before": 26.057787942018912,
+              "after": 34.69581674422652,
+              "after_minus_before": 8.638028802207607
+            },
+            "above15_fraction": {
+              "before": 0.6666666666666666,
+              "after": 0.7083333333333334,
+              "after_minus_before": 0.04166666666666674
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.16666666666666666,
+              "after_minus_before": 0.16666666666666666
+            },
+            "above15_seconds": {
+              "before": 1.8,
+              "after": 1.7000000000000002,
+              "after_minus_before": -0.09999999999999987
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.4,
+              "after_minus_before": 0.4
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 1.8,
+              "after": 1.7000000000000002,
+              "after_minus_before": -0.09999999999999987
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.4,
+              "after_minus_before": 0.4
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 2.7,
+              "after": 2.4000000000000004,
+              "after_minus_before": -0.2999999999999998
+            },
+            "final_completion": {
+              "before": 0.7823381600637737,
+              "after": 0.8389034403605029,
+              "after_minus_before": 0.05656528029672925
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.7823381600637737,
+              "speed_kmh": 26.057787942018912
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.8389034403605029,
+              "speed_kmh": 34.69581674422652
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 3.3000000000000003,
+              "after": 4.1000000000000005,
+              "after_minus_before": 0.8000000000000003
+            },
+            "speed_mean_kmh": {
+              "before": 13.752373506329064,
+              "after": 10.886663879682025,
+              "after_minus_before": -2.865709626647039
+            },
+            "speed_p10_kmh": {
+              "before": 6.897357360791101,
+              "after": 6.980764883093185,
+              "after_minus_before": 0.08340752230208359
+            },
+            "speed_p50_kmh": {
+              "before": 15.055909223766536,
+              "after": 10.998455514625295,
+              "after_minus_before": -4.057453709141241
+            },
+            "speed_p90_kmh": {
+              "before": 19.532976223586545,
+              "after": 15.86330812924621,
+              "after_minus_before": -3.6696680943403344
+            },
+            "speed_peak_kmh": {
+              "before": 20.79727048166341,
+              "after": 17.438615644104168,
+              "after_minus_before": -3.358654837559243
+            },
+            "above15_fraction": {
+              "before": 0.5151515151515151,
+              "after": 0.14634146341463414,
+              "after_minus_before": -0.368810051736881
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 1.7000000000000002,
+              "after": 0.6000000000000001,
+              "after_minus_before": -1.1
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 1.7000000000000002,
+              "after": 0.6000000000000001,
+              "after_minus_before": -1.1
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 3.3000000000000003,
+              "after": 4.1000000000000005,
+              "after_minus_before": 0.8000000000000003
+            },
+            "final_completion": {
+              "before": 0.8219523459386268,
+              "after": 0.7998173913060053,
+              "after_minus_before": -0.022134954632621495
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.607143744361679,
+              "speed_kmh": 18.737320522487373
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.3828471021722375,
+              "speed_kmh": 10.289580200737975
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_02_south_short_rolling_a1_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "2ec1297a5aa5e6b70c926ddd1e145a0e3c0e99cc9992d4c382382b08c4b6a58a",
+      "initial_config_canonical_sha256": {
+        "before": "faa14986adfff907a19bf195968d4770f85c1ee4db1ccea22b816fcd9ab54ed7",
+        "after": "faa14986adfff907a19bf195968d4770f85c1ee4db1ccea22b816fcd9ab54ed7"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 2.2,
+        "after": 2.1,
+        "after_minus_before": -0.10000000000000009
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 2.1,
+              "after": 2.1,
+              "after_minus_before": 0.0
+            },
+            "speed_mean_kmh": {
+              "before": 21.478768124125935,
+              "after": 22.625391287574708,
+              "after_minus_before": 1.1466231634487727
+            },
+            "speed_p10_kmh": {
+              "before": 7.036153376505052,
+              "after": 7.110032957301283,
+              "after_minus_before": 0.07387958079623136
+            },
+            "speed_p50_kmh": {
+              "before": 22.661674136462178,
+              "after": 24.489392150211614,
+              "after_minus_before": 1.8277180137494362
+            },
+            "speed_p90_kmh": {
+              "before": 32.69953194806804,
+              "after": 34.73967593622475,
+              "after_minus_before": 2.040143988156707
+            },
+            "speed_peak_kmh": {
+              "before": 34.01686694207096,
+              "after": 36.4140917800546,
+              "after_minus_before": 2.397224837983636
+            },
+            "above15_fraction": {
+              "before": 0.7142857142857143,
+              "after": 0.7142857142857143,
+              "after_minus_before": 0.0
+            },
+            "above30_fraction": {
+              "before": 0.2857142857142857,
+              "after": 0.3333333333333333,
+              "after_minus_before": 0.047619047619047616
+            },
+            "above15_seconds": {
+              "before": 1.5,
+              "after": 1.5,
+              "after_minus_before": 0.0
+            },
+            "above30_seconds": {
+              "before": 0.6000000000000001,
+              "after": 0.7000000000000001,
+              "after_minus_before": 0.09999999999999998
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 1.5,
+              "after": 1.5,
+              "after_minus_before": 0.0
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.6000000000000001,
+              "after": 0.7000000000000001,
+              "after_minus_before": 0.09999999999999998
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 2.1,
+              "after": 2.1,
+              "after_minus_before": 0.0
+            },
+            "final_completion": {
+              "before": 0.8068251952078908,
+              "after": 0.8415683830661662,
+              "after_minus_before": 0.03474318785827546
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.8068251952078908,
+              "speed_kmh": 34.01686694207096
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.8415683830661662,
+              "speed_kmh": 36.4140917800546
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 4.3,
+              "after": 4.2,
+              "after_minus_before": -0.09999999999999964
+            },
+            "speed_mean_kmh": {
+              "before": 10.407178560061913,
+              "after": 10.532783880566924,
+              "after_minus_before": 0.12560532050501116
+            },
+            "speed_p10_kmh": {
+              "before": 6.042144563944194,
+              "after": 6.178141467387432,
+              "after_minus_before": 0.135996903443238
+            },
+            "speed_p50_kmh": {
+              "before": 6.925033758176189,
+              "after": 6.934703640915911,
+              "after_minus_before": 0.009669882739721913
+            },
+            "speed_p90_kmh": {
+              "before": 18.060573291887117,
+              "after": 18.146614078958496,
+              "after_minus_before": 0.0860407870713793
+            },
+            "speed_peak_kmh": {
+              "before": 18.53816081591546,
+              "after": 18.45633503825132,
+              "after_minus_before": -0.08182577766413957
+            },
+            "above15_fraction": {
+              "before": 0.27906976744186046,
+              "after": 0.30952380952380953,
+              "after_minus_before": 0.030454042081949073
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 1.2000000000000002,
+              "after": 1.3,
+              "after_minus_before": 0.09999999999999987
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 1.2000000000000002,
+              "after": 1.3,
+              "after_minus_before": 0.09999999999999987
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 4.3,
+              "after": 4.2,
+              "after_minus_before": -0.09999999999999964
+            },
+            "final_completion": {
+              "before": 0.80895398400753,
+              "after": 0.7982923899622151,
+              "after_minus_before": -0.01066159404531497
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.24992417724849875,
+              "speed_kmh": 6.026230535933089
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.2507192825928022,
+              "speed_kmh": 6.172248433708859
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_03_north_short_stationary_a0_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "b377efaa41b099a9240bc249dd633188aaac0f419d12f894df1bfb9c21d8cc03",
+      "initial_config_canonical_sha256": {
+        "before": "1d8a3f3de5e37ac85a819ad5935f321599826dcd767ea9cdfe0740f27748544a",
+        "after": "1d8a3f3de5e37ac85a819ad5935f321599826dcd767ea9cdfe0740f27748544a"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 2.0,
+        "after": 2.3000000000000003,
+        "after_minus_before": 0.30000000000000027
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 2.9000000000000004,
+              "after": 2.6,
+              "after_minus_before": -0.30000000000000027
+            },
+            "speed_mean_kmh": {
+              "before": 16.320834660339546,
+              "after": 17.491771440569057,
+              "after_minus_before": 1.1709367802295105
+            },
+            "speed_p10_kmh": {
+              "before": 0.003866761830920147,
+              "after": 0.006796262506893038,
+              "after_minus_before": 0.0029295006759728908
+            },
+            "speed_p50_kmh": {
+              "before": 18.364513871768544,
+              "after": 18.598190786125457,
+              "after_minus_before": 0.23367691435691285
+            },
+            "speed_p90_kmh": {
+              "before": 27.957289373069965,
+              "after": 31.24740736159253,
+              "after_minus_before": 3.2901179885225638
+            },
+            "speed_peak_kmh": {
+              "before": 30.282932334401295,
+              "after": 34.03591674509542,
+              "after_minus_before": 3.7529844106941255
+            },
+            "above15_fraction": {
+              "before": 0.6551724137931034,
+              "after": 0.6538461538461539,
+              "after_minus_before": -0.0013262599469495706
+            },
+            "above30_fraction": {
+              "before": 0.034482758620689655,
+              "after": 0.15384615384615385,
+              "after_minus_before": 0.1193633952254642
+            },
+            "above15_seconds": {
+              "before": 1.9000000000000001,
+              "after": 1.7000000000000002,
+              "after_minus_before": -0.19999999999999996
+            },
+            "above30_seconds": {
+              "before": 0.1,
+              "after": 0.4,
+              "after_minus_before": 0.30000000000000004
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 1.9000000000000001,
+              "after": 1.7000000000000002,
+              "after_minus_before": -0.19999999999999996
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.1,
+              "after": 0.4,
+              "after_minus_before": 0.30000000000000004
+            },
+            "first_motion_seconds": {
+              "before": 0.6000000000000001,
+              "after": 0.6000000000000001,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 2.9000000000000004,
+              "after": 2.6,
+              "after_minus_before": -0.30000000000000027
+            },
+            "final_completion": {
+              "before": 0.8128483339356617,
+              "after": 0.7928956383696477,
+              "after_minus_before": -0.019952695566013978
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.8128483339356617,
+              "speed_kmh": 30.282932334401295
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.7928956383696477,
+              "speed_kmh": 34.03591674509542
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 4.9,
+              "after": 4.9,
+              "after_minus_before": 0.0
+            },
+            "speed_mean_kmh": {
+              "before": 9.322787995918027,
+              "after": 9.136333282699525,
+              "after_minus_before": -0.18645471321850238
+            },
+            "speed_p10_kmh": {
+              "before": 0.0017685653004879467,
+              "after": 0.0008945617865686606,
+              "after_minus_before": -0.0008740035139192862
+            },
+            "speed_p50_kmh": {
+              "before": 9.253717032924577,
+              "after": 7.635882911225557,
+              "after_minus_before": -1.61783412169902
+            },
+            "speed_p90_kmh": {
+              "before": 17.612971395176547,
+              "after": 17.928784936142094,
+              "after_minus_before": 0.3158135409655465
+            },
+            "speed_peak_kmh": {
+              "before": 18.706556782803627,
+              "after": 18.393281115149133,
+              "after_minus_before": -0.3132756676544943
+            },
+            "above15_fraction": {
+              "before": 0.20408163265306123,
+              "after": 0.24489795918367346,
+              "after_minus_before": 0.040816326530612235
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 1.0,
+              "after": 1.2000000000000002,
+              "after_minus_before": 0.20000000000000018
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 1.0,
+              "after": 1.2000000000000002,
+              "after_minus_before": 0.20000000000000018
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 1.1,
+              "after": 1.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 4.9,
+              "after": 4.9,
+              "after_minus_before": 0.0
+            },
+            "final_completion": {
+              "before": 0.8148393857389252,
+              "after": 0.8101971493509988,
+              "after_minus_before": -0.0046422363879263795
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.2868937677476011,
+              "speed_kmh": 9.398859298147178
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.1974343866645762,
+              "speed_kmh": 7.893840545802107
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_04_south_short_stationary_a1_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "d4793adf90f588db389dc1a7599ab4cefaee42bbfb836785d0871d46a2a749ad",
+      "initial_config_canonical_sha256": {
+        "before": "75cafece68ce76b42035a1d849aaafe9ee1049d9a4b4b0649eb7ca5ab26e4e4e",
+        "after": "75cafece68ce76b42035a1d849aaafe9ee1049d9a4b4b0649eb7ca5ab26e4e4e"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 3.2,
+        "after": 3.1,
+        "after_minus_before": -0.10000000000000009
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 2.4000000000000004,
+              "after": 2.3000000000000003,
+              "after_minus_before": -0.10000000000000009
+            },
+            "speed_mean_kmh": {
+              "before": 19.468418155374618,
+              "after": 19.741633510844455,
+              "after_minus_before": 0.2732153554698371
+            },
+            "speed_p10_kmh": {
+              "before": 0.0056819262830409435,
+              "after": 0.005125231710798994,
+              "after_minus_before": -0.0005566945722419491
+            },
+            "speed_p50_kmh": {
+              "before": 20.933964139865996,
+              "after": 20.572132190129985,
+              "after_minus_before": -0.3618319497360112
+            },
+            "speed_p90_kmh": {
+              "before": 34.51100552461797,
+              "after": 35.85291313538273,
+              "after_minus_before": 1.341907610764757
+            },
+            "speed_peak_kmh": {
+              "before": 36.91708131939723,
+              "after": 38.9668126922305,
+              "after_minus_before": 2.0497313728332713
+            },
+            "above15_fraction": {
+              "before": 0.6666666666666666,
+              "after": 0.6521739130434783,
+              "after_minus_before": -0.01449275362318836
+            },
+            "above30_fraction": {
+              "before": 0.25,
+              "after": 0.2608695652173913,
+              "after_minus_before": 0.010869565217391297
+            },
+            "above15_seconds": {
+              "before": 1.6,
+              "after": 1.5,
+              "after_minus_before": -0.10000000000000009
+            },
+            "above30_seconds": {
+              "before": 0.6000000000000001,
+              "after": 0.6000000000000001,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 1.6,
+              "after": 1.5,
+              "after_minus_before": -0.10000000000000009
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.6000000000000001,
+              "after": 0.6000000000000001,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 0.5,
+              "after": 0.5,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 2.4000000000000004,
+              "after": 2.3000000000000003,
+              "after_minus_before": -0.10000000000000009
+            },
+            "final_completion": {
+              "before": 0.8314519125766061,
+              "after": 0.8016220880842191,
+              "after_minus_before": -0.029829824492387025
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.8314519125766061,
+              "speed_kmh": 36.91708131939723
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.8016220880842191,
+              "speed_kmh": 38.9668126922305
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 5.6000000000000005,
+              "after": 5.4,
+              "after_minus_before": -0.20000000000000018
+            },
+            "speed_mean_kmh": {
+              "before": 8.234852124362328,
+              "after": 8.415512212044739,
+              "after_minus_before": 0.18066008768241026
+            },
+            "speed_p10_kmh": {
+              "before": 2.7832431411730094e-06,
+              "after": 3.115528317599346e-06,
+              "after_minus_before": 3.3228517642633645e-07
+            },
+            "speed_p50_kmh": {
+              "before": 8.42413395969275,
+              "after": 8.793014672641077,
+              "after_minus_before": 0.3688807129483269
+            },
+            "speed_p90_kmh": {
+              "before": 18.713776651775547,
+              "after": 18.764017324210343,
+              "after_minus_before": 0.05024067243479635
+            },
+            "speed_peak_kmh": {
+              "before": 20.214910794070125,
+              "after": 19.649544903670442,
+              "after_minus_before": -0.5653658903996828
+            },
+            "above15_fraction": {
+              "before": 0.30357142857142855,
+              "after": 0.3148148148148148,
+              "after_minus_before": 0.011243386243386277
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 1.7000000000000002,
+              "after": 1.7000000000000002,
+              "after_minus_before": 0.0
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 1.7000000000000002,
+              "after": 1.7000000000000002,
+              "after_minus_before": 0.0
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 2.6,
+              "after": 2.4000000000000004,
+              "after_minus_before": -0.19999999999999973
+            },
+            "arrival_seconds": {
+              "before": 5.6000000000000005,
+              "after": 5.4,
+              "after_minus_before": -0.20000000000000018
+            },
+            "final_completion": {
+              "before": 0.827945078966866,
+              "after": 0.8151543130892759,
+              "after_minus_before": -0.012790765877590093
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 1.398054175488971e-06,
+              "speed_kmh": 3.6805003500968734e-07
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 1.398054175488971e-06,
+              "speed_kmh": 6.937469517427345e-08
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_05_northbound_free_flow",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "223ec843c6eb4652f7338d145d874a2d6557ef6e8417d4c4b32754453b7a24b7",
+      "initial_config_canonical_sha256": {
+        "before": "2b4e249128b18fd976e5858d23ddcecf4239afcdaca02ace93700b3b40ef8c13",
+        "after": "2b4e249128b18fd976e5858d23ddcecf4239afcdaca02ace93700b3b40ef8c13"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 3.8000000000000003,
+        "after": 4.6000000000000005,
+        "after_minus_before": 0.8000000000000003
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 6.4,
+              "after": 5.2,
+              "after_minus_before": -1.2000000000000002
+            },
+            "speed_mean_kmh": {
+              "before": 25.76190538969879,
+              "after": 29.69583062493117,
+              "after_minus_before": 3.9339252352323797
+            },
+            "speed_p10_kmh": {
+              "before": 13.253722350307418,
+              "after": 11.6837149059442,
+              "after_minus_before": -1.5700074443632186
+            },
+            "speed_p50_kmh": {
+              "before": 25.900613091620365,
+              "after": 31.07534845951161,
+              "after_minus_before": 5.174735367891245
+            },
+            "speed_p90_kmh": {
+              "before": 35.62364565874192,
+              "after": 43.077806432500665,
+              "after_minus_before": 7.454160773758744
+            },
+            "speed_peak_kmh": {
+              "before": 36.5887834191057,
+              "after": 44.56699754399429,
+              "after_minus_before": 7.978214124888588
+            },
+            "above15_fraction": {
+              "before": 0.875,
+              "after": 0.8653846153846154,
+              "after_minus_before": -0.009615384615384581
+            },
+            "above30_fraction": {
+              "before": 0.421875,
+              "after": 0.5192307692307693,
+              "after_minus_before": 0.09735576923076927
+            },
+            "above15_seconds": {
+              "before": 5.6000000000000005,
+              "after": 4.5,
+              "after_minus_before": -1.1000000000000005
+            },
+            "above30_seconds": {
+              "before": 2.7,
+              "after": 2.7,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 5.6000000000000005,
+              "after": 4.5,
+              "after_minus_before": -1.1000000000000005
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 2.7,
+              "after": 2.7,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 6.4,
+              "after": 5.2,
+              "after_minus_before": -1.2000000000000002
+            },
+            "final_completion": {
+              "before": 0.9650740393669093,
+              "after": 0.9322937057341796,
+              "after_minus_before": -0.0327803336327297
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9650740393669093,
+              "speed_kmh": 33.009123650161214
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9322937057341796,
+              "speed_kmh": 43.085817005818576
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 10.200000000000001,
+              "after": 9.8,
+              "after_minus_before": -0.40000000000000036
+            },
+            "speed_mean_kmh": {
+              "before": 15.031650913342908,
+              "after": 15.719926283956005,
+              "after_minus_before": 0.6882753706130966
+            },
+            "speed_p10_kmh": {
+              "before": 9.623215908049117,
+              "after": 12.286729810834565,
+              "after_minus_before": 2.663513902785448
+            },
+            "speed_p50_kmh": {
+              "before": 14.189335561561368,
+              "after": 16.574756857591538,
+              "after_minus_before": 2.38542129603017
+            },
+            "speed_p90_kmh": {
+              "before": 20.93115862491827,
+              "after": 18.927334047673924,
+              "after_minus_before": -2.003824577244348
+            },
+            "speed_peak_kmh": {
+              "before": 24.017134895524784,
+              "after": 21.55378875446786,
+              "after_minus_before": -2.463346141056924
+            },
+            "above15_fraction": {
+              "before": 0.45098039215686275,
+              "after": 0.5510204081632653,
+              "after_minus_before": 0.1000400160064025
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 4.6000000000000005,
+              "after": 5.4,
+              "after_minus_before": 0.7999999999999998
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 3.8000000000000003,
+              "after": 5.4,
+              "after_minus_before": 1.6
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 10.200000000000001,
+              "after": 9.8,
+              "after_minus_before": -0.40000000000000036
+            },
+            "final_completion": {
+              "before": 0.9362543987759663,
+              "after": 0.9419093594714341,
+              "after_minus_before": 0.005654960695467781
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.48929534068970637,
+              "speed_kmh": 14.886847192239888
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.423922798340642,
+              "speed_kmh": 16.605244360873808
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_06_southbound_free_flow",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "0fd0fc0b0c6030e3b03ad30f7a0f225f834fe3bff2f8c2db35b3485bd89a44c1",
+      "initial_config_canonical_sha256": {
+        "before": "ccf1a25fa8d3a9ec12513c2b5c1dd4e55efddee64cefcd1b7a94a231c8d61a82",
+        "after": "ccf1a25fa8d3a9ec12513c2b5c1dd4e55efddee64cefcd1b7a94a231c8d61a82"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 8.4,
+        "after": 7.9,
+        "after_minus_before": -0.5
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 4.4,
+              "after": 4.2,
+              "after_minus_before": -0.20000000000000018
+            },
+            "speed_mean_kmh": {
+              "before": 35.557057549021174,
+              "after": 37.37937544285483,
+              "after_minus_before": 1.822317893833656
+            },
+            "speed_p10_kmh": {
+              "before": 16.60640627165379,
+              "after": 16.56785099123302,
+              "after_minus_before": -0.03855528042076983
+            },
+            "speed_p50_kmh": {
+              "before": 39.10063955651695,
+              "after": 39.667131461906294,
+              "after_minus_before": 0.5664919053893414
+            },
+            "speed_p90_kmh": {
+              "before": 47.40579792966417,
+              "after": 52.317827764405465,
+              "after_minus_before": 4.912029834741297
+            },
+            "speed_peak_kmh": {
+              "before": 48.700888473389945,
+              "after": 54.21922400508786,
+              "after_minus_before": 5.518335531697915
+            },
+            "above15_fraction": {
+              "before": 0.9090909090909091,
+              "after": 0.9047619047619048,
+              "after_minus_before": -0.0043290043290042934
+            },
+            "above30_fraction": {
+              "before": 0.7045454545454546,
+              "after": 0.7142857142857143,
+              "after_minus_before": 0.009740259740259716
+            },
+            "above15_seconds": {
+              "before": 4.0,
+              "after": 3.8000000000000003,
+              "after_minus_before": -0.19999999999999973
+            },
+            "above30_seconds": {
+              "before": 3.1,
+              "after": 3.0,
+              "after_minus_before": -0.10000000000000009
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 4.0,
+              "after": 3.8000000000000003,
+              "after_minus_before": -0.19999999999999973
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 3.1,
+              "after": 3.0,
+              "after_minus_before": -0.10000000000000009
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 4.4,
+              "after": 4.2,
+              "after_minus_before": -0.20000000000000018
+            },
+            "final_completion": {
+              "before": 0.954114936568138,
+              "after": 0.9517984470802363,
+              "after_minus_before": -0.0023164894879016407
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.954114936568138,
+              "speed_kmh": 48.700888473389945
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9517984470802363,
+              "speed_kmh": 54.21922400508786
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 12.8,
+              "after": 12.100000000000001,
+              "after_minus_before": -0.6999999999999993
+            },
+            "speed_mean_kmh": {
+              "before": 11.981914979484767,
+              "after": 12.667368962413288,
+              "after_minus_before": 0.6854539829285216
+            },
+            "speed_p10_kmh": {
+              "before": 6.42117730907005e-06,
+              "after": 0.00019692997609653377,
+              "after_minus_before": 0.00019050879878746373
+            },
+            "speed_p50_kmh": {
+              "before": 13.38668491617967,
+              "after": 13.938039056116935,
+              "after_minus_before": 0.5513541399372652
+            },
+            "speed_p90_kmh": {
+              "before": 20.037387273741032,
+              "after": 19.99764385375668,
+              "after_minus_before": -0.039743419984350936
+            },
+            "speed_peak_kmh": {
+              "before": 22.00576960682138,
+              "after": 21.472431984998472,
+              "after_minus_before": -0.5333376218229091
+            },
+            "above15_fraction": {
+              "before": 0.421875,
+              "after": 0.4462809917355372,
+              "after_minus_before": 0.024405991735537202
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 5.4,
+              "after": 5.4,
+              "after_minus_before": 0.0
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 5.4,
+              "after": 5.4,
+              "after_minus_before": 0.0
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 12.8,
+              "after": 12.100000000000001,
+              "after_minus_before": -0.6999999999999993
+            },
+            "final_completion": {
+              "before": 0.9344033685102189,
+              "after": 0.9340540827346041,
+              "after_minus_before": -0.0003492857756147716
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.08079718716009067,
+              "speed_kmh": 9.478069385101072
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.11289551958975377,
+              "speed_kmh": 11.694246939038342
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_07_eastbound_free_flow",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "fefb17c3b163b190b9dc49f699b4a2e94de926bb9f5f63306695c625798459d4",
+      "initial_config_canonical_sha256": {
+        "before": "2e41f2bd0503f7f12e73e39a8a75fb0cfee2837807e92efebec28bf52bcf0b11",
+        "after": "2e41f2bd0503f7f12e73e39a8a75fb0cfee2837807e92efebec28bf52bcf0b11"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 5.9,
+        "after": 6.300000000000001,
+        "after_minus_before": 0.40000000000000036
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 4.4,
+              "after": 4.1000000000000005,
+              "after_minus_before": -0.2999999999999998
+            },
+            "speed_mean_kmh": {
+              "before": 33.050029228462726,
+              "after": 35.13000925617747,
+              "after_minus_before": 2.079980027714747
+            },
+            "speed_p10_kmh": {
+              "before": 11.334804380924604,
+              "after": 10.115715004290797,
+              "after_minus_before": -1.2190893766338071
+            },
+            "speed_p50_kmh": {
+              "before": 37.99331715162941,
+              "after": 39.69282048684753,
+              "after_minus_before": 1.6995033352181181
+            },
+            "speed_p90_kmh": {
+              "before": 45.43181496433089,
+              "after": 51.53377799464352,
+              "after_minus_before": 6.101963030312632
+            },
+            "speed_peak_kmh": {
+              "before": 46.237418297824135,
+              "after": 52.846474434866685,
+              "after_minus_before": 6.6090561370425505
+            },
+            "above15_fraction": {
+              "before": 0.8636363636363636,
+              "after": 0.8536585365853658,
+              "after_minus_before": -0.009977827050997812
+            },
+            "above30_fraction": {
+              "before": 0.6818181818181818,
+              "after": 0.6585365853658537,
+              "after_minus_before": -0.02328159645232808
+            },
+            "above15_seconds": {
+              "before": 3.8000000000000003,
+              "after": 3.5,
+              "after_minus_before": -0.30000000000000027
+            },
+            "above30_seconds": {
+              "before": 3.0,
+              "after": 2.7,
+              "after_minus_before": -0.2999999999999998
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 3.8000000000000003,
+              "after": 3.5,
+              "after_minus_before": -0.30000000000000027
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 3.0,
+              "after": 2.7,
+              "after_minus_before": -0.2999999999999998
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 4.4,
+              "after": 4.1000000000000005,
+              "after_minus_before": -0.2999999999999998
+            },
+            "final_completion": {
+              "before": 0.9471455490376745,
+              "after": 0.9346306322013644,
+              "after_minus_before": -0.012514916836310008
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9471455490376745,
+              "speed_kmh": 45.47300793010449
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9346306322013644,
+              "speed_kmh": 52.696729510661626
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 10.3,
+              "after": 10.4,
+              "after_minus_before": 0.09999999999999964
+            },
+            "speed_mean_kmh": {
+              "before": 13.779515067098234,
+              "after": 13.717096302028581,
+              "after_minus_before": -0.06241876506965305
+            },
+            "speed_p10_kmh": {
+              "before": 8.166017690422253,
+              "after": 9.850884462905046,
+              "after_minus_before": 1.6848667724827937
+            },
+            "speed_p50_kmh": {
+              "before": 13.808587250802255,
+              "after": 13.776066959705593,
+              "after_minus_before": -0.032520291096661325
+            },
+            "speed_p90_kmh": {
+              "before": 18.16317104068076,
+              "after": 17.58842915573095,
+              "after_minus_before": -0.5747418849498089
+            },
+            "speed_peak_kmh": {
+              "before": 18.558902417908886,
+              "after": 18.011220187945458,
+              "after_minus_before": -0.5476822299634279
+            },
+            "above15_fraction": {
+              "before": 0.3883495145631068,
+              "after": 0.2980769230769231,
+              "after_minus_before": -0.09027259148618372
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 4.0,
+              "after": 3.1,
+              "after_minus_before": -0.8999999999999999
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 4.0,
+              "after": 3.1,
+              "after_minus_before": -0.8999999999999999
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 10.3,
+              "after": 10.4,
+              "after_minus_before": 0.09999999999999964
+            },
+            "final_completion": {
+              "before": 0.9218613553201862,
+              "after": 0.9303791541686678,
+              "after_minus_before": 0.008517798848481584
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.29919934715747537,
+              "speed_kmh": 13.312898048069782
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.29846706044613874,
+              "speed_kmh": 14.036997391900563
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_08_westbound_free_flow",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "4afaeb80af8124136b9d676b4e3b6f642bd73aa14b018fd378374fdeb35613ad",
+      "initial_config_canonical_sha256": {
+        "before": "ce8ac26e1f00fab87f0f404ab593c68eacdc526dc0aac92a7cec6c37ecd8cac2",
+        "after": "ce8ac26e1f00fab87f0f404ab593c68eacdc526dc0aac92a7cec6c37ecd8cac2"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 5.9,
+        "after": 6.2,
+        "after_minus_before": 0.2999999999999998
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 4.9,
+              "after": 4.4,
+              "after_minus_before": -0.5
+            },
+            "speed_mean_kmh": {
+              "before": 31.756968260265197,
+              "after": 34.90698887185659,
+              "after_minus_before": 3.150020611591394
+            },
+            "speed_p10_kmh": {
+              "before": 17.160592142983106,
+              "after": 16.219629965311487,
+              "after_minus_before": -0.9409621776716186
+            },
+            "speed_p50_kmh": {
+              "before": 35.650050546665355,
+              "after": 38.81628150721049,
+              "after_minus_before": 3.1662309605451355
+            },
+            "speed_p90_kmh": {
+              "before": 40.037206460262055,
+              "after": 46.50085657189819,
+              "after_minus_before": 6.4636501116361345
+            },
+            "speed_peak_kmh": {
+              "before": 40.820272981507905,
+              "after": 47.34440097889826,
+              "after_minus_before": 6.524127997390352
+            },
+            "above15_fraction": {
+              "before": 0.8979591836734694,
+              "after": 0.9090909090909091,
+              "after_minus_before": 0.011131725417439675
+            },
+            "above30_fraction": {
+              "before": 0.673469387755102,
+              "after": 0.7045454545454546,
+              "after_minus_before": 0.031076066790352574
+            },
+            "above15_seconds": {
+              "before": 4.4,
+              "after": 4.0,
+              "after_minus_before": -0.40000000000000036
+            },
+            "above30_seconds": {
+              "before": 3.3000000000000003,
+              "after": 3.1,
+              "after_minus_before": -0.20000000000000018
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 4.4,
+              "after": 4.0,
+              "after_minus_before": -0.40000000000000036
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 3.3000000000000003,
+              "after": 3.1,
+              "after_minus_before": -0.20000000000000018
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 4.9,
+              "after": 4.4,
+              "after_minus_before": -0.5
+            },
+            "final_completion": {
+              "before": 0.9498164445745773,
+              "after": 0.9316888274995317,
+              "after_minus_before": -0.01812761707504551
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9498164445745773,
+              "speed_kmh": 40.820272981507905
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9316888274995317,
+              "speed_kmh": 47.02732428153485
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 10.8,
+              "after": 10.600000000000001,
+              "after_minus_before": -0.1999999999999993
+            },
+            "speed_mean_kmh": {
+              "before": 14.158794580662006,
+              "after": 14.505445393025951,
+              "after_minus_before": 0.34665081236394535
+            },
+            "speed_p10_kmh": {
+              "before": 5.541843900100315,
+              "after": 6.28289719640779,
+              "after_minus_before": 0.7410532963074745
+            },
+            "speed_p50_kmh": {
+              "before": 15.759296370649738,
+              "after": 15.364791531536628,
+              "after_minus_before": -0.3945048391131092
+            },
+            "speed_p90_kmh": {
+              "before": 21.04999991268791,
+              "after": 19.12531447458661,
+              "after_minus_before": -1.9246854381012994
+            },
+            "speed_peak_kmh": {
+              "before": 21.468611794272753,
+              "after": 19.38754835530709,
+              "after_minus_before": -2.081063438965664
+            },
+            "above15_fraction": {
+              "before": 0.6018518518518519,
+              "after": 0.6509433962264151,
+              "after_minus_before": 0.0490915443745632
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 6.5,
+              "after": 6.9,
+              "after_minus_before": 0.40000000000000036
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 6.5,
+              "after": 6.9,
+              "after_minus_before": 0.40000000000000036
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 0.1,
+              "after": 0.1,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 10.8,
+              "after": 10.600000000000001,
+              "after_minus_before": -0.1999999999999993
+            },
+            "final_completion": {
+              "before": 0.9325324116503781,
+              "after": 0.9345905809372844,
+              "after_minus_before": 0.002058169286906275
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.25666869039065615,
+              "speed_kmh": 15.684045126192137
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.27054913122833285,
+              "speed_kmh": 15.112445226568592
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_09_north_parallel_stationary_a0_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "c60e73426faf7a0f6d129097f4f685cd65155c1d12227da3229e9fb1043dddd2",
+      "initial_config_canonical_sha256": {
+        "before": "9051ea74aec7cf4d22633e58e639f45c364af43ba1d7e442d522d8f6ac75cbaa",
+        "after": "9051ea74aec7cf4d22633e58e639f45c364af43ba1d7e442d522d8f6ac75cbaa"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 4.3,
+        "after": 6.7,
+        "after_minus_before": 2.4000000000000004
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 7.1000000000000005,
+              "after": 5.7,
+              "after_minus_before": -1.4000000000000004
+            },
+            "speed_mean_kmh": {
+              "before": 22.978234470555822,
+              "after": 27.32801938792856,
+              "after_minus_before": 4.349784917372737
+            },
+            "speed_p10_kmh": {
+              "before": 9.229758198957347,
+              "after": 7.151784090331919,
+              "after_minus_before": -2.077974108625428
+            },
+            "speed_p50_kmh": {
+              "before": 25.37629290815597,
+              "after": 30.918293291006155,
+              "after_minus_before": 5.542000382850183
+            },
+            "speed_p90_kmh": {
+              "before": 32.27783059950923,
+              "after": 41.0987306393061,
+              "after_minus_before": 8.820900039796868
+            },
+            "speed_peak_kmh": {
+              "before": 33.55856047645347,
+              "after": 42.45170489154845,
+              "after_minus_before": 8.89314441509498
+            },
+            "above15_fraction": {
+              "before": 0.8450704225352113,
+              "after": 0.8245614035087719,
+              "after_minus_before": -0.020509019026439312
+            },
+            "above30_fraction": {
+              "before": 0.2535211267605634,
+              "after": 0.5263157894736842,
+              "after_minus_before": 0.2727946627131208
+            },
+            "above15_seconds": {
+              "before": 6.0,
+              "after": 4.7,
+              "after_minus_before": -1.2999999999999998
+            },
+            "above30_seconds": {
+              "before": 1.8,
+              "after": 3.0,
+              "after_minus_before": 1.2
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 6.0,
+              "after": 4.7,
+              "after_minus_before": -1.2999999999999998
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 1.8,
+              "after": 3.0,
+              "after_minus_before": 1.2
+            },
+            "first_motion_seconds": {
+              "before": 0.6000000000000001,
+              "after": 0.6000000000000001,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 7.1000000000000005,
+              "after": 5.7,
+              "after_minus_before": -1.4000000000000004
+            },
+            "final_completion": {
+              "before": 0.9638608631748963,
+              "after": 0.9403053033668662,
+              "after_minus_before": -0.023555559808030035
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9638608631748963,
+              "speed_kmh": 30.42752831721777
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9403053033668662,
+              "speed_kmh": 41.427073653179974
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 11.4,
+              "after": 12.4,
+              "after_minus_before": 1.0
+            },
+            "speed_mean_kmh": {
+              "before": 13.554822362623598,
+              "after": 12.335776184789653,
+              "after_minus_before": -1.2190461778339454
+            },
+            "speed_p10_kmh": {
+              "before": 5.671372475449366e-05,
+              "after": 1.4274749860232661e-05,
+              "after_minus_before": -4.2438974894261e-05
+            },
+            "speed_p50_kmh": {
+              "before": 16.364163183872463,
+              "after": 14.000862511480905,
+              "after_minus_before": -2.363300672391558
+            },
+            "speed_p90_kmh": {
+              "before": 21.94626671705906,
+              "after": 20.05469520811665,
+              "after_minus_before": -1.891571508942409
+            },
+            "speed_peak_kmh": {
+              "before": 25.9002668669655,
+              "after": 23.71592801913722,
+              "after_minus_before": -2.184338847828279
+            },
+            "above15_fraction": {
+              "before": 0.5614035087719298,
+              "after": 0.45161290322580644,
+              "after_minus_before": -0.10979060554612335
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 6.4,
+              "after": 5.6000000000000005,
+              "after_minus_before": -0.7999999999999998
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 6.4,
+              "after": 5.6000000000000005,
+              "after_minus_before": -0.7999999999999998
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 2.2,
+              "after": 2.6,
+              "after_minus_before": 0.3999999999999999
+            },
+            "arrival_seconds": {
+              "before": 11.4,
+              "after": 12.4,
+              "after_minus_before": 1.0
+            },
+            "final_completion": {
+              "before": 0.9447273664448231,
+              "after": 0.9346297227790703,
+              "after_minus_before": -0.010097643665752831
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.4027187552687947,
+              "speed_kmh": 18.239843864406208
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.20024848578708598,
+              "speed_kmh": 13.179638144412914
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_10_south_parallel_stationary_a1_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "1b5c2a9b668e2baf0bfb05584c85308d87da79c42f2314b6419a1741cc516a56",
+      "initial_config_canonical_sha256": {
+        "before": "6ed4180aa3c581b08b967357187635f2bb2b2ae6e64ba118659c2ee4a46e79c5",
+        "after": "6ed4180aa3c581b08b967357187635f2bb2b2ae6e64ba118659c2ee4a46e79c5"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 8.1,
+        "after": 8.0,
+        "after_minus_before": -0.09999999999999964
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 5.7,
+              "after": 4.800000000000001,
+              "after_minus_before": -0.8999999999999995
+            },
+            "speed_mean_kmh": {
+              "before": 29.988684911051866,
+              "after": 32.285135192261244,
+              "after_minus_before": 2.2964502812093777
+            },
+            "speed_p10_kmh": {
+              "before": 8.78893663239971,
+              "after": 6.165413380438965,
+              "after_minus_before": -2.6235232519607443
+            },
+            "speed_p50_kmh": {
+              "before": 35.20407354493714,
+              "after": 37.28825858903569,
+              "after_minus_before": 2.084185044098554
+            },
+            "speed_p90_kmh": {
+              "before": 43.92803487013257,
+              "after": 50.22106765979742,
+              "after_minus_before": 6.293032789664849
+            },
+            "speed_peak_kmh": {
+              "before": 44.91532251714031,
+              "after": 51.84820964218476,
+              "after_minus_before": 6.932887125044452
+            },
+            "above15_fraction": {
+              "before": 0.8421052631578947,
+              "after": 0.8333333333333334,
+              "after_minus_before": -0.00877192982456132
+            },
+            "above30_fraction": {
+              "before": 0.5964912280701754,
+              "after": 0.6041666666666666,
+              "after_minus_before": 0.007675438596491224
+            },
+            "above15_seconds": {
+              "before": 4.800000000000001,
+              "after": 4.0,
+              "after_minus_before": -0.8000000000000007
+            },
+            "above30_seconds": {
+              "before": 3.4000000000000004,
+              "after": 2.9000000000000004,
+              "after_minus_before": -0.5
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 4.800000000000001,
+              "after": 4.0,
+              "after_minus_before": -0.8000000000000007
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 3.4000000000000004,
+              "after": 2.9000000000000004,
+              "after_minus_before": -0.5
+            },
+            "first_motion_seconds": {
+              "before": 0.5,
+              "after": 0.5,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 5.7,
+              "after": 4.800000000000001,
+              "after_minus_before": -0.8999999999999995
+            },
+            "final_completion": {
+              "before": 0.9507627308076628,
+              "after": 0.9300666174905392,
+              "after_minus_before": -0.02069611331712362
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9507627308076628,
+              "speed_kmh": 42.074749164505434
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9300666174905392,
+              "speed_kmh": 51.84820964218476
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 13.8,
+              "after": 12.8,
+              "after_minus_before": -1.0
+            },
+            "speed_mean_kmh": {
+              "before": 11.19640276168426,
+              "after": 12.168445909193053,
+              "after_minus_before": 0.9720431475087938
+            },
+            "speed_p10_kmh": {
+              "before": 3.2597409646346562e-06,
+              "after": 4.872467159357195e-06,
+              "after_minus_before": 1.6127261947225388e-06
+            },
+            "speed_p50_kmh": {
+              "before": 8.270441294116367,
+              "after": 12.79161366338785,
+              "after_minus_before": 4.521172369271483
+            },
+            "speed_p90_kmh": {
+              "before": 23.89950198439942,
+              "after": 22.579461801196405,
+              "after_minus_before": -1.320040183203016
+            },
+            "speed_peak_kmh": {
+              "before": 28.140317535601433,
+              "after": 26.868101051226358,
+              "after_minus_before": -1.2722164843750754
+            },
+            "above15_fraction": {
+              "before": 0.391304347826087,
+              "after": 0.4296875,
+              "after_minus_before": 0.03838315217391303
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 5.4,
+              "after": 5.5,
+              "after_minus_before": 0.09999999999999964
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 5.4,
+              "after": 5.5,
+              "after_minus_before": 0.09999999999999964
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 3.9000000000000004,
+              "after": 3.0,
+              "after_minus_before": -0.9000000000000004
+            },
+            "arrival_seconds": {
+              "before": 13.8,
+              "after": 12.8,
+              "after_minus_before": -1.0
+            },
+            "final_completion": {
+              "before": 0.9382600680661576,
+              "after": 0.94370526848572,
+              "after_minus_before": 0.005445200419562424
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.07992149225077587,
+              "speed_kmh": 7.255535261223133
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.09219362600080087,
+              "speed_kmh": 9.322251158581738
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_11_east_parallel_stationary_a1_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "4542c2de5918a01ae986e59f2c31444d385724dbbef869040fcc70681c7bc770",
+      "initial_config_canonical_sha256": {
+        "before": "53d4fb21b43e2a2cfbc0d3bb773bc93b193ce424e8ed61ef7119636897d83aac",
+        "after": "53d4fb21b43e2a2cfbc0d3bb773bc93b193ce424e8ed61ef7119636897d83aac"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 9.5,
+        "after": 9.700000000000001,
+        "after_minus_before": 0.20000000000000107
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 4.5,
+              "after": 4.2,
+              "after_minus_before": -0.2999999999999998
+            },
+            "speed_mean_kmh": {
+              "before": 29.829611798019165,
+              "after": 32.22502460159336,
+              "after_minus_before": 2.395412803574196
+            },
+            "speed_p10_kmh": {
+              "before": 4.545966032902293,
+              "after": 3.949121914033145,
+              "after_minus_before": -0.5968441188691482
+            },
+            "speed_p50_kmh": {
+              "before": 34.94931793549367,
+              "after": 36.74086844904309,
+              "after_minus_before": 1.7915505135494243
+            },
+            "speed_p90_kmh": {
+              "before": 44.90570778114555,
+              "after": 51.12670056146002,
+              "after_minus_before": 6.220992780314468
+            },
+            "speed_peak_kmh": {
+              "before": 45.946706439022854,
+              "after": 52.50892040055242,
+              "after_minus_before": 6.562213961529565
+            },
+            "above15_fraction": {
+              "before": 0.8222222222222222,
+              "after": 0.8095238095238095,
+              "after_minus_before": -0.012698412698412653
+            },
+            "above30_fraction": {
+              "before": 0.6,
+              "after": 0.5952380952380952,
+              "after_minus_before": -0.004761904761904745
+            },
+            "above15_seconds": {
+              "before": 3.7,
+              "after": 3.4000000000000004,
+              "after_minus_before": -0.2999999999999998
+            },
+            "above30_seconds": {
+              "before": 2.7,
+              "after": 2.5,
+              "after_minus_before": -0.20000000000000018
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 3.7,
+              "after": 3.4000000000000004,
+              "after_minus_before": -0.2999999999999998
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 2.7,
+              "after": 2.5,
+              "after_minus_before": -0.20000000000000018
+            },
+            "first_motion_seconds": {
+              "before": 0.5,
+              "after": 0.5,
+              "after_minus_before": 0.0
+            },
+            "arrival_seconds": {
+              "before": 4.5,
+              "after": 4.2,
+              "after_minus_before": -0.2999999999999998
+            },
+            "final_completion": {
+              "before": 0.9275187449285031,
+              "after": 0.9317711694721106,
+              "after_minus_before": 0.004252424543607525
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9275187449285031,
+              "speed_kmh": 45.89512753141191
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.9317711694721106,
+              "speed_kmh": 52.28867317306712
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 14.0,
+              "after": 13.9,
+              "after_minus_before": -0.09999999999999964
+            },
+            "speed_mean_kmh": {
+              "before": 9.974010003247422,
+              "after": 9.53503301172854,
+              "after_minus_before": -0.4389769915188815
+            },
+            "speed_p10_kmh": {
+              "before": 2.7677330827754596e-06,
+              "after": 2.754524667900823e-06,
+              "after_minus_before": -1.3208414874636442e-08
+            },
+            "speed_p50_kmh": {
+              "before": 11.217147998982899,
+              "after": 11.114892756972688,
+              "after_minus_before": -0.10225524201021052
+            },
+            "speed_p90_kmh": {
+              "before": 19.46388539129097,
+              "after": 18.112612951223042,
+              "after_minus_before": -1.3512724400679268
+            },
+            "speed_peak_kmh": {
+              "before": 20.449215171716148,
+              "after": 18.689060012933513,
+              "after_minus_before": -1.7601551587826343
+            },
+            "above15_fraction": {
+              "before": 0.35,
+              "after": 0.2949640287769784,
+              "after_minus_before": -0.05503597122302156
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 4.9,
+              "after": 4.1000000000000005,
+              "after_minus_before": -0.7999999999999998
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 4.9,
+              "after": 4.1000000000000005,
+              "after_minus_before": -0.7999999999999998
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 4.4,
+              "after": 4.3,
+              "after_minus_before": -0.10000000000000053
+            },
+            "arrival_seconds": {
+              "before": 14.0,
+              "after": 13.9,
+              "after_minus_before": -0.09999999999999964
+            },
+            "final_completion": {
+              "before": 0.9485200518757396,
+              "after": 0.9170757683224833,
+              "after_minus_before": -0.03144428355325635
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.005611019828564779,
+              "speed_kmh": 6.154716856413303
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 2.897007053729341e-07,
+              "speed_kmh": 3.0899059121147595e-06
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenario": "scenario_12_west_parallel_stationary_a0_left",
+      "seed": 62001,
+      "mode": "deterministic",
+      "initial_scenario_fingerprint_match": true,
+      "declared_scenario_sha256": "32419f45c7f3d52e8e595e50569e17a99c72df8379f85e564b311d6fff62d5a3",
+      "initial_config_canonical_sha256": {
+        "before": "5d5346e400ba4239dfadbb8b98f7589a0b91f2b62638f94faa171a3a9ae79fda",
+        "after": "5d5346e400ba4239dfadbb8b98f7589a0b91f2b62638f94faa171a3a9ae79fda"
+      },
+      "end_reason": {
+        "before": "all_agents_reached",
+        "after": "all_agents_reached"
+      },
+      "arrival_gap_seconds": {
+        "before": 4.800000000000001,
+        "after": 5.9,
+        "after_minus_before": 1.0999999999999996
+      },
+      "agents": {
+        "0": {
+          "metrics": {
+            "active_seconds": {
+              "before": 6.300000000000001,
+              "after": 4.9,
+              "after_minus_before": -1.4000000000000004
+            },
+            "speed_mean_kmh": {
+              "before": 23.710402269965325,
+              "after": 27.430996952793446,
+              "after_minus_before": 3.7205946828281213
+            },
+            "speed_p10_kmh": {
+              "before": 9.356926572919392,
+              "after": 5.880645065446407,
+              "after_minus_before": -3.4762815074729847
+            },
+            "speed_p50_kmh": {
+              "before": 27.002190116315905,
+              "after": 31.975707882474545,
+              "after_minus_before": 4.97351776615864
+            },
+            "speed_p90_kmh": {
+              "before": 33.48696469207368,
+              "after": 40.85460698494143,
+              "after_minus_before": 7.36764229286775
+            },
+            "speed_peak_kmh": {
+              "before": 34.414445739537925,
+              "after": 42.36750395972864,
+              "after_minus_before": 7.953058220190712
+            },
+            "above15_fraction": {
+              "before": 0.8412698412698413,
+              "after": 0.8163265306122449,
+              "after_minus_before": -0.024943310657596363
+            },
+            "above30_fraction": {
+              "before": 0.31746031746031744,
+              "after": 0.5510204081632653,
+              "after_minus_before": 0.2335600907029478
+            },
+            "above15_seconds": {
+              "before": 5.300000000000001,
+              "after": 4.0,
+              "after_minus_before": -1.3000000000000007
+            },
+            "above30_seconds": {
+              "before": 2.0,
+              "after": 2.7,
+              "after_minus_before": 0.7000000000000002
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 5.300000000000001,
+              "after": 4.0,
+              "after_minus_before": -1.3000000000000007
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 2.0,
+              "after": 2.7,
+              "after_minus_before": 0.7000000000000002
+            },
+            "first_motion_seconds": {
+              "before": 0.6000000000000001,
+              "after": 0.5,
+              "after_minus_before": -0.10000000000000009
+            },
+            "arrival_seconds": {
+              "before": 6.300000000000001,
+              "after": 4.9,
+              "after_minus_before": -1.4000000000000004
+            },
+            "final_completion": {
+              "before": 0.948575119151486,
+              "after": 0.91895896775776,
+              "after_minus_before": -0.029616151393725976
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.948575119151486,
+              "speed_kmh": 31.04236389494754
+            },
+            "after": {
+              "active_before": true,
+              "active_after": false,
+              "arrived": true,
+              "route_completion": 0.91895896775776,
+              "speed_kmh": 42.36750395972864
+            }
+          }
+        },
+        "1": {
+          "metrics": {
+            "active_seconds": {
+              "before": 11.100000000000001,
+              "after": 10.8,
+              "after_minus_before": -0.3000000000000007
+            },
+            "speed_mean_kmh": {
+              "before": 12.220796930075643,
+              "after": 12.348332967652441,
+              "after_minus_before": 0.12753603757679777
+            },
+            "speed_p10_kmh": {
+              "before": 4.711599680886218e-06,
+              "after": 1.7639999837171896e-05,
+              "after_minus_before": 1.2928400156285678e-05
+            },
+            "speed_p50_kmh": {
+              "before": 12.44903996316604,
+              "after": 14.008829934322076,
+              "after_minus_before": 1.559789971156036
+            },
+            "speed_p90_kmh": {
+              "before": 23.030282471864,
+              "after": 21.128140130994822,
+              "after_minus_before": -1.902142340869176
+            },
+            "speed_peak_kmh": {
+              "before": 26.483525087830756,
+              "after": 24.039654051290146,
+              "after_minus_before": -2.44387103654061
+            },
+            "above15_fraction": {
+              "before": 0.45045045045045046,
+              "after": 0.4722222222222222,
+              "after_minus_before": 0.021771771771771753
+            },
+            "above30_fraction": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_seconds": {
+              "before": 5.0,
+              "after": 5.1000000000000005,
+              "after_minus_before": 0.10000000000000053
+            },
+            "above30_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "above15_longest_continuous_seconds": {
+              "before": 5.0,
+              "after": 5.1000000000000005,
+              "after_minus_before": 0.10000000000000053
+            },
+            "above30_longest_continuous_seconds": {
+              "before": 0.0,
+              "after": 0.0,
+              "after_minus_before": 0.0
+            },
+            "first_motion_seconds": {
+              "before": 2.8000000000000003,
+              "after": 2.4000000000000004,
+              "after_minus_before": -0.3999999999999999
+            },
+            "arrival_seconds": {
+              "before": 11.100000000000001,
+              "after": 10.8,
+              "after_minus_before": -0.3000000000000007
+            },
+            "final_completion": {
+              "before": 0.9384823675855286,
+              "after": 0.9275310338082932,
+              "after_minus_before": -0.01095133377723545
+            }
+          },
+          "reached_goal": {
+            "before": true,
+            "after": true
+          },
+          "terminal_events": {
+            "success_event": {
+              "before": 1,
+              "after": 1
+            },
+            "collision_event": {
+              "before": 0,
+              "after": 0
+            },
+            "offroad_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "road_violation_terminated": {
+              "before": 0,
+              "after": 0
+            },
+            "mission_timeout_event": {
+              "before": 0,
+              "after": 0
+            }
+          },
+          "at_first_arrival_partner_evidence": {
+            "before": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.2505403238940895,
+              "speed_kmh": 15.408441012554755
+            },
+            "after": {
+              "active_before": true,
+              "active_after": true,
+              "arrived": false,
+              "route_completion": 0.1710522517606686,
+              "speed_kmh": 12.413091078430817
+            }
+          }
+        }
+      }
+    }
+  ],
+  "errors": []
+}

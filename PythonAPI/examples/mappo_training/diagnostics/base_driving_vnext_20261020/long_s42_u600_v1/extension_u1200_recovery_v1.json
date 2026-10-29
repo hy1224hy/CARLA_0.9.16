@@ -1,0 +1,95 @@
+{
+  "authorization": "Human reported accidental interruption and explicitly requested continuing the same run to u1200 on2026-10-27.",
+  "authorized_at": "2026-10-27T10:20:16.128146Z",
+  "automatic_restart": false,
+  "complete_source_state": {
+    "actor_adam_steps": {
+      "0": [
+        4715
+      ],
+      "1": [
+        4715
+      ]
+    },
+    "base_driving_state_keys": [
+      "runtime_protocol_version",
+      "pool_manifest_sha256",
+      "base_gate",
+      "sampler_state",
+      "scenario_success_history",
+      "scenario_total_sample_counts"
+    ],
+    "critic_adam_steps": [
+      4715
+    ],
+    "episodes": 15088,
+    "lr_schedule": {
+      "actor_final_lr": 1.5e-05,
+      "critic_final_lr": 0.0001,
+      "critic_hold_updates": 300,
+      "current_actor_lrs": {
+        "0": 1.4999999999999985e-05,
+        "1": 1.4999999999999985e-05
+      },
+      "current_critic_lr": 9.999999999999999e-05,
+      "decay_horizon": 600,
+      "enabled": true,
+      "initial_actor_lr": 0.0003,
+      "initial_critic_lr": 0.0003,
+      "protocol_version": "separate_actor_critic_lr_r7_v1"
+    },
+    "rng_components": [
+      "python",
+      "numpy",
+      "torch_cpu",
+      "torch_cuda"
+    ],
+    "safe_update": 943,
+    "sha256": "85ba7641e6c5fff147e99545770b36cc7bb9f7fb189f8782530313c0e80cd630",
+    "source_fingerprint": "8d35d03c4a09111331b00ed308fa08f04a659070b2205e4ff61e6749fb865700",
+    "value_normalizer_update_count": 943.0
+  },
+  "completed_stages": [
+    50,
+    100,
+    200,
+    400,
+    600,
+    800
+  ],
+  "controller_source": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\continue_base_u1200_recovery.py",
+  "controller_source_sha256": "bbfb6f933e7e2ce08dcc0dbf25d64057de03f2ac7385263e5758f4eee5868309",
+  "initialization_sha256": "514c50b3b5200ee82ed04e8e36b46d8c2c77c6de89c3951ddf1eb0c2e5c39320",
+  "interrupted_exit_present": false,
+  "interrupted_launch_sha256": "02eb0afaaf3d1199fb3cbe5cb8991d6e0a103da9413cbdcc97fd7899ea81f8b0",
+  "live_preflight": {
+    "carla_client_version": "0.9.16",
+    "carla_server_version": "0.9.16",
+    "fixed_delta_seconds": null,
+    "sensor_actor_count": 0,
+    "synchronous_mode": false,
+    "vehicle_actor_count": 0
+  },
+  "new_frozen_stops": [
+    1000,
+    1200
+  ],
+  "original_controller_archive": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\interrupted_controller_u1000_before_u1200.json",
+  "original_plan": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\plan.json",
+  "original_plan_sha256": "c864d7b67deb747abf7bcfb9e913c78717352ce596cca0254a7d570d1e123ba0",
+  "original_status_sha256": "da623565e8df4f28c1ffb2d7555ebb7eef55e3b1cd9a48e65a82fcfa971eaf8a",
+  "previous_extension": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\extension_u1000_v1.json",
+  "previous_extension_sha256": "8ec4f02ba2c282d3ef9f737e0e13a662351c97303eb29fafc18098fc5cb050e4",
+  "remaining_episodes": 4112,
+  "remaining_updates": 257,
+  "schedule_policy": "Preserve original cumulative600 LR/entropy clock and terminal values; no reset/stretch.",
+  "source_checkpoint": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u000943_recovery_20261027_v1.pt",
+  "source_checkpoint_sha256": "85ba7641e6c5fff147e99545770b36cc7bb9f7fb189f8782530313c0e80cd630",
+  "source_episodes": 15088,
+  "source_update": 943,
+  "tail_policy": "Archive raw interrupted session first. Native full-state recorder reconciles episodes to safe943, then redo944.",
+  "total_budget_episodes": 19200,
+  "total_budget_updates": 1200,
+  "uncommitted_episode_count": 6,
+  "version": "base_driving_explicit_u1200_recovery_v1"
+}

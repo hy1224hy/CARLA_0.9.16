@@ -1,0 +1,73 @@
+{
+  "actor_adam_step_ranges_after": {
+    "0": [
+      60.0,
+      60.0
+    ],
+    "1": [
+      60.0,
+      60.0
+    ]
+  },
+  "actor_adam_step_ranges_before": {
+    "0": [
+      55.0,
+      55.0
+    ],
+    "1": [
+      55.0,
+      55.0
+    ]
+  },
+  "camera": {
+    "camera": {
+      "at": "2026-10-17T08:00:47.545524+00:00",
+      "status": "FOLLOWING",
+      "vehicles": 1
+    },
+    "pid": 12004,
+    "started_at": "2026-10-17T07:56:59.051184+00:00",
+    "trainer_pid": 2672
+  },
+  "code_drift_override": false,
+  "lr_schedule": {
+    "actor_final_lr": 1.5e-05,
+    "critic_final_lr": 0.0001,
+    "critic_hold_updates": 300,
+    "current_actor_lrs": {
+      "0": 0.00029476627712854756,
+      "1": 0.00029476627712854756
+    },
+    "current_critic_lr": 0.0003,
+    "decay_horizon": 600,
+    "enabled": true,
+    "initial_actor_lr": 0.0003,
+    "initial_critic_lr": 0.0003,
+    "protocol_version": "separate_actor_critic_lr_r7_v1"
+  },
+  "resume_count": 1,
+  "safe_update": 12,
+  "scope": "training diagnostics, no new frozen evaluation yet",
+  "sha256": "5561811019a35cf52b9f8c19bca8103908ad552cb6b14eb518c76be09f497dce",
+  "status": "RESUMED_UPDATE_COMPLETE_VALIDATED",
+  "total_episodes": 192,
+  "training_config_unchanged": true,
+  "training_integrity": {
+    "episodes": 192,
+    "maxima": {
+      "policy/agent_0/preupdate_max_abs_ratio_error": 0.0,
+      "policy/agent_1/preupdate_max_abs_ratio_error": 0.0,
+      "reward_audit/max_abs_step_residual": 0.0,
+      "reward_audit/nonfinite_count": 0.0,
+      "train/update_skipped": 0.0
+    },
+    "outcomes": {
+      "collision": 0,
+      "offroad": 8,
+      "road_violation": 5,
+      "success": 0,
+      "timeout": 179
+    },
+    "updates": 12
+  }
+}
