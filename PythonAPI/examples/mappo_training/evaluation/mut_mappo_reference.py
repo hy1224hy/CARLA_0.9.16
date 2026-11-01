@@ -13,7 +13,7 @@ from visualization.mut_mappo_monitor import monitored_evaluation, add_monitor_ar
 
 
 def prepare(config_path, splits=("train", "gate", "selection"), *, allow_weak_red=False, repeats=1, monitor_options=None):
-    from training.train_mut_mappo import create_runtime, run_case
+    from training.train_mut_mappo import create_runtime, run_case, append_record, now
     from utils.mut_mappo_session import CarlaOwner
     config = validate_config(load_config(config_path))
     config["_building_reference"] = True
@@ -22,13 +22,18 @@ def prepare(config_path, splits=("train", "gate", "selection"), *, allow_weak_re
     identity = reference_identity(config)
     path = directory / "manifest.json"
     header = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {
-        "schema": "mut_mappo_C1_reference_v1", "identity": identity, "cases": {}}
+        "schema": "mut_mappo_C1_reference_v1", "identity": identity, "cases": {},
+        "diagnostic_weak_red_override": bool(allow_weak_red),
+        "normal_blue_controller": config['task'].get('c1_controller','frozen_actor')}
     if header["identity"] != identity:
         raise ValueError("reference directory is already bound to another experiment")
     if repeats < 1:
         raise ValueError("reference repeats must be positive")
     atomic_write_json(header, path)
     runtime = None
+    context={'phase':'construction'}
+    def audit(event):
+        append_record(directory/'world_tick_audit.jsonl',dict(event,**context,at=now()))
     with monitored_evaluation(config, directory, monitor_options, operation="reference") as monitor, \
          CarlaOwner(config["host"], config["port"], run_dir=directory, purpose="C1 reference"):
         try:
@@ -44,10 +49,11 @@ def prepare(config_path, splits=("train", "gate", "selection"), *, allow_weak_re
                             raise RuntimeError("saved C1 case failed normal-driving screen; diagnostic override is explicit")
                         continue
                     if runtime is None:
-                        runtime = create_runtime(config, condition="C1")
+                        runtime = create_runtime(config, condition="C1", audit_callback=audit)
                         runtime.monitor = monitor
                     curves, results = [], []
                     for repetition in range(repeats):
+                        context.update(phase='reference',case_key=case['case_key'],seed=case['seed']+repetition*10000)
                         curve = {"0": [0.0], "1": [0.0]}
                         def collect(info):
                             p = info["mut_metrics"]["route_progress"]
@@ -74,6 +80,7 @@ def prepare(config_path, splits=("train", "gate", "selection"), *, allow_weak_re
                     print("REFERENCE_DONE", case["case_key"], "NORMAL" if qualified else "DIAGNOSTIC_WEAK", flush=True)
         finally:
             if runtime is not None:
+                context['phase']='cleanup'
                 runtime.close()
     return {"directory": str(directory), "cases": len(header["cases"]),
             "diagnostic_weak_cases": sum(not row["qualified"] for row in header["cases"].values())}

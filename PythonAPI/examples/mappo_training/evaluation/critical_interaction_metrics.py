@@ -136,6 +136,10 @@ def analyze_trace(trace_rows,protocol):
         if not isinstance(final_mask,dict) or not final_mask or any(type(v) is not bool for v in final_mask.values()) or any(final_mask.values()):
             return fail('INCOMPLETE_TRACE','trace lacks the final all-inactive lifecycle mask')
         prior_next=None
+        if initial is not None:
+            prior_next=_mapping(initial.get('active_mask',{}))
+            if not prior_next or any(type(v) is not bool for v in prior_next.values()):
+                return fail('INCOMPLETE_TRACE','reset lifecycle mask must contain boolean actor slots')
         for row in steps:
             step=row['step'];active=_mapping(row.get('active_mask',{}));kin=_mapping(row.get('kinematics',{}))
             if any(type(v) is not bool for v in active.values()):raise ValueError('active mask values must be boolean')

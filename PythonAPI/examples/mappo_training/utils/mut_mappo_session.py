@@ -3,6 +3,7 @@ from __future__ import annotations
 from visualization.mut_mappo_monitor import add_monitor_arguments, monitor_cli_arguments
 
 import argparse
+import hashlib
 from datetime import datetime, timezone
 import json
 import os
@@ -79,9 +80,12 @@ def competing_clients():
 class CarlaOwner:
     """An OS-released lock in a machine-wide directory, never a world operation."""
     def __init__(self, host="127.0.0.1", port=2000, run_dir=None, purpose="training"):
-        if host not in {"localhost", "127.0.0.1"} or port != 2000:
-            raise ValueError("Mut-MAPPO uses the shared local 2000 endpoint")
-        self.path = Path(tempfile.gettempdir()) / "codex_carla_127_0_0_1_2000.lock"
+        if not isinstance(host,str) or not host.strip() or any(c.isspace() for c in host) or type(port) is not int or not 1 <= port <= 65535:
+            raise ValueError("invalid CARLA endpoint")
+        canonical = "127.0.0.1" if host.lower() in {"localhost", "127.0.0.1"} else host.lower()
+        token = "127_0_0_1" if canonical == "127.0.0.1" else hashlib.sha256(canonical.encode()).hexdigest()[:16]
+        self.endpoint = f"{canonical}:{port}"
+        self.path = Path(tempfile.gettempdir()) / f"codex_carla_{token}_{port}.lock"
         self.run_dir, self.purpose, self.handle = run_dir, purpose, None
 
     def __enter__(self):
@@ -100,7 +104,7 @@ class CarlaOwner:
                 fcntl.flock(self.handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             competitors = competing_clients()
             if competitors:
-                raise RuntimeError(f"another CARLA trainer/evaluator may own port 2000: PIDs {competitors}")
+                raise RuntimeError(f"another CARLA trainer/evaluator may be active while requesting {self.endpoint}: PIDs {competitors}")
         except BaseException:
             self.handle.close()
             self.handle = None

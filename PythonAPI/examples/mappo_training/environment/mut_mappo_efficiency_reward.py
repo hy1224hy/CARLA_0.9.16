@@ -7,6 +7,8 @@ import math
 from pathlib import Path
 
 PROFILE = "c1_progress_team_v1"
+CRITICAL_PROFILES = frozenset(("critical_interaction_team_v1", "normal_driving_critical_team_v2"))
+TEAM_PROFILES = CRITICAL_PROFILES | {PROFILE}
 ROOT = Path(__file__).resolve().parents[1]
 
 

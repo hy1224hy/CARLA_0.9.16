@@ -30,9 +30,6 @@ def paired_diagnostics(records, required_conditions=('C0','C1','C2'), primary_tt
         groups[key][row['condition']]=row
     latest, excluded = {}, []
     for key, group in groups.items():
-        if any(c not in group or group[c].get('valid') is not True for c in required_conditions):
-            excluded.append(dict(team=key[0], case_key=key[1], seed=key[2], attempt=key[3],reason='incomplete_or_invalid_attempt'))
-            continue
         identity=key[:3]
         if identity not in latest or key[3]>latest[identity][0]:
             latest[identity]=(key[3],group)
@@ -42,6 +39,12 @@ def paired_diagnostics(records, required_conditions=('C0','C1','C2'), primary_tt
         pairs=[]
         for identity, (attempt, group) in latest.items():
             if identity[0]!=team: continue
+            # Match the existing evaluator: the latest attempt wins even when
+            # invalid. Never recover a favorable older attempt after a retry.
+            if any(c not in group or group[c].get('valid') is not True for c in required_conditions):
+                excluded.append(dict(team=team,case_key=identity[1],seed=identity[2],attempt=attempt,
+                    reason='incomplete_or_invalid_attempt'))
+                continue
             first, second=group['C1'],group['C2']
             metrics=[r.get('critical_interaction',{}) for r in (first,second)]
             if (any(m.get('status')!='COMPLETE' or type(m.get('critical_event')) is not bool for m in metrics)
@@ -78,7 +81,7 @@ def paired_diagnostics(records, required_conditions=('C0','C1','C2'), primary_tt
             row['mean_delta_'+name]=average([r[name+'_C2']-r[name+'_C1'] for r in pairs
                                             if r[name+'_C1'] is not None and r[name+'_C2'] is not None])
         result[team]=row
-    return dict(teams=result,excluded=excluded, denominator='same case/team/seed/attempt, whole valid group, fully measured C1/C2; missing groups excluded and counted')
+    return dict(teams=result,excluded=excluded, denominator='latest attempt per case/team/seed, whole valid group, fully measured C1/C2; missing groups excluded and counted; no fallback')
 
 
 def write_csv(path, rows):

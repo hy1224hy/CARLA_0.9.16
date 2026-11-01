@@ -105,6 +105,25 @@ class ExtendedMetricsTests(unittest.TestCase):
         self.assertEqual(obb_ttc(snap(0,0,byaw=90),snap(0,2.5),5),0)
 
 class LifecycleAndContactTests(unittest.TestCase):
+    def test_reset_to_first_decision_cannot_silently_drop_a_live_blue(self):
+        for missing_slot in (True,False):
+            rows=trace()
+            for row in rows[1:]:
+                row['kinematics'].pop('2')
+                if missing_slot:
+                    row['active_mask'].pop('2')
+                    row['next_active_mask'].pop('2')
+                else:
+                    row['active_mask']['2']=False
+                    row['next_active_mask']['2']=False
+            with self.subTest(missing_slot=missing_slot):
+                result=analyze_trace(rows,PROTOCOL_DEFAULT)
+                self.assertEqual(result['status'],'INCOMPLETE_TRACE')
+                self.assertIsNone(result['critical_event'])
+                self.assertIsNone(result['tet_s']['1.5'])
+    def test_reset_lifecycle_mask_requires_boolean_values(self):
+        rows=trace();rows[0]['active_mask']['2']=1
+        self.assertEqual(analyze_trace(rows,PROTOCOL_DEFAULT)['status'],'INCOMPLETE_TRACE')
     def test_single_contact_is_critical_despite_short_episode(self):
         rows=trace(1)
         rows[1]['kinematics']['2']['location']['x']=3

@@ -10,6 +10,7 @@ from pathlib import Path
 import torch
 
 from models.actor_critic import Actor
+from environment.mut_mappo_efficiency_reward import TEAM_PROFILES, CRITICAL_PROFILES
 from training.action_protocol import POLICY_ACTION_DIM, action_protocol_spec
 from training.checkpoint_protocol import load_checkpoint_file, sha256_file
 
@@ -86,22 +87,42 @@ def validate_config(config, config_path=None):
             isinstance(config["mutual"].get(k), bool) or not isinstance(config["mutual"].get(k), int)
             or config["mutual"][k] <= 0 for k in ("warmup_train_ticks", "refresh_train_ticks")):
         raise ValueError("tick-based teacher schedule needs positive integer warmup/refresh limits")
-    if config.get("host") not in {"127.0.0.1", "localhost"} or config.get("port") != 2000:
-        raise ValueError("this experiment shares local CARLA port 2000")
+    host, port = config.get("host"), config.get("port")
+    if not isinstance(host, str) or not host.strip() or any(c.isspace() for c in host) or type(port) is not int or not 1 <= port <= 65535:
+        raise ValueError("CARLA endpoint requires a host and an integer port in 1..65535")
     if config.get("town") != "Town05" or config["task"].get("timestep") != 0.1:
         raise ValueError("first implementation freezes Town05 and 0.1 second timestep")
     from environment.mut_mappo_events import MutRewardConfig
     MutRewardConfig.from_dict(config["task"].get("reward"), timestep=config["task"]["timestep"])
+    if config['task'].get('c1_controller','frozen_actor') not in {'frozen_actor','lane_pid_v1'}:
+        raise ValueError('unknown frozen normal-traffic controller')
     profile = config["task"].get("reward_profile", "legacy")
-    if profile not in {"legacy", "c1_progress_team_v1"}:
+    if profile not in TEAM_PROFILES | {"legacy"}:
         raise ValueError("unknown Mut reward profile")
-    if profile == "c1_progress_team_v1":
+    if profile in TEAM_PROFILES:
         settings = config["task"]["team_reward"]
         if not settings.get("reference_dir"):
             raise ValueError("C1 progress reward requires its prepared reference directory")
         if any(not math.isfinite(float(settings.get(k, default))) or float(settings.get(k, default)) < 0
                for k, default in (("attack_weight", 10), ("driving_weight", 1))):
             raise ValueError("team reward weights must be finite and nonnegative")
+    if profile in CRITICAL_PROFILES:
+        if profile == 'normal_driving_critical_team_v2':
+            from environment.mut_mappo_critical_reward_v2 import validate_v2_settings
+            validate_v2_settings(config['task']['team_reward'], horizon=config['task']['max_steps'],
+                                 gamma=config['learning']['gamma'])
+        else:
+            from environment.mut_mappo_critical_reward import validate_settings
+            validate_settings(config['task']['team_reward'])
+        if not math.isclose(float(config['task']['team_reward'].get('gamma', .999)),
+                            float(config['learning']['gamma'])):
+            raise ValueError("critical reward and learner gamma differ")
+    if config['mutual'].get('quality_metric') not in {None, 'efficiency', 'critical'}:
+        raise ValueError("unknown mutual quality metric")
+    if config['mutual'].get('quality_metric') == 'critical' and profile not in CRITICAL_PROFILES:
+        raise ValueError("critical gate requires measured online critical geometry")
+    if config.get('evaluation', {}).get('selection_metric') == 'safe_critical_event' and profile not in CRITICAL_PROFILES:
+        raise ValueError("critical selection requires measured online critical geometry")
     stall = config["task"].get("stall", {})
     if not isinstance(stall.get("enabled"), bool) or any(
             not math.isfinite(float(stall.get(key, -1))) or float(stall.get(key, -1)) <= 0
@@ -216,14 +237,23 @@ def run_identity(config):
     paths.append(ROOT / "visualization/mut_mappo_monitor.py")
     paths += [ROOT / "environment/mut_mappo_efficiency_reward.py", ROOT / "training/first_point_scenarios.py",
               ROOT / "evaluation/driving_policy_metrics.py"]
+    if config['task'].get('reward_profile') in CRITICAL_PROFILES:
+        paths += [ROOT / 'environment/mut_mappo_critical_reward.py',
+                  ROOT / 'evaluation/critical_interaction_metrics.py']
+    if config['task'].get('reward_profile') == 'normal_driving_critical_team_v2':
+        paths.append(ROOT / 'environment/mut_mappo_critical_reward_v2.py')
     sources = {str(path.relative_to(ROOT)).replace("\\", "/"): sha256_file(path) for path in paths}
+    if config['task'].get('c1_controller') == 'lane_pid_v1':
+        sources['environment/frozen_lane_traffic.py']=sha256_file(ROOT/'environment/frozen_lane_traffic.py')
+        for dependency in ('navigation/controller.py','tools/misc.py'):
+            sources['@carla/agents/'+dependency]=sha256_file(ROOT.parents[1]/'carla/agents'/dependency)
     identity = {"protocol": config["protocol"], "config_sha256": config_digest(config),
             "task_contract_sha256": task_contract_digest(config),
             "algorithm": config["algorithm"], "team_count": config["team_count"],
             "model_spec": MODEL_SPEC, "red_sha256": config["_root_validation"]["red_sha256"],
             "case_manifest_sha256": config["_root_validation"]["case_manifest_sha256"],
             "scenario_hashes": config["_root_validation"]["scenario_hashes"], "source_hashes": sources}
-    if config["task"].get("reward_profile") == "c1_progress_team_v1":
+    if config["task"].get("reward_profile") in TEAM_PROFILES:
         directory = resolve_path(config["task"]["team_reward"]["reference_dir"])
         identity["training_reference_hashes"] = {
             case["case_key"]: sha256_file(directory / (hashlib.sha256(case["case_key"].encode()).hexdigest() + ".json"))

@@ -21,7 +21,9 @@ from environment.mut_mappo_events import (
     MutEpisodeEvents, MutRewardConfig, SAFETY_KEYS, blue_driving_reward,
 )
 from utils.adversarial_metrics import extract_kinematics
-from environment.mut_mappo_efficiency_reward import PROFILE as TEAM_PROFILE, TeamEfficiencyReward
+from environment.mut_mappo_efficiency_reward import TEAM_PROFILES, TeamEfficiencyReward
+from environment.mut_mappo_critical_reward import PROFILE as CRITICAL_PROFILE, CriticalTeamReward
+from environment.mut_mappo_critical_reward_v2 import PROFILE as NORMAL_CRITICAL_PROFILE, NormalDrivingCriticalReward
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -37,11 +39,14 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
             raise ValueError("MutMAPPO supports two-car C0 or four-car C1/C2")
         self.task_config = deepcopy(task_config)
         self.reference_store = reference_store
-        self.team_reward = (TeamEfficiencyReward(task_config.get("team_reward"),
+        reward_class = {CRITICAL_PROFILE: CriticalTeamReward,
+                        NORMAL_CRITICAL_PROFILE: NormalDrivingCriticalReward}.get(
+                            task_config.get("reward_profile"), TeamEfficiencyReward)
+        self.team_reward = (reward_class(task_config.get("team_reward"),
                             dt=float(task_config.get("timestep", 0.1)),
                             horizon=int(task_config.get("max_steps", 500)),
                             gamma=float(task_config.get("team_reward", {}).get("gamma", 0.999)))
-                            if task_config.get("reward_profile") == TEAM_PROFILE else None)
+                            if task_config.get("reward_profile") in TEAM_PROFILES else None)
         self._route_progress = {}
         self._route_axes = {}
         self._team_reference = None
@@ -84,6 +89,33 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
     def _attach_camera(self, agent_id, vehicle):
         if self._cameras_enabled:
             return super()._attach_camera(agent_id, vehicle)
+
+    def _snapshot_kinematics(self):
+        snapshots = super()._snapshot_kinematics()
+        for aid, state in snapshots.items():
+            box = self.vehicles[aid].bounding_box
+            state['bounding_box'] = {
+                'extent': {k: float(getattr(box.extent, k)) for k in ('x', 'y', 'z')},
+                'location': {k: float(getattr(box.location, k)) for k in ('x', 'y', 'z')},
+                'rotation': {k: float(getattr(box.rotation, k)) for k in ('yaw', 'pitch', 'roll')}}
+        return snapshots
+
+    def _critical_driving_context(self):
+        result = {}
+        for bid in self.blue_ids:
+            evidence = self._task_stall_evidence.get(bid, {})
+            state = self._post_tick_kinematics.get(bid)
+            wp = (self._get_exact_driving_waypoint(carla.Location(**state['location'])) if state else None)
+            ref = self.road_reference_waypoints.get(bid)
+            aligned = (wp is not None and ref is not None and math.cos(math.radians(
+                wp.transform.rotation.yaw-ref.transform.rotation.yaw)) > .5)
+            result[bid] = {'route_speed_mps': evidence.get('route_speed_mps', 0.),
+                'front_blocker': evidence.get('front_blocker_exempt', False),
+                'near_goal': evidence.get('near_goal_exempt', False),
+                'terminal': any(self.mut_events.safety[bid].values()),
+                'legal_forward': bool(aligned and evidence.get('route_speed_mps', 0.) > .2
+                                      and not any(self.mut_events.safety[bid].values()))}
+        return result
 
     def set_cost_coefficient(self, value):
         """Set the per-team, checkpointed dual coefficient before its rollout."""
@@ -546,12 +578,17 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
                     self._route_progress[aid] = 1.0
         if getattr(self, "team_reward", None) is not None:
             costs = {b: audit["costs"] for b, audit in self._last_mut_reward_details.items()}
+            extra = (dict(snapshots=self._post_tick_kinematics, active=active_before,
+                          driving_context=self._critical_driving_context())
+                     if isinstance(self.team_reward, CriticalTeamReward) else {})
             utility, components = self.team_reward.step(step=self.current_step,
                 progress=self._route_progress, reached=self.reached_target,
-                eligible=self.mut_events.blue_eligible and not self._last_mut_step_events.get("birth_protected", False),
+                eligible=self.mut_events.blue_eligible and (
+                    isinstance(self.team_reward, NormalDrivingCriticalReward)
+                    or not self._last_mut_step_events.get("birth_protected", False)),
                 safety=self.mut_events.safety,
                 costs=costs, base_details={b: self._team_base_details.get(b, {}) for b in self.blue_ids},
-                reference=self._team_reference)
+                reference=self._team_reference, **extra)
             self._last_mut_reward_details = {}
             for bid in self.blue_ids:
                 if active_before.get(bid, False):
