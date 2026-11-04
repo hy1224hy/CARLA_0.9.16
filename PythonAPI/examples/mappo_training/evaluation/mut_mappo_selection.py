@@ -14,7 +14,7 @@ import math
 from pathlib import Path
 from typing import Iterable, Mapping
 
-from evaluation.mut_mappo_metrics import paired_report
+from evaluation.mut_mappo_metrics import paired_report, selection_metric, PRIMARY_EVENT_METRIC
 from training.checkpoint_protocol import atomic_write_json, save_checkpoint_file, sha256_file
 from training.mut_mappo_learning import actor_states_hash
 
@@ -120,6 +120,8 @@ def _candidate_rows(candidate, threshold):
         rows.append(dict(base, b=b, q=q, AttackGain_safe=gain,
                          safe_efficiency_utility=c2.get("safe_efficiency_utility"),
                          safe_critical_event=c2.get("safe_critical_event"),
+                         qualified_primary_event_credit=c2.get(PRIMARY_EVENT_METRIC),
+                         qualified_primary_event_count=c2.get("qualified_primary_event_count"),
                          task_violation_episodes=task, qualified=b <= threshold,
                          rejection=None if b <= threshold else "blue_bad_rate_above_candidate_threshold"))
     return rows
@@ -135,6 +137,7 @@ def select_and_export(candidates: Iterable[Mapping], config: Mapping, output_dir
     candidates = list(candidates)
     if not candidates:
         raise ValueError("selection requires at least one evaluated checkpoint")
+    primary = selection_metric(config)
     threshold = _rate(config.get("evaluation", {}).get("selection_max_bad_rate", 1 / 8), "selection_max_bad_rate")
     if not 0 <= threshold <= 1:
         raise ValueError("selection_max_bad_rate must be in [0,1]")
@@ -156,13 +159,18 @@ def select_and_export(candidates: Iterable[Mapping], config: Mapping, output_dir
             owners[key] = candidate
             rows.append(row)
     qualified = [row for row in rows if row["qualified"]]
-    efficiency_first = config.get("evaluation", {}).get("selection_metric") == "safe_efficiency_utility"
-    critical_first = config.get('evaluation', {}).get('selection_metric') == 'safe_critical_event'
-    primary = 'safe_critical_event' if critical_first else 'safe_efficiency_utility' if efficiency_first else None
-    if efficiency_first and any(row.get("safe_efficiency_utility") is None for row in qualified):
-        raise ValueError("efficiency selection requires measured C1-relative utility")
-    if critical_first and any(row.get(primary) is None for row in qualified):
-        raise ValueError('critical selection requires measured qualified critical events')
+    for row in qualified:
+        if primary is not None:
+            if row.get(primary) is None:
+                raise ValueError(f"selection requires measured {primary}")
+            value = _rate(row[primary], primary)
+            if primary in {"safe_critical_event", PRIMARY_EVENT_METRIC} and not 0 <= value <= 1:
+                raise ValueError("event selection rate must be in [0,1]")
+            if primary == PRIMARY_EVENT_METRIC:
+                count = _count(row.get("qualified_primary_event_count"), "qualified primary-event count")
+                if count > row["n_common_valid"] * (1 - row["b"]) + 1e-9 or not math.isclose(
+                        value, count / row["n_common_valid"]):
+                    raise ValueError("qualified primary-event rate/count differs from the common denominator")
     qualified.sort(key=lambda row: ((-float(row[primary]),) if primary else ()) +
                                   (-row["AttackGain_safe"], -row["q"], row["task_violation_episodes"],
                                    row["completed_round"], row["team"], row["checkpoint_sha256"]))
@@ -219,7 +227,8 @@ def select_evaluation_directories(directories, output_dir):
         current = validate_config(json.loads((directory / "resolved_config.json").read_text(encoding="utf-8")))
         records = [json.loads(line) for line in (directory / "cases.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
         if report.get("paired") != paired_report(records, required_conditions=tuple(report["metadata"]["conditions"])):
-            raise ValueError("saved selection summary differs from its episode evidence")
+            raise ValueError("saved selection summary differs from its episode evidence; "
+                             "rebuild a new summary from cases.jsonl with this metrics version, preserving the old report")
         checkpoint = Path(report["metadata"]["checkpoint_path"])
         digest = sha256_file(checkpoint)
         payload = validate_checkpoint_for_config(current, checkpoint)

@@ -62,6 +62,62 @@ class FakeTeamEnv:
 
 
 class FirstPointTests(unittest.TestCase):
+    def test_server_lr_comparison_preserves_matched_r2_contract(self):
+        from tests import test_mut_mappo_runner as fixtures
+        from utils import prepare_critical_reward_server as server
+        from utils.run_first_point_experiments import load_experiment
+        fixtures.RunnerIntegrationTests.setUpClass()
+        self.addCleanup(fixtures.RunnerIntegrationTests.doClassCleanups)
+        checkpoint = fixtures.RunnerIntegrationTests.config["red_checkpoint"]["path"]
+        source = json.loads(server.DEFAULT_CONFIG.read_text(encoding="utf-8-sig"))
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "lr_comparison"
+            record = server.prepare(checkpoint, output, source_config=server.DEFAULT_CONFIG,
+                                    device="cpu", lr_comparison=True)
+            self.assertEqual(record["train_tick_budget"], 60000)
+            self.assertIsNone(record["run_dir"])
+            _, experiment, entries = load_experiment(output)
+            self.assertEqual(experiment["schema"], "first_point_experiment_v1")
+            self.assertEqual([entry["run_id"] for entry in entries],
+                             ["B0_LINEAR_s42", "B0_CONSTANT_s42"])
+            configs = [json.loads(Path(entry["config"]).read_text(encoding="utf-8"))
+                       for entry in entries]
+            linear, constant = configs
+            self.assertEqual(linear, json.loads((output / "config.json").read_text(encoding="utf-8")))
+            self.assertEqual(linear["run"]["lr_schedule"], "linear")
+            self.assertEqual(linear["run"]["lr_decay_train_ticks"], 60000)
+            self.assertEqual(linear["run"]["lr_min_factor"], .1)
+            self.assertEqual(constant["run"]["lr_schedule"], "constant")
+            self.assertNotIn("lr_decay_train_ticks", constant["run"])
+            self.assertNotIn("lr_min_factor", constant["run"])
+            for config in configs:
+                self.assertEqual((config["method"], config["algorithm"], config["team_count"]),
+                                 ("off", "mappo", 2))
+                self.assertEqual(config["mutual"]["quality_metric"], "qualified_primary_event_credit")
+                self.assertEqual(config["evaluation"]["selection_metric"], "qualified_primary_event_credit")
+                self.assertEqual(config["evaluation"]["selection_max_bad_rate"],
+                                 source["evaluation"]["selection_max_bad_rate"])
+                self.assertEqual(config["mutual"]["gate_max_bad_rate"], source["mutual"]["gate_max_bad_rate"])
+                expected_task = json.loads(json.dumps(source["task"]))
+                expected_task["team_reward"]["reference_dir"] = str(output / "references")
+                self.assertEqual(config["task"], expected_task)
+                self.assertEqual(config["learning"]["ppo_epochs"], 2)
+                self.assertEqual(config["run"]["episodes_per_team_update"], 4)
+                self.assertEqual((config["run"]["stop_rule"], config["run"]["schedule_clock"]),
+                                 ("train_ticks", "train_ticks"))
+                for key in ("lr_schedule", "lr_decay_train_ticks", "lr_min_factor"):
+                    config["run"].pop(key, None)
+            self.assertEqual(linear, constant)
+            self.assertEqual(load_experiment(output, groups=["B0_CONSTANT"])[2], [entries[1]])
+            source["learning"]["ppo_epochs"] = 3
+            rejected_source = Path(directory) / "unsupported_source.json"
+            rejected_source.write_text(json.dumps(source), encoding="utf-8")
+            rejected_output = Path(directory) / "rejected"
+            with self.assertRaisesRegex(ValueError, "ppo_epochs=2"):
+                server.prepare(checkpoint, rejected_output, source_config=rejected_source,
+                               device="cpu", lr_comparison=True)
+            self.assertFalse(rejected_output.exists())
+
     def test_server_preparation_and_runner_keep_monitor_runtime_only(self):
         from tests import test_mut_mappo_runner as fixtures
         from utils.run_first_point_experiments import prepare, train_entries

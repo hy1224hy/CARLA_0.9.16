@@ -32,6 +32,27 @@ class ExternalMetricsTests(unittest.TestCase):
         self.assertAlmostEqual(c2["q"], 2 / 3)
         self.assertAlmostEqual(c2["b"], 1 / 3)
 
+    def test_primary_event_rate_uses_final_common_valid_cases_and_legacy_stays_unmeasured(self):
+        metric = "qualified_primary_event_credit"
+        old = triplet("rerun", attempt=0)
+        final = triplet("rerun", attempt=1) + triplet("unsafe", eligible=False) + triplet("no_event")
+        for row in old + final:
+            row[metric] = float(row["condition"] == "C2" and row["case_key"] == "rerun"
+                                and row["paired_attempt"] == 1)
+        incomplete = triplet("excluded")
+        incomplete[0]["valid"] = False
+        report = paired_report(old + final + incomplete)
+        c2 = report["conditions"]["C2"]
+        self.assertEqual(report["n_common_valid"], 3)
+        self.assertEqual(c2["qualified_primary_event_count"], 1)
+        self.assertEqual(c2[metric], 1 / 3)
+        self.assertEqual(c2["b"], 1 / 3)
+        for name, legacy in (("missing", triplet("legacy")), ("partial", final + triplet("legacy"))):
+            with self.subTest(name=name):
+                summary = paired_report(legacy)["conditions"]["C2"]
+                self.assertIsNone(summary[metric])
+                self.assertIsNone(summary["qualified_primary_event_count"])
+
     def test_invalid_baseline_excludes_whole_pair_but_censored_red_does_not(self):
         invalid = triplet("invalid")
         invalid[0].update(valid=False, invalid_reason="sensor_failure")

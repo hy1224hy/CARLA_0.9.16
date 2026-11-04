@@ -398,6 +398,9 @@ class TeamLearner:
                     ratio_errors.update(role_result.preupdate_ratio_errors)
                     stop_epochs.update(role_result.agent_stop_epoch)
                     for key, value in role_result.metrics.items():
+                        if key in {"advantage_stats", "learning_rates"}:
+                            metrics.setdefault(key, {}).update(copy.deepcopy(value))
+                            continue
                         # Actor keys already end with the role ID. Critic/stat
                         # keys need an explicit role suffix to avoid pooling.
                         metric_key = key if key.endswith(f"_{aid}") else f"{key}_{aid}"
@@ -438,7 +441,7 @@ class TeamLearner:
             gamma=float(cfg.get("gamma", 0.997)), gae_lambda=float(cfg.get("gae_lambda", 0.95)),
             obs_dim=20, state_dim=80, action_dim=2, context=f"{context} prepare",
             value_normalizer=value_normalizer)
-        return run_mappo_ppo_update(prepared, actors, actor_optims, critic, critic_optim, ids,
+        result = run_mappo_ppo_update(prepared, actors, actor_optims, critic, critic_optim, ids,
             obs_dim=20, state_dim=80, action_dim=2,
             ppo_epochs=int(cfg.get("ppo_epochs", 5)), minibatch_size=int(cfg.get("minibatch_size", 256)),
             clip_eps=float(cfg.get("clip_eps", 0.15)), ent_coef=float(self.schedule_state["entropy"]),
@@ -446,6 +449,12 @@ class TeamLearner:
             value_normalizer=value_normalizer, huber_delta=float(cfg.get("huber_delta", 10)),
             shuffle=bool(cfg.get("shuffle", True)), context=f"{context} update",
             actor_aux_loss=actor_aux_loss)
+        result.metrics["advantage_stats"] = copy.deepcopy(prepared.advantage_stats)
+        result.metrics["learning_rates"] = {
+            aid: {"actor": [float(group["lr"]) for group in actor_optims[aid].param_groups],
+                  "critic": [float(group["lr"]) for group in critic_optim.param_groups]}
+            for aid in ids}
+        return result
 
     def state_dict(self) -> dict:
         return copy.deepcopy({"protocol": LEARNER_PROTOCOL, "name": self.name, "seed": self.seed,

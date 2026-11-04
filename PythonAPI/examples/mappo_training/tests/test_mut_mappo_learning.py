@@ -44,6 +44,21 @@ def buffer_for(team):
 
 
 class MutLearningTests(unittest.TestCase):
+    def test_advantage_statistics_and_actual_learning_rates_are_observations_only(self):
+        team = learner()
+        batch = buffer_for(team)
+        from training.train_no_rllib_mappo_robust_v2 import prepare_mappo_update_batch
+        prepared = prepare_mappo_update_batch(batch, team.critic, team.agent_ids, team.device,
+            gamma=float(team.config.get("gamma", .997)), gae_lambda=.95,
+            obs_dim=20, state_dim=80, action_dim=2, value_normalizer=team.value_normalizer,
+            context="test diagnostics")
+        team.actor_optims[2].param_groups[0]["lr"] = 0.000123
+        metrics = team.update(batch)
+        self.assertEqual(metrics["advantage_stats"], prepared.advantage_stats)
+        self.assertEqual(metrics["learning_rates"][2]["actor"], [0.000123])
+        self.assertEqual(metrics["learning_rates"][3]["critic"],
+                         [team.critic_optim.param_groups[0]["lr"]])
+
     def test_beta_zero_reuses_exact_ppo_and_four_car_critic(self):
         baseline, mutual_zero = learner(), learner("B", "plain", 0)
         buffers = buffer_for(baseline), buffer_for(mutual_zero)

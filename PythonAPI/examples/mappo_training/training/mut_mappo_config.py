@@ -13,6 +13,8 @@ from models.actor_critic import Actor
 from environment.mut_mappo_efficiency_reward import TEAM_PROFILES, CRITICAL_PROFILES
 from training.action_protocol import POLICY_ACTION_DIM, action_protocol_spec
 from training.checkpoint_protocol import load_checkpoint_file, sha256_file
+from training.mut_mappo_schedule import validate_lr_schedule
+from evaluation.mut_mappo_metrics import PRIMARY_EVENT_METRIC, selection_metric
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_SPEC = {"obs_dim": 20, "action_dim": 2, "physical_ids": [0, 1, 2, 3],
@@ -81,6 +83,7 @@ def validate_config(config, config_path=None):
         raise ValueError("unknown run stopping rule")
     if config["run"].get("stop_rule") == "train_ticks" and config["run"].get("schedule_clock") != "train_ticks":
         raise ValueError("tick-budget stopping requires tick-based learning-rate schedule")
+    validate_lr_schedule(config["run"])
     if config["mutual"].get("schedule_clock", "rounds") not in {"rounds", "train_ticks"}:
         raise ValueError("unknown teacher refresh clock")
     if config["mutual"].get("schedule_clock") == "train_ticks" and any(
@@ -117,12 +120,16 @@ def validate_config(config, config_path=None):
         if not math.isclose(float(config['task']['team_reward'].get('gamma', .999)),
                             float(config['learning']['gamma'])):
             raise ValueError("critical reward and learner gamma differ")
-    if config['mutual'].get('quality_metric') not in {None, 'efficiency', 'critical'}:
+    if config['mutual'].get('quality_metric') not in {None, 'efficiency', 'critical', PRIMARY_EVENT_METRIC}:
         raise ValueError("unknown mutual quality metric")
     if config['mutual'].get('quality_metric') == 'critical' and profile not in CRITICAL_PROFILES:
         raise ValueError("critical gate requires measured online critical geometry")
     if config.get('evaluation', {}).get('selection_metric') == 'safe_critical_event' and profile not in CRITICAL_PROFILES:
         raise ValueError("critical selection requires measured online critical geometry")
+    selected_metric = selection_metric(config)
+    if (config['mutual'].get('quality_metric') == PRIMARY_EVENT_METRIC or selected_metric == PRIMARY_EVENT_METRIC
+            ) and profile != 'normal_driving_critical_team_v2':
+        raise ValueError("qualified primary-event gate/selection requires the R2 reward profile")
     stall = config["task"].get("stall", {})
     if not isinstance(stall.get("enabled"), bool) or any(
             not math.isfinite(float(stall.get(key, -1))) or float(stall.get(key, -1)) <= 0
@@ -228,7 +235,8 @@ def cases_for(config, split):
 def run_identity(config):
     paths = [ROOT / "training" / name for name in ("train_mut_mappo.py", "mut_mappo_config.py",
              "mut_mappo_learning.py", "mut_mappo_checkpoint.py", "train_no_rllib_mappo_robust_v2.py",
-             "action_protocol.py", "value_normalization.py", "checkpoint_protocol.py", "mutual_distillation.py")]
+             "action_protocol.py", "value_normalization.py", "checkpoint_protocol.py", "mutual_distillation.py",
+             "mut_mappo_schedule.py")]
     paths += [ROOT / "environment" / name for name in ("carla_multi_agent_env.py", "mut_mappo_env.py", "mut_mappo_events.py",
                                                        "base_reward_v4.py", "base_reward_v5.py", "base_reward_v6.py", "route_pace_reward.py")]
     paths += [ROOT / "models/actor_critic.py", ROOT / "models/mut_mappo_critics.py", ROOT / "evaluation/mut_mappo_metrics.py",

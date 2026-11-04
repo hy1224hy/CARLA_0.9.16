@@ -28,9 +28,14 @@ from training.mut_mappo_checkpoint import CheckpointStore, SCHEMA_VERSION, _vali
 from training.train_no_rllib_mappo_robust_v2 import (RolloutBuffer, build_active_step_cache,
     refresh_observations_after_active_change, validate_active_mask, write_active_transitions)
 from utils.mut_mappo_session import CarlaOwner, last_json_record
+from utils.mut_mappo_tensorboard import (
+    MutMAPPOTensorBoard, add_tensorboard_arguments, options_from_args as tensorboard_options_from_args,
+)
 from visualization.mut_mappo_monitor import MutMAPPOMonitor, add_monitor_arguments, options_from_args
 from environment.mut_mappo_efficiency_reward import TEAM_PROFILES, CRITICAL_PROFILES, ReferenceStore, reference_identity, settle_team_tail
 from evaluation.driving_policy_metrics import DrivingMetrics
+from evaluation.mut_mappo_metrics import PRIMARY_EVENT_METRIC, qualified_primary_event_value
+from training.mut_mappo_schedule import learning_rate_multiplier
 
 
 def now():
@@ -384,17 +389,18 @@ def refresh_peers(runtime, teams, gate, config, completed_round, ledger, run_dir
                     raise RuntimeError("invalid gate case: refuse unmatched teacher statistics")
                 record = stats[name].setdefault(case["family"], {"n_all": 0, "q_count": 0, "b_count": 0, "case_keys": []})
                 record["n_all"] += 1
-                record["q_count"] += int(bool(result.get("blue_eligible")) and bool(result.get("response")))
+                quality = config["mutual"].get("quality_metric")
+                measured_q = (qualified_primary_event_value(result) if quality == PRIMARY_EVENT_METRIC
+                              else result.get("safe_critical_event") if quality == "critical"
+                              else float(bool(result.get("blue_eligible")) and bool(result.get("response"))))
+                if type(measured_q) not in (int, float) or measured_q not in (0., 1.):
+                    raise ValueError("gate requires a measured binary qualified event")
+                record["q_count"] += int(measured_q)
                 record["b_count"] += int(not result.get("blue_eligible", False))
                 record["case_keys"].append(case["case_key"])
                 record.update(teacher_hash=snapshots[name]["hash"], version=version)
                 if config["mutual"].get("quality_metric") == "efficiency":
                     record["utility_sum"] = record.get("utility_sum", 0.0) + float(result["safe_efficiency_utility"])
-                elif config['mutual'].get('quality_metric') == 'critical':
-                    value = result.get('safe_critical_event')
-                    if value not in (0., 1.):
-                        raise ValueError('gate requires measured qualified critical event')
-                    record['q_count'] += int(value) - int(bool(result.get('blue_eligible')) and bool(result.get('response')))
         gate.refresh({n: s["hash"] for n, s in snapshots.items()}, stats, version=version, completed_round=completed_round)
         for name, team in teams.items():
             peer = "B" if name == "A" else "A"
@@ -406,8 +412,54 @@ def refresh_peers(runtime, teams, gate, config, completed_round, ledger, run_dir
             monitor.context(operation="train")
 
 
-def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_runtime):
+def critical_learning_signal(records):
+    """Read-only episode diagnostics; reward accounting itself is unchanged."""
+    if not records:
+        raise ValueError("learning-signal summary requires training episodes")
+    keys = set().union(*(record["team_reward_components"] for record in records))
+    decision_steps = sum(record["steps"] for record in records)
+    if decision_steps <= 0:
+        raise ValueError("learning-signal summary requires decision steps")
+    bonus_records = [record for record in records
+                     if record["team_reward_components"].get("primary_event_bonus", 0.) > 0]
+    bonus_failed = sum(not record.get("blue_eligible", False) for record in bonus_records)
+    ttcs = [record["critical_min_ttc_s"] for record in records
+            if record.get("critical_min_ttc_s") is not None]
+    result = {
+        "reward_components_per_decision_step": {
+            key: sum(record["team_reward_components"].get(key, 0.) for record in records) / decision_steps
+            for key in keys},
+        "reward_components_nonzero_episode_rate": {
+            key: sum(record["team_reward_components"].get(key, 0.) != 0 for record in records) / len(records)
+            for key in keys},
+        "team_utility_total_mean": sum(record["team_utility_total"] for record in records) / len(records),
+        "team_discounted_return_mean": sum(record["team_discounted_return"] for record in records) / len(records),
+        "decision_steps_mean": decision_steps / len(records),
+        "primary_bonus_positive_episodes": len(bonus_records),
+        "primary_bonus_positive_episode_rate": len(bonus_records) / len(records),
+        "primary_bonus_finally_ineligible_episodes": bonus_failed,
+        "primary_bonus_finally_ineligible_rate": bonus_failed / len(bonus_records) if bonus_records else None,
+        "critical_ttc_observed_episodes": len(ttcs),
+        "critical_min_ttc_s_min": min(ttcs) if ttcs else None,
+        "critical_min_ttc_s_mean_observed": sum(ttcs) / len(ttcs) if ttcs else None,
+        PRIMARY_EVENT_METRIC: (sum(qualified_primary_event_value(record) for record in records) / len(records)
+                               if all(PRIMARY_EVENT_METRIC in record for record in records) else None),
+    }
+    for flag in ("collision", "offroad", "road_rule", "task_violation"):
+        result[f"blue_{flag}_episode_rate"] = sum(
+            bool(record.get("safety", {}).get(flag, False)) for record in records) / len(records)
+    return result
+
+
+def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_runtime,
+          tensorboard_options=None, stop_train_ticks=None):
     run_dir = Path(run_dir).resolve()
+    if stop_train_ticks is not None and (type(stop_train_ticks) is not int
+            or not 0 < stop_train_ticks <= config["run"]["train_tick_budget"]
+            or config["run"].get("stop_rule") != "train_ticks"):
+        raise ValueError("stop_train_ticks needs a tick-budget run and a positive absolute target within its budget")
+    # Preflight imports/output ownership without creating events or run files.
+    tensorboard = MutMAPPOTensorBoard(run_dir, **(tensorboard_options or {}))
     store = CheckpointStore(run_dir, run_identity(config))
     source = config["_red_payload"]
     initial = {2: source["actors"][0], 3: source["actors"][1]}
@@ -451,6 +503,9 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
     monitor = MutMAPPOMonitor(config, run_dir, planned_rounds=None if tick_stopping else stop)
     terminal, monitor_result = "error", {}
     try:
+        tensorboard.replay()
+        if tensorboard.enabled:
+            print(f"[TensorBoard] {tensorboard.log_dir} (complete boundaries; x=actual training ticks)", flush=True)
         monitor.start()
         runtime = env_factory(config, audit_callback=ledger.tick)
         runtime.monitor = monitor
@@ -458,7 +513,8 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
         family_map = {case["case_key"]: case["family"] for case in train_cases}
         teachers = payload["teachers"]
         for round_no in range(payload["completed_round"] + 1, stop + 1):
-            if ledger.counts["train"] >= config["run"]["train_tick_budget"]:
+            if ledger.counts["train"] >= min(config["run"]["train_tick_budget"],
+                                             stop_train_ticks or config["run"]["train_tick_budget"]):
                 break
             round_metrics, episode_metrics = {}, {}
             monitor.context(round=round_no, update=round_no, operation="train",
@@ -486,11 +542,9 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                             raise RuntimeError("invalid training episode cannot enter PPO")
                         records.append(result)
                         append_record(run_dir / "episodes.jsonl", dict(result, round=round_no, segment_id=segment))
-                progress = min(1.0, ledger.counts["train"]/config["run"]["train_tick_budget"]
-                    if config["run"].get("schedule_clock") == "train_ticks"
-                    else (round_no-1)/config["run"]["lr_horizon_rounds"])
+                lr_factor = learning_rate_multiplier(config["run"], ledger.counts["train"], round_no)
                 for key, optimizer in (("lr_actor", team.actor_optims), ("lr_critic", team.critic_optims)):
-                    value = config["learning"][key] * max(0.1, 1-progress)
+                    value = config["learning"][key] * lr_factor
                     for opt in optimizer.values():
                         for group in opt.param_groups:
                             group["lr"] = value
@@ -513,6 +567,8 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                     keys=set().union(*(r['team_reward_components'] for r in records))
                     episode_metrics[name]['reward_components_mean']={key:sum(r['team_reward_components'].get(key,0.)
                         for r in records)/len(records) for key in keys}
+                    episode_metrics[name].update(critical_learning_signal(records))
+                episode_metrics[name]["blue_eligible_rate"] = 1.0 - bad_rate
                 for aid in range(4):
                     def measurements(key):
                         values = []
@@ -545,7 +601,9 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
             candidate_payload["round_segments"][str(round_no)] = segment
             metrics = {"completed_round": round_no, "segment_id": segment, "method": config["method"],
                 "teams": round_metrics, "training_window": episode_metrics, "actual_counters": ledger.counts,
-                "gate": gate.state_dict(), "source": "training_window_not_independent_evaluation", "created_at": now(),
+                "gate": gate.state_dict(), "gate_quality_metric": config["mutual"].get("quality_metric"),
+                "learning_rate_schedule": config["run"].get("lr_schedule", "linear"),
+                "source": "training_window_not_independent_evaluation", "created_at": now(),
                 "algorithm": config["algorithm"], "team_count": config["team_count"],
                 "budget_policy": "complete_boundary_soft_cap", "train_tick_budget": config["run"]["train_tick_budget"],
                 "train_tick_overshoot": max(0, ledger.counts["train"]-config["run"]["train_tick_budget"]),
@@ -557,6 +615,7 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                 for name, team in teams.items()}
             monitor.phase("saving", "正在保存完整 A+B 训练边界")
             store.save(candidate_payload, metrics)
+            tensorboard.record(metrics)
             candidate_payload["last_metrics"] = copy.deepcopy(metrics)
             payload = candidate_payload
             monitor.phase("saving", "完整 A+B 边界已保存", safe_round=payload["completed_round"])
@@ -594,17 +653,21 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
         atomic_write_json(status, status_path)
         raise
     finally:
-        monitor.phase("finalizing", "正在清理四车环境并保留最终画面")
-        monitor.detach()
         try:
-            if runtime is not None:
-                runtime.close()
-        except BaseException as cleanup_error:
-            terminal = "error"
-            monitor_result["cleanup_error"] = str(cleanup_error)
-            raise
+            monitor.phase("finalizing", "正在清理四车环境并保留最终画面")
+            monitor.detach()
+            try:
+                if runtime is not None:
+                    runtime.close()
+            except BaseException as cleanup_error:
+                terminal = "error"
+                monitor_result["cleanup_error"] = str(cleanup_error)
+                raise
+            finally:
+                monitor.finish(terminal, result=monitor_result, message="训练阶段已结束，画面与安全保存结果已保留")
         finally:
-            monitor.finish(terminal, result=monitor_result, message="训练阶段已结束，画面与安全保存结果已保留")
+            if tensorboard is not None:
+                tensorboard.close()
 
 
 def main():
@@ -613,6 +676,7 @@ def main():
     parser.add_argument("--run-dir")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--stop-round", type=int)
+    parser.add_argument("--stop-train-ticks", type=int, help="pause at the first complete boundary after this absolute train tick target")
     parser.add_argument("--mutual-mode", choices=["off", "plain", "selective"])
     parser.add_argument("--algorithm", choices=["mappo", "ippo"])
     parser.add_argument("--team-count", type=int, choices=[1, 2])
@@ -620,6 +684,7 @@ def main():
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--allow-candidate", action="store_true")
     add_monitor_arguments(parser)
+    add_tensorboard_arguments(parser)
     args = parser.parse_args()
     config = load_config(args.config)
     if args.mutual_mode:
@@ -640,7 +705,8 @@ def main():
     if config["research_status"] != "frozen" and not args.allow_candidate:
         parser.error("candidate local development must be explicitly labeled with --allow-candidate; no formal eligibility")
     with CarlaOwner(config["host"], config["port"], args.run_dir, "training"):
-        train(config, args.run_dir, resume=args.resume, stop_round=args.stop_round)
+        train(config, args.run_dir, resume=args.resume, stop_round=args.stop_round,
+              tensorboard_options=tensorboard_options_from_args(args), stop_train_ticks=args.stop_train_ticks)
 
 
 if __name__ == "__main__":

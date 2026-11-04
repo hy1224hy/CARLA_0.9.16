@@ -18,6 +18,7 @@ from training.train_mut_mappo import Runtime, train, validate_checkpoint_for_con
 from training.mut_mappo_config import load_config, validate_config, run_identity
 from training.mut_mappo_learning import TeamLearner
 from training.mut_mappo_checkpoint import CheckpointStore
+from training.mut_mappo_schedule import learning_rate_multiplier, validate_lr_schedule
 
 
 class FakeLifecycleEnv:
@@ -154,6 +155,68 @@ class RunnerIntegrationTests(unittest.TestCase):
                 self.assertGreaterEqual(payload["counters"]["train"], 17)
                 self.assertEqual(payload["last_metrics"]["stop_rule"], "train_ticks")
                 self.assertGreaterEqual(payload["last_metrics"]["train_tick_overshoot"], 0)
+
+    def test_lr_schedule_defaults_overrides_and_invalid_options(self):
+        tick = {"schedule_clock": "train_ticks", "train_tick_budget": 100}
+        rounds = {"lr_horizon_rounds": 100}
+        for run, ticks, round_no, expected in (
+                (tick, 0, 1, 1.), (tick, 25, 1, .75), (tick, 100, 1, .1),
+                (tick, 150, 1, .1), (rounds, 99, 1, 1.), (rounds, 99, 26, .75),
+                (rounds, 99, 101, .1), (rounds, 99, 150, .1),
+                (dict(tick, lr_decay_train_ticks=200, lr_min_factor=.2), 100, 1, .5),
+                (dict(tick, lr_decay_train_ticks=200, lr_min_factor=.2), 300, 1, .2),
+                (dict(tick, lr_min_factor=0.), 100, 1, 0.),
+                (dict(tick, lr_schedule="constant"), 150, 1, 1.),
+                ({"lr_schedule": "constant"}, 150, 150, 1.)):
+            with self.subTest(run=run, ticks=ticks, round_no=round_no):
+                before = copy.deepcopy(run)
+                validate_lr_schedule(run)
+                self.assertAlmostEqual(learning_rate_multiplier(run, ticks, round_no), expected)
+                self.assertEqual(run, before)
+        invalid = [{"lr_schedule": value} for value in ("cosine", None, True)]
+        invalid += [{"schedule_clock": "wall_time"}, dict(rounds, lr_decay_train_ticks=10)]
+        invalid += [dict(tick, lr_decay_train_ticks=value) for value in (0, -1, True, 2.5)]
+        invalid += [dict(tick, lr_min_factor=value) for value in
+                    (-.1, 1.1, True, "0.1", float("nan"), float("inf"))]
+        invalid += [dict(tick, lr_schedule="constant", **{key: value}) for key, value in
+                    (("lr_decay_train_ticks", 100), ("lr_min_factor", .1))]
+        for run in invalid:
+            with self.subTest(invalid=run), self.assertRaises(ValueError):
+                validate_lr_schedule(run)
+
+    def test_absolute_tick_segment_stop_resume_preserves_identity_and_lr_clock(self):
+        config = copy.deepcopy(self.config)
+        config["run"].update(schedule_clock="train_ticks", stop_rule="train_ticks", train_tick_budget=100)
+        identity = run_identity(config)
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory) / "segments"
+            first = train(config, run, stop_train_ticks=11, env_factory=self.factory)
+            self.assertEqual(first["completed_round"], 1)
+            self.assertEqual(first["counters"]["train"], 11)
+            self.assertEqual([first["teams"][name]["update_count"] for name in ("A", "B")], [1, 1])
+            resolved = (run / "resolved_config.json").read_bytes()
+            store = CheckpointStore(run, identity)
+            self.assertEqual(store.load()["identity"], identity)
+            resumed = train(config, run, resume=True, stop_train_ticks=25, env_factory=self.factory)
+            # Each team collects one reset plus four decision ticks. Cleanup
+            # and recreation add two real training ticks between segments.
+            self.assertEqual(resumed["completed_round"], 3)
+            self.assertEqual(resumed["counters"]["train"], 33)
+            self.assertEqual([resumed["teams"][name]["update_count"] for name in ("A", "B")], [3, 3])
+            self.assertEqual(run_identity(config), identity)
+            self.assertEqual(store.load()["identity"], identity)
+            self.assertEqual((run / "resolved_config.json").read_bytes(), resolved)
+            rows = [json.loads(line) for line in store.metrics_path.read_text().splitlines()][1:]
+            self.assertEqual([row["actual_counters"]["train"] for row in rows], [11, 23, 33])
+            for row in rows:
+                order = ("A", "B") if row["completed_round"] % 2 else ("B", "A")
+                for index, name in enumerate(order):
+                    update_tick = row["actual_counters"]["train"] - (5 if index == 0 else 0)
+                    expected_factor = max(.1, 1. - update_tick / 100)
+                    for rates in row["teams"][name]["learning_rates"].values():
+                        for kind, key in (("actor", "lr_actor"), ("critic", "lr_critic")):
+                            for rate in rates[kind]:
+                                self.assertAlmostEqual(rate, config["learning"][key] * expected_factor)
 
 
 if __name__ == "__main__":

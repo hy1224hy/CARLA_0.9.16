@@ -4,6 +4,7 @@ No local experiment predecessor, authorization marker, CARLA connection or train
 """
 from __future__ import annotations
 import argparse
+from copy import deepcopy
 import json
 from pathlib import Path
 
@@ -17,13 +18,17 @@ def resolve(path):
 
 
 def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
-            device='cuda', seed=42, train_ticks=24000, host='127.0.0.1', port=2000,
-            case_manifest=None, reference_dir=None, c1_controller=None):
+            device='cuda', seed=42, train_ticks=None, host='127.0.0.1', port=2000,
+            case_manifest=None, reference_dir=None, c1_controller=None,
+            lr_comparison=False):
     from training.checkpoint_protocol import load_checkpoint_file, atomic_write_json, sha256_file
     from training.mut_mappo_config import load_config, portable_config, validate_config
     from environment.mut_mappo_critical_reward_v2 import PROFILE
     output=resolve(output_dir)
     if output.exists():raise FileExistsError('output exists; choose a new experiment directory')
+    if type(lr_comparison) is not bool:
+        raise ValueError('lr_comparison must be a boolean')
+    if train_ticks is None:train_ticks=60000 if lr_comparison else 24000
     if type(train_ticks) is not int or train_ticks<=0 or type(seed) is not int:
         raise ValueError('train ticks must be positive and seed must be an integer')
     if device not in ('cpu','cuda') or not host or type(port) is not int or not 1<=port<=65535:
@@ -39,6 +44,12 @@ def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
     config.pop('diagnostic_authorization',None)
     if config.get('task',{}).get('reward_profile')!=PROFILE:
         raise ValueError('source configuration must use the R2 normal-driving critical reward')
+    if lr_comparison and (type(config.get('learning',{}).get('ppo_epochs')) is not int
+            or config['learning']['ppo_epochs']!=2
+            or type(config.get('run',{}).get('episodes_per_team_update')) is not int
+            or config['run']['episodes_per_team_update']!=4):
+        raise ValueError('B0 LR comparison requires source learning.ppo_epochs=2 and '
+                         'run.episodes_per_team_update=4; source values are not overwritten')
     config.update(device=device,seed=seed,host=host,port=port,research_status='candidate')
     config['red_checkpoint']={'path':str(checkpoint),'sha256':digest,
         'capability_status':'weak_red_engineering_candidate_not_formally_qualified'}
@@ -54,12 +65,47 @@ def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
     if case_manifest is not None:config['case_manifest']=str(resolve(case_manifest))
     if c1_controller is not None:config['task']['c1_controller']=c1_controller
     config['run']['train_tick_budget']=train_ticks
+    entries=[]
+    entry_configs=[]
+    if lr_comparison:
+        config.update(method='off',algorithm='mappo',team_count=2)
+        config['mutual']['quality_metric']='qualified_primary_event_credit'
+        config['evaluation']['selection_metric']='qualified_primary_event_credit'
+        config['run'].update(stop_rule='train_ticks',schedule_clock='train_ticks',
+            lr_schedule='linear',lr_decay_train_ticks=train_ticks,lr_min_factor=0.1)
+        for schedule in ('linear','constant'):
+            candidate=deepcopy(config)
+            candidate['run']['lr_schedule']=schedule
+            if schedule=='constant':
+                candidate['run'].pop('lr_decay_train_ticks',None)
+                candidate['run'].pop('lr_min_factor',None)
+            group='B0_'+schedule.upper()
+            run_id=f'{group}_s{seed}'
+            entries.append(dict(run_id=run_id,group=group,seed=seed,
+                config=str(output/'configs'/(run_id+'.json')),
+                run_dir=str(output/'runs'/run_id)))
+            validate_config(candidate)
+            entry_configs.append(candidate)
     checked=validate_config(config)
     # All checks above are read-only; never create output for a rejected upload/config.
     output.mkdir(parents=True,exist_ok=False)
     atomic_write_json(config,output/'config.json')
+    if lr_comparison:
+        for entry,candidate in zip(entries,entry_configs):
+            atomic_write_json(candidate,Path(entry['config']))
+        experiment=dict(schema='first_point_experiment_v1',suite='B0_lr_comparison',
+            base_config=str(output/'config.json'),entries=deepcopy(entries),
+            train_tick_budget=train_ticks,status='PREPARED_NOT_RUN',
+            diagnostic='matched_B0_linear_vs_constant_learning_rate',
+            execution='one user-started CARLA, serial; A/B cost combined; complete-boundary soft cap',
+            reward='source R2 reward and safety thresholds unchanged; shared C1 references',
+            independent_unit='outer training seed; no A/B pooling',
+            comparison_fields=['run.lr_schedule','run.lr_decay_train_ticks','run.lr_min_factor'],
+            carla_connected=False,training_launched=False)
+        atomic_write_json(experiment,output/'experiment.json')
     record=dict(status='PREPARED_NOT_TRAINED',schema='critical_reward_server_preparation_v1',
-        profile=PROFILE,config=str(output/'config.json'),run_dir=str(output/'run'),
+        profile=PROFILE,config=str(output/'config.json'),
+        run_dir=None if lr_comparison else str(output/'run'),
         source_config=str(source),checkpoint=str(checkpoint),red_sha256=digest,
         source_update=payload.get('update'),device=device,seed=seed,train_tick_budget=train_ticks,
         reference_dir=config['task']['team_reward']['reference_dir'],
@@ -68,6 +114,12 @@ def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
         scope='weak_red_engineering_reward_pilot_not_formal_driving_qualification',
         initialization='fresh blue learners from supplied base actors; not resume of an old reward run',
         carla_connected=False,training_launched=False)
+    if lr_comparison:
+        record.update(lr_comparison=True,
+            diagnostic='matched_B0_linear_vs_constant_learning_rate',
+            experiment=str(output/'experiment.json'),entries=deepcopy(entries),
+            comparison_fields=experiment['comparison_fields'],
+            matching='same red checkpoint, source actors, seed, task, C1 references, learning parameters and train tick budget')
     atomic_write_json(record,output/'preparation.json')
     return record
 
@@ -80,7 +132,10 @@ def main():
     parser.add_argument('--source-config',type=Path)
     parser.add_argument('--device',choices=('cpu','cuda'),default='cuda')
     parser.add_argument('--seed',type=int,default=42)
-    parser.add_argument('--train-ticks',type=int,default=24000)
+    parser.add_argument('--train-ticks',type=int,
+        help='training ticks per run (default: 24000; 60000 with --lr-comparison)')
+    parser.add_argument('--lr-comparison',action='store_true',
+        help='prepare matched B0 linear and constant learning-rate diagnostic runs')
     parser.add_argument('--host',default='127.0.0.1')
     parser.add_argument('--port',type=int,default=2000)
     parser.add_argument('--case-manifest',type=Path)
@@ -90,7 +145,8 @@ def main():
     result=prepare(args.checkpoint,args.output_dir,source_config=args.source_config,
         expected_sha256=args.expected_sha256,device=args.device,seed=args.seed,
         train_ticks=args.train_ticks,host=args.host,port=args.port,case_manifest=args.case_manifest,
-        reference_dir=args.reference_dir,c1_controller=args.c1_controller)
+        reference_dir=args.reference_dir,c1_controller=args.c1_controller,
+        lr_comparison=args.lr_comparison)
     print(json.dumps(result,ensure_ascii=False,indent=2))
 
 

@@ -16,6 +16,9 @@ from training.first_point_scenarios import build_cases
 from training.mut_mappo_config import ROOT, load_config, portable_config, resolve_path, validate_config
 from training.mut_mappo_experiments import SUITES, experiment_config
 from visualization.mut_mappo_monitor import add_monitor_arguments, options_from_args
+from utils.mut_mappo_tensorboard import (
+    add_tensorboard_arguments, options_from_args as tensorboard_options_from_args,
+)
 
 
 def prepare(output, red_checkpoint, *, suite="core", seeds=(42, 43, 44), ticks=120000, device="cpu", scene_stage="full"):
@@ -126,11 +129,16 @@ def base_evaluate(root, experiment, *, geometry_report=None, validate_only=False
     return report
 
 
-def train_entries(entries, *, resume=False, stop_round=None, monitor_options=None):
+def train_entries(entries, *, resume=False, stop_round=None, monitor_options=None,
+                  tensorboard_options=None, stop_train_ticks=None):
     from training.train_mut_mappo import train
     from utils.mut_mappo_session import CarlaOwner
     for entry in entries:
         cfg = validate_config(load_config(entry["config"]))
+        if stop_train_ticks is not None and (type(stop_train_ticks) is not int
+                or not 0 < stop_train_ticks <= cfg["run"]["train_tick_budget"]
+                or cfg["run"].get("stop_rule") != "train_ticks"):
+            raise ValueError("--stop-train-ticks needs a tick-budget run and an absolute target within its budget")
         cfg["_monitor_options"] = monitor_options or {}
         run = Path(entry["run_dir"])
         status_path = run / "session/status.json"
@@ -139,14 +147,45 @@ def train_entries(entries, *, resume=False, stop_round=None, monitor_options=Non
             if status.get("training_budget_reached") and (run / "checkpoint_manifest.json").exists():
                 print("TRAIN_ALREADY_COMPLETE", entry["run_id"], flush=True)
                 continue
+            if (stop_train_ticks is not None and status.get("actual_counters", {}).get("train", 0) >= stop_train_ticks
+                    and (run / "checkpoint_manifest.json").exists()):
+                print("TRAIN_SEGMENT_ALREADY_COMPLETE", entry["run_id"], flush=True)
+                continue
         with CarlaOwner(cfg["host"], cfg["port"], run_dir=run, purpose="first-point " + entry["run_id"]):
-            train(cfg, run, resume=resume and (run / "checkpoint_manifest.json").exists(), stop_round=stop_round)
+            options = dict(tensorboard_options or {})
+            if options.get("log_dir"):
+                options["log_dir"] = str(Path(options["log_dir"]) / entry["run_id"])
+            train(cfg, run, resume=resume and (run / "checkpoint_manifest.json").exists(),
+                  stop_round=stop_round, tensorboard_options=options, stop_train_ticks=stop_train_ticks)
 
 
-def evaluate_entries(root, experiment, entries, *, with_credit=False, allow_weak_red=False, monitor_options=None):
+def retain_best_selection(root, entry, result):
+    """Reuse the existing selector over this run's completed selection stages."""
+    from evaluation.mut_mappo_selection import select_evaluation_directories
+    previous = [json.loads(path.read_text(encoding="utf-8")) for path in (root / "results").glob("*.json")]
+    previous = [item for item in previous if item.get("run_id") == entry["run_id"]]
+    by_source = {item["selection_dir"]: item for item in previous + [result] if item.get("selection_dir")}
+    directories = sorted(by_source)
+    through = max(item["completed_round"] for item in by_source.values())
+    output = root / "best_selection" / entry["run_id"] / f"through_r{through:08d}"
+    if (output / "selection.json").exists():
+        best = json.loads((output / "selection.json").read_text(encoding="utf-8"))
+        if {row["evaluation_source"] for row in best["candidates"]} != set(directories):
+            raise ValueError("best-selection evidence changed; preserve the old selection and use a fresh output")
+    else:
+        best = select_evaluation_directories(directories, output)
+    atomic_write_json({"selection_dir": str(output), "selected": best["selected"], "status": best["status"],
+                       "evaluations": directories, "test_used_for_selection": False},
+                      root / "best_selection" / (entry["run_id"] + ".json"))
+    return output, best
+
+
+def evaluate_entries(root, experiment, entries, *, with_credit=False, allow_weak_red=False, monitor_options=None,
+                     selection_only=False):
     from evaluation.evaluate_mut_mappo import evaluate
     from evaluation.evaluate_mut_mappo_credit import evaluate as evaluate_credit
     from evaluation.mut_mappo_reference import prepare as prepare_references
+    from utils.mut_mappo_session import last_json_record
     for entry in entries:
         run = Path(entry["run_dir"])
         manifest = json.loads((run / "checkpoint_manifest.json").read_text(encoding="utf-8"))
@@ -161,15 +200,24 @@ def evaluate_entries(root, experiment, entries, *, with_credit=False, allow_weak
             report = evaluate(entry["config"], checkpoint, split="selection", output_dir=output, select_best=True, monitor_options=monitor_options)
         result.update(source_checkpoint=str(checkpoint), source_checkpoint_sha256=manifest["sha256"],
                       completed_round=manifest["completed_round"], selection_dir=str(output),
-                      selection_status=report["selection"]["status"])
-        selected = report["selection"]["selected"]
+                      stage_candidates=report["selection"]["candidates"],
+                      selection_status=report["selection"]["status"],
+                      actual_train_ticks=(last_json_record(run / "actual_cost_audit.jsonl") or {}).get("actual_counters", {}).get("train"))
+        best_output, best = retain_best_selection(root, entry, result)
+        selected = best["selected"]
+        result.update(best_selection_dir=str(best_output), selection_status=best["status"],
+                      selected_completed_round=selected["completed_round"] if selected else None)
         atomic_write_json(result, result_path)
+        if selection_only:
+            print("SELECTION_STAGE_COMPLETE", entry["run_id"], best["status"],
+                  "best_round=", result["selected_completed_round"], flush=True)
+            continue
         if selected is None:
             print("NO_QUALIFIED_BLUE", entry["run_id"], flush=True)
             continue
         # Test curves are prepared only after this candidate has been frozen by selection.
         prepare_references(experiment["base_config"], ("test",), allow_weak_red=allow_weak_red, monitor_options=monitor_options)
-        frozen = output / "frozen_blue_team.pt"
+        frozen = best_output / "frozen_blue_team.pt"
         test_output, test_report = reusable_evaluation(root / "evaluations" / key / "test", sha256_file(frozen))
         if test_report is None:
             test_report = evaluate(entry["config"], frozen, split="test", output_dir=test_output, monitor_options=monitor_options)
@@ -186,19 +234,26 @@ def evaluate_entries(root, experiment, entries, *, with_credit=False, allow_weak
 
 def summarize(root, experiment):
     rows = []
+    history = []
     latest = {}
     for path in sorted((root / "results").glob("*.json")):
         result = json.loads(path.read_text(encoding="utf-8"))
+        for candidate in result.get("stage_candidates", []):
+            history.append(dict(run_id=result["run_id"], group=result["group"], seed=result["seed"],
+                                actual_train_ticks=result.get("actual_train_ticks"),
+                                selection_dir=result["selection_dir"], **candidate))
         if result["run_id"] not in latest or result["completed_round"] > latest[result["run_id"]]["completed_round"]:
             latest[result["run_id"]] = result
     for result in latest.values():
-        row = {k: result.get(k) for k in ("run_id", "group", "seed", "completed_round", "selection_status", "selected_team")}
+        row = {k: result.get(k) for k in ("run_id", "group", "seed", "completed_round", "selection_status",
+                                         "selected_team", "selected_completed_round", "best_selection_dir")}
         if result.get("test_dir"):
             report = json.loads((Path(result["test_dir"]) / "summary.json").read_text(encoding="utf-8"))
             team = result["selected_team"]
             paired = report["paired"]["teams"][team]
             c2 = paired["conditions"]["C2"]
             row.update(safe_efficiency_utility=c2["safe_efficiency_utility"], red_success_rate=c2["red_success_rate"],
+                       qualified_primary_event_credit=c2.get("qualified_primary_event_credit"),
                        blue_bad_rate=c2["b"], AttackGain_safe=paired["AttackGain_safe"],
                        arrival_delay_s=paired["arrival_delay_C2_minus_C1_both_success_seconds_mean"],
                        test_common_cases=paired["n_common_valid"])
@@ -211,6 +266,12 @@ def summarize(root, experiment):
         row["training_budget"] = experiment["train_tick_budget"]
         rows.append(row)
     root.mkdir(parents=True, exist_ok=True)
+    # Selection diagnostics remain separate from the final untouched test results.
+    history_columns = sorted({key for row in history for key in row}) or ["run_id"]
+    with (root / "selection_history.csv").open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=history_columns)
+        writer.writeheader()
+        writer.writerows(history)
     base_config = load_config(experiment["base_config"])
     reference_path = resolve_path(base_config["task"]["team_reward"]["reference_dir"]) / "manifest.json"
     reference = json.loads(reference_path.read_text(encoding="utf-8")) if reference_path.exists() else {"cases": {}}
@@ -231,7 +292,7 @@ def summarize(root, experiment):
     for group in sorted({row["group"] for row in rows}):
         members = [row for row in rows if row["group"] == group]
         stats = {}
-        for metric in ("safe_efficiency_utility", "blue_bad_rate", "red_success_rate", "AttackGain_safe", "interaction"):
+        for metric in ("qualified_primary_event_credit", "safe_efficiency_utility", "blue_bad_rate", "red_success_rate", "AttackGain_safe", "interaction"):
             values = [row[metric] for row in members if row.get(metric) is not None]
             stats[metric] = {"n": len(values), "mean": statistics.fmean(values) if values else None,
                              "std": statistics.stdev(values) if len(values) > 1 else None}
@@ -267,7 +328,11 @@ def main():
         p.add_argument("--geometry-report")
         p.add_argument("--validate-only", action="store_true")
         p.add_argument("--stop-round", type=int)
+        p.add_argument("--stop-train-ticks", type=int,
+                       help="absolute train tick target for this segment; does not alter LR schedule or total budget")
+        p.add_argument("--selection-only", action="store_true", help="retain best selection candidate without running test")
         add_monitor_arguments(p)
+        add_tensorboard_arguments(p)
     args = parser.parse_args()
     if args.command == "prepare":
         result = prepare(args.output, args.red_checkpoint, suite=args.suite, seeds=args.seeds,
@@ -294,9 +359,12 @@ def main():
             from evaluation.mut_mappo_reference import prepare as prepare_references
             result = prepare_references(experiment["base_config"], allow_weak_red=args.allow_weak_red, monitor_options=options_from_args(args))
         if args.command in {"train", "run"}:
-            train_entries(entries, resume=args.resume, stop_round=args.stop_round, monitor_options=options_from_args(args))
+            train_entries(entries, resume=args.resume, stop_round=args.stop_round,
+                          monitor_options=options_from_args(args),
+                          tensorboard_options=tensorboard_options_from_args(args), stop_train_ticks=args.stop_train_ticks)
         if args.command in {"evaluate", "run"}:
-            evaluate_entries(root, experiment, entries, with_credit=args.with_credit, allow_weak_red=args.allow_weak_red, monitor_options=options_from_args(args))
+            evaluate_entries(root, experiment, entries, with_credit=args.with_credit, allow_weak_red=args.allow_weak_red,
+                             monitor_options=options_from_args(args), selection_only=args.selection_only)
         result = summarize(root, experiment)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

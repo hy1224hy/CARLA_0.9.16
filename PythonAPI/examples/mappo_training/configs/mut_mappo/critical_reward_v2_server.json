@@ -11,7 +11,7 @@
     "max_invalid_retries": 1,
     "mode": "deterministic",
     "selection_max_bad_rate": 0.125,
-    "selection_metric": "safe_critical_event"
+    "selection_metric": "qualified_primary_event_credit"
   },
   "host": "127.0.0.1",
   "learning": {
@@ -59,7 +59,7 @@
     "gate_min_cases": 8,
     "gate_min_q_gap": 0.25,
     "min_efficiency_gap": 0.02,
-    "quality_metric": "critical",
+    "quality_metric": "qualified_primary_event_credit",
     "refresh_rounds": 10,
     "refresh_train_ticks": 20000,
     "schedule_clock": "train_ticks",

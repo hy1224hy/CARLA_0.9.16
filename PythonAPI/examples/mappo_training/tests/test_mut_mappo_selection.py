@@ -32,7 +32,7 @@ def checkpoint(round_no=1, teams=("A", "B")):
                          "model_spec": {"obs_dim": 20, "action_dim": 2}, "config_sha256": "c" * 64}}
 
 
-def records(team, *, gain=4, responses=4, bad=0, task=False, attempt=0):
+def records(team, *, gain=4, responses=4, bad=0, task=False, attempt=0, primary=None, broad=None):
     rows = []
     for index in range(8):
         for condition in ("C0", "C1", "C2"):
@@ -43,6 +43,9 @@ def records(team, *, gain=4, responses=4, bad=0, task=False, attempt=0):
                          "blue_eligible": not unsafe,
                          "response": condition == "C2" and index < responses,
                          "safety": {"2": {"task_violation" if task else "collision": True}} if unsafe else {}})
+            for field, count in (("qualified_primary_event_credit", primary), ("safe_critical_event", broad)):
+                if count is not None:
+                    rows[-1][field] = float(condition == "C2" and index < count and not unsafe)
     return rows
 
 
@@ -84,6 +87,27 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(exported["identity"]["red_sha256"], "a" * 64)
         self.assertEqual(exported["identity"]["case_manifest_sha256"], "b" * 64)
         self.assertEqual(exported["purpose"], "frozen_blue_inference_only_not_training_resume")
+
+    def test_primary_event_quality_ranks_first_with_safety_and_measured_evidence_required(self):
+        metric = "qualified_primary_event_credit"
+        config = {**self.config, "evaluation": {**self.config["evaluation"], "selection_metric": metric}}
+        with patch.object(self, "config", config):
+            result, _ = self.select([candidate(rows=records("A", gain=7, primary=1, broad=7)
+                                              + records("B", gain=2, bad=1, primary=3, broad=3))])
+            self.assertEqual(result["selected"]["team"], "B")
+            self.assertEqual(result["selected"][metric], 3 / 8)
+            self.assertEqual(result["selected"]["qualified_primary_event_count"], 3)
+            self.assertEqual(result["selected"]["b"], 1 / 8)
+            self.assertEqual(result["ranking"][:2], [metric + "_desc", "AttackGain_safe_desc"])
+            result, _ = self.select([candidate(rows=records("A", gain=8, bad=2, primary=6, broad=6)
+                                              + records("B", gain=2, primary=3, broad=3))])
+            self.assertEqual(result["selected"]["team"], "B")
+            self.assertFalse(result["candidates"][0]["qualified"])
+        for name, selected_metric in (("missing_measurement", metric), ("unknown_metric", "unknown_quality")):
+            with self.subTest(name=name), patch.object(self, "config", {
+                    **config, "evaluation": {**config["evaluation"], "selection_metric": selected_metric}}):
+                with self.assertRaisesRegex(ValueError, "requires measured|unknown selection metric"):
+                    self.select([candidate()])
 
     def test_ranking_uses_gain_then_q_then_task_then_earlier_round_and_stable_team(self):
         result, _ = self.select([candidate(rows=records("A", gain=3, responses=7) + records("B", gain=4, responses=1))])

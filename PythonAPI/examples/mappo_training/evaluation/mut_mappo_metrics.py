@@ -12,7 +12,25 @@ from typing import Any, Iterable, Mapping
 from evaluation.driving_policy_metrics import average, summarize_driving
 
 CONDITIONS = ("C0", "C1", "C2")
-METRICS_VERSION = "mut_mappo_external_metrics_v1"
+METRICS_VERSION = "mut_mappo_external_metrics_v2"
+PRIMARY_EVENT_METRIC = "qualified_primary_event_credit"
+SELECTION_METRICS = frozenset((None, "safe_efficiency_utility", "safe_critical_event", PRIMARY_EVENT_METRIC))
+
+
+def selection_metric(config):
+    value = config.get("evaluation", {}).get("selection_metric")
+    if value not in SELECTION_METRICS:
+        raise ValueError("unknown selection metric; refusing an implicit ranking fallback")
+    return value
+
+
+def qualified_primary_event_value(row):
+    value = row.get(PRIMARY_EVENT_METRIC)
+    if type(value) not in (int, float) or value not in (0., 1.):
+        raise ValueError("primary-event quality requires a measured binary qualified_primary_event_credit")
+    if value and row.get("blue_eligible") is not True:
+        raise ValueError("qualified primary event cannot belong to an ineligible blue episode")
+    return float(value)
 _BOOL_FIELDS = ("red_success", "blue_eligible", "response")
 _CENSORED_REASONS = {
     "censored", "external_truncation", "external_censored", "other_red_failure",
@@ -109,6 +127,10 @@ def _red_episode_measurements(row: Mapping[str, Any]) -> tuple[float | None, flo
 def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     valid = [row for row in rows if row["valid"]]
     n = len(valid)
+    measured_primary = [row for row in valid if type(row.get(PRIMARY_EVENT_METRIC)) in (int, float)
+                        and row[PRIMARY_EVENT_METRIC] in (0., 1.)]
+    primary_count = (int(sum(qualified_primary_event_value(row) for row in measured_primary))
+                     if n and len(measured_primary) == n else None)
     eligible = sum(row["blue_eligible"] for row in valid)
     responses = sum(row["response"] for row in valid)
     safe_responses = sum(row["response"] and row["blue_eligible"] for row in valid)
@@ -166,6 +188,9 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             if n and all(type(row.get('safe_critical_event')) in (int, float)
                          and row['safe_critical_event'] in (0., 1.) for row in valid) else None),
         "team_utility_total": average([row.get("team_utility_total") for row in valid]),
+        PRIMARY_EVENT_METRIC: primary_count / n if primary_count is not None else None,
+        "qualified_primary_event_count": primary_count,
+        "qualified_primary_event_measured_episodes": len(measured_primary),
         "driving_metrics": summarize_driving(valid),
     }
 
