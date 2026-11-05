@@ -141,9 +141,37 @@ class FirstPointTests(unittest.TestCase):
             self.assertEqual(config["mutual"]["quality_metric"], "qualified_primary_event_credit")
             self.assertEqual(config["evaluation"]["selection_max_bad_rate"], source["evaluation"]["selection_max_bad_rate"])
             self.assertEqual(config["mutual"]["gate_max_bad_rate"], source["mutual"]["gate_max_bad_rate"])
+            grouped = root / "b012_updates"
+            grouped_record = server.prepare(checkpoint, grouped, source_config=source_path,
+                device="cpu", updates=1000, groups=["B0", "B1", "B2"])
+            _, grouped_experiment, grouped_entries = load_experiment(grouped)
+            self.assertEqual(grouped_record["groups"], ["B0", "B1", "B2"])
+            self.assertIsNone(grouped_record["run_dir"])
+            self.assertEqual(grouped_experiment["groups"], ["B0", "B1", "B2"])
+            self.assertEqual([entry["run_id"] for entry in grouped_entries],
+                             ["B0_s42", "B1_s42", "B2_s42"])
+            configurations = [json.loads(Path(entry["config"]).read_text(encoding="utf-8"))
+                              for entry in grouped_entries]
+            self.assertEqual([item["method"] for item in configurations], ["off", "plain", "selective"])
+            common = json.loads((grouped / "config.json").read_text(encoding="utf-8"))
+            for item in configurations:
+                self.assertEqual(item["run"], common["run"])
+                self.assertEqual(item["mutual"], common["mutual"])
+                self.assertEqual(item["learning"], common["learning"])
+                self.assertEqual(item["task"], common["task"])
+                item.pop("method")
+            self.assertEqual(configurations[0], configurations[1])
+            self.assertEqual(configurations[1], configurations[2])
+            self.assertEqual(load_experiment(grouped, groups=["B1", "B2"])[2], grouped_entries[1:])
+            single = server.prepare(checkpoint, root / "b1_updates", source_config=source_path,
+                                    device="cpu", updates=1000, groups=["B1"])
+            self.assertEqual(single["config"], single["entries"][0]["config"])
+            self.assertEqual(json.loads(Path(single["config"]).read_text(encoding="utf-8"))["method"], "plain")
             for index, options in enumerate((dict(updates=0), dict(updates=True),
                     dict(updates=1000, train_ticks=72000), dict(updates=1000, lr_comparison=True),
-                    dict(updates=1000, episodes_per_team_update=3), dict(updates=1000, eval_every_updates=0))):
+                    dict(updates=1000, episodes_per_team_update=3), dict(updates=1000, eval_every_updates=0),
+                    dict(groups=["B1"]), dict(updates=1000, groups=[]),
+                    dict(updates=1000, groups=["B1", "B1"]), dict(updates=1000, groups=["IPPO"]))):
                 rejected = root / f"rejected_{index}"
                 with self.subTest(options=options), self.assertRaises(ValueError):
                     server.prepare(checkpoint, rejected, source_config=source_path, device="cpu", **options)

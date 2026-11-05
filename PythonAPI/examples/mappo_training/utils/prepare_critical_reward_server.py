@@ -21,7 +21,7 @@ def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
             device='cuda', seed=42, train_ticks=None, host='127.0.0.1', port=2000,
             case_manifest=None, reference_dir=None, c1_controller=None,
             lr_comparison=False, updates=None, episodes_per_team_update=None,
-            eval_every_updates=100):
+            eval_every_updates=100, groups=None):
     from training.checkpoint_protocol import load_checkpoint_file, atomic_write_json, sha256_file
     from training.mut_mappo_config import load_config, portable_config, validate_config
     from environment.mut_mappo_critical_reward_v2 import PROFILE
@@ -30,6 +30,13 @@ def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
     if type(lr_comparison) is not bool:
         raise ValueError('lr_comparison must be a boolean')
     update_mode=updates is not None
+    if groups is not None:
+        if not update_mode:
+            raise ValueError('--groups requires --updates')
+        if (not isinstance(groups,(list,tuple)) or not groups
+                or any(group not in ('B0','B1','B2') for group in groups)
+                or len(set(groups))!=len(groups)):
+            raise ValueError('groups must be a nonempty unique list of B0, B1 and B2')
     if update_mode:
         if type(updates) is not int or updates<=0:
             raise ValueError('updates must be a positive integer of complete A+B rounds')
@@ -96,9 +103,24 @@ def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
             train_tick_budget=None,episodes_per_team_update=episodes_per_team_update)
         for key in ('lr_horizon_train_ticks','lr_decay_train_ticks'):
             config['run'].pop(key,None)
-        run_id=f'R2_B0_s{seed}'
-        entries.append(dict(run_id=run_id,group='R2_B0',seed=seed,
-            config=str(output/'config.json'),run_dir=str(output/'runs'/run_id)))
+        if groups is None:
+            run_id=f'R2_B0_s{seed}'
+            entries.append(dict(run_id=run_id,group='R2_B0',seed=seed,
+                config=str(output/'config.json'),run_dir=str(output/'runs'/run_id)))
+        else:
+            from training.mut_mappo_experiments import experiment_config
+            for group in groups:
+                candidate=experiment_config(config,group)
+                # The shared registry defaults to tick-clock experiments.
+                # Keep this prepared update budget and the matched gate clock.
+                candidate['run']=deepcopy(config['run'])
+                candidate['mutual']=deepcopy(config['mutual'])
+                run_id=f'{group}_s{seed}'
+                entries.append(dict(run_id=run_id,group=group,seed=seed,
+                    config=str(output/'configs'/(run_id+'.json')),
+                    run_dir=str(output/'runs'/run_id)))
+                validate_config(candidate)
+                entry_configs.append(candidate)
     elif lr_comparison:
         config.update(method='off',algorithm='mappo',team_count=2)
         config['mutual']['quality_metric']='qualified_primary_event_credit'
@@ -123,9 +145,10 @@ def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
     # All checks above are read-only; never create output for a rejected upload/config.
     output.mkdir(parents=True,exist_ok=False)
     atomic_write_json(config,output/'config.json')
-    if lr_comparison:
+    if lr_comparison or (update_mode and groups is not None):
         for entry,candidate in zip(entries,entry_configs):
             atomic_write_json(candidate,Path(entry['config']))
+    if lr_comparison:
         experiment=dict(schema='first_point_experiment_v1',suite='B0_lr_comparison',
             base_config=str(output/'config.json'),entries=deepcopy(entries),
             train_tick_budget=train_ticks,status='PREPARED_NOT_RUN',
@@ -146,10 +169,11 @@ def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
             reward='source R2 reward and safety thresholds unchanged',
             independent_unit='outer training seed; no A/B pooling',
             carla_connected=False,training_launched=False)
+        if groups is not None:experiment['groups']=list(groups)
         atomic_write_json(experiment,output/'experiment.json')
     record=dict(status='PREPARED_NOT_TRAINED',schema='critical_reward_server_preparation_v1',
         profile=PROFILE,config=str(output/'config.json'),
-        run_dir=None if lr_comparison else entries[0]['run_dir'] if update_mode else str(output/'run'),
+        run_dir=None if lr_comparison or len(entries)>1 else entries[0]['run_dir'] if update_mode else str(output/'run'),
         source_config=str(source),checkpoint=str(checkpoint),red_sha256=digest,
         source_update=payload.get('update'),device=device,seed=seed,train_tick_budget=train_ticks,
         reference_dir=config['task']['team_reward']['reference_dir'],
@@ -171,6 +195,9 @@ def prepare(checkpoint, output_dir, *, source_config=None, expected_sha256=None,
             experiment=str(output/'experiment.json'),entries=deepcopy(entries),
             learning_rate='linear by complete update rounds with a 0.1 floor',
             tick_policy='audit_only_no_tick_stopping_cap')
+        if groups is not None:
+            record.update(groups=list(groups),base_config=str(output/'config.json'))
+            if len(entries)==1:record['config']=entries[0]['config']
     atomic_write_json(record,output/'preparation.json')
     return record
 
@@ -189,6 +216,8 @@ def main():
         help='prepare matched B0 linear and constant learning-rate diagnostic runs')
     parser.add_argument('--updates',type=int,
         help='complete A+B update rounds; each team updates this many times, without a tick cap')
+    parser.add_argument('--groups',nargs='+',choices=('B0','B1','B2'),
+        help='groups to prepare with --updates; omitted keeps the original single R2_B0 run')
     parser.add_argument('--episodes-per-team-update',type=int,
         help='episodes per team update with --updates (default: 16; positive even number)')
     parser.add_argument('--eval-every-updates',type=int,default=100,
@@ -205,7 +234,7 @@ def main():
         reference_dir=args.reference_dir,c1_controller=args.c1_controller,
         lr_comparison=args.lr_comparison,updates=args.updates,
         episodes_per_team_update=args.episodes_per_team_update,
-        eval_every_updates=args.eval_every_updates)
+        eval_every_updates=args.eval_every_updates,groups=args.groups)
     print(json.dumps(result,ensure_ascii=False,indent=2))
 
 

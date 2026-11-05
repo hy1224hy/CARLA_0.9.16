@@ -179,3 +179,57 @@ ssh -N -L 18080:127.0.0.1:8080 -L 16006:127.0.0.1:6006 服务器SSH别名
 训练完成与策略合格是两个结论。`NONE_QUALIFIED` 不会触发自动早停，也不会导出不合格模型。
 最终评估优先看合格 R2 主事件率，并结合违规率、严重TTC、碰撞、完成度与舒适性；不要只看红车成功率。
 中途尚未test时，comparison的test指标为null、qualified_exports可能为0，应看最佳模型指针判断是否已选出候选。
+
+## 7. B1、B2 与 B012 对比
+
+前述不带 `--groups` 的准备命令保持原行为：只生成 `R2_B0_s42`，即关闭互学习的 B0。
+显式增加组别时使用现有算法注册表：
+
+| 组 | method | 训练方式 |
+|---|---|---|
+| B0 | off | A/B 两个独立 MAPPO 团队 |
+| B1 | plain | 普通策略分布互学习/蒸馏 |
+| B2 | selective | 通过场景质量和安全门槛后才启用蒸馏 |
+
+三组共同使用 R16、128 minibatch、2 epochs、相同初始化/场景/seed/R2奖励、按更新轮次衰减和每100轮独立评估。
+每组分别训练1000完整A+B轮；使用一个 CARLA 串行运行。
+
+如果已经启动旧 B0，保持旧实验不动，待其结束后新建 B1/B2 实验：
+
+```bash
+cd /root/carla-project
+git pull --ff-only origin codex/server-remote-monitor
+cd PythonAPI/examples/mappo_training
+
+EXP_B12="experiments/generated/R16_B12_u1000_s42_$(date +%Y%m%d_%H%M%S)"
+python -m utils.prepare_critical_reward_server \
+  --checkpoint artifacts/u001000.pt \
+  --expected-sha256 0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a \
+  --output-dir "$EXP_B12" --groups B1 B2 \
+  --updates 1000 --episodes-per-team-update 16 --eval-every-updates 100 \
+  --device cuda --seed 42 --host 127.0.0.1 --port 2000
+printf 'export EXP_B12=%q\n' "$EXP_B12" > "$EXP_B12/run.env"
+
+python -u -m utils.run_first_point_experiments references \
+  --experiment "$EXP_B12" --allow-weak-red \
+  --monitor-mode web --monitor-port 8080
+
+python -u -m utils.run_first_point_experiments run-updates \
+  --experiment "$EXP_B12" --groups B1 B2 \
+  --resume --allow-weak-red \
+  --monitor-mode web --monitor-port 8080 \
+  2>&1 | tee -a "$EXP_B12/controller.log"
+```
+
+离线准备可先做；参考采集和训练必须等当前 CARLA 控制任务结束。本次组别扩展只改准备器、测试和文档，
+不改训练器、PPO、学习率或奖励源码，已有B0的配置、身份和进度保持原样。
+
+准备器可通过 `--reference-dir <原B0的references目录>` 复用参考，但必须通过相同红方/场景/任务身份校验。
+省略该选项则在新目录重新采集参考。
+只跑一组时，可在准备或运行命令中选 `--groups B1` 或 `--groups B2`。
+恢复沿用同一个 EXP_B12 和上面最后一条命令。
+
+若三组都还没开始，准备时改用 `--groups B0 B1 B2`，运行时同样选择这三组即可，其他命令不变。
+显式组别的配置位于 `configs/B0_s42.json`、`B1_s42.json`、`B2_s42.json`；
+运行目录为 `runs/B0_s42`、`runs/B1_s42`、`runs/B2_s42`。
+同一个实验目录的 `comparison.json/csv` 会汇总其已完成组别；先前独立B0实验的结果仍保留在原目录，不会自动并入新B12汇总。
