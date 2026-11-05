@@ -165,6 +165,10 @@ class RunnerIntegrationTests(unittest.TestCase):
                 (rounds, 99, 101, .1), (rounds, 99, 150, .1),
                 (dict(tick, lr_decay_train_ticks=200, lr_min_factor=.2), 100, 1, .5),
                 (dict(tick, lr_decay_train_ticks=200, lr_min_factor=.2), 300, 1, .2),
+                (dict(tick, lr_horizon_train_ticks=200), 100, 1, .5),
+                (dict(tick, lr_horizon_train_ticks=200, lr_decay_train_ticks=200), 100, 1, .5),
+                ({"schedule_clock": "train_ticks", "train_tick_budget": None,
+                  "lr_horizon_train_ticks": 200}, 100, 1, .5),
                 (dict(tick, lr_min_factor=0.), 100, 1, 0.),
                 (dict(tick, lr_schedule="constant"), 150, 1, 1.),
                 ({"lr_schedule": "constant"}, 150, 150, 1.)):
@@ -175,14 +179,61 @@ class RunnerIntegrationTests(unittest.TestCase):
                 self.assertEqual(run, before)
         invalid = [{"lr_schedule": value} for value in ("cosine", None, True)]
         invalid += [{"schedule_clock": "wall_time"}, dict(rounds, lr_decay_train_ticks=10)]
+        invalid += [dict(rounds, lr_horizon_train_ticks=10),
+                    dict(tick, lr_horizon_train_ticks=200, lr_decay_train_ticks=300)]
         invalid += [dict(tick, lr_decay_train_ticks=value) for value in (0, -1, True, 2.5)]
+        invalid += [dict(tick, lr_horizon_train_ticks=value) for value in (0, -1, True, 2.5)]
         invalid += [dict(tick, lr_min_factor=value) for value in
                     (-.1, 1.1, True, "0.1", float("nan"), float("inf"))]
         invalid += [dict(tick, lr_schedule="constant", **{key: value}) for key, value in
-                    (("lr_decay_train_ticks", 100), ("lr_min_factor", .1))]
+                    (("lr_decay_train_ticks", 100), ("lr_horizon_train_ticks", 100), ("lr_min_factor", .1))]
         for run in invalid:
             with self.subTest(invalid=run), self.assertRaises(ValueError):
                 validate_lr_schedule(run)
+
+    def test_round_target_ignores_ticks_and_resume_preserves_round_lr(self):
+        for budget in (None, 1):
+            with self.subTest(budget=budget), tempfile.TemporaryDirectory() as directory:
+                config = copy.deepcopy(self.config)
+                config["run"].update(stop_rule="rounds", schedule_clock="rounds", rounds=3,
+                                     lr_horizon_rounds=3, train_tick_budget=budget)
+                config = validate_config(config)
+                if budget is None:
+                    invalid = copy.deepcopy(config)
+                    invalid["run"].update(stop_rule="train_ticks", schedule_clock="train_ticks")
+                    with self.assertRaisesRegex(ValueError, "positive train_tick_budget"):
+                        validate_config(invalid)
+                identity = run_identity(config)
+                run = Path(directory) / "rounds"
+                with patch("training.train_mut_mappo.MutMAPPOMonitor") as monitor:
+                    first = train(config, run, stop_round=1, env_factory=self.factory)
+                    self.assertEqual(first["completed_round"], 1)
+                    self.assertFalse(first["last_metrics"]["training_complete"])
+                    resumed = train(config, run, resume=True, env_factory=self.factory)
+                    self.assertEqual(monitor.call_args.kwargs["planned_rounds"], 3)
+                self.assertEqual(resumed["completed_round"], 3)
+                self.assertEqual([resumed["teams"][n]["update_count"] for n in ("A", "B")], [3, 3])
+                status = json.loads((run / "session/status.json").read_text())
+                self.assertEqual((status["completed_updates"], status["target_updates"]), (3, 3))
+                self.assertTrue(status["training_complete"])
+                self.assertFalse(status["training_budget_reached"])
+                self.assertFalse(status["tick_budget_enforced"])
+                self.assertIsNone(status["train_tick_overshoot"])
+                self.assertGreater(status["actual_counters"]["train"], budget or 0)
+                self.assertEqual(run_identity(config), identity)
+                store = CheckpointStore(run, identity)
+                rows = [json.loads(line) for line in store.metrics_path.read_text().splitlines()][1:]
+                self.assertEqual([row["completed_updates"] for row in rows], [1, 2, 3])
+                for row in rows:
+                    factor = max(.1, 1 - (row["completed_round"] - 1) / 3)
+                    for team in row["teams"].values():
+                        for rates in team["learning_rates"].values():
+                            self.assertAlmostEqual(rates["actor"][0], config["learning"]["lr_actor"] * factor)
+                            self.assertAlmostEqual(rates["critic"][0], config["learning"]["lr_critic"] * factor)
+                with self.assertRaisesRegex(ValueError, "registered update target"):
+                    train(config, run, resume=True, stop_round=4, env_factory=self.factory)
+                with self.assertRaisesRegex(ValueError, "tick-budget run"):
+                    train(config, run, resume=True, stop_train_ticks=10, env_factory=self.factory)
 
     def test_absolute_tick_segment_stop_resume_preserves_identity_and_lr_clock(self):
         config = copy.deepcopy(self.config)

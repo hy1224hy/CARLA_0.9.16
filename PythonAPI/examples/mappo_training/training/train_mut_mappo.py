@@ -454,9 +454,21 @@ def critical_learning_signal(records):
 def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_runtime,
           tensorboard_options=None, stop_train_ticks=None):
     run_dir = Path(run_dir).resolve()
+    stop_rule = config["run"].get("stop_rule", "rounds")
+    if stop_rule not in {"rounds", "train_ticks"}:
+        raise ValueError("unknown run stopping rule")
+    tick_stopping = stop_rule == "train_ticks"
+    tick_budget = config["run"].get("train_tick_budget")
+    target_updates = None if tick_stopping else config["run"]["rounds"]
+    if (tick_stopping or tick_budget is not None) and (type(tick_budget) is not int or tick_budget <= 0):
+        raise ValueError("tick budget must be positive for tick runs; update runs may use null")
+    if type(config["run"]["rounds"]) is not int or config["run"]["rounds"] <= 0:
+        raise ValueError("registered rounds must be a positive integer")
+    if stop_round is not None and (type(stop_round) is not int or stop_round <= 0
+            or (not tick_stopping and stop_round > target_updates)):
+        raise ValueError("stop round must be positive and within the registered update target")
     if stop_train_ticks is not None and (type(stop_train_ticks) is not int
-            or not 0 < stop_train_ticks <= config["run"]["train_tick_budget"]
-            or config["run"].get("stop_rule") != "train_ticks"):
+            or not tick_stopping or not 0 < stop_train_ticks <= tick_budget):
         raise ValueError("stop_train_ticks needs a tick-budget run and a positive absolute target within its budget")
     # Preflight imports/output ownership without creating events or run files.
     tensorboard = MutMAPPOTensorBoard(run_dir, **(tensorboard_options or {}))
@@ -491,21 +503,24 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
         raise RuntimeError("STOP_REQUESTED exists; explicitly archive it before starting another segment")
     ledger = CostLedger(store)
     runtime = None
-    tick_stopping = config["run"].get("stop_rule") == "train_ticks"
     stop = stop_round if stop_round is not None else (
-        payload["completed_round"] + max(1, config["run"]["train_tick_budget"] - ledger.counts["train"])
+        payload["completed_round"] + max(1, tick_budget - ledger.counts["train"])
         if tick_stopping else config["run"]["rounds"])
-    if not payload["completed_round"] < stop or (not tick_stopping and stop > config["run"]["lr_horizon_rounds"]):
+    if not payload["completed_round"] < stop or (
+            config["run"].get("schedule_clock", "rounds") == "rounds" and stop > config["run"]["lr_horizon_rounds"]):
         raise ValueError("stop round must advance; round-clock runs cannot exceed their frozen LR horizon")
     segment = uuid.uuid4().hex
     status_path = run_dir / "session/status.json"
-    status = {"started_at": now(), "segment_id": segment, "status": "STARTING", "method": config["method"]}
-    monitor = MutMAPPOMonitor(config, run_dir, planned_rounds=None if tick_stopping else stop)
+    status = {"started_at": now(), "segment_id": segment, "status": "STARTING", "method": config["method"],
+              "target_updates": target_updates, "segment_target_update": stop,
+              "completed_updates": payload["completed_round"], "tick_budget_enforced": tick_stopping}
+    monitor = MutMAPPOMonitor(config, run_dir, planned_rounds=target_updates)
     terminal, monitor_result = "error", {}
     try:
         tensorboard.replay()
         if tensorboard.enabled:
-            print(f"[TensorBoard] {tensorboard.log_dir} (complete boundaries; x=actual training ticks)", flush=True)
+            axis = "actual training ticks" if tick_stopping else "completed A+B updates"
+            print(f"[TensorBoard] {tensorboard.log_dir} (complete boundaries; x={axis})", flush=True)
         monitor.start()
         runtime = env_factory(config, audit_callback=ledger.tick)
         runtime.monitor = monitor
@@ -513,12 +528,12 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
         family_map = {case["case_key"]: case["family"] for case in train_cases}
         teachers = payload["teachers"]
         for round_no in range(payload["completed_round"] + 1, stop + 1):
-            if ledger.counts["train"] >= min(config["run"]["train_tick_budget"],
-                                             stop_train_ticks or config["run"]["train_tick_budget"]):
+            if tick_stopping and ledger.counts["train"] >= min(tick_budget, stop_train_ticks or tick_budget):
                 break
             round_metrics, episode_metrics = {}, {}
             monitor.context(round=round_no, update=round_no, operation="train",
-                            train_tick_budget=config["run"]["train_tick_budget"])
+                            train_tick_budget=tick_budget if tick_stopping else None,
+                            target_updates=target_updates, segment_target_updates=stop)
             order = ("A",) if len(topology) == 1 else (payload["next_team"], "B" if payload["next_team"] == "A" else "A")
             for name in order:
                 team = teams[name]
@@ -605,8 +620,12 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                 "learning_rate_schedule": config["run"].get("lr_schedule", "linear"),
                 "source": "training_window_not_independent_evaluation", "created_at": now(),
                 "algorithm": config["algorithm"], "team_count": config["team_count"],
-                "budget_policy": "complete_boundary_soft_cap", "train_tick_budget": config["run"]["train_tick_budget"],
-                "train_tick_overshoot": max(0, ledger.counts["train"]-config["run"]["train_tick_budget"]),
+                "budget_policy": "complete_boundary_soft_cap" if tick_stopping else "complete_boundary_updates",
+                "train_tick_budget": tick_budget,
+                "train_tick_overshoot": max(0, ledger.counts["train"]-tick_budget) if tick_stopping else None,
+                "tick_budget_enforced": tick_stopping, "target_updates": target_updates,
+                "completed_updates": round_no,
+                "training_complete": ledger.counts["train"] >= tick_budget if tick_stopping else round_no >= target_updates,
                 "schedule_clock": config["run"].get("schedule_clock", "rounds")}
             metrics["stop_rule"] = config["run"].get("stop_rule", "rounds")
             metrics["training_parameter_counts"] = {name: {
@@ -621,20 +640,25 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
             monitor.phase("saving", "完整 A+B 边界已保存", safe_round=payload["completed_round"])
             print(json.dumps({"safe_round": round_no, "actual_train_ticks": ledger.counts["train"],
                               "training_window": episode_metrics}, ensure_ascii=False), flush=True)
-            status.update(status="SAFE_AB_BOUNDARY", completed_round=round_no, at=now())
+            status.update(status="SAFE_AB_BOUNDARY", completed_round=round_no, completed_updates=round_no, at=now())
             atomic_write_json(status, status_path)
             if (run_dir / "STOP_REQUESTED").exists():
                 break
         status.update(status="SEGMENT_COMPLETED", completed_round=payload["completed_round"], ended_at=now())
         status.update(actual_counters=copy.deepcopy(ledger.counts),
-            train_tick_budget=config["run"]["train_tick_budget"],
-            train_tick_overshoot=max(0, ledger.counts["train"]-config["run"]["train_tick_budget"]),
-            budget_policy="complete_boundary_soft_cap",
-            training_budget_reached=ledger.counts["train"] >= config["run"]["train_tick_budget"],
+            train_tick_budget=tick_budget,
+            train_tick_overshoot=max(0, ledger.counts["train"]-tick_budget) if tick_stopping else None,
+            budget_policy="complete_boundary_soft_cap" if tick_stopping else "complete_boundary_updates",
+            training_budget_reached=tick_stopping and ledger.counts["train"] >= tick_budget,
+            training_complete=(ledger.counts["train"] >= tick_budget if tick_stopping
+                               else payload["completed_round"] >= target_updates),
+            completed_updates=payload["completed_round"],
             stop_rule=config["run"].get("stop_rule", "rounds"))
         atomic_write_json(status, status_path)
         terminal = "completed"
-        monitor_result = {"segment_status": status["status"], "actual_counters": ledger.counts}
+        monitor_result = {"segment_status": status["status"], "actual_counters": ledger.counts,
+                          "target_updates": target_updates, "completed_updates": payload["completed_round"],
+                          "training_complete": status["training_complete"]}
         return payload
     except BaseException as error:
         terminal = "interrupted" if isinstance(error, KeyboardInterrupt) else "error"
@@ -650,6 +674,7 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
         status.update(status="INTERRUPTED_SAFE_BOUNDARY_RETAINED", completed_round=payload["completed_round"],
                       error=f"{type(error).__name__}: {error}", at=now())
         status["completed_round"] = safe_round
+        status["completed_updates"] = safe_round
         atomic_write_json(status, status_path)
         raise
     finally:

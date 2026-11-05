@@ -150,6 +150,7 @@ class MutMAPPOTensorBoard:
         ticks = metrics["actual_counters"]["train"]
         if type(ticks) is not int or ticks < 0:
             raise ValueError("TensorBoard requires nonnegative actual training ticks")
+        step = completed if metrics.get("stop_rule") == "rounds" else ticks
         try:
             for team, optimizer in metrics["teams"].items():
                 if team not in {"A", "B"}:
@@ -160,9 +161,11 @@ class MutMAPPOTensorBoard:
                            "gate": metrics.get("gate", {}),
                            "cost": metrics.get("actual_counters", {}),
                            "meta": {"completed_round": completed,
+                                    "target_updates": metrics.get("target_updates"),
+                                    "actual_train_ticks": ticks,
                                     "train_tick_budget": metrics.get("train_tick_budget")}}
                 for tag, value in scalar_projection(payload):
-                    writer.add_scalar(tag, value, ticks)
+                    writer.add_scalar(tag, value, step)
                 writer.flush()
             self.last_round = completed
         except Exception as error:

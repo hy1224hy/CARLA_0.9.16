@@ -62,6 +62,93 @@ class FakeTeamEnv:
 
 
 class FirstPointTests(unittest.TestCase):
+    def test_update_controller_resumes_pending_evaluation_and_tests_only_at_end(self):
+        from utils import run_first_point_experiments as driver
+        cfg = {"run": {"stop_rule": "rounds", "rounds": 250}}
+        experiment = {"target_updates": 250, "eval_every_updates": 100}
+        for initial, expected in ((None, [100, 200, 250]), (100, [200, 250]),
+                                  (150, [200, 250]), (250, [])):
+            with self.subTest(initial=initial), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                manifest = root / "run/checkpoint_manifest.json"
+                manifest.parent.mkdir()
+                if initial is not None:
+                    manifest.write_text(json.dumps({"completed_round": initial}))
+                entry = {"run_id": "R2_B0_s42", "run_dir": str(manifest.parent), "config": "config.json"}
+                trained, evaluated = [], []
+                def train_segment(entries, *, stop_round, **kwargs):
+                    current = json.loads(manifest.read_text())["completed_round"] if manifest.exists() else 0
+                    if current < stop_round:
+                        trained.append(stop_round)
+                        manifest.write_text(json.dumps({"completed_round": stop_round}))
+                def evaluate_segment(*args, selection_only=False, **kwargs):
+                    evaluated.append((json.loads(manifest.read_text())["completed_round"], selection_only))
+                with patch.object(driver, "load_config", return_value=cfg), \
+                     patch.object(driver, "validate_config", side_effect=lambda value: value), \
+                     patch.object(driver, "verified_completed_round", side_effect=lambda *a: json.loads(manifest.read_text())["completed_round"]), \
+                     patch.object(driver, "train_entries", side_effect=train_segment), \
+                     patch.object(driver, "evaluate_entries", side_effect=evaluate_segment), \
+                     patch.object(driver, "summarize", return_value={}), \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    if initial is not None:
+                        with self.assertRaisesRegex(FileExistsError, "resume"):
+                            driver.run_updates(root, experiment, [entry])
+                    driver.run_updates(root, experiment, [entry], resume=initial is not None)
+                self.assertEqual(trained, expected)
+                self.assertEqual([point for point in evaluated if not point[1]], [(250, False)])
+                if initial == 100:
+                    self.assertEqual(evaluated[0], (100, True))
+
+    def test_server_r16_updates_preserves_learning_and_registers_round_budget(self):
+        from tests import test_mut_mappo_runner as fixtures
+        from utils import prepare_critical_reward_server as server
+        from utils.run_first_point_experiments import load_experiment
+        fixtures.RunnerIntegrationTests.setUpClass()
+        self.addCleanup(fixtures.RunnerIntegrationTests.doClassCleanups)
+        checkpoint = fixtures.RunnerIntegrationTests.config["red_checkpoint"]["path"]
+        source = json.loads(server.DEFAULT_CONFIG.read_text(encoding="utf-8-sig"))
+        source["run"].update(episodes_per_team_update=16, train_tick_budget=72000,
+                             lr_horizon_train_ticks=72000)
+        source["mutual"]["quality_metric"] = "critical"
+        source["evaluation"]["selection_metric"] = "safe_critical_event"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_path = root / "local_r16.json"
+            source_path.write_text(json.dumps(source), encoding="utf-8")
+            output = root / "updates"
+            record = server.prepare(checkpoint, output, source_config=source_path,
+                                    device="cpu", updates=1000, eval_every_updates=100)
+            _, experiment, entries = load_experiment(output)
+            self.assertEqual([item["run_id"] for item in entries], ["R2_B0_s42"])
+            self.assertEqual(record["run_dir"], entries[0]["run_dir"])
+            self.assertEqual((experiment["target_updates"], experiment["eval_every_updates"]), (1000, 100))
+            self.assertIsNone(experiment["train_tick_budget"])
+            config = json.loads((output / "config.json").read_text(encoding="utf-8"))
+            self.assertEqual(config["learning"], source["learning"])
+            expected_task = json.loads(json.dumps(source["task"]))
+            expected_task["team_reward"]["reference_dir"] = str(output / "references")
+            self.assertEqual(config["task"], expected_task)
+            run = config["run"]
+            self.assertEqual((run["rounds"], run["lr_horizon_rounds"], run["episodes_per_team_update"]),
+                             (1000, 1000, 16))
+            self.assertEqual((run["stop_rule"], run["schedule_clock"], run["lr_schedule"]),
+                             ("rounds", "rounds", "linear"))
+            self.assertEqual(run["lr_min_factor"], .1)
+            self.assertIsNone(run["train_tick_budget"])
+            self.assertNotIn("lr_horizon_train_ticks", run)
+            self.assertNotIn("lr_decay_train_ticks", run)
+            self.assertEqual(config["evaluation"]["selection_metric"], "qualified_primary_event_credit")
+            self.assertEqual(config["mutual"]["quality_metric"], "qualified_primary_event_credit")
+            self.assertEqual(config["evaluation"]["selection_max_bad_rate"], source["evaluation"]["selection_max_bad_rate"])
+            self.assertEqual(config["mutual"]["gate_max_bad_rate"], source["mutual"]["gate_max_bad_rate"])
+            for index, options in enumerate((dict(updates=0), dict(updates=True),
+                    dict(updates=1000, train_ticks=72000), dict(updates=1000, lr_comparison=True),
+                    dict(updates=1000, episodes_per_team_update=3), dict(updates=1000, eval_every_updates=0))):
+                rejected = root / f"rejected_{index}"
+                with self.subTest(options=options), self.assertRaises(ValueError):
+                    server.prepare(checkpoint, rejected, source_config=source_path, device="cpu", **options)
+                self.assertFalse(rejected.exists())
+
     def test_server_lr_comparison_preserves_matched_r2_contract(self):
         from tests import test_mut_mappo_runner as fixtures
         from utils import prepare_critical_reward_server as server

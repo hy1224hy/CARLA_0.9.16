@@ -129,20 +129,38 @@ def base_evaluate(root, experiment, *, geometry_report=None, validate_only=False
     return report
 
 
+def verified_completed_round(run, config):
+    from training.mut_mappo_checkpoint import CheckpointStore
+    from training.mut_mappo_config import run_identity
+    return CheckpointStore(run, run_identity(config)).load()["completed_round"]
+
+
 def train_entries(entries, *, resume=False, stop_round=None, monitor_options=None,
                   tensorboard_options=None, stop_train_ticks=None):
     from training.train_mut_mappo import train
     from utils.mut_mappo_session import CarlaOwner
     for entry in entries:
         cfg = validate_config(load_config(entry["config"]))
-        if stop_train_ticks is not None and (type(stop_train_ticks) is not int
-                or not 0 < stop_train_ticks <= cfg["run"]["train_tick_budget"]
-                or cfg["run"].get("stop_rule") != "train_ticks"):
+        tick_stopping = cfg["run"].get("stop_rule") == "train_ticks"
+        if stop_train_ticks is not None and (not tick_stopping
+                or type(stop_train_ticks) is not int
+                or not 0 < stop_train_ticks <= cfg["run"]["train_tick_budget"]):
             raise ValueError("--stop-train-ticks needs a tick-budget run and an absolute target within its budget")
         cfg["_monitor_options"] = monitor_options or {}
         run = Path(entry["run_dir"])
+        manifest_path = run / "checkpoint_manifest.json"
+        if not tick_stopping:
+            target = cfg["run"]["rounds"] if stop_round is None else stop_round
+            if type(target) is not int or not 0 < target <= cfg["run"]["rounds"]:
+                raise ValueError("update segment target must be within the frozen total updates")
+            if manifest_path.exists():
+                if not resume:
+                    raise FileExistsError("run has a checkpoint; explicitly use --resume")
+                if verified_completed_round(run, cfg) >= target:
+                    print("TRAIN_UPDATES_ALREADY_COMPLETE", entry["run_id"], target, flush=True)
+                    continue
         status_path = run / "session/status.json"
-        if status_path.exists():
+        if tick_stopping and status_path.exists():
             status = json.loads(status_path.read_text(encoding="utf-8"))
             if status.get("training_budget_reached") and (run / "checkpoint_manifest.json").exists():
                 print("TRAIN_ALREADY_COMPLETE", entry["run_id"], flush=True)
@@ -157,6 +175,55 @@ def train_entries(entries, *, resume=False, stop_round=None, monitor_options=Non
                 options["log_dir"] = str(Path(options["log_dir"]) / entry["run_id"])
             train(cfg, run, resume=resume and (run / "checkpoint_manifest.json").exists(),
                   stop_round=stop_round, tensorboard_options=options, stop_train_ticks=stop_train_ticks)
+
+
+def run_updates(root, experiment, entries, *, resume=False, allow_weak_red=False,
+                with_credit=False, monitor_options=None, tensorboard_options=None):
+    """Train complete A+B update segments, select periodically, then test once.
+
+    References are prepared separately. A resumed exact segment boundary is
+    evaluated again through the existing completed-evidence reuse path before
+    training advances, including a boundary whose evaluation was interrupted.
+    """
+    target = experiment.get("target_updates")
+    interval = experiment.get("eval_every_updates")
+    if type(target) is not int or target <= 0 or type(interval) is not int or interval <= 0:
+        raise ValueError("run-updates requires positive prepared target_updates and eval_every_updates")
+    milestones = list(range(interval, target, interval)) + [target]
+    starts = {}
+    # Reject incompatible or non-resumed runs before advancing any experiment.
+    for entry in entries:
+        cfg = validate_config(load_config(entry["config"]))
+        if cfg["run"].get("stop_rule", "rounds") != "rounds" or cfg["run"]["rounds"] != target:
+            raise ValueError("prepared update target must match each frozen round-based config")
+        manifest_path = Path(entry["run_dir"]) / "checkpoint_manifest.json"
+        completed = 0
+        if manifest_path.exists():
+            if not resume:
+                raise FileExistsError("existing update run requires explicit --resume")
+            completed = verified_completed_round(Path(entry["run_dir"]), cfg)
+        if type(completed) is not int or not 0 <= completed <= target:
+            raise ValueError("checkpoint update count exceeds the prepared update target")
+        starts[entry["run_id"]] = completed
+    for entry in entries:
+        for milestone in milestones:
+            if milestone < starts[entry["run_id"]]:
+                continue
+            print("UPDATE_SEGMENT", entry["run_id"], milestone, "/", target, flush=True)
+            train_entries([entry], resume=resume or starts[entry["run_id"]] > 0,
+                          stop_round=milestone, monitor_options=monitor_options,
+                          tensorboard_options=tensorboard_options)
+            manifest = json.loads((Path(entry["run_dir"]) / "checkpoint_manifest.json").read_text(encoding="utf-8"))
+            if manifest["completed_round"] != milestone:
+                raise RuntimeError("training stopped before the requested update boundary; inspect the run before resuming")
+            evaluate_entries(root, experiment, [entry], selection_only=True,
+                             allow_weak_red=allow_weak_red, monitor_options=monitor_options)
+            summarize(root, experiment)
+            # Following segments continue the same immutable experiment.
+            starts[entry["run_id"]] = milestone
+        evaluate_entries(root, experiment, [entry], with_credit=with_credit,
+                         allow_weak_red=allow_weak_red, monitor_options=monitor_options)
+    return summarize(root, experiment)
 
 
 def retain_best_selection(root, entry, result):
@@ -263,7 +330,10 @@ def summarize(root, experiment):
         from utils.mut_mappo_session import last_json_record
         audit = last_json_record(Path(result["run_dir"]) / "actual_cost_audit.jsonl")
         row["actual_train_ticks"] = audit.get("actual_counters", {}).get("train") if audit else None
-        row["training_budget"] = experiment["train_tick_budget"]
+        row["training_budget"] = experiment.get("train_tick_budget")
+        if experiment.get("target_updates") is not None:
+            row.update(target_updates=experiment["target_updates"],
+                       completed_updates=result["completed_round"], budget_unit="complete_AB_updates")
         rows.append(row)
     root.mkdir(parents=True, exist_ok=True)
     # Selection diagnostics remain separate from the final untouched test results.
@@ -299,6 +369,10 @@ def summarize(root, experiment):
         groups[group] = {"runs": len(members), "qualified_exports": sum(row.get("selected_team") is not None for row in members), "metrics": stats}
     summary = {"expected_runs": len(experiment["entries"]), "reported_boundaries": len(rows),
                "groups": groups, "rows": rows, "independent_unit": "outer training seed; no A/B pooling"}
+    if experiment.get("target_updates") is not None:
+        summary.update(target_updates=experiment["target_updates"],
+                       eval_every_updates=experiment["eval_every_updates"],
+                       stop_rule="rounds", tick_scope="accounting_only_not_a_training_limit")
     summary["diagnostic_weak_reference_cases"] = weak_cases
     summary["base_red_qualified"] = base_qualified
     summary["diagnostic_weak_red"] = not summary["base_red_qualified"] or summary["diagnostic_weak_reference_cases"] > 0
@@ -317,7 +391,7 @@ def main():
     p.add_argument("--train-ticks", type=int, default=120000)
     p.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     p.add_argument("--scene-stage", choices=("parallel", "full"), default="full")
-    for name in ("base-eval", "red-eval", "references", "train", "evaluate", "run", "summarize"):
+    for name in ("base-eval", "red-eval", "references", "train", "evaluate", "run", "run-updates", "summarize"):
         p = sub.add_parser(name)
         p.add_argument("--experiment", default="experiments/first_point_v1")
         p.add_argument("--groups", nargs="+")
@@ -327,7 +401,8 @@ def main():
         p.add_argument("--with-credit", action="store_true")
         p.add_argument("--geometry-report")
         p.add_argument("--validate-only", action="store_true")
-        p.add_argument("--stop-round", type=int)
+        p.add_argument("--stop-round", "--stop-update", dest="stop_round", type=int,
+                       help="absolute complete A+B update target for this segment")
         p.add_argument("--stop-train-ticks", type=int,
                        help="absolute train tick target for this segment; does not alter LR schedule or total budget")
         p.add_argument("--selection-only", action="store_true", help="retain best selection candidate without running test")
@@ -339,6 +414,15 @@ def main():
                          ticks=args.train_ticks, device=args.device, scene_stage=args.scene_stage)
     else:
         root, experiment, entries = load_experiment(args.experiment, args.groups, args.seeds)
+        if args.command == "run-updates":
+            if args.stop_round is not None or args.stop_train_ticks is not None or args.selection_only:
+                parser.error("run-updates uses the prepared total updates and evaluation interval; use train/evaluate for manual segments")
+            result = run_updates(root, experiment, entries, resume=args.resume,
+                                 allow_weak_red=args.allow_weak_red, with_credit=args.with_credit,
+                                 monitor_options=options_from_args(args),
+                                 tensorboard_options=tensorboard_options_from_args(args))
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return
         if args.command == "base-eval":
             result = base_evaluate(root, experiment, geometry_report=args.geometry_report, validate_only=args.validate_only)
             print(json.dumps(result, ensure_ascii=False, indent=2))

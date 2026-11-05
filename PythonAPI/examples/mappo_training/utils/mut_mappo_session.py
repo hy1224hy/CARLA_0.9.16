@@ -254,6 +254,8 @@ def _supervise_owned(args):
         command.append("--resume")
     if args.rounds is not None:
         command += ["--stop-round", str(args.rounds)]
+    if getattr(args, "stop_train_ticks", None) is not None:
+        command += ["--stop-train-ticks", str(args.stop_train_ticks)]
     command += monitor_cli_arguments(args)
     stamp = _unique_stamp()
     log = session / f"training_{stamp}.log"
@@ -300,6 +302,8 @@ def launch(args):
         command.append("--resume")
     if args.rounds is not None:
         command += ["--rounds", str(args.rounds)]
+    if getattr(args, "stop_train_ticks", None) is not None:
+        command += ["--stop-train-ticks", str(args.stop_train_ticks)]
     command += monitor_cli_arguments(args)
     kwargs = {"cwd": str(ROOT), "stdin": subprocess.DEVNULL,
               "stderr": subprocess.STDOUT,
@@ -328,7 +332,10 @@ def main():
     parser.add_argument("--run-dir", required=True)
     parser.add_argument("--config", default="configs/mut_mappo/local_candidate_v1.json")
     parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--rounds", type=int)
+    parser.add_argument("--rounds", "--updates", dest="rounds", type=int,
+                        help="absolute complete A+B update target; cannot exceed the frozen run target")
+    parser.add_argument("--stop-train-ticks", type=int,
+                        help="absolute segment target for tick-budget runs only")
     parser.add_argument("--supervisor-log", help=argparse.SUPPRESS)
     add_monitor_arguments(parser)
     args = parser.parse_args()

@@ -83,6 +83,10 @@ def validate_config(config, config_path=None):
         raise ValueError("unknown run stopping rule")
     if config["run"].get("stop_rule") == "train_ticks" and config["run"].get("schedule_clock") != "train_ticks":
         raise ValueError("tick-budget stopping requires tick-based learning-rate schedule")
+    tick_budget = config["run"].get("train_tick_budget")
+    if (config["run"].get("stop_rule", "rounds") == "train_ticks" or tick_budget is not None) and (
+            type(tick_budget) is not int or tick_budget <= 0):
+        raise ValueError("tick-budget runs require a positive train_tick_budget; round runs may use null")
     validate_lr_schedule(config["run"])
     if config["mutual"].get("schedule_clock", "rounds") not in {"rounds", "train_ticks"}:
         raise ValueError("unknown teacher refresh clock")
@@ -138,7 +142,7 @@ def validate_config(config, config_path=None):
     if config.get("communication", {}).get("enabled"):
         raise ValueError("communication is planned; do not label the current 20/2 model as communication-enabled")
     for value in (config["run"]["episodes_per_team_update"], config["run"]["rounds"],
-                  config["run"]["lr_horizon_rounds"], config["run"]["train_tick_budget"],
+                  config["run"]["lr_horizon_rounds"],
                   config["task"]["max_steps"]):
         if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
             raise ValueError("episode, round and tick limits must be positive integers")

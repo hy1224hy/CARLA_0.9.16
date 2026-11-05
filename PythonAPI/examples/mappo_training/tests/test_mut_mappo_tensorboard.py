@@ -61,6 +61,17 @@ class TensorBoardProjectionTests(unittest.TestCase):
             np.testing.assert_array_equal(np.random.get_state()[1], before[1][1])
             torch.testing.assert_close(torch.get_rng_state(), before[2], rtol=0, atol=0)
 
+    def test_round_runs_use_update_axis_and_keep_tick_cost(self):
+        with tempfile.TemporaryDirectory() as directory:
+            writer = MutMAPPOTensorBoard(directory)
+            writer.record(dict(fixture(7, 12345), stop_rule="rounds", target_updates=1000,
+                               train_tick_budget=None))
+            writer.close()
+            accumulator = events(Path(directory) / "tb/A")
+            self.assertEqual(accumulator.Scalars("ppo/actor_loss_2/mean")[0].step, 7)
+            self.assertEqual(accumulator.Scalars("meta/actual_train_ticks")[0].value, 12345)
+            self.assertEqual(accumulator.Scalars("meta/target_updates")[0].value, 1000)
+
     def test_writer_error_does_not_abort_training_or_mask_close(self):
         class Broken:
             def __init__(self, **_kwargs): pass

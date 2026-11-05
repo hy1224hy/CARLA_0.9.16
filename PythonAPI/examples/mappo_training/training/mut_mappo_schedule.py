@@ -26,8 +26,8 @@ def _schedule_parameters(run):
         raise ValueError("run.schedule_clock must be rounds or train_ticks")
 
     if schedule == "constant":
-        if any(key in run for key in ("lr_decay_train_ticks", "lr_min_factor")):
-            raise ValueError("constant LR schedules cannot specify lr_decay_train_ticks or lr_min_factor")
+        if any(key in run for key in ("lr_decay_train_ticks", "lr_horizon_train_ticks", "lr_min_factor")):
+            raise ValueError("constant LR schedules cannot specify tick decay horizons or lr_min_factor")
         return schedule, clock, None, None
 
     minimum = run.get("lr_min_factor", 0.1)
@@ -35,11 +35,15 @@ def _schedule_parameters(run):
             or not 0 <= minimum <= 1 or not math.isfinite(minimum)):
         raise ValueError("run.lr_min_factor must be finite and in [0, 1]")
     if clock == "train_ticks":
-        budget = _positive_int(run.get("train_tick_budget"), "run.train_tick_budget")
-        horizon = _positive_int(run.get("lr_decay_train_ticks", budget), "run.lr_decay_train_ticks")
+        horizons = {key: _positive_int(run[key], "run." + key)
+                    for key in ("lr_decay_train_ticks", "lr_horizon_train_ticks") if key in run}
+        if len(set(horizons.values())) > 1:
+            raise ValueError("new and legacy tick LR horizons must agree")
+        horizon = next(iter(horizons.values())) if horizons else _positive_int(
+            run.get("train_tick_budget"), "run.train_tick_budget")
     else:
-        if "lr_decay_train_ticks" in run:
-            raise ValueError("run.lr_decay_train_ticks requires schedule_clock=train_ticks")
+        if any(key in run for key in ("lr_decay_train_ticks", "lr_horizon_train_ticks")):
+            raise ValueError("tick LR horizons require schedule_clock=train_ticks")
         horizon = _positive_int(run.get("lr_horizon_rounds"), "run.lr_horizon_rounds")
     return schedule, clock, horizon, float(minimum)
 

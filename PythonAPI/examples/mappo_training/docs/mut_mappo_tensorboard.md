@@ -1,6 +1,6 @@
 # MutMAPPO 的学习信号与 TensorBoard
 
-`training.train_mut_mappo` 和 `utils.run_first_point_experiments train/run` 默认开启 TensorBoard，不需要改变奖励或实验配置。仅记录完整训练边界：先完成所有团队更新并提交 checkpoint，再写 event。横轴是 `actual_counters.train`（A+B 合计，包含训练 setup；不含 gate 验证）。单团队 MAPPO/IPPO 也适用。
+`training.train_mut_mappo` 和 `utils.run_first_point_experiments train/run/run-updates` 默认开启 TensorBoard。仅记录完整训练边界：先完成所有团队更新并提交 checkpoint，再写 event。`stop_rule=rounds` 时横轴为完整更新轮次；tick预算模式和缺少stop_rule的旧日志仍使用 `actual_counters.train`（A+B 合计，包含训练 setup；不含 gate 验证）。ticks成本始终保留为 `meta/actual_train_ticks` 和 `cost/*`。单团队 MAPPO/IPPO 也适用。按更新训练的服务器操作见 [R16长任务指南](r16_updates_server.md)。
 
 ## 新训练实时查看
 
@@ -58,6 +58,7 @@ tensorboard --logdir "$EXP/tensorboard_export" --host 127.0.0.1 --port 6006
 | `training_window/blue_eligible_rate` | 双蓝车均未触发碰撞、越界、道路规则或任务违规的比例；不等于双方到达率或全面舒适稳定 |
 | `training_window/blue_collision_episode_rate` 等 | 四类硬约束分别发生的比例，可重叠；碰撞不含责任归因 |
 | `training_window/safe_critical_event` | 最终硬约束合格且发生危险事件的比例；仍应结合 moderate/severe 的独立评估 |
+| `training_window/qualified_primary_event_credit` | 最终合格且触发R2主事件的回合比例；不能用宽泛危险事件率代替 |
 | `training_window/primary_bonus_finally_ineligible_rate` | 获得主事件奖励的回合中，最终不合格的条件比例；同时记录分子和分母 |
 | `training_window/critical_min_ttc_s_mean_observed` | 仅有 TTC 观测的回合，其最小 TTC 的均值；同时查看 observed_episodes |
 | `ppo/advantage_stats/2/raw_mean`、`raw_std` 等 | 蓝车角色原始/归一化优势统计；角色3同理 |
