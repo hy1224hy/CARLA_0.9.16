@@ -114,6 +114,8 @@ class MutLearningTests(unittest.TestCase):
         hashes = {"A": "a" * 64, "B": "b" * 64}
         stats = {"A": {"following": {"n": 8, "eligible_response_count": 1, "violation_count": 2}},
                  "B": {"following": {"n": 8, "eligible_response_count": 3, "violation_count": 1}}}
+        for families in stats.values():
+            families["following"]["case_keys"] = list(range(8))
         result = gate.compute(stats, hashes, version=1, completed_round=5)
         self.assertEqual(result, {"A": {"following": 1}, "B": {"following": 0}})
         restored = GateState()

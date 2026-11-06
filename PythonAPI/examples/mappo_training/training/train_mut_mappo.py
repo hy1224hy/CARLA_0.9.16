@@ -28,7 +28,7 @@ from training.mut_mappo_checkpoint import CheckpointStore, SCHEMA_VERSION, _vali
 from training.train_no_rllib_mappo_robust_v2 import (RolloutBuffer, build_active_step_cache,
     refresh_observations_after_active_change, validate_active_mask, write_active_transitions)
 from utils.mut_mappo_session import CarlaOwner, last_json_record
-from environment.mut_mappo_efficiency_reward import PROFILE as TEAM_PROFILE, ReferenceStore, reference_identity, settle_team_tail
+from environment.mut_mappo_efficiency_reward import TEAM_PROFILES, CRITICAL_PROFILES, ReferenceStore, reference_identity, settle_team_tail
 from evaluation.driving_policy_metrics import DrivingMetrics
 
 
@@ -144,7 +144,7 @@ def create_runtime(config, checkpoint=None, condition="C2", team="A", audit_call
     idle = _preflight_idle_world(host=config["host"], port=config["port"], expected_version="0.9.16")
     red_config = dict(source["training_config"], reward_gamma=source["training_config"]["gamma"])
     reference = None
-    if config["task"].get("reward_profile") == TEAM_PROFILE and condition == "C2" and not config.get("_building_reference"):
+    if config["task"].get("reward_profile") in TEAM_PROFILES and condition == "C2" and not config.get("_building_reference"):
         reference = ReferenceStore(config["task"]["team_reward"]["reference_dir"], reference_identity(config))
     try:
         env = MutMAPPOEnv(red_checkpoint_config=red_config, task_config=config["task"],
@@ -231,11 +231,16 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
     driving = DrivingMetrics(float(runtime.config["task"].get("timestep", 0.1)),
                              {aid: state["speed"] for aid, state in initial_states.items() if "speed" in state})
     team_timeline = []
+    normal_blue = None
+    if runtime.condition == 'C1' and runtime.config['task'].get('c1_controller') == 'lane_pid_v1':
+        from environment.frozen_lane_traffic import FrozenLaneTraffic
+        normal_blue = FrozenLaneTraffic(env, case)
     while any(active.values()):
         controls = policy_controls(runtime.red_actors, obs, active, runtime.device, True)
         cache = {}
         if learner is None:
-            controls.update(policy_controls(runtime.blue_actors, obs, active, runtime.device, deterministic))
+            controls.update(normal_blue.controls(active) if normal_blue else
+                            policy_controls(runtime.blue_actors, obs, active, runtime.device, deterministic))
         else:
             blue_mask = {aid: active[aid] for aid in (2, 3)}
             blue_controls, cache = learner.sample(obs, env.get_global_state(), blue_mask)
@@ -299,6 +304,7 @@ def _episode(runtime, case, *, learner=None, buffer=None, seed=None, determinist
         "direction": case.get("direction"), "pair_id": case.get("pair_id"),
         "startup_mode": case.get("startup_mode"), "red0_role": case.get("red0_role"),
         "condition": runtime.condition, "team": runtime.team, "steps": step, "returns": returns,
+        "normal_blue_controller": runtime.config['task'].get('c1_controller','frozen_actor') if runtime.condition=='C1' else None,
         "case_geometry": case_geometry, "setup_contacts": setup_contacts,
         "initial_evidence_identity": initial_evidence_identity, "sensor_timing": sensor_timing,
         "execution_mode": "stochastic_training" if learner else "deterministic" if deterministic else "stochastic_evaluation",
@@ -365,6 +371,11 @@ def refresh_peers(runtime, teams, gate, config, completed_round, ledger, run_dir
                 record.update(teacher_hash=snapshots[name]["hash"], version=version)
                 if config["mutual"].get("quality_metric") == "efficiency":
                     record["utility_sum"] = record.get("utility_sum", 0.0) + float(result["safe_efficiency_utility"])
+                elif config['mutual'].get('quality_metric') == 'critical':
+                    value = result.get('safe_critical_event')
+                    if value not in (0., 1.):
+                        raise ValueError('gate requires measured qualified critical event')
+                    record['q_count'] += int(value) - int(bool(result.get('blue_eligible')) and bool(result.get('response')))
         gate.refresh({n: s["hash"] for n, s in snapshots.items()}, stats, version=version, completed_round=completed_round)
         for name, team in teams.items():
             peer = "B" if name == "A" else "A"
@@ -374,7 +385,7 @@ def refresh_peers(runtime, teams, gate, config, completed_round, ledger, run_dir
         ledger.phase = "train"
 
 
-def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_runtime):
+def train(config, run_dir, *, resume=False, stop_round=None, stop_train_ticks=None, env_factory=create_runtime):
     run_dir = Path(run_dir).resolve()
     store = CheckpointStore(run_dir, run_identity(config))
     source = config["_red_payload"]
@@ -408,6 +419,9 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
     ledger = CostLedger(store)
     runtime = None
     tick_stopping = config["run"].get("stop_rule") == "train_ticks"
+    segment_tick_cap = config["run"]["train_tick_budget"] if stop_train_ticks is None else stop_train_ticks
+    if isinstance(segment_tick_cap, bool) or not isinstance(segment_tick_cap, int) or not 0 < segment_tick_cap <= config["run"]["train_tick_budget"]:
+        raise ValueError("segment tick cap must be a positive integer within the registered total budget")
     stop = stop_round if stop_round is not None else (
         payload["completed_round"] + max(1, config["run"]["train_tick_budget"] - ledger.counts["train"])
         if tick_stopping else config["run"]["rounds"])
@@ -422,7 +436,7 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
         family_map = {case["case_key"]: case["family"] for case in train_cases}
         teachers = payload["teachers"]
         for round_no in range(payload["completed_round"] + 1, stop + 1):
-            if ledger.counts["train"] >= config["run"]["train_tick_budget"]:
+            if ledger.counts["train"] >= segment_tick_cap:
                 break
             round_metrics, episode_metrics = {}, {}
             order = ("A",) if len(topology) == 1 else (payload["next_team"], "B" if payload["next_team"] == "A" else "A")
@@ -447,7 +461,7 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                             raise RuntimeError("invalid training episode cannot enter PPO")
                         records.append(result)
                         append_record(run_dir / "episodes.jsonl", dict(result, round=round_no, segment_id=segment))
-                progress = min(1.0, ledger.counts["train"]/config["run"]["train_tick_budget"]
+                progress = min(1.0, ledger.counts["train"]/config["run"].get("lr_horizon_train_ticks", config["run"]["train_tick_budget"])
                     if config["run"].get("schedule_clock") == "train_ticks"
                     else (round_no-1)/config["run"]["lr_horizon_rounds"])
                 for key, optimizer in (("lr_actor", team.actor_optims), ("lr_critic", team.critic_optims)):
@@ -458,15 +472,21 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                     team.schedule_state["actor_lr" if key == "lr_actor" else "critic_lr"] = value
                 round_metrics[name] = team.update(buffer, aux_context={"family_by_scenario": family_map})
                 bad_rate = sum(not r.get("blue_eligible", False) for r in records)/len(records)
-                coeff = (1.0 if config["task"].get("reward_profile") == TEAM_PROFILE else
+                coeff = (1.0 if config["task"].get("reward_profile") in TEAM_PROFILES else
                          team.cost_state["lambda"] * (config["run"]["cost_up"] if bad_rate > config["run"]["cost_target"] else config["run"]["cost_down"]))
                 team.cost_state = {"lambda": max(config["run"]["cost_min"], min(config["run"]["cost_max"], coeff)), "updates": round_no}
                 episode_metrics[name] = {"n": len(records), "q": sum(r.get("blue_eligible", False) and r.get("response", False) for r in records)/len(records),
                     "b": bad_rate, "red_success_rate": sum(r.get("red_success", False) for r in records)/len(records),
                     "scenario_coverage": {case_key: sum(r["case_key"] == case_key for r in records) for case_key in family_map},
                     "agents": {}, "max_abs_reward_residual": max(r.get("max_abs_reward_residual", 0) for r in records)}
-                if config["task"].get("reward_profile") == TEAM_PROFILE:
+                if config["task"].get("reward_profile") in TEAM_PROFILES:
                     episode_metrics[name]["safe_efficiency_utility"] = sum(r["safe_efficiency_utility"] for r in records) / len(records)
+                if config['task'].get('reward_profile') in CRITICAL_PROFILES:
+                    for key in ('safe_critical_event','critical_exposure_s','critical_tet_s','critical_tit_s'):
+                        episode_metrics[name][key]=sum(float(r[key]) for r in records)/len(records)
+                    keys=set().union(*(r['team_reward_components'] for r in records))
+                    episode_metrics[name]['reward_components_mean']={key:sum(r['team_reward_components'].get(key,0.)
+                        for r in records)/len(records) for key in keys}
                 for aid in range(4):
                     def measurements(key):
                         values = []
@@ -520,6 +540,8 @@ def train(config, run_dir, *, resume=False, stop_round=None, env_factory=create_
                 break
         status.update(status="SEGMENT_COMPLETED", completed_round=payload["completed_round"], ended_at=now())
         status.update(actual_counters=copy.deepcopy(ledger.counts),
+            segment_train_tick_cap=segment_tick_cap,
+            segment_tick_cap_reached=ledger.counts["train"] >= segment_tick_cap,
             train_tick_budget=config["run"]["train_tick_budget"],
             train_tick_overshoot=max(0, ledger.counts["train"]-config["run"]["train_tick_budget"]),
             budget_policy="complete_boundary_soft_cap",
@@ -552,6 +574,7 @@ def main():
     parser.add_argument("--run-dir")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--stop-round", type=int)
+    parser.add_argument("--stop-train-ticks", type=int)
     parser.add_argument("--mutual-mode", choices=["off", "plain", "selective"])
     parser.add_argument("--algorithm", choices=["mappo", "ippo"])
     parser.add_argument("--team-count", type=int, choices=[1, 2])
@@ -577,7 +600,7 @@ def main():
     if config["research_status"] != "frozen" and not args.allow_candidate:
         parser.error("candidate local development must be explicitly labeled with --allow-candidate; no formal eligibility")
     with CarlaOwner(config["host"], config["port"], args.run_dir, "training"):
-        train(config, args.run_dir, resume=args.resume, stop_round=args.stop_round)
+        train(config, args.run_dir, resume=args.resume, stop_round=args.stop_round, stop_train_ticks=args.stop_train_ticks)
 
 
 if __name__ == "__main__":

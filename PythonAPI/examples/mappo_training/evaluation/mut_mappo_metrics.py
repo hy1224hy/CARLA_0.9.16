@@ -162,6 +162,9 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "n_attempts_without_tick_counts": missing_tick_counts,
         "attack_integral": average([row.get("attack_integral") for row in valid]),
         "safe_efficiency_utility": average([row.get("safe_efficiency_utility") for row in valid]),
+        "safe_critical_event": (average([row['safe_critical_event'] for row in valid])
+            if n and all(type(row.get('safe_critical_event')) in (int, float)
+                         and row['safe_critical_event'] in (0., 1.) for row in valid) else None),
         "team_utility_total": average([row.get("team_utility_total") for row in valid]),
         "driving_metrics": summarize_driving(valid),
     }

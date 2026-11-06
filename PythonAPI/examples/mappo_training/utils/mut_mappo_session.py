@@ -249,6 +249,8 @@ def _supervise_owned(args):
         command.append("--resume")
     if args.rounds is not None:
         command += ["--stop-round", str(args.rounds)]
+    if getattr(args, "stop_train_ticks", None) is not None:
+        command += ["--stop-train-ticks", str(args.stop_train_ticks)]
     stamp = _unique_stamp()
     log = session / f"training_{stamp}.log"
     with log.open("x", encoding="utf-8") as output:
@@ -322,6 +324,7 @@ def main():
     parser.add_argument("--config", default="configs/mut_mappo/local_candidate_v1.json")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--rounds", type=int)
+    parser.add_argument("--stop-train-ticks", type=int)
     parser.add_argument("--supervisor-log", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.mode == "inspect":

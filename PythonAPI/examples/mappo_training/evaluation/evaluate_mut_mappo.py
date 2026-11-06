@@ -17,6 +17,7 @@ import traceback
 from typing import Any, Iterable, Mapping
 
 from evaluation.mut_mappo_metrics import CONDITIONS, paired_report, summarize_cases
+from environment.mut_mappo_efficiency_reward import TEAM_PROFILES
 
 ROOT = Path(__file__).resolve().parents[1]
 EVALUATION_SCHEMA = "mut_mappo_evaluation_v1"
@@ -122,7 +123,7 @@ def preflight(config_path: str | Path, checkpoint_path: str | Path | None, *, sp
     if "C2" in conditions and checkpoint_source is None:
         raise ValueError("C2 requires a complete Mut-MAPPO checkpoint; initialization is not a trained candidate")
     reference_hashes = {}
-    if "C2" in conditions and config.get("task", {}).get("reward_profile") == "c1_progress_team_v1":
+    if "C2" in conditions and config.get("task", {}).get("reward_profile") in TEAM_PROFILES:
         directory = _resolve(config["task"]["team_reward"]["reference_dir"])
         reference_hashes = {case["case_key"]: _sha256(directory / (hashlib.sha256(case["case_key"].encode()).hexdigest() + ".json"))
                             for case in cases}

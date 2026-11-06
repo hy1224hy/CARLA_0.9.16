@@ -72,6 +72,19 @@ def _stats(stats: Mapping) -> tuple[int, float, float]:
     return int(n), q / n, b / n
 
 
+def _paired_case_keys(record: Mapping, count: int) -> list:
+    """Require actual distinct case identities, not two equally missing lists."""
+    keys = record.get("case_keys")
+    if not isinstance(keys, (list, tuple)) or len(keys) != count:
+        raise ValueError("gate case keys must identify every counted episode")
+    if any(isinstance(key, bool) or not isinstance(key, (str, int))
+           or isinstance(key, str) and not key for key in keys):
+        raise ValueError("gate case keys must be nonempty scalar identities")
+    if len(set(keys)) != count:
+        raise ValueError("gate case keys must be distinct within each family")
+    return list(keys)
+
+
 @dataclass
 class GateState:
     """Versioned, per-family paired gate evaluation; no test-set access."""
@@ -111,6 +124,10 @@ class GateState:
         q_margin = float(self.config.get("q_margin", self.config.get("gate_min_q_gap", 2 / 8)))
         if minimum < 1 or not 0 <= b_max <= 1 or not 0 <= q_margin <= 1:
             raise ValueError("invalid candidate gate thresholds")
+        if self.config.get("quality_metric") == "efficiency":
+            q_margin = float(self.config.get("min_efficiency_gap", 0.02))
+            if not np.isfinite(q_margin) or q_margin < 0:
+                raise ValueError("gate efficiency gap must be finite and nonnegative")
         gates = {"A": {}, "B": {}}
         for family in statistics["A"]:
             for student, teacher in (("A", "B"), ("B", "A")):
@@ -121,10 +138,9 @@ class GateState:
                     qs, qt = float(own["utility_sum"]) / ns, float(peer["utility_sum"]) / nt
                     if not np.isfinite([qs, qt]).all():
                         raise ValueError("nonfinite gate efficiency")
-                    q_margin = float(self.config.get("min_efficiency_gap", 0.02))
                 if ns != nt:
                     raise ValueError("gate A/B must have the same valid-case denominator")
-                if own.get("case_keys") != peer.get("case_keys"):
+                if _paired_case_keys(own, ns) != _paired_case_keys(peer, nt):
                     raise ValueError("gate A/B paired case keys differ")
                 for name, record in ((student, own), (teacher, peer)):
                     if record.get("teacher_hash") != teacher_hashes[name] or record.get("version") != version:

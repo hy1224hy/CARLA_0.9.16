@@ -7,6 +7,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 from evaluation.critical_interaction_metrics import analyze_trace, validate_protocol
+from evaluation.interaction_quality import analyze_outcomes, contract, paired_quality_rows
 
 
 def read_json(path):
@@ -95,6 +96,10 @@ def generate_report(evaluations, output_dir, protocol):
     protocol=validate_protocol(protocol)
     output_dir=Path(output_dir).resolve()
     reports,flat,episodes,event_rows=[],[],[],[]
+    quality_rows=[]
+    quality_contract=contract()
+    if protocol['dt'] != quality_contract['dt']:
+        raise ValueError('interaction quality contract requires its frozen 0.1s timestep')
     seen=set()
     for directory in evaluations:
         directory=Path(directory).resolve()
@@ -120,6 +125,7 @@ def generate_report(evaluations, output_dir, protocol):
         analyzed=[]
         for original in rows:
             r=dict(original)
+            samples=[]
             if r.get('evidence')!='independent_evaluation' or r.get('execution_mode')=='stochastic_training':
                 raise ValueError('only independent evaluation records are supported')
             if r.get('valid') is not True:
@@ -141,6 +147,7 @@ def generate_report(evaluations, output_dir, protocol):
                         r['critical_interaction']=dict(status='INCOMPLETE_TRACE',reason='case/trace step count mismatch',critical_event=None)
                 else:
                     r['critical_interaction']=dict(status='MISSING_TRACE',reason=str(trace),critical_event=None)
+            r['interaction_quality']=analyze_outcomes(samples,r,r['critical_interaction'],quality_contract)
             analyzed.append(r)
             m=r['critical_interaction']
             episode=dict(report=label,split=manifest.get('split'),team=r['team'],condition=r['condition'],
@@ -170,6 +177,7 @@ def generate_report(evaluations, output_dir, protocol):
                     case_key=r['case_key'],seed=r['seed'],paired_attempt=r['paired_attempt'],
                     **{k:json.dumps(v,ensure_ascii=False) if isinstance(v,(dict,list)) else v for k,v in event.items()}))
         paired=paired_diagnostics(analyzed,tuple(manifest.get('conditions',('C0','C1','C2'))),protocol['primary_ttc_s'],manifest.get('teams',()))
+        quality_rows.extend(paired_quality_rows(analyzed,paired,label))
         for team, row in paired['teams'].items():
             if planned_keys is not None:
                 present={r['case_key'] for r in rows if r['team']==team}
@@ -186,7 +194,9 @@ def generate_report(evaluations, output_dir, protocol):
             cases=analyzed))
     payload=dict(schema_version='mut_mappo_critical_interactions_report_v1',protocol=protocol,
         protocol_sha256=hashlib.sha256(json.dumps(protocol,sort_keys=True,allow_nan=False).encode()).hexdigest(),
-        reports=reports,team_rows=flat,
+        reports=reports,team_rows=flat,interaction_quality_contract=quality_contract,
+        interaction_quality_contract_sha256=hashlib.sha256(json.dumps(quality_contract,sort_keys=True,allow_nan=False).encode()).hexdigest(),
+        interaction_quality_team_rows=quality_rows,
         limitations=[
             'TTC is a constant-velocity fixed-yaw 2D OBB prediction, not collision probability.',
             'Qualification is the existing strict collision/offroad/rule/task eligibility; not fault attribution or calibrated comfort.',
@@ -203,6 +213,11 @@ def generate_report(evaluations, output_dir, protocol):
     write_csv(output_dir/'events.csv',event_rows)
     pairs=[dict(report=report['source'],team=team,**pair) for report in reports for team,row in report['paired']['teams'].items() for pair in row['pairs']]
     write_csv(output_dir/'pairs.csv',pairs)
+    write_csv(output_dir/'interaction_quality_teams.csv',quality_rows)
+    quality_events=[dict(report=report['source'],team=r['team'],condition=r['condition'],case_key=r['case_key'],
+        seed=r['seed'],paired_attempt=r['paired_attempt'],**event)
+        for report in reports for r in report['cases'] for event in r['interaction_quality']['events']]
+    write_csv(output_dir/'interaction_quality_events.csv',quality_events)
     columns=['report','split','team','completed_round','n_measured_pairs','n_excluded_groups','n_missing_planned_cases','measurement_coverage',
              'raw_critical_rate_C1','raw_critical_rate_C2','qualified_critical_rate_C1','qualified_critical_rate_C2',
              'delta_raw_critical_rate','delta_qualified_critical_rate','qualification_only_improvements',
@@ -216,6 +231,11 @@ def generate_report(evaluations, output_dir, protocol):
         for metric,color in [('raw_critical_rate_C1','#999'),('raw_critical_rate_C2','#d66'),('qualified_critical_rate_C2','#69c')]:
             value=row[metric]
             page+='<p>'+metric+': '+esc(value)+'</p><div style="height:12px;background:'+color+';width:'+str(100*value if value is not None else 0)+'%"></div>'
-    page+='</section>'
+    page+='</section><h2>Observed conflict outcomes and driving quality</h2>'
+    page+='<p>Positive TTC persistence before contact; resolved requires 0.3s observed clearance. Censored and geometry/physical disagreement remain separate. All rates use the same complete paired cases; missing measurements remain blank.</p>'
+    qcols=['team','n_pairs','predicted_conflict_C1','predicted_conflict_C2','observed_contact_free_resolved_C2',
+        'contact_free_censored_C2','blue_collision_C2','geometry_contact_unconfirmed_C2',
+        'driving_quality_rate_C2','joint_normal_resolved_C2','delta_predicted_conflict','delta_precontact_tet_s']
+    page+='<table><tr>'+''.join('<th>'+c+'</th>' for c in qcols)+'</tr>'+''.join('<tr>'+''.join('<td>'+esc(r.get(c))+'</td>' for c in qcols)+'</tr>' for r in quality_rows)+'</table>'
     (output_dir/'index.html').write_text(page,encoding='utf-8')
     return payload
