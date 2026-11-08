@@ -66,9 +66,18 @@ def _validate_payload(payload: Mapping) -> None:
         if set(team["actors"]) != {2, 3} or set(team["actor_optims"]) != {2, 3}:
             raise CheckpointProtocolError(f"team {name} does not contain both blue roles")
         spec = team["model_spec"]
+        team_only = spec.get("critic_input_scope") == "own_blue_team_observations_plus_local_id"
+        expected_id_dim = 2 if team_only else 4
         if any(spec.get(key) != value for key, value in
-               (("obs_dim", 20), ("action_dim", 2), ("global_state_dim", 80), ("critic_id_dim", 4))):
-            raise CheckpointProtocolError(f"team {name} model protocol differs from four-car 20/2")
+               (("obs_dim", 20), ("action_dim", 2), ("global_state_dim", 80), ("critic_id_dim", expected_id_dim))):
+            raise CheckpointProtocolError(f"team {name} model protocol differs from declared critic scope")
+        if team_only:
+            if (spec.get("algorithm") != "mappo" or spec.get("critic_value_state_dim") != 40
+                    or team["config"].get("critic_scope") != "blue_team"):
+                raise CheckpointProtocolError("two-blue critic requires MAPPO, 40 observations and matching scope")
+            first_weight = team["critic"].get("net.0.weight")
+            if first_weight is None or len(first_weight.shape) != 2 or first_weight.shape[1] != 42:
+                raise CheckpointProtocolError("two-blue critic weight input must be 40+2")
         if spec.get("algorithm", "mappo") == "ippo":
             if spec.get("critic_input_scope") != "own_physical_slot_local_observation_only":
                 raise CheckpointProtocolError("IPPO critic must not consume another physical role's observation")

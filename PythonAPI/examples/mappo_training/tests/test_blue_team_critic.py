@@ -1,10 +1,13 @@
 """Focused no-simulator regression checks for the team-only critic repair."""
 import copy
 import unittest
+import tempfile
 import torch
 from models.actor_critic import Actor, AgentConditionedCritic
 from training.value_normalization import ValueNormalizer
 from training.mut_mappo_learning import TeamLearner
+from training.mut_mappo_checkpoint import CheckpointStore, _validate_payload
+from training.checkpoint_protocol import CheckpointProtocolError
 from tests.test_mut_mappo_learning import buffer_for
 
 
@@ -61,6 +64,19 @@ class BlueTeamCriticTests(unittest.TestCase):
         with self.assertRaises(ValueError):b.load_state_dict(old.state_dict())
         broken=copy.deepcopy(self.value);broken['critic']=old.critic.state_dict()
         with self.assertRaises((ValueError,RuntimeError)):TeamLearner('A',42,self.actors,self.cfg,initial_value=broken)
+
+    def test_real_checkpoint_roundtrip_accepts_team42_and_rejects_mislabeled_ids(self):
+        a,b=self.learner(),self.learner('B')
+        payload=dict(teams={'A':a.state_dict(),'B':b.state_dict()},teachers={'A':None,'B':None},
+            gate={},completed_round=0,next_team='A',counters={},last_metrics={})
+        with tempfile.TemporaryDirectory() as folder:
+            store=CheckpointStore(folder,{'test':'blue_team_42'})
+            store.save(payload)
+            decoded=store.load()
+            self.learner().load_state_dict(decoded['teams']['A'])
+            torch.testing.assert_close(decoded['teams']['A']['critic']['net.0.weight'],self.base.net[0].weight,rtol=0,atol=0)
+        bad=copy.deepcopy(payload);bad['teams']['A']['model_spec']['critic_id_dim']=4
+        with self.assertRaises(CheckpointProtocolError):_validate_payload(bad)
 
 
 if __name__=='__main__':unittest.main()
