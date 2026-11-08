@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 
 PROFILE = "c1_progress_team_v1"
-CRITICAL_PROFILES = frozenset(("critical_interaction_team_v1", "normal_driving_critical_team_v2"))
+CRITICAL_PROFILES = frozenset(("critical_interaction_team_v1", "normal_driving_critical_team_v2", "individual_driving_critical_v3", "individual_three_dimension_risk_v4", "individual_red_outcome_v5"))
 TEAM_PROFILES = CRITICAL_PROFILES | {PROFILE}
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -40,7 +40,11 @@ class ReferenceStore:
             record = json.loads(path.read_text(encoding="utf-8"))
             if record["case_key"] != case_key:
                 raise ValueError("reference case identity differs")
-            self.cache[case_key] = record["progress"]
+            self.cache[case_key] = dict(record["progress"])
+            if "response_states" in record:
+                self.cache[case_key]["response_states"] = record["response_states"]
+            if "outcome_reference" in record:
+                self.cache[case_key]["outcome_reference"] = record["outcome_reference"]
         return self.cache[case_key]
 
 

@@ -14,6 +14,15 @@ class CriticalTrainingChainTests(unittest.TestCase):
     def test_v2_complete_ab_update_and_source_identity_without_carla(self):
         self.run_profile('normal_driving_critical_team_v2')
 
+    def test_r3_complete_ab_update_and_source_identity_without_carla(self):
+        self.run_profile('individual_driving_critical_v3')
+
+    def test_r4_complete_ab_update_and_source_identity_without_carla(self):
+        self.run_profile('individual_three_dimension_risk_v4')
+
+    def test_r5_complete_ab_update_and_source_identity_without_carla(self):
+        self.run_profile('individual_red_outcome_v5')
+
     def run_profile(self, profile):
         import carla
         from tests.test_first_point_experiment import FakeTeamEnv
@@ -33,6 +42,8 @@ class CriticalTrainingChainTests(unittest.TestCase):
             cfg['learning']['gamma']=.999
             cfg['task'].update(reward_profile=profile,c1_controller='lane_pid_v1',
                 team_reward={'reference_dir':str(root/'references'),'attack_weight':2.,'gamma':cfg['learning']['gamma']})
+            if profile in ('individual_three_dimension_risk_v4','individual_red_outcome_v5'):
+                cfg['task']['team_reward']={'reference_dir':str(root/'references'),'gamma':cfg['learning']['gamma']}
             cfg['method']='off'; cfg['mutual']['quality_metric']='critical'
             cfg['mutual'].update(schedule_clock='rounds',warmup_rounds=1,refresh_rounds=10)
             cfg['run'].update(rounds=1,episodes_per_team_update=4,stop_rule='rounds',schedule_clock='rounds')

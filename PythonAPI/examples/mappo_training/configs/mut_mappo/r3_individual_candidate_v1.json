@@ -1,0 +1,119 @@
+{
+  "schema_version": "mut_mappo_config_v1",
+  "research_status": "candidate",
+  "protocol": "mut_mappo_four_car_20_2_v1",
+  "host": "127.0.0.1",
+  "port": 2000,
+  "town": "Town05",
+  "seed": 42,
+  "method": "off",
+  "algorithm": "mappo",
+  "team_count": 2,
+  "device": "cpu",
+  "case_manifest": "data/mut_mappo/cases_v1.json",
+  "red_checkpoint": {
+    "path": "logs/R8C1_RoutePaceV1_u356_to406_s42_20260927/latest.pt",
+    "sha256": "8b9cb173cd70aacc201f0cb68183fdfeeb593cc8f29863c096a5f59076954545",
+    "capability_status": "candidate_not_independently_qualified"
+  },
+  "model_spec": {
+    "obs_dim": 20,
+    "action_dim": 2,
+    "physical_ids": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "learner_ids": [
+      2,
+      3
+    ],
+    "state_dim": 80,
+    "critic_num_agents": 4
+  },
+  "task": {
+    "timestep": 0.1,
+    "max_steps": 500,
+    "follow_spectator": true,
+    "stall": {
+      "enabled": true,
+      "seconds": 3.0,
+      "speed_mps": 0.2
+    },
+    "reward": {
+      "birth_protect_secs": 3.0,
+      "slowdown_window_secs": 2.0,
+      "slowdown_drop_thresh": 2.0,
+      "slowdown_persistence_secs": 0.5,
+      "reward_slowdown": 5.0,
+      "cap_slowdown": 3,
+      "reward_timeout": 15.0,
+      "threat_cap_per_episode": 20.0,
+      "base_driving_weight": 0.3,
+      "free_flow_target_mps": 2.5,
+      "overspeed_start_mps": 4.1666666667,
+      "safety_lambda": 1.0
+    },
+    "reward_profile": "individual_driving_critical_v3",
+    "team_reward": {
+      "base_soft_weight": 0.3,
+      "adversarial_weight": 1.0,
+      "critical_weight": 3.0,
+      "primary_event_reward": 5.0,
+      "reference_dir": "artifacts/r3_references",
+      "gamma": 0.999
+    }
+  },
+  "learning": {
+    "hidden_dim": 128,
+    "min_log_std": -2.0,
+    "max_log_std": 0.0,
+    "init_log_std": -0.5,
+    "lr_actor": 0.0003,
+    "lr_critic": 0.0003,
+    "gamma": 0.999,
+    "gae_lambda": 0.95,
+    "clip_eps": 0.15,
+    "ppo_epochs": 2,
+    "minibatch_size": 128,
+    "ent_coef": 0.01,
+    "max_grad_norm": 0.5,
+    "target_kl": 0.02,
+    "beta": 0.01,
+    "anchor_beta": 0.0,
+    "distillation": {
+      "direction": "student_to_teacher",
+      "reduction": "all_valid",
+      "gate_variant": "evidence"
+    }
+  },
+  "mutual": {
+    "warmup_rounds": 5,
+    "refresh_rounds": 10,
+    "gate_min_cases": 8,
+    "gate_max_bad_rate": 0.125,
+    "gate_min_q_gap": 0.25
+  },
+  "run": {
+    "episodes_per_team_update": 4,
+    "rounds": 2,
+    "lr_horizon_rounds": 100,
+    "train_tick_budget": 12000,
+    "cost_target": 0.05,
+    "cost_up": 1.2,
+    "cost_down": 0.95,
+    "cost_min": 1.0,
+    "cost_max": 10.0
+  },
+  "evaluation": {
+    "mode": "deterministic",
+    "max_invalid_retries": 1,
+    "selection_max_bad_rate": 0.125
+  },
+  "communication": {
+    "enabled": false,
+    "message_dim": 8,
+    "status": "planned_not_implemented"
+  }
+}

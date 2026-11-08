@@ -106,7 +106,16 @@ def validate_config(config, config_path=None):
                for k, default in (("attack_weight", 10), ("driving_weight", 1))):
             raise ValueError("team reward weights must be finite and nonnegative")
     if profile in CRITICAL_PROFILES:
-        if profile == 'normal_driving_critical_team_v2':
+        if profile == 'individual_red_outcome_v5':
+            from environment.mut_mappo_outcome_reward_v5 import validate_v5_settings
+            validate_v5_settings(config['task']['team_reward'], horizon=config['task']['max_steps'], gamma=config['learning']['gamma'])
+        elif profile == 'individual_three_dimension_risk_v4':
+            from environment.mut_mappo_critical_reward_v4 import validate_v4_settings
+            validate_v4_settings(config['task']['team_reward'], horizon=config['task']['max_steps'], gamma=config['learning']['gamma'])
+        elif profile == 'individual_driving_critical_v3':
+            from environment.mut_mappo_critical_reward_v3 import validate_v3_settings
+            validate_v3_settings(config['task']['team_reward'], horizon=config['task']['max_steps'], gamma=config['learning']['gamma'])
+        elif profile == 'normal_driving_critical_team_v2':
             from environment.mut_mappo_critical_reward_v2 import validate_v2_settings
             validate_v2_settings(config['task']['team_reward'], horizon=config['task']['max_steps'],
                                  gamma=config['learning']['gamma'])
@@ -244,6 +253,12 @@ def run_identity(config):
                   ROOT / 'evaluation/critical_interaction_metrics.py']
     if config['task'].get('reward_profile') == 'normal_driving_critical_team_v2':
         paths.append(ROOT / 'environment/mut_mappo_critical_reward_v2.py')
+    if config['task'].get('reward_profile') == 'individual_driving_critical_v3':
+        paths += [ROOT / 'environment/mut_mappo_critical_reward_v3.py', ROOT / 'environment/mut_mappo_critical_reward_v2.py', ROOT / 'environment/base_reward_v6.py', ROOT / 'environment/base_reward_v5.py']
+    if config['task'].get('reward_profile') == 'individual_three_dimension_risk_v4':
+        paths += [ROOT / 'environment/mut_mappo_critical_reward_v4.py', ROOT / 'environment/mut_mappo_critical_reward_v3.py', ROOT / 'environment/mut_mappo_critical_reward_v2.py', ROOT / 'evaluation/r4_risk_metrics.py', ROOT / 'evaluation/mut_mappo_reference.py']
+    if config['task'].get('reward_profile') == 'individual_red_outcome_v5':
+        paths += [ROOT / p for p in ('environment/mut_mappo_outcome_reward_v5.py', 'evaluation/r5_outcome_metrics.py', 'environment/mut_mappo_critical_reward_v4.py', 'environment/mut_mappo_critical_reward_v3.py', 'environment/mut_mappo_critical_reward_v2.py', 'evaluation/r4_risk_metrics.py', 'utils/prepare_r5_reference.py', 'evaluation/evaluate_r5_counterfactual.py')]
     sources = {str(path.relative_to(ROOT)).replace("\\", "/"): sha256_file(path) for path in paths}
     if config['task'].get('c1_controller') == 'lane_pid_v1':
         sources['environment/frozen_lane_traffic.py']=sha256_file(ROOT/'environment/frozen_lane_traffic.py')

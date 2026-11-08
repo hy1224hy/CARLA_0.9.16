@@ -47,13 +47,26 @@ def prepare(config_path, splits=("train", "gate", "selection"), *, allow_weak_re
                             raise RuntimeError("saved C1 case failed normal-driving screen; diagnostic override is explicit")
                         continue
                     if runtime is None:
-                        runtime = create_runtime(config, condition="C1", audit_callback=audit)
+                        runtime = create_runtime(config, condition=('C2' if config['task'].get('reward_profile') == 'individual_three_dimension_risk_v4' else 'C1'), audit_callback=audit)
                     curves, results = [], []
                     for repetition in range(repeats):
                         context.update(phase='reference',case_key=case['case_key'],seed=case['seed']+repetition*10000)
                         curve = {"0": [0.0], "1": [0.0]}
+                        response_states={};previous_red={};previous_acc={}
+                        from evaluation.r4_risk_metrics import response_measures
                         def collect(info):
                             p = info["mut_metrics"]["route_progress"]
+                            step=len(curve['0'])
+                            snapshots=info.get('post_tick_kinematics',{})
+                            response_states[str(step)]={}
+                            for rid in (0,1):
+                                snap=snapshots.get(rid,snapshots.get(str(rid)))
+                                if snap is not None:
+                                    if rid in previous_red:
+                                        measures=response_measures(previous_red[rid],snap,float(config['task']['timestep']),previous_acc.get(rid))
+                                        response_states[str(step)][str(rid)]=measures
+                                        previous_acc[rid]=measures['acceleration_mps2']
+                                    previous_red[rid]=snap
                             for rid in ("0", "1"):
                                 curve[rid].append(float(p.get(rid, p.get(int(rid)))))
                         result = run_case(runtime, case, seed=case["seed"] + repetition * 10000, step_callback=collect)
@@ -69,6 +82,8 @@ def prepare(config_path, splits=("train", "gate", "selection"), *, allow_weak_re
                                       for i in range(length)] for rid in ("0", "1")}
                     record = {"case_key": case["case_key"], "split": split, "qualified": qualified,
                         "identity": identity, "progress": progress, "reference_runs": results,
+                        "response_states": response_states if repeats == 1 else {},
+                        "response_reference_mode": "frozen_base_blue" if config["task"].get("reward_profile") == "individual_three_dimension_risk_v4" else "normal_C1",
                         "scope": "normal traffic reference; qualified here means C1 reached and blue-safe, not full base-driving qualification"}
                     atomic_write_json(record, target)
                     header["cases"][case["case_key"]] = {"file": filename, "sha256": sha256_file(target),

@@ -26,6 +26,11 @@ from environment.mut_mappo_critical_reward import PROFILE as CRITICAL_PROFILE, C
 from environment.mut_mappo_critical_reward_v2 import PROFILE as NORMAL_CRITICAL_PROFILE, NormalDrivingCriticalReward
 
 
+from environment.mut_mappo_critical_reward_v3 import PROFILE as R3_PROFILE, IndividualDrivingCriticalReward
+
+from environment.mut_mappo_critical_reward_v4 import PROFILE as R4_PROFILE, RiskReward
+from environment.mut_mappo_outcome_reward_v5 import PROFILE as R5_PROFILE, OutcomeReward
+
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -37,10 +42,13 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
                  audit_callback=None, reference_store=None):
         if num_agents not in (2, 4):
             raise ValueError("MutMAPPO supports two-car C0 or four-car C1/C2")
+        if task_config.get('reward_profile') in (R3_PROFILE, R4_PROFILE, R5_PROFILE) and str(red_checkpoint_config.get('reward_version', 'v6')) != 'v6':
+            raise ValueError('R3 requires frozen base reward v6')
         self.task_config = deepcopy(task_config)
         self.reference_store = reference_store
         reward_class = {CRITICAL_PROFILE: CriticalTeamReward,
-                        NORMAL_CRITICAL_PROFILE: NormalDrivingCriticalReward}.get(
+                        NORMAL_CRITICAL_PROFILE: NormalDrivingCriticalReward,
+                        R3_PROFILE: IndividualDrivingCriticalReward, R4_PROFILE: RiskReward, R5_PROFILE: OutcomeReward}.get(
                             task_config.get("reward_profile"), TeamEfficiencyReward)
         self.team_reward = (reward_class(task_config.get("team_reward"),
                             dt=float(task_config.get("timestep", 0.1)),
@@ -229,6 +237,12 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
         if getattr(self, "team_reward", None) is not None:
             self.team_reward.reset()
             self._team_reference = self.reference_store.curve(case["case_key"]) if self.reference_store else None
+            if isinstance(self.team_reward, OutcomeReward) and self.reference_store is not None:
+                outcome_ref = self._team_reference.get("outcome_reference", {})
+                if outcome_ref.get("protocol") != "r5_outcome_v1" or not outcome_ref.get("steps") or outcome_ref.get("repeats", 0) < self.team_reward.r5["min_reference_samples"]:
+                    raise ValueError("R5 requires new repeated outcome references; R4 references cannot be reused")
+            if isinstance(self.team_reward, RiskReward) and not isinstance(self.team_reward, OutcomeReward) and self.reference_store is not None and not self._team_reference.get("response_states"):
+                raise ValueError("R4 requires prepared base-policy response states")
         scenario, evidence = self._resolve_case(case)
         self.set_scenario(scenario)
         evidence["goal_waypoints"] = {}
@@ -524,7 +538,13 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
                 "case_geometry": deepcopy(self._case_geometry_evidence),
                 "post_tick_kinematics": deepcopy(getattr(self, "_post_tick_kinematics", {})),
                 "blue_reward_audit": deepcopy(self._last_mut_reward_details),
-                "blue_reward_formula": ("shared C1 progress utility + driving - risk - team safety"
+                "blue_reward_formula": ("R5 individual mission/control + referenced red outcome - own costs"
+                    if isinstance(getattr(self, "team_reward", None), OutcomeReward) else
+                    "R4 individual mission/control + bounded risk + excess response - hard costs"
+                    if isinstance(getattr(self, "team_reward", None), RiskReward) else
+                    "individual frozen v6 soft + individual hard + individual critical"
+                    if isinstance(getattr(self, "team_reward", None), IndividualDrivingCriticalReward) else
+                    "shared C1 progress utility + driving - risk - team safety"
                     if getattr(self, "team_reward", None) is not None
                     else "team_impact + team_threat + team_timeout + driving - lambda * safety_cost"),
                 "blue_reward_max_abs_residual": reward_residual}
@@ -581,7 +601,9 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
             extra = (dict(snapshots=self._post_tick_kinematics, active=active_before,
                           driving_context=self._critical_driving_context())
                      if isinstance(self.team_reward, CriticalTeamReward) else {})
-            utility, components = self.team_reward.step(step=self.current_step,
+            if isinstance(self.team_reward, RiskReward):
+                extra['contact_ids'] = [aid for aid,flag in self.collision_events.items() if flag]
+            reward_result = self.team_reward.step(step=self.current_step,
                 progress=self._route_progress, reached=self.reached_target,
                 eligible=self.mut_events.blue_eligible and (
                     isinstance(self.team_reward, NormalDrivingCriticalReward)
@@ -589,14 +611,23 @@ class MutMAPPOEnv(CarlaMultiAgentEnv):
                 safety=self.mut_events.safety,
                 costs=costs, base_details={b: self._team_base_details.get(b, {}) for b in self.blue_ids},
                 reference=self._team_reference, **extra)
+            individual = isinstance(self.team_reward, IndividualDrivingCriticalReward)
+            if individual:
+                role_rewards, role_parts, role_adv = reward_result
+                utility = math.fsum(role_rewards.values()) / 2
+            else:
+                utility, components = reward_result
             self._last_mut_reward_details = {}
             for bid in self.blue_ids:
                 if active_before.get(bid, False):
-                    rewards[bid] = utility
+                    value = role_rewards[bid] if individual else utility
+                    components = role_parts[bid] if individual else components
+                    rewards[bid] = value
                     info["reward_details"][bid] = dict(components)
-                    self._last_mut_reward_details[bid] = {"team_utility": utility,
-                        "expected_reward": utility, "actual_reward": utility, "reward_residual": 0.0}
-            info["team_step_reward"] = utility
+                    self._last_mut_reward_details[bid] = {"team_utility": value,
+                        "expected_reward": value, "actual_reward": value, "reward_residual": 0.0}
+            if not individual:
+                info["team_step_reward"] = utility
         if self.follow_spectator:
             self._update_overhead_spectator()
         info["episode_end_reason"] = self.episode_end_reason
