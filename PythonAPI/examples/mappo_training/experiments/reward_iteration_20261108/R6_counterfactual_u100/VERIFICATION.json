@@ -1,0 +1,38 @@
+{
+  "status": "OFFLINE_VALIDATED_LIVE_NOT_STARTED",
+  "at": "2026-11-08T20:11:07.554623+08:00",
+  "tests": {
+    "count": 14,
+    "result": "PASS",
+    "modules": [
+      "tests.test_r6_counterfactual",
+      "tests.test_r6_training_chain"
+    ],
+    "coverage": [
+      "non-cancelling individual credits",
+      "contact/violation/matching rejection",
+      "no mission/proximity reward",
+      "one settlement per actual final action",
+      "role-keyed noise isolation",
+      "endpoint convention",
+      "real one-round A/B PPO and checkpoint with inherited base networks",
+      "four-mode evaluation and timeline files using two synthetic runtimes"
+    ]
+  },
+  "carla_access": "carla.Client patched to raise during integration tests; no live CARLA calls",
+  "parent_runtime_source_check": {
+    "files": 274,
+    "unchanged": true
+  },
+  "snapshot_source_files": 304,
+  "snapshot_source_bytes": 4009828,
+  "config_sha256": "7dde6c342bd67514cd97871c214e959b5f36a401215783d47bf553c16dc46230",
+  "live_training_started": false,
+  "live_evaluation_started": false,
+  "limitations": [
+    "Synthetic dynamics validate software plumbing, not adversarial efficacy",
+    "No CARLA geometry or asynchronous sensor timing verification",
+    "No convergence or generalization evidence",
+    "No additional live worker or automation launched"
+  ]
+}
