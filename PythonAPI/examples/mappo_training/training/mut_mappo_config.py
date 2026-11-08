@@ -58,7 +58,10 @@ def validate_config(config, config_path=None):
     config = copy.deepcopy(config)
     if config.get("schema_version") != "mut_mappo_config_v1":
         raise ValueError("unsupported Mut-MAPPO configuration schema")
-    if config.get("model_spec") != MODEL_SPEC or POLICY_ACTION_DIM != 2:
+    expected_spec = dict(MODEL_SPEC)
+    if config.get("learning", {}).get("critic_scope") == "blue_team":
+        expected_spec.update(critic_num_agents=2, critic_state_dim=40, critic_input_dim=42)
+    if config.get("model_spec") != expected_spec or POLICY_ACTION_DIM != 2:
         raise ValueError("four-car 20/2 physical/learner/critic model specification mismatch")
     if config.get("method") not in {"off", "plain", "selective"}:
         raise ValueError("method must be off, plain or selective")
@@ -158,6 +161,25 @@ def validate_config(config, config_path=None):
     checkpoint, digest = load_checkpoint_file(resolve_path(config["red_checkpoint"]["path"]), map_location="cpu")
     if digest != config["red_checkpoint"]["sha256"]:
         raise ValueError("red checkpoint identity differs from the candidate configuration")
+    scope = config["learning"].get("critic_scope", "all_physical")
+    initialization = config["learning"].get("critic_initialization", "random")
+    if scope not in {"all_physical", "blue_team"} or initialization not in {"random", "base_checkpoint"}:
+        raise ValueError("unknown critic scope/initialization")
+    if scope == "blue_team" and config["algorithm"] != "mappo":
+        raise ValueError("blue_team critic requires MAPPO")
+    if initialization == "base_checkpoint":
+        if scope != "blue_team" or not {"critic", "value_normalizer"}.issubset(checkpoint):
+            raise ValueError("base critic transfer requires two-blue critic and ValueNorm source")
+        from models.blue_team_critic import BlueTeamCritic
+        from training.value_normalization import ValueNormalizer
+        with torch.random.fork_rng(devices=[]):
+            critic = BlueTeamCritic(config["learning"]["hidden_dim"])
+            critic.load_state_dict(checkpoint["critic"], strict=True)
+        if any(not torch.isfinite(t).all() for t in critic.state_dict().values()):
+            raise ValueError("nonfinite base critic")
+        normalizer = ValueNormalizer()
+        normalizer.load_state_dict(checkpoint["value_normalizer"], strict=True)
+        normalizer.validate_state()
     source_spec = checkpoint.get("model_spec", {})
     if source_spec.get("obs_dim") != 20 or source_spec.get("action_dim") != 2:
         raise ValueError("red candidate is not a compatible 20/2 checkpoint")
@@ -259,6 +281,8 @@ def run_identity(config):
         paths += [ROOT / 'environment/mut_mappo_critical_reward_v4.py', ROOT / 'environment/mut_mappo_critical_reward_v3.py', ROOT / 'environment/mut_mappo_critical_reward_v2.py', ROOT / 'evaluation/r4_risk_metrics.py', ROOT / 'evaluation/mut_mappo_reference.py']
     if config['task'].get('reward_profile') == 'individual_red_outcome_v5':
         paths += [ROOT / p for p in ('environment/mut_mappo_outcome_reward_v5.py', 'evaluation/r5_outcome_metrics.py', 'environment/mut_mappo_critical_reward_v4.py', 'environment/mut_mappo_critical_reward_v3.py', 'environment/mut_mappo_critical_reward_v2.py', 'evaluation/r4_risk_metrics.py', 'utils/prepare_r5_reference.py', 'evaluation/evaluate_r5_counterfactual.py')]
+    if config["learning"].get("critic_scope") == "blue_team":
+        paths += [ROOT / "models/blue_team_critic.py"]
     sources = {str(path.relative_to(ROOT)).replace("\\", "/"): sha256_file(path) for path in paths}
     if config['task'].get('c1_controller') == 'lane_pid_v1':
         sources['environment/frozen_lane_traffic.py']=sha256_file(ROOT/'environment/frozen_lane_traffic.py')
@@ -267,7 +291,7 @@ def run_identity(config):
     identity = {"protocol": config["protocol"], "config_sha256": config_digest(config),
             "task_contract_sha256": task_contract_digest(config),
             "algorithm": config["algorithm"], "team_count": config["team_count"],
-            "model_spec": MODEL_SPEC, "red_sha256": config["_root_validation"]["red_sha256"],
+            "model_spec": config["model_spec"], "red_sha256": config["_root_validation"]["red_sha256"],
             "case_manifest_sha256": config["_root_validation"]["case_manifest_sha256"],
             "scenario_hashes": config["_root_validation"]["scenario_hashes"], "source_hashes": sources}
     if config["task"].get("reward_profile") in TEAM_PROFILES:

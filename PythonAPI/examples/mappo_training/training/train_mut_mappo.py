@@ -82,7 +82,7 @@ def validate_checkpoint_for_config(config, path):
             if sha256_file(directory / (hashlib.sha256(key.encode()).hexdigest() + ".json")) != digest:
                 raise ValueError("training C1 reference changed since checkpoint creation")
     expected = config["_root_validation"]
-    if identity.get("model_spec") != MODEL_SPEC or identity.get("red_sha256") != expected["red_sha256"]:
+    if identity.get("model_spec") != config["model_spec"] or identity.get("red_sha256") != expected["red_sha256"]:
         raise ValueError("evaluation model/red identity differs")
     if identity.get("case_manifest_sha256") != expected["case_manifest_sha256"]:
         raise ValueError("evaluation case manifest differs from training identity")
@@ -392,7 +392,8 @@ def train(config, run_dir, *, resume=False, stop_round=None, stop_train_ticks=No
     initial = {2: source["actors"][0], 3: source["actors"][1]}
     learning = dict(config["learning"], method=config["method"], algorithm=config["algorithm"])
     topology = ("A",) if config["team_count"] == 1 else ("A", "B")
-    teams = {name: TeamLearner(name, config["seed"] + offset, initial, learning, config["device"])
+    teams = {name: TeamLearner(name, config["seed"] + offset, initial, learning, config["device"],
+                 initial_value=source if learning.get("critic_initialization") == "base_checkpoint" else None)
              for name, offset in (("A", 1000), ("B", 2000)) if name in topology}
     gate = GateState(config["mutual"])
     payload = {"teams": {n: t.state_dict() for n, t in teams.items()}, "teachers": {n: None for n in topology},

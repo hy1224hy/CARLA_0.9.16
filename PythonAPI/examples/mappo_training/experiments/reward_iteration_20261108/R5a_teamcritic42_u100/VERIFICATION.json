@@ -1,0 +1,59 @@
+{
+  "status": "OFFLINE_VERIFIED_NOT_LIVE_TRAINED",
+  "source_checkpoint": {
+    "capability_status": "NOT_QUALIFIED_diagnostic_candidate_only",
+    "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u001000.pt",
+    "sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a"
+  },
+  "base_actor_tensor_equality": true,
+  "base_critic_prediction_exact_equality": true,
+  "base_denormalized_prediction_exact_equality": true,
+  "independent_team_parameter_storage": true,
+  "fresh_optimizers": true,
+  "reward_task_and_training_schedule_unchanged": true,
+  "network_first_weight_shape": [
+    128,
+    42
+  ],
+  "rollout_transport_dim": 80,
+  "value_observation_dim": 40,
+  "local_identity_dim": 2,
+  "critic_model_spec": {
+    "obs_dim": 20,
+    "action_dim": 2,
+    "global_state_dim": 80,
+    "critic_id_dim": 2,
+    "blue_physical_ids": [
+      2,
+      3
+    ],
+    "hidden": 128,
+    "init_log_std": -0.5,
+    "min_log_std": -2.0,
+    "max_log_std": 0.0,
+    "algorithm": "mappo",
+    "critic_input_scope": "own_blue_team_observations_plus_local_id",
+    "value_normalizer_scope": "pooled_active_blue_role_returns",
+    "critic_value_state_dim": 40,
+    "critic_initialization": "base_checkpoint"
+  },
+  "inherited_value_normalizer": {
+    "mean": 12.441604614257812,
+    "std": 16.390708923339844,
+    "variance": 268.6553649902344,
+    "debiasing_term": 0.009950105100870132,
+    "update_count": 1000.0
+  },
+  "reference_cases_verified": 72,
+  "mutual_enabled": false,
+  "warmup_added": false,
+  "training_started": false,
+  "deployed_regression_tests": {
+    "command": "python -B -m unittest tests.test_blue_team_critic tests.test_mut_mappo_learning",
+    "count": 8,
+    "passed": true
+  },
+  "deployed_module_validate_only_passed": true,
+  "configuration_sha256": "42dc2a1f8f047599674ddb46baa8dfc3465da65227d3c54f51b1ef7e1ddf8075",
+  "source_snapshot_files_verified": 274
+}

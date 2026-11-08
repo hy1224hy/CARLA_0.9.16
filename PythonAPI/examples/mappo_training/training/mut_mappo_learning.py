@@ -19,6 +19,7 @@ import torch
 
 from models.actor_critic import Actor, AgentConditionedCritic
 from models.mut_mappo_critics import LocalObservationCritic
+from models.blue_team_critic import BlueTeamCritic
 from training.action_protocol import ACTION_PROTOCOL_VERSION
 from training.checkpoint_protocol import capture_rng_state, restore_rng_state
 from training.mutual_distillation import (
@@ -178,7 +179,7 @@ class GateState:
 class TeamLearner:
     """A single blue team; public IDs are physical IDs 2/3 throughout."""
     def __init__(self, name: str, seed: int, initial_actors: Mapping,
-                 config: Mapping, device="cpu"):
+                 config: Mapping, device="cpu", *, initial_value=None):
         if name not in {"A", "B"}:
             raise ValueError("team name must be A or B")
         self.name, self.seed = name, int(seed)
@@ -187,6 +188,16 @@ class TeamLearner:
         self.algorithm = self.config.get("algorithm", "mappo")
         if self.algorithm not in {"mappo", "ippo"}:
             raise ValueError("algorithm must be mappo/ippo")
+        self.critic_scope = self.config.get("critic_scope", "all_physical")
+        self.critic_initialization = self.config.get("critic_initialization", "random")
+        if self.critic_scope not in {"all_physical", "blue_team"}:
+            raise ValueError("unknown critic observation scope")
+        if self.critic_initialization not in {"random", "base_checkpoint"}:
+            raise ValueError("unknown critic initialization")
+        if self.critic_scope == "blue_team" and self.algorithm != "mappo":
+            raise ValueError("blue-team shared critic requires MAPPO")
+        if self.critic_initialization == "base_checkpoint" and (self.critic_scope != "blue_team" or initial_value is None):
+            raise ValueError("base critic initialization requires blue_team scope and verified source values")
         self.method = self.config.get("method", "off")
         if self.method not in {"off", "plain", "selective"}:
             raise ValueError("method must be off/plain/selective")
@@ -216,6 +227,10 @@ class TeamLearner:
                                    if self.algorithm == "ippo" else "all_physical_observation_slots_plus_id"),
                                value_normalizer_scope=("independent_per_blue_role"
                                    if self.algorithm == "ippo" else "pooled_active_blue_role_returns"))
+        if self.critic_scope == "blue_team":
+            self.model_spec.update(critic_input_scope="own_blue_team_observations_plus_local_id",
+                critic_value_state_dim=40, critic_id_dim=2,
+                critic_initialization=self.critic_initialization)
         global_rng = capture_rng_state()
         try:
             random.seed(self.seed)
@@ -224,17 +239,26 @@ class TeamLearner:
             self.actors = {aid: self._new_actor() for aid in BLUE_IDS}
             for aid in BLUE_IDS:
                 self.actors[aid].load_state_dict(source[aid], strict=True)
-            # Deliberately never import the old two-car critic or ValueNorm.
+            # Legacy all-physical mode remains available for historical runs.
             if self.algorithm == "ippo":
                 self.critics = {aid: LocalObservationCritic(80, 4, hidden,
                     agent_ids=(aid,)).to(self.device) for aid in BLUE_IDS}
                 self.value_normalizers = {aid: ValueNormalizer(device=self.device) for aid in BLUE_IDS}
                 self.critic = self.value_normalizer = None
             else:
-                self.critic = AgentConditionedCritic(80, 4, hidden).to(self.device)
+                self.critic = (BlueTeamCritic(hidden) if self.critic_scope == "blue_team"
+                               else AgentConditionedCritic(80, 4, hidden)).to(self.device)
                 self.value_normalizer = ValueNormalizer(device=self.device)
                 self.critics = {"shared": self.critic}
                 self.value_normalizers = {"shared": self.value_normalizer}
+            if self.critic_initialization == "base_checkpoint":
+                if not {"critic", "value_normalizer"}.issubset(initial_value):
+                    raise ValueError("base checkpoint requires critic and ValueNorm")
+                self.critic.load_state_dict(initial_value["critic"], strict=True)
+                self.value_normalizer.load_state_dict(initial_value["value_normalizer"], strict=True)
+                self.value_normalizer.validate_state()
+                if any(not torch.isfinite(t).all() for t in self.critic.state_dict().values()):
+                    raise ValueError("nonfinite pretrained critic parameters")
             self._rng_state = capture_rng_state()
         finally:
             restore_rng_state(global_rng)
@@ -322,7 +346,7 @@ class TeamLearner:
             return True
         # Legacy *default* MAPPO specs omitted these declarations. This is
         # learner decoding only; run config/source-identity checks still apply.
-        if self.algorithm != "mappo" or "algorithm" in self.config:
+        if self.algorithm != "mappo" or "algorithm" in self.config or self.critic_scope != "all_physical":
             return False
         declarations = {"algorithm", "critic_input_scope", "value_normalizer_scope"}
         return spec == {key: value for key, value in self.model_spec.items() if key not in declarations}
