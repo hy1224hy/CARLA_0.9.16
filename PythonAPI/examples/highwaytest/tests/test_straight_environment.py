@@ -163,6 +163,49 @@ class EnvironmentTests(unittest.TestCase):
         self.assertTrue(np.isfinite(info['avg_speed_ratio']))
         self.assertLessEqual(info['max_target_brake'],0.)
 
+    def test_level_potentials_guide_task_geometry(self):
+        env=StraightEnv(StraightConfig(level=1))
+        env.reset(seed=0,options={'family':'follow'})
+        env.target.position[:]=[100.,0.];env.target.speed=18.
+        env.attacker.position[:]=[108.,0.]
+        phi_front=env._phi()
+        env.attacker.position[:]=[92.,0.]
+        self.assertEqual(env._phi(),0.,'L1 potential must be zero behind the target')
+        self.assertGreater(phi_front,0.)
+        env.attacker.position[:]=[108.,4.]
+        self.assertLess(env._phi(),phi_front,'L1 potential lower in the adjacent lane')
+        env2=StraightEnv(StraightConfig(level=2))
+        env2.reset(seed=0,options={'family':'follow'})
+        env2.target.position[:]=[100.,0.];env2.target.speed=18.
+        env2.attacker.position[:]=[94.,4.]
+        phi_stage=env2._phi()
+        env2.attacker.position[:]=[140.,4.]
+        self.assertGreater(phi_stage,env2._phi(),'L2 potential peaks at the adjacent staging position')
+        env2.attacker.position[:]=[94.,0.]
+        self.assertLess(env2._phi(),phi_stage,'L2 potential lower in the target lane')
+        env3=StraightEnv(StraightConfig(level=3))
+        env3.reset(seed=0,options={'family':'follow'})
+        env3.target.position[:]=[100.,0.];env3.target.speed=18.
+        env3.attacker.position[:]=[108.,0.]
+        close=env3._phi()
+        env3.attacker.position[:]=[160.,0.]
+        self.assertGreater(close,env3._phi(),'L3 potential grows with proximity')
+
+    def test_geometry_potential_enters_reward_components(self):
+        env=StraightEnv(StraightConfig(level=1,duration=.6,geometry_weight=.5))
+        env.reset(seed=0,options={'family':'follow'})
+        env.target.position[:]=[100.,0.];env.target.speed=18.
+        env.attacker.position[:]=[115.,0.];env.attacker.speed=10.
+        phi0=env._phi()
+        _,reward,_,_,info=env.step([0.,0.])
+        self.assertIn('geometry',info['reward_components'])
+        expected=.5*(env.config.gamma*env._phi()-phi0)
+        self.assertAlmostEqual(info['reward_components']['geometry'],expected,places=6)
+        zero=StraightEnv(StraightConfig(level=1,duration=.6,geometry_weight=0.))
+        zero.reset(seed=0,options={'family':'follow'})
+        _,_,_,_,info0=zero.step([0.,0.])
+        self.assertEqual(info0['reward_components']['geometry'],0.)
+
     def test_actual_pair_contact_and_native_idm_response(self):
         env=StraightEnv(StraightConfig(level=3))
         env.reset(seed=2,options={'family':'follow'})

@@ -85,6 +85,7 @@ def parser():
     b.add_argument('--output',required=True); b.add_argument('--config')
     b.add_argument('--seed',type=int,default=42)
     b.add_argument('--episodes',type=int,default=128); b.add_argument('--epochs',type=int,default=40)
+    b.add_argument('--attack-level',type=int,choices=(1,2,3),help='second-stage scripted attack BC: attack_L<level>.pt in the same output dir')
     t=sub.add_parser('train')
     t.add_argument('--config',required=True); t.add_argument('--output',required=True)
     t.add_argument('--initialize-from'); t.add_argument('--resume'); t.add_argument('--max-rounds',type=int)
@@ -126,10 +127,13 @@ def batch(args):
     initializers={}
     if args.initialize_from_dir:
         for c in configs:
-            path=Path(args.initialize_from_dir).resolve()/f'base_s{c.seed}'/'driver.pt'
+            root=Path(args.initialize_from_dir).resolve()/f'base_s{c.seed}'
+            preferred=root/f'attack_L{c.level}.pt'
+            fallback=root/'driver.pt'
+            path=preferred if preferred.is_file() else fallback
             if not path.is_file():
                 raise FileNotFoundError(path)
-            initializers[c.seed]=path
+            initializers[(c.seed,c.level)]=path
     output.mkdir(parents=True,exist_ok=True)
     logdir=output/'batch_logs'; logdir.mkdir(exist_ok=True)
     def job(item):
@@ -137,7 +141,7 @@ def batch(args):
         cmd=[sys.executable,'-m','highwaytest.straight','train','--config',str(path.resolve()),'--output',str(run)]
         latest=run/'latest.pt'
         if latest.exists(): cmd+=['--resume',str(latest)]
-        elif c.seed in initializers: cmd+=['--initialize-from',str(initializers[c.seed])]
+        elif (c.seed,c.level) in initializers: cmd+=['--initialize-from',str(initializers[(c.seed,c.level)])]
         with (logdir/(path.stem+'.log')).open('a',encoding='utf-8') as stream:
             result=subprocess.run(cmd,stdout=stream,stderr=subprocess.STDOUT,check=False)
         return {'run':path.stem,'exit_code':result.returncode}
@@ -193,7 +197,7 @@ def main(argv=None):
         elif args.command=='bootstrap':
             from .config import StraightConfig
             cfg=replace(load_config(args.config),level=0,seed=args.seed) if args.config else StraightConfig(level=0,seed=args.seed)
-            result=runner.bootstrap(cfg,args.output,episodes=args.episodes,epochs=args.epochs)
+            result=runner.bootstrap(cfg,args.output,episodes=args.episodes,epochs=args.epochs,attack_level=args.attack_level)
         elif args.command=='evaluate':
             result=runner.evaluate(args.checkpoint,split=args.split,cases=args.cases,output=args.output,gif=args.gif)
         else: result=runner.report(args.runs,args.output)

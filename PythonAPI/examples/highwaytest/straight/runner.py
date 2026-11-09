@@ -172,7 +172,9 @@ def _train(config,output,initialize_from=None,resume=None,max_rounds=None):
         output.mkdir(parents=True,exist_ok=False)
         if initialize_from:
             initial=load_state(initialize_from)
-            if initial['config']['level']!=0 or initial['config']['hidden']!=cfg.hidden:raise ValueError('Initialization must be a compatible normal driver')
+            compatible=((initial['config']['level']==0 and initial.get('attack_level') is None)
+                        or initial.get('attack_level')==cfg.level)
+            if not compatible or initial['config']['hidden']!=cfg.hidden:raise ValueError('Initialization must be a compatible normal driver or matching-level attack driver')
             if not initial.get('qualified') or initial['source_sha256']!=identity or initial['packages']!=versions:raise ValueError('Driver qualification/source/runtime mismatch')
             for key in ('duration','policy_frequency','simulation_frequency','target_speed','target_time_gap'):
                 if initial['config'][key]!=cfg.to_dict()[key]:raise ValueError('Driver physical contract mismatch: '+key)
@@ -255,11 +257,13 @@ def _train(config,output,initialize_from=None,resume=None,max_rounds=None):
     return summary
 
 
-def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episodes=16):
+def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episodes=16,attack_level=None):
     from .environment import StraightEnv
     if episodes<1 or epochs<1:raise ValueError('Positive BC budgets required')
     cfg=replace(config,level=0).validate();torch.set_num_threads(cfg.threads);torch.manual_seed(cfg.seed)
-    output=Path(output);output.mkdir(parents=True,exist_ok=False)
+    output=Path(output)
+    if attack_level is None:output.mkdir(parents=True,exist_ok=False)
+    elif not output.is_dir():raise ValueError('attack bootstrap requires an existing driver output directory')
     env=StraightEnv(cfg);observations=[];actions=[];lane_changes=0
     def scenario(i):
         demonstration=i%5==0
@@ -319,7 +323,73 @@ def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episod
     state=dict(protocol=PROTOCOL,config=cfg.to_dict(),source_sha256=source_digest(),packages=runtime_versions(),model=model.state_dict(),actor=model.actor.state_dict(),qualified=qualified,demonstration_steps=len(x),demonstration_lane_changes=lane_changes,qualification=qualification)
     save(output/('driver.pt' if qualified else 'diagnostic_driver.pt'),state)
     (output/'qualification.json').write_text(json.dumps(qualification,indent=2),encoding='utf-8')
-    return dict(qualified=qualified,demonstration_steps=len(x),demonstration_lane_changes=lane_changes,checkpoint=str(output/('driver.pt' if qualified else 'diagnostic_driver.pt')))
+    if attack_level is None:
+        return dict(qualified=qualified,demonstration_steps=len(x),demonstration_lane_changes=lane_changes,checkpoint=str(output/('driver.pt' if qualified else 'diagnostic_driver.pt')))
+    # Second stage: fine-tune the qualified driver on scripted attack demonstrations
+    # (doc-sanctioned co-driving initialization; level-0 termination semantics so
+    # script demos run their full course; L1/L2 discard colliding/invalid demos).
+    from .environment import scripted_action
+    if not qualified:raise ValueError('Attack initialization requires a qualified driver.pt first')
+    if attack_level not in (1,2,3):raise ValueError('attack_level must be 1/2/3')
+    script={1:'block',2:'cut',3:'collision'}[attack_level]
+    env=StraightEnv(cfg)
+    script_obs=[];script_act=[];kept=0
+    try:
+        rng=np.random.default_rng(cfg.seed+7)
+        for i in range(max(32,episodes)):
+            family='adjacent' if attack_level==2 else ('follow','adjacent')[i%2]
+            obs,_=env.reset(seed=int(rng.integers(900000)),options={'family':family})
+            buffer_obs=[];buffer_act=[];clean=True
+            while True:
+                action=scripted_action(env,script)
+                buffer_obs.append(obs);buffer_act.append(action)
+                obs,_,term,trunc,info=env.step(action)
+                if info.get('invalid'):clean=False
+                if attack_level!=3 and info.get('collision'):clean=False
+                if term or trunc:break
+            if clean:
+                script_obs.extend(buffer_obs);script_act.extend(buffer_act);kept+=1
+    finally:env.close()
+    if not script_obs:raise ValueError('no clean script demonstrations collected')
+    sx=torch.as_tensor(np.asarray(script_obs),dtype=torch.float32);sy=torch.as_tensor(np.asarray(script_act),dtype=torch.float32)
+    attack=ActorCritic(cfg.hidden);attack.actor.load_state_dict(model.actor.state_dict())
+    fit(attack,sx,sy,max(12,epochs//2))
+    if dagger_rounds:
+        # DAgger on the attack policy: relabel the model's own staging rollouts with
+        # script actions so the attack maneuver is learned in the states it visits.
+        env2=StraightEnv(cfg)
+        try:
+            rng=np.random.default_rng(cfg.seed+17)
+            for round_ in range(dagger_rounds):
+                new_obs=[];new_act=[]
+                for i in range(16):
+                    family='adjacent' if attack_level==2 else ('follow','adjacent')[i%2]
+                    obs,_=env2.reset(seed=int(rng.integers(900000)),options={'family':family})
+                    buffer_obs=[];buffer_act=[];clean=True
+                    while True:
+                        with torch.no_grad():
+                            action=attack.distribution(torch.as_tensor(obs,dtype=torch.float32)).loc.tanh().numpy()
+                        buffer_obs.append(obs);buffer_act.append(scripted_action(env2,script))
+                        obs,_,term,trunc,info=env2.step(action)
+                        if info.get('invalid'):clean=False
+                        if attack_level!=3 and info.get('collision'):clean=False
+                        if term or trunc:break
+                    if clean:
+                        new_obs.extend(buffer_obs);new_act.extend(buffer_act)
+                if not new_obs:break
+                sx=torch.cat([sx,torch.as_tensor(np.asarray(new_obs),dtype=torch.float32)])
+                sy=torch.cat([sy,torch.as_tensor(np.asarray(new_act),dtype=torch.float32)])
+                fit(attack,sx,sy,max(6,epochs//6))
+        finally:env2.close()
+    attack_cfg=replace(config,level=attack_level)
+    attack_qualification=evaluate_model(attack,attack_cfg,'selection',cfg.eval_cases)
+    overall=attack_qualification['overall']
+    attack_qualified={1:(overall.get('blocking_time',0.)>=.5 and overall.get('collision_rate',1.)<=.3),
+                      2:(overall.get('cut_in_rate',0.)>0 and overall.get('collision_rate',1.)<=.3),
+                      3:(overall.get('collision_rate',0.)>=.5)}[attack_level]
+    state=dict(protocol=PROTOCOL,config=cfg.to_dict(),attack_level=attack_level,source_sha256=source_digest(),packages=runtime_versions(),model=attack.state_dict(),actor=attack.actor.state_dict(),qualified=attack_qualified,demonstration_steps=len(x)+len(sx),script_episodes_kept=kept,qualification=attack_qualification)
+    save(output/f'attack_L{attack_level}.pt',state)
+    return dict(qualified=attack_qualified,attack_level=attack_level,checkpoint=str(output/f'attack_L{attack_level}.pt'),script_episodes_kept=kept,qualification=overall)
 
 
 def report(runs,output):

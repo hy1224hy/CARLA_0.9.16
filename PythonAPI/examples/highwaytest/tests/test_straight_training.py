@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 import torch
 import tempfile
 from pathlib import Path
@@ -111,6 +112,38 @@ class TrainingTests(unittest.TestCase):
                 self.assertIn(key,step)
             ev=json.loads((Path(folder)/'test'/'evaluation.json').read_text())
             self.assertEqual(ev['train_steps_total'],16)
+
+    def test_attack_bootstrap_produces_level_initializers(self):
+        import json as _json
+        from highwaytest.straight.config import StraightConfig
+        from highwaytest.straight.runner import bootstrap
+        with tempfile.TemporaryDirectory() as folder:
+            base=Path(folder)/'base'
+            bootstrap(StraightConfig(level=0,seed=42),base,episodes=32,epochs=10,dagger_rounds=0)
+            for level,script in ((1,'block'),(2,'cut'),(3,'collision')):
+                result=bootstrap(StraightConfig(level=0,seed=42),base,attack_level=level)
+                path=base/f'attack_L{level}.pt'
+                self.assertTrue(path.is_file(),(level,result))
+                state=torch.load(path,map_location='cpu',weights_only=False)
+                self.assertEqual(state['attack_level'],level)
+                self.assertIn('actor',state)
+                qual=state['qualification']['overall']
+                if level==1:self.assertGreater(qual['blocking_time'],0.,state['qualification'])
+                elif level==2:self.assertGreater(qual['cut_in_rate'],0.,state['qualification'])
+                else:self.assertGreater(qual['collision_rate'],.5,state['qualification'])
+
+    def test_attack_initializer_accepted_by_matching_level_train(self):
+        import json as _json
+        from highwaytest.straight.config import StraightConfig
+        from highwaytest.straight.runner import bootstrap,train,load_state
+        cfg=StraightConfig(total_steps=16,rollout_steps=4,epochs=1,minibatch=4,
+            hidden=16,duration=20.,eval_cases=8,eval_interval=8,warmup_steps=0,ramp_steps=0)
+        with tempfile.TemporaryDirectory() as folder,patch('highwaytest.straight.runner.source_digest',return_value='fixed-test-source'):
+            base=Path(folder)/'base'
+            bootstrap(cfg,base,episodes=32,epochs=10,dagger_rounds=0)
+            bootstrap(cfg,base,attack_level=1)
+            train(replace(cfg,level=1),Path(folder)/'run',initialize_from=base/'attack_L1.pt')
+            self.assertTrue((Path(folder)/'run'/'summary.json').is_file())
 
     def test_bootstrap_produces_qualified_driver(self):
         import numpy as np

@@ -107,9 +107,30 @@ class StraightEnv(gym.Env):
         return np.clip(np.asarray(row,dtype=np.float32),-3,3)
 
     def _phi(self):
-        dp=np.abs(self.attacker.position-self.target.position)
-        clearance=np.maximum(dp-np.array([5.,2.]),0)
-        return float(np.exp(-np.linalg.norm(clearance)/10))
+        # Level-specific bounded geometric potential for exploration guidance
+        # (dev-stage knob; coefficient via geometry_weight, uniform across all groups).
+        level=self.config.level
+        a,v=self.attacker,self.target
+        dy=float(v.position[1]-a.position[1])
+        gap=float(a.position[0]-v.position[0]-5.)
+        if level==1:
+            # Ahead of the target at moderate spacing, same lane preferred: the
+            # position from which gentle blocking slows the target without excess.
+            if gap<=0:return 0.
+            spacing=float(np.exp(-max(gap-12.,0.)/15.))
+            lateral=float(np.exp(-abs(dy)/4.))
+            return spacing*lateral
+        if level==2:
+            # Adjacent lane, slightly behind the target: the cut-in staging area.
+            lateral=float(np.exp(-abs(abs(dy)-4.)/3.))
+            along=float(np.exp(-abs((v.position[0]-a.position[0])+6.)/18.))
+            return lateral*along
+        if level==3:
+            # Proximity: collision approach guidance (V1 section 5).
+            dp=np.abs(a.position-v.position)
+            clearance=np.maximum(dp-np.array([5.,2.]),0.)
+            return float(np.exp(-np.linalg.norm(clearance)/10.))
+        return 0.
 
     def step(self,action):
         if self.ended:raise RuntimeError('reset required')
