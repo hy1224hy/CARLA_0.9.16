@@ -8,6 +8,9 @@ PROTOCOL='straight_attack_ml_v1'
 class StraightConfig:
     level:int=1
     seed:int=42
+    learner:str='ppo'
+    alpha:float=.2
+    tau:float=.005
     total_steps:int=200000
     rollout_steps:int=512
     epochs:int=4
@@ -46,6 +49,8 @@ class StraightConfig:
     def validate(self):
         if self.level not in (0,1,2,3) or type(self.level) is not int:raise ValueError('level must be 0/1/2/3')
         if self.method not in ('mutual','independent'):raise ValueError('unknown method')
+        if self.learner not in ('ppo','sac'):raise ValueError('unknown learner')
+        if not 0<self.alpha or not 0<self.tau<=1:raise ValueError('invalid SAC hyperparameter')
         for name in ('total_steps','rollout_steps','epochs','minibatch','hidden','refresh_rounds',
                      'eval_interval','eval_cases','policy_frequency','simulation_frequency','threads'):
             if type(getattr(self,name)) is not int or getattr(self,name)<1:raise ValueError(name+' must be positive integer')

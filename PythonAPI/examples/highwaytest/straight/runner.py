@@ -24,6 +24,14 @@ def load_state(path):
     return state
 
 
+def model_from_state(state):
+    from .sac import SACActorCritic
+    cls=SACActorCritic if state.get('learner')=='sac' else ActorCritic
+    model=cls(state['config']['hidden'])
+    model.load_state_dict(state['model'])
+    return model
+
+
 def configuration(raw):
     from .config import StraightConfig
     return StraightConfig(**raw).validate()
@@ -97,7 +105,7 @@ def evaluate(checkpoint,split='test',cases=None,output=None,allow_source_change=
     changed=state['source_sha256']!=source_digest()
     if changed and not allow_source_change:raise ValueError('Source changed; explicitly audit before evaluation')
     cfg=configuration(state['config']);torch.set_num_threads(cfg.threads)
-    model=ActorCritic(cfg.hidden);model.load_state_dict(state['model'])
+    model=model_from_state(state)
     result=evaluate_model(model,cfg,split,cases,capture=capture)
     frames=result.pop('_frames',[])
     sibling=Path(checkpoint).parent/'latest.pt'
@@ -127,6 +135,9 @@ def evaluate(checkpoint,split='test',cases=None,output=None,allow_source_change=
 
 def train(config,output,initialize_from=None,resume=None,max_rounds=None):
     with run_lock(Path(output).resolve()):
+        if config.learner=='sac':
+            from .sac import train_sac
+            return train_sac(config,output,initialize_from,resume,max_rounds)
         return _train(config,output,initialize_from,resume,max_rounds)
 
 

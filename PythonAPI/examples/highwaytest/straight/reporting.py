@@ -154,7 +154,8 @@ def matrix(runs,output):
         state=load_state(path);cfg=configuration(state['config'])
         if state['source_sha256']!=identity:raise ValueError('Matrix checkpoint source mismatch: '+str(path))
         if not main_row(cfg.to_dict()):skipped_non_main.append(path.parent.name);continue
-        model=ActorCritic(cfg.hidden);model.load_state_dict(state['model'])
+        from .runner import model_from_state
+        model=model_from_state(state)
         report=evaluate_model(model,cfg,'selection',cfg.eval_cases)
         entries.append((cfg.level,cfg.method,cfg.seed,report['episodes']))
     for path in sorted(Path(runs).rglob('config.json')):
