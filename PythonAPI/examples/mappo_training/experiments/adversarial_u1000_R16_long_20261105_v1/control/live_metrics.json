@@ -1,0 +1,334 @@
+{
+  "actual_counters": {
+    "setup": 14896,
+    "total": 82762,
+    "train": 72585,
+    "train_decision": 59570,
+    "validation": 10177,
+    "validation_decision": 8296
+  },
+  "at": "2026-11-04T19:04:31.862436+00:00",
+  "completed_round": 31,
+  "evaluation_case_count": 144,
+  "optimization": {
+    "A": {
+      "approx_kl_2": [
+        3.002751327585429e-05,
+        0.00016248518659267575
+      ],
+      "approx_kl_3": [
+        1.2973399861948565e-05,
+        0.0002602070356563975
+      ],
+      "clip_frac_2": [
+        0.0,
+        0.0
+      ],
+      "clip_frac_3": [
+        0.0,
+        0.0
+      ],
+      "critic_loss": [
+        0.23737980549534163,
+        0.2391518565515677
+      ],
+      "explained_variance": 0.49243026971817017,
+      "gate_fraction_2": 0.0,
+      "gate_fraction_3": 0.0,
+      "grad_norm_actor_2": [
+        1.3198256492614746,
+        0.8628054360548655
+      ],
+      "grad_norm_actor_3": [
+        1.144585480292638,
+        1.3718745509783428
+      ],
+      "grad_norm_critic": [
+        1.1171709299087524,
+        0.7014625668525696,
+        0.6001312732696533,
+        0.5925796031951904,
+        0.4464370012283325,
+        0.7118198275566101,
+        1.3961085081100464,
+        0.3990955650806427,
+        0.5844893455505371,
+        0.780921459197998,
+        0.39839816093444824,
+        0.8567702174186707,
+        0.3061618506908417,
+        0.663375735282898,
+        0.4168672263622284,
+        0.3566008508205414,
+        0.42338037490844727,
+        0.32895994186401367,
+        1.8397234678268433,
+        0.48595181107521057,
+        0.40694573521614075,
+        0.5721346139907837,
+        0.3461580276489258,
+        0.6489523649215698
+      ],
+      "mutual_gated_kl_2": 0.0,
+      "mutual_gated_kl_3": 0.0,
+      "preupdate_ratio_errors": {
+        "2": 0.0,
+        "3": 0.0
+      }
+    },
+    "B": {
+      "approx_kl_2": [
+        0.00010196008370257914,
+        0.0008773445151746273
+      ],
+      "approx_kl_3": [
+        4.293137802354371e-05,
+        0.0007687089964747429
+      ],
+      "clip_frac_2": [
+        0.0,
+        0.005825242772698402
+      ],
+      "clip_frac_3": [
+        0.0,
+        0.0
+      ],
+      "critic_loss": [
+        0.24583330073139883,
+        0.23958461393009534
+      ],
+      "explained_variance": 0.527739942073822,
+      "gate_fraction_2": 0.0,
+      "gate_fraction_3": 0.0,
+      "grad_norm_actor_2": [
+        1.7001344561576843,
+        0.9380752801895141
+      ],
+      "grad_norm_actor_3": [
+        1.0225570301214855,
+        0.9917890379826227
+      ],
+      "grad_norm_critic": [
+        1.3885666131973267,
+        1.8053209781646729,
+        1.2743345499038696,
+        0.8118128776550293,
+        0.37490546703338623,
+        1.4451920986175537,
+        0.8827973008155823,
+        0.9133979082107544,
+        1.1854180097579956,
+        0.785812497138977,
+        1.6099997758865356,
+        1.1385703086853027,
+        0.288920134305954,
+        1.1439106464385986,
+        0.5122603178024292,
+        0.28172188997268677,
+        0.30785077810287476,
+        0.3401247560977936,
+        0.500602662563324,
+        0.7741610407829285,
+        0.2531519830226898,
+        1.6643112897872925
+      ],
+      "mutual_gated_kl_2": 0.0,
+      "mutual_gated_kl_3": 0.0,
+      "preupdate_ratio_errors": {
+        "2": 0.0,
+        "3": 0.0
+      }
+    }
+  },
+  "pipeline": {
+    "analysis_error": "the registered pipeline has not completed",
+    "at": "2026-11-04T18:53:22.043382+00:00",
+    "completed_stages": [
+      "train_024000",
+      "frozen_000000",
+      "frozen_024000",
+      "train_048000",
+      "frozen_048000",
+      "train_072000",
+      "frozen_072000"
+    ],
+    "early_stopped": false,
+    "ended_at": "2026-11-04T19:04:31.856352+00:00",
+    "evaluation_output": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\evaluations\\frozen_072000",
+    "pipeline_uuid": "3ab95840999541ef8fa1f2943914c6bc",
+    "server_closed": true,
+    "stage": "frozen_072000",
+    "stage_log": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\control\\frozen_072000.log",
+    "stage_pid": null,
+    "started_at": "2026-11-04T17:01:06.819301+00:00",
+    "status": "COMPLETED",
+    "worker_pid": 32956
+  },
+  "rolling_12_rounds": {
+    "A": {
+      "b": 0.5104166666666666,
+      "n_episodes": 192,
+      "red_success_rate": 0.546875,
+      "safe_critical_event": 0.22916666666666666
+    },
+    "B": {
+      "b": 0.5,
+      "n_episodes": 192,
+      "red_success_rate": 0.5208333333333334,
+      "safe_critical_event": 0.2864583333333333
+    }
+  },
+  "source": "completed A+B training boundaries; stochastic training is not frozen evaluation",
+  "training_window": {
+    "A": {
+      "agents": {
+        "0": {
+          "brake_mode_rate": 0.04510547692718687,
+          "mean_completion": 0.6660392822672797,
+          "mean_speed_mps": 4.0552251690027665
+        },
+        "1": {
+          "brake_mode_rate": 0.09849592412869701,
+          "mean_completion": 0.6184330121469812,
+          "mean_speed_mps": 3.038550758078401
+        },
+        "2": {
+          "brake_mode_rate": 0.2235089501373013,
+          "mean_completion": 0.6339512466369857,
+          "mean_speed_mps": 3.637052909490841
+        },
+        "3": {
+          "brake_mode_rate": 0.2117210557527108,
+          "mean_completion": 0.5631180383270764,
+          "mean_speed_mps": 3.499340384704796
+        }
+      },
+      "b": 0.375,
+      "critical_exposure_s": 0.5725029531280833,
+      "critical_tet_s": 1.03125,
+      "critical_tit_s": 0.8431974343174983,
+      "max_abs_reward_residual": 0.0,
+      "n": 16,
+      "q": 0.125,
+      "red_success_rate": 0.5625,
+      "reward_components_mean": {
+        "attack": -0.023157361081937798,
+        "comfort": -0.7502422236473181,
+        "completed_task_tail": -0.29596561880447064,
+        "critical": 0.8587544296921249,
+        "driving": 0.6231594249073528,
+        "normal_comfort": -3.0009688945892723,
+        "normal_lane": -4.454254743099222,
+        "normal_overspeed": -1.1446911135300692,
+        "pace": -0.10228564447363486,
+        "primary_event_bonus": 2.1875,
+        "risk": -0.13553245938736536,
+        "safety_event": -18.75,
+        "severe": -0.5252204807089095
+      },
+      "safe_critical_event": 0.375,
+      "safe_efficiency_utility": -0.1912854438863358,
+      "scenario_coverage": {
+        "train_crossing_eastbound_front_left_r0l": 1,
+        "train_crossing_eastbound_front_left_r0r": 1,
+        "train_crossing_eastbound_front_right_r0l": 1,
+        "train_crossing_eastbound_front_right_r0r": 1,
+        "train_crossing_northbound_front_left_r0l": 1,
+        "train_crossing_northbound_front_left_r0r": 1,
+        "train_crossing_northbound_front_right_r0l": 1,
+        "train_crossing_northbound_front_right_r0r": 1,
+        "train_crossing_southbound_front_left_r0l": 0,
+        "train_crossing_southbound_front_left_r0r": 0,
+        "train_crossing_southbound_front_right_r0l": 0,
+        "train_crossing_southbound_front_right_r0r": 0,
+        "train_crossing_westbound_front_left_r0l": 0,
+        "train_crossing_westbound_front_left_r0r": 0,
+        "train_crossing_westbound_front_right_r0l": 0,
+        "train_crossing_westbound_front_right_r0r": 0,
+        "train_sequential_eastbound_front_both_r0l": 0,
+        "train_sequential_eastbound_front_both_r0r": 0,
+        "train_sequential_northbound_front_both_r0l": 0,
+        "train_sequential_northbound_front_both_r0r": 0,
+        "train_sequential_southbound_front_both_r0l": 2,
+        "train_sequential_southbound_front_both_r0r": 2,
+        "train_sequential_westbound_front_both_r0l": 2,
+        "train_sequential_westbound_front_both_r0r": 2
+      }
+    },
+    "B": {
+      "agents": {
+        "0": {
+          "brake_mode_rate": 0.06922847985347985,
+          "mean_completion": 0.6136168101977284,
+          "mean_speed_mps": 4.197555289129823
+        },
+        "1": {
+          "brake_mode_rate": 0.08390235800920506,
+          "mean_completion": 0.5142259797450234,
+          "mean_speed_mps": 3.11031940976398
+        },
+        "2": {
+          "brake_mode_rate": 0.21620775018679103,
+          "mean_completion": 0.5269433601853426,
+          "mean_speed_mps": 3.593300597342922
+        },
+        "3": {
+          "brake_mode_rate": 0.27946505326891197,
+          "mean_completion": 0.44723347831714305,
+          "mean_speed_mps": 2.6731283142921463
+        }
+      },
+      "b": 0.6875,
+      "critical_exposure_s": 0.4137428308860604,
+      "critical_tet_s": 0.9500000000000001,
+      "critical_tit_s": 0.8099979793996179,
+      "max_abs_reward_residual": 0.0,
+      "n": 16,
+      "q": 0.0625,
+      "red_success_rate": 0.375,
+      "reward_components_mean": {
+        "attack": -0.016262147435322272,
+        "comfort": -0.7093755622996456,
+        "completed_task_tail": -0.2403250986771696,
+        "critical": 0.6206142463290907,
+        "driving": 0.5003123701315755,
+        "normal_comfort": -2.8375022491985824,
+        "normal_lane": -3.272671380024865,
+        "normal_overspeed": -0.5366152816419211,
+        "pace": -0.1288652273555402,
+        "primary_event_bonus": 1.5625,
+        "risk": -0.06613104378157142,
+        "safety_event": -34.375,
+        "severe": -0.5441613299874898
+      },
+      "safe_critical_event": 0.125,
+      "safe_efficiency_utility": -0.15492434611240738,
+      "scenario_coverage": {
+        "train_crossing_eastbound_front_left_r0l": 1,
+        "train_crossing_eastbound_front_left_r0r": 1,
+        "train_crossing_eastbound_front_right_r0l": 1,
+        "train_crossing_eastbound_front_right_r0r": 1,
+        "train_crossing_northbound_front_left_r0l": 1,
+        "train_crossing_northbound_front_left_r0r": 1,
+        "train_crossing_northbound_front_right_r0l": 1,
+        "train_crossing_northbound_front_right_r0r": 1,
+        "train_crossing_southbound_front_left_r0l": 0,
+        "train_crossing_southbound_front_left_r0r": 0,
+        "train_crossing_southbound_front_right_r0l": 0,
+        "train_crossing_southbound_front_right_r0r": 0,
+        "train_crossing_westbound_front_left_r0l": 0,
+        "train_crossing_westbound_front_left_r0r": 0,
+        "train_crossing_westbound_front_right_r0l": 0,
+        "train_crossing_westbound_front_right_r0r": 0,
+        "train_sequential_eastbound_front_both_r0l": 0,
+        "train_sequential_eastbound_front_both_r0r": 0,
+        "train_sequential_northbound_front_both_r0l": 0,
+        "train_sequential_northbound_front_both_r0r": 0,
+        "train_sequential_southbound_front_both_r0l": 2,
+        "train_sequential_southbound_front_both_r0r": 2,
+        "train_sequential_westbound_front_both_r0l": 2,
+        "train_sequential_westbound_front_both_r0r": 2
+      }
+    }
+  }
+}

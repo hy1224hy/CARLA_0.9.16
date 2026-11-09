@@ -1,0 +1,2138 @@
+{
+  "unique_tags": 89,
+  "run_tag_counts": {
+    "frozen/A": 50,
+    "frozen/B": 48,
+    "training/A": 52,
+    "training/B": 52
+  },
+  "entries": [
+    {
+      "tag": "critical/censored_event_rate",
+      "meaning": "至少一个危险事件因回合结束、退场或缺少后续样本，无法判定接触/解除的案例比例。",
+      "unit": "比例0~1",
+      "note": "观察截断不是安全解除，且可与同一案例其他已解除事件并存。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.125,
+          "last_value": 0.0416666679084301
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.125,
+          "last_value": 0.0416666679084301
+        }
+      }
+    },
+    {
+      "tag": "critical/legacy_event_qualified_rate",
+      "meaning": "旧口径危险事件H与蓝方事件资格G同时成立的案例比例。",
+      "unit": "比例0~1",
+      "note": "旧H含几何重叠/TTC=0或持续低TTC；不含完整驾驶质量要求，不等于新联合率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.3333333432674408,
+          "last_value": 0.0833333358168602
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.3333333432674408,
+          "last_value": 0.4166666567325592
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.25,
+          "last_value": 0.375
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.3125,
+          "last_value": 0.125
+        }
+      }
+    },
+    {
+      "tag": "critical/legacy_raw_event_rate",
+      "meaning": "旧口径危险事件H出现比例；H含任意红蓝几何重叠或TTC<=1.5s持续>=.3s。",
+      "unit": "比例0~1",
+      "note": "不筛选蓝方资格，碰撞也可能计入，不能单独当安全攻击成绩。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.75,
+          "last_value": 0.75
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.8125,
+          "last_value": 0.6875
+        }
+      }
+    },
+    {
+      "tag": "critical/observed_resolved_event_rate",
+      "meaning": "至少一个上述危险事件随后被观测到无接触解除的案例比例：该配对TTC>1.5s或不预测碰撞连续>=.3s。",
+      "unit": "比例0~1",
+      "note": "局部解除不代表整个回合没有其他事故；事件后失去观察不算解除。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.2916666567325592,
+          "last_value": 0.0833333358168602
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.2916666567325592,
+          "last_value": 0.375
+        }
+      }
+    },
+    {
+      "tag": "critical/precontact_predicted_conflict_rate",
+      "meaning": "同一红蓝配对在首次物理/几何接触前，0<TTC<=1.5s连续>=.3s的事件出现比例。",
+      "unit": "比例0~1",
+      "note": "只描述危险出现，不保证蓝方合格；不是碰撞率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.75,
+          "last_value": 0.2083333283662796
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.75,
+          "last_value": 0.6666666865348816
+        }
+      }
+    },
+    {
+      "tag": "critical/precontact_tet_s",
+      "meaning": "各案例接触前0<TTC<=1.5s的时间并集长度，随后取案例均值；同一步多配对不重复累计。",
+      "unit": "秒",
+      "note": "包含未达到持续.3s事件门槛的短采样；越大表示暴露更久，不自动更好。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.9708333611488342,
+          "last_value": 0.18333333730697632
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.9708333611488342,
+          "last_value": 0.7124999761581421
+        }
+      }
+    },
+    {
+      "tag": "critical/precontact_ttc_deficit_s2",
+      "meaning": "接触前低TTC缺口积分：sum_t(1.5-min_positive_TTC_t)*.1，再取案例均值。",
+      "unit": "秒²",
+      "note": "是线性TTC缺口积分，不是1/TTC积分；同一步使用最危险有效配对。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.8020144104957581,
+          "last_value": 0.11300449073314667
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.8020117878913879,
+          "last_value": 0.5316359996795654
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/above_preferred_speed_fraction_episode_mean",
+      "meaning": "各回合活跃实测速度>4.1667m/s的比例，再取回合均值。",
+      "unit": "比例0~1",
+      "note": "每例门槛<=.05；前方阻挡不豁免此安全项。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.6818643808364868,
+          "last_value": 0.5308961272239685
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.6818643808364868,
+          "last_value": 0.5548328161239624
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.6104873418807983,
+          "last_value": 0.4288255572319031
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.598185122013092,
+          "last_value": 0.4254339337348938
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/actual_steer_rate_p95_per_second_episode_mean",
+      "meaning": "每回合实际VehicleControl的abs(steer_t-steer_prev)/.1的P95，再取回合均值。",
+      "unit": "归一化steer/秒",
+      "note": "不是方向盘角速度。每例门槛<=1.5；随机训练和确定性评估口径不同。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 3.221204996109009,
+          "last_value": 3.058955669403076
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 3.2212038040161133,
+          "last_value": 2.6346256732940674
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 14.938542366027832,
+          "last_value": 14.428617477416992
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 14.496463775634766,
+          "last_value": 14.123733520507812
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/failed_checks_overlapping/actual_steering_rate",
+      "meaning": "不满足以下条件的案例比例：实际转向变化率P95<=1.5/秒。",
+      "unit": "比例0~1",
+      "note": "使用实际控制读取，不是策略均值动作；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.8333333134651184,
+          "last_value": 0.8333333134651184
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.8333333134651184,
+          "last_value": 0.8333333134651184
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/failed_checks_overlapping/cruise_rate",
+      "meaning": "不满足以下条件的案例比例：有效巡航样本>=5，偏好速度范围内占比>=80%。",
+      "unit": "比例0~1",
+      "note": "样本不足为未知，不是失败；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.9583333134651184,
+          "last_value": 0.875
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.9583333134651184,
+          "last_value": 0.8333333134651184
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/failed_checks_overlapping/lane_p95_rate",
+      "meaning": "不满足以下条件的案例比例：道路参考车道偏离P95<=.6米。",
+      "unit": "比例0~1",
+      "note": "仅排除已记录合法变道过渡豁免；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.8333333134651184,
+          "last_value": 0.7916666865348816
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.8333333134651184,
+          "last_value": 0.5416666865348816
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/failed_checks_overlapping/lane_peak_rate",
+      "meaning": "不满足以下条件的案例比例：道路参考车道偏离最大值<=1.2米。",
+      "unit": "比例0~1",
+      "note": "仅排除已记录合法变道过渡豁免；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.125,
+          "last_value": 0.375
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.125,
+          "last_value": 0.4583333432674408
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/failed_checks_overlapping/overspeed_rate",
+      "meaning": "不满足以下条件的案例比例：活跃采样中超过4.1667m/s的比例<=5%。",
+      "unit": "比例0~1",
+      "note": "失败率越低越好；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.9583333134651184,
+          "last_value": 0.875
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.9583333134651184,
+          "last_value": 0.875
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/failed_checks_overlapping/peak_speed_rate",
+      "meaning": "不满足以下条件的案例比例：峰值速度<=8.3333m/s，约30km/h。",
+      "unit": "比例0~1",
+      "note": "失败率越低越好；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 1,
+          "first_step": 0,
+          "last_step": 0,
+          "first_value": 0.1666666716337204,
+          "last_value": 0.1666666716337204
+        },
+        "frozen/B": {
+          "points": 3,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.1666666716337204,
+          "last_value": 0.0416666679084301
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/failed_checks_overlapping/unblocked_low_speed_rate",
+      "meaning": "不满足以下条件的案例比例：有效无阻挡巡航采样中速度<.2m/s比例<=5%。",
+      "unit": "比例0~1",
+      "note": "无有效采样可为未知；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0833333358168602,
+          "last_value": 0.125
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0833333358168602,
+          "last_value": 0.0416666679084301
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/failed_checks_overlapping/unblocked_stall_rate",
+      "meaning": "不满足以下条件的案例比例：无阻挡低速连续时间<=1秒。",
+      "unit": "比例0~1",
+      "note": "失败率越低越好；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 1,
+          "first_step": 48119,
+          "last_step": 48119,
+          "first_value": 0.0416666679084301,
+          "last_value": 0.0416666679084301
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/mean_speed_mps_episode_mean",
+      "meaning": "先计算各回合该蓝车活跃时实际平均速度，再取回合均值。",
+      "unit": "米/秒",
+      "note": "不是越大越好，偏好速度2~4.1667m/s。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 5.086409568786621,
+          "last_value": 4.134468078613281
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 5.086397171020508,
+          "last_value": 4.280143737792969
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 4.541147708892822,
+          "last_value": 3.6370530128479004
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 4.255423069000244,
+          "last_value": 3.5933005809783936
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/preferred_speed_fraction_episode_mean",
+      "meaning": "各回合有效巡航样本中2~4.1667m/s占比，再取有效回合均值。",
+      "unit": "比例0~1",
+      "note": "巡航排除前2s、距目标<=5m和前方阻挡；每例>=.8且样本>=5。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.10516990721225739,
+          "last_value": 0.21346965432167053
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.10516990721225739,
+          "last_value": 0.2093011438846588
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.09020430594682693,
+          "last_value": 0.25047191977500916
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.21232405304908752,
+          "last_value": 0.28336554765701294
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/reference_lateral_p95_m_episode_mean",
+      "meaning": "每回合相对道路参考车道横向距离绝对值P95，再取回合均值。",
+      "unit": "米",
+      "note": "不是所有帧合并P95；此描述测量未重新排除合法变道豁免，资格看lane_p95失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.8898433446884155,
+          "last_value": 0.983460009098053
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.8898417949676514,
+          "last_value": 0.93574458360672
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.9278610348701477,
+          "last_value": 0.8841924667358398
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 1.086998462677002,
+          "last_value": 0.8959723114967346
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/unblocked_low_speed_fraction_episode_mean",
+      "meaning": "各回合有效无阻挡巡航样本中速度<.2m/s的占比，再取有效回合均值。",
+      "unit": "比例0~1",
+      "note": "每例<=.05；无有效测量不补0。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.020019005984067917,
+          "last_value": 0.029131652787327766
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.0,
+          "last_value": 0.06904762238264084
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/unknown_checks/cruise_rate",
+      "meaning": "该项无法确定通过/失败的案例比例。条件为：有效巡航样本>=5，偏好速度范围内占比>=80%。",
+      "unit": "比例0~1",
+      "note": "缺失测量/无测量机会；不应当作合格，也不直接填作不合格。",
+      "runs": {
+        "frozen/A": {
+          "points": 1,
+          "first_step": 48119,
+          "last_step": 48119,
+          "first_value": 0.0416666679084301,
+          "last_value": 0.0416666679084301
+        },
+        "frozen/B": {
+          "points": 2,
+          "first_step": 24431,
+          "last_step": 72585,
+          "first_value": 0.0416666679084301,
+          "last_value": 0.0833333358168602
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_2/unknown_checks/unblocked_low_speed_rate",
+      "meaning": "该项无法确定通过/失败的案例比例。条件为：有效无阻挡巡航采样中速度<.2m/s比例<=5%。",
+      "unit": "比例0~1",
+      "note": "缺失测量/无测量机会；不应当作合格，也不直接填作不合格。",
+      "runs": {
+        "frozen/A": {
+          "points": 1,
+          "first_step": 48119,
+          "last_step": 48119,
+          "first_value": 0.0416666679084301,
+          "last_value": 0.0416666679084301
+        },
+        "frozen/B": {
+          "points": 2,
+          "first_step": 24431,
+          "last_step": 72585,
+          "first_value": 0.0416666679084301,
+          "last_value": 0.0833333358168602
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/above_preferred_speed_fraction_episode_mean",
+      "meaning": "各回合活跃实测速度>4.1667m/s的比例，再取回合均值。",
+      "unit": "比例0~1",
+      "note": "每例门槛<=.05；前方阻挡不豁免此安全项。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.45633071660995483,
+          "last_value": 0.5568985939025879
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.45633071660995483,
+          "last_value": 0.4629516899585724
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.26404571533203125,
+          "last_value": 0.42725956439971924
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.2905798554420471,
+          "last_value": 0.2220344990491867
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/actual_steer_rate_p95_per_second_episode_mean",
+      "meaning": "每回合实际VehicleControl的abs(steer_t-steer_prev)/.1的P95，再取回合均值。",
+      "unit": "归一化steer/秒",
+      "note": "不是方向盘角速度。每例门槛<=1.5；随机训练和确定性评估口径不同。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 4.636028289794922,
+          "last_value": 3.4887843132019043
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 4.6360039710998535,
+          "last_value": 4.442523956298828
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 13.732306480407715,
+          "last_value": 13.357397079467773
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 13.959301948547363,
+          "last_value": 13.90382194519043
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/failed_checks_overlapping/actual_steering_rate",
+      "meaning": "不满足以下条件的案例比例：实际转向变化率P95<=1.5/秒。",
+      "unit": "比例0~1",
+      "note": "使用实际控制读取，不是策略均值动作；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.875,
+          "last_value": 0.625
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.875,
+          "last_value": 0.875
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/failed_checks_overlapping/cruise_rate",
+      "meaning": "不满足以下条件的案例比例：有效巡航样本>=5，偏好速度范围内占比>=80%。",
+      "unit": "比例0~1",
+      "note": "样本不足为未知，不是失败；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.6666666865348816,
+          "last_value": 0.5833333134651184
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.6666666865348816,
+          "last_value": 0.7083333134651184
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/failed_checks_overlapping/lane_p95_rate",
+      "meaning": "不满足以下条件的案例比例：道路参考车道偏离P95<=.6米。",
+      "unit": "比例0~1",
+      "note": "仅排除已记录合法变道过渡豁免；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.7916666865348816,
+          "last_value": 0.8333333134651184
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.7916666865348816,
+          "last_value": 0.6666666865348816
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/failed_checks_overlapping/lane_peak_rate",
+      "meaning": "不满足以下条件的案例比例：道路参考车道偏离最大值<=1.2米。",
+      "unit": "比例0~1",
+      "note": "仅排除已记录合法变道过渡豁免；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.5416666865348816,
+          "last_value": 0.4166666567325592
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.5416666865348816,
+          "last_value": 0.4583333432674408
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/failed_checks_overlapping/overspeed_rate",
+      "meaning": "不满足以下条件的案例比例：活跃采样中超过4.1667m/s的比例<=5%。",
+      "unit": "比例0~1",
+      "note": "失败率越低越好；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.7916666865348816,
+          "last_value": 0.8333333134651184
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.7916666865348816,
+          "last_value": 0.7916666865348816
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/failed_checks_overlapping/peak_speed_rate",
+      "meaning": "不满足以下条件的案例比例：峰值速度<=8.3333m/s，约30km/h。",
+      "unit": "比例0~1",
+      "note": "失败率越低越好；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 2,
+          "first_step": 48119,
+          "last_step": 72585,
+          "first_value": 0.4583333432674408,
+          "last_value": 0.2083333283662796
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/failed_checks_overlapping/unblocked_low_speed_rate",
+      "meaning": "不满足以下条件的案例比例：有效无阻挡巡航采样中速度<.2m/s比例<=5%。",
+      "unit": "比例0~1",
+      "note": "无有效采样可为未知；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 1,
+          "first_step": 0,
+          "last_step": 0,
+          "first_value": 0.125,
+          "last_value": 0.125
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.125,
+          "last_value": 0.1666666716337204
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/failed_checks_overlapping/unblocked_stall_rate",
+      "meaning": "不满足以下条件的案例比例：无阻挡低速连续时间<=1秒。",
+      "unit": "比例0~1",
+      "note": "失败率越低越好；各检查可重叠，不能相加当回合失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 1,
+          "first_step": 0,
+          "last_step": 0,
+          "first_value": 0.125,
+          "last_value": 0.125
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.125,
+          "last_value": 0.1666666716337204
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/mean_speed_mps_episode_mean",
+      "meaning": "先计算各回合该蓝车活跃时实际平均速度，再取回合均值。",
+      "unit": "米/秒",
+      "note": "不是越大越好，偏好速度2~4.1667m/s。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 3.6863300800323486,
+          "last_value": 4.528344631195068
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 3.686328411102295,
+          "last_value": 3.750849962234497
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 2.7499988079071045,
+          "last_value": 3.499340295791626
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 2.809199810028076,
+          "last_value": 2.673128366470337
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/preferred_speed_fraction_episode_mean",
+      "meaning": "各回合有效巡航样本中2~4.1667m/s占比，再取有效回合均值。",
+      "unit": "比例0~1",
+      "note": "巡航排除前2s、距目标<=5m和前方阻挡；每例>=.8且样本>=5。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.1931518018245697,
+          "last_value": 0.16649466753005981
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.1931518018245697,
+          "last_value": 0.2505704164505005
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.3757387101650238,
+          "last_value": 0.14683975279331207
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.27694469690322876,
+          "last_value": 0.3662782609462738
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/reference_lateral_p95_m_episode_mean",
+      "meaning": "每回合相对道路参考车道横向距离绝对值P95，再取回合均值。",
+      "unit": "米",
+      "note": "不是所有帧合并P95；此描述测量未重新排除合法变道豁免，资格看lane_p95失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 1.0318950414657593,
+          "last_value": 0.9695892333984375
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 1.0318936109542847,
+          "last_value": 0.9992882609367371
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.848511815071106,
+          "last_value": 0.9383687973022461
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.7587354779243469,
+          "last_value": 0.7435846328735352
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/unblocked_low_speed_fraction_episode_mean",
+      "meaning": "各回合有效无阻挡巡航样本中速度<.2m/s的占比，再取有效回合均值。",
+      "unit": "比例0~1",
+      "note": "每例<=.05；无有效测量不补0。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.14836691319942474,
+          "last_value": 0.08620836585760117
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.26730769872665405,
+          "last_value": 0.18203039467334747
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/unknown_checks/cruise_rate",
+      "meaning": "该项无法确定通过/失败的案例比例。条件为：有效巡航样本>=5，偏好速度范围内占比>=80%。",
+      "unit": "比例0~1",
+      "note": "缺失测量/无测量机会；不应当作合格，也不直接填作不合格。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.3333333432674408,
+          "last_value": 0.3333333432674408
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.3333333432674408,
+          "last_value": 0.25
+        }
+      }
+    },
+    {
+      "tag": "driving/blue_3/unknown_checks/unblocked_low_speed_rate",
+      "meaning": "该项无法确定通过/失败的案例比例。条件为：有效无阻挡巡航采样中速度<.2m/s比例<=5%。",
+      "unit": "比例0~1",
+      "note": "缺失测量/无测量机会；不应当作合格，也不直接填作不合格。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.2916666567325592,
+          "last_value": 0.25
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.2916666567325592,
+          "last_value": 0.2083333283662796
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_2/actor_loss_logged_mean",
+      "meaning": "本轮B0 Actor损失=surrogate_loss-.01*post_tanh_entropy；无互学习/anchor辅助项。",
+      "unit": "损失单位",
+      "note": "不能当回报，正负都可能；不要求逐轮单调下降或趋0。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.05675935745239258,
+          "last_value": -0.013070039451122284
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.006845432333648205,
+          "last_value": -0.005617653485387564
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_2/approx_kl_logged_mean",
+      "meaning": "近似KL：均值[(ratio-1)-log(ratio)]，ratio=exp(new_logp-old_logp)。",
+      "unit": "无量纲",
+      "note": "日志小批次/epoch均值；不是整批更新后精确KL。小不等于收敛。target_kl=.02。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.009413552470505238,
+          "last_value": 9.625634993426502e-05
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.016090281307697296,
+          "last_value": 0.0004896522732451558
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_2/clip_frac_logged_mean",
+      "meaning": "abs(ratio-1)>.15的样本占比，按日志均值导出。",
+      "unit": "比例0~1",
+      "note": "表示概率比超出裁剪区间，不是梯度被截断比例；大/小均不能单独判成功。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.2591145932674408,
+          "last_value": 0.0
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.3017241358757019,
+          "last_value": 0.0029126214794814587
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_2/deterministic_longitudinal_mean_logged_mean",
+      "meaning": "在更新小批次观测上，对确定性动作tanh(mu)的纵向分量取均值。",
+      "unit": "[-1,1]",
+      "note": "正值偏向驱动，负值偏向制动；经动作映射才成为油门/刹车，不是速度。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.4744473099708557,
+          "last_value": 0.3862787187099457
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.501460075378418,
+          "last_value": 0.42148202657699585
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_2/deterministic_steer_mean_logged_mean",
+      "meaning": "在更新小批次观测上，对确定性动作tanh(mu)的转向分量取均值。",
+      "unit": "[-1,1]",
+      "note": "有正负抵消；均值近0不能证明转向平稳，且不是实际随机执行控制均值。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.029221979901194572,
+          "last_value": 0.0011220296146348119
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.01653914339840412,
+          "last_value": 0.018307259306311607
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_2/entropy_bonus_logged_mean",
+      "meaning": "熵奖励项=.01*post_tanh_entropy；从Actor损失中减去。",
+      "unit": "损失单位",
+      "note": "不是环境奖励，不包含在team_discounted_return中。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.005658664740622044,
+          "last_value": 0.007388794794678688
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.005763081833720207,
+          "last_value": 0.006827629636973143
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_2/grad_norm_actor_logged_mean",
+      "meaning": "Actor反向传播后、全局范数裁剪前的梯度L2范数。",
+      "unit": "梯度范数",
+      "note": "clip_grad_norm_返回裁剪前值，所以超过.5不代表裁剪失效。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.9331164360046387,
+          "last_value": 1.091315507888794
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 2.2295312881469727,
+          "last_value": 1.3191049098968506
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_2/post_tanh_entropy_logged_mean",
+      "meaning": "tanh压缩后的连续动作分布微分熵，当前策略重新采样估计。",
+      "unit": "nats",
+      "note": "不是旧样本交叉熵；可以为负。大通常更随机，不一定更好。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.5658664703369141,
+          "last_value": 0.7388795018196106
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.5763081908226013,
+          "last_value": 0.6827629804611206
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_2/surrogate_loss_logged_mean",
+      "meaning": "PPO裁剪代理损失：-mean[min(ratio*A,clip(ratio,.85,1.15)*A)]，A已按角色批次标准化。",
+      "unit": "损失单位",
+      "note": "不是负环境回报；接近0可能来自优势标准化，不能判学好。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.062418028712272644,
+          "last_value": -0.005681244656443596
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.012608513236045837,
+          "last_value": 0.0012099765008315444
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_3/actor_loss_logged_mean",
+      "meaning": "本轮B0 Actor损失=surrogate_loss-.01*post_tanh_entropy；无互学习/anchor辅助项。",
+      "unit": "损失单位",
+      "note": "不能当回报，正负都可能；不要求逐轮单调下降或趋0。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.009436906315386295,
+          "last_value": -0.006291606463491917
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.0037898931186646223,
+          "last_value": -0.026187380775809288
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_3/approx_kl_logged_mean",
+      "meaning": "近似KL：均值[(ratio-1)-log(ratio)]，ratio=exp(new_logp-old_logp)。",
+      "unit": "无量纲",
+      "note": "日志小批次/epoch均值；不是整批更新后精确KL。小不等于收敛。target_kl=.02。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.005580340977758169,
+          "last_value": 0.00013659021351486444
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.008591176941990852,
+          "last_value": 0.00040582017390988767
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_3/clip_frac_logged_mean",
+      "meaning": "abs(ratio-1)>.15的样本占比，按日志均值导出。",
+      "unit": "比例0~1",
+      "note": "表示概率比超出裁剪区间，不是梯度被截断比例；大/小均不能单独判成功。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.14395558834075928,
+          "last_value": 0.0
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.2330729216337204,
+          "last_value": 0.0
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_3/deterministic_longitudinal_mean_logged_mean",
+      "meaning": "在更新小批次观测上，对确定性动作tanh(mu)的纵向分量取均值。",
+      "unit": "[-1,1]",
+      "note": "正值偏向驱动，负值偏向制动；经动作映射才成为油门/刹车，不是速度。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.32821184396743774,
+          "last_value": 0.42447173595428467
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.3161104619503021,
+          "last_value": 0.32992106676101685
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_3/deterministic_steer_mean_logged_mean",
+      "meaning": "在更新小批次观测上，对确定性动作tanh(mu)的转向分量取均值。",
+      "unit": "[-1,1]",
+      "note": "有正负抵消；均值近0不能证明转向平稳，且不是实际随机执行控制均值。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.03656590357422829,
+          "last_value": 0.02934831567108631
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.038590457290410995,
+          "last_value": 0.05232895910739899
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_3/entropy_bonus_logged_mean",
+      "meaning": "熵奖励项=.01*post_tanh_entropy；从Actor损失中减去。",
+      "unit": "损失单位",
+      "note": "不是环境奖励，不包含在team_discounted_return中。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.007900062017142773,
+          "last_value": 0.007828130386769772
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.007618171162903309,
+          "last_value": 0.00816122442483902
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_3/grad_norm_actor_logged_mean",
+      "meaning": "Actor反向传播后、全局范数裁剪前的梯度L2范数。",
+      "unit": "梯度范数",
+      "note": "clip_grad_norm_返回裁剪前值，所以超过.5不代表裁剪失效。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 1.133590817451477,
+          "last_value": 1.2582299709320068
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 1.999550461769104,
+          "last_value": 1.0071730613708496
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_3/post_tanh_entropy_logged_mean",
+      "meaning": "tanh压缩后的连续动作分布微分熵，当前策略重新采样估计。",
+      "unit": "nats",
+      "note": "不是旧样本交叉熵；可以为负。大通常更随机，不一定更好。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.7900062203407288,
+          "last_value": 0.7828130125999451
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.7618171572685242,
+          "last_value": 0.8161224722862244
+        }
+      }
+    },
+    {
+      "tag": "ppo/blue_3/surrogate_loss_logged_mean",
+      "meaning": "PPO裁剪代理损失：-mean[min(ratio*A,clip(ratio,.85,1.15)*A)]，A已按角色批次标准化。",
+      "unit": "损失单位",
+      "note": "不是负环境回报；接近0可能来自优势标准化，不能判学好。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.0015368444146588445,
+          "last_value": 0.0015365247381851077
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.0038282780442386866,
+          "last_value": -0.018026156350970268
+        }
+      }
+    },
+    {
+      "tag": "quality/full_driving_and_resolved",
+      "meaning": "同一案例中D通过且至少一段红蓝险情被观测到局部无接触解除的联合比例。",
+      "unit": "比例0~1",
+      "note": "逐案例求交集后计数，不是两个总体比例相乘，也不是以有险情案例为分母。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0,
+          "last_value": 0.0
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0,
+          "last_value": 0.0
+        }
+      }
+    },
+    {
+      "tag": "quality/full_driving_rate",
+      "meaning": "事件资格G与蓝2/3所有已注册驾驶检查同时通过的案例比例D。",
+      "unit": "比例0~1",
+      "note": "不额外要求到达；任一检查明确失败则该例失败，信息不足且无明确失败则未知。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0,
+          "last_value": 0.0
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0,
+          "last_value": 0.0
+        }
+      }
+    },
+    {
+      "tag": "red/both_reached_rate",
+      "meaning": "红0和红1都到达目标的案例比例。",
+      "unit": "比例0~1",
+      "note": "降低不必然是蓝方有效攻击；需结合C1、蓝方质量和红方自然失败。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.375,
+          "last_value": 0.6666666865348816
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.375,
+          "last_value": 0.625
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.4375,
+          "last_value": 0.5625
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.5625,
+          "last_value": 0.375
+        }
+      }
+    },
+    {
+      "tag": "reference_C1/censored_event_rate",
+      "meaning": "普通冻结蓝车C1参考：至少一个危险事件因回合结束、退场或缺少后续样本，无法判定接触/解除的案例比例。",
+      "unit": "比例0~1",
+      "note": "观察截断不是安全解除，且可与同一案例其他已解除事件并存。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0833333358168602,
+          "last_value": 0.0833333358168602
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0833333358168602,
+          "last_value": 0.0833333358168602
+        }
+      }
+    },
+    {
+      "tag": "reference_C1/observed_resolved_event_rate",
+      "meaning": "普通冻结蓝车C1参考：至少一个上述危险事件随后被观测到无接触解除的案例比例：该配对TTC>1.5s或不预测碰撞连续>=.3s。",
+      "unit": "比例0~1",
+      "note": "局部解除不代表整个回合没有其他事故；事件后失去观察不算解除。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.4583333432674408,
+          "last_value": 0.4583333432674408
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.4583333432674408,
+          "last_value": 0.4583333432674408
+        }
+      }
+    },
+    {
+      "tag": "reference_C1/precontact_predicted_conflict_rate",
+      "meaning": "普通冻结蓝车C1参考：同一红蓝配对在首次物理/几何接触前，0<TTC<=1.5s连续>=.3s的事件出现比例。",
+      "unit": "比例0~1",
+      "note": "只描述危险出现，不保证蓝方合格；不是碰撞率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.9583333134651184,
+          "last_value": 0.9583333134651184
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.9583333134651184,
+          "last_value": 0.9583333134651184
+        }
+      }
+    },
+    {
+      "tag": "reference_C1/precontact_tet_s",
+      "meaning": "普通冻结蓝车C1参考：各案例接触前0<TTC<=1.5s的时间并集长度，随后取案例均值；同一步多配对不重复累计。",
+      "unit": "秒",
+      "note": "包含未达到持续.3s事件门槛的短采样；越大表示暴露更久，不自动更好。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 1.4083333015441895,
+          "last_value": 1.399999976158142
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 1.4249999523162842,
+          "last_value": 1.4041666984558105
+        }
+      }
+    },
+    {
+      "tag": "reference_C1/precontact_ttc_deficit_s2",
+      "meaning": "普通冻结蓝车C1参考：接触前低TTC缺口积分：sum_t(1.5-min_positive_TTC_t)*.1，再取案例均值。",
+      "unit": "秒²",
+      "note": "是线性TTC缺口积分，不是1/TTC积分；同一步使用最危险有效配对。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 1.0664297342300415,
+          "last_value": 1.0529074668884277
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 1.0686346292495728,
+          "last_value": 1.058498501777649
+        }
+      }
+    },
+    {
+      "tag": "return/team_discounted_mean",
+      "meaning": "蓝方团队折扣回报：每回合sum(gamma^t × team_reward_t)，再取案例均值；gamma=.999。不是红蓝奖励之和。",
+      "unit": "奖励单位",
+      "note": "training每点16回合；frozen每点24回合。越高表示当前奖励改善，不保证对抗目标达成。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": -24.578767776489258,
+          "last_value": -16.9775333404541
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": -24.57874870300293,
+          "last_value": -16.32911491394043
+        },
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -30.403566360473633,
+          "last_value": -24.4374942779541
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -36.289180755615234,
+          "last_value": -38.77702331542969
+        }
+      }
+    },
+    {
+      "tag": "reward_component/attack",
+      "meaning": "红0/1进度相对C1参考进度的损失项，权重2；更慢通常正、更快可负。使用事件资格和启动宽限门控。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.02649030089378357,
+          "last_value": -0.023157361894845963
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.014824086800217628,
+          "last_value": -0.016262147575616837
+        }
+      }
+    },
+    {
+      "tag": "reward_component/comfort",
+      "meaning": "蓝车基础纵向与转向变化成本的负值，两蓝平均。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.7617184519767761,
+          "last_value": -0.7502422332763672
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.7317373752593994,
+          "last_value": -0.7093755602836609
+        }
+      }
+    },
+    {
+      "tag": "reward_component/completed_task_tail",
+      "meaning": "红车均已到达时，把已知完成状态在剩余任务时间内的C1进度差折扣尾项折入本步；不虚构后续动作。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.29873716831207275,
+          "last_value": -0.29596561193466187
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.2056341916322708,
+          "last_value": -0.24032509326934814
+        }
+      }
+    },
+    {
+      "tag": "reward_component/critical",
+      "meaning": "合法前进且位于红车前半区域的红蓝TTC危险带收益；取配对最大值，累计加权暴露上限3。任一严重配对抑制正收益。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.6809548139572144,
+          "last_value": 0.8587544560432434
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.562645435333252,
+          "last_value": 0.620614230632782
+        }
+      }
+    },
+    {
+      "tag": "reward_component/driving",
+      "meaning": "蓝2/3路线进度的势函数差平均，gamma*p_t-p_prev，权重1；不是原双车基础奖励整体。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.5995627045631409,
+          "last_value": 0.6231594085693359
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.53053879737854,
+          "last_value": 0.5003123879432678
+        }
+      }
+    },
+    {
+      "tag": "reward_component/normal_comfort",
+      "meaning": "R2在基础comfort之外追加的惩罚：额外4倍基础舒适性成本；与comfort合计为5倍。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -3.0468738079071045,
+          "last_value": -3.0009689331054688
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -2.9269495010375977,
+          "last_value": -2.8375022411346436
+        }
+      }
+    },
+    {
+      "tag": "reward_component/normal_lane",
+      "meaning": "R2追加参考车道偏离成本：10倍已有lane_deviation负项的幅度，两蓝平均；保留原合法豁免。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -2.3444411754608154,
+          "last_value": -4.454254627227783
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -3.6593639850616455,
+          "last_value": -3.2726714611053467
+        }
+      }
+    },
+    {
+      "tag": "reward_component/normal_overspeed",
+      "meaning": "R2在基础超速成本之外追加的惩罚：额外9倍该基础超速成本，两蓝平均；不是超速率。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -1.8351902961730957,
+          "last_value": -1.1446911096572876
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.8084939122200012,
+          "last_value": -0.536615252494812
+        }
+      }
+    },
+    {
+      "tag": "reward_component/pace",
+      "meaning": "蓝车无前方阻挡、非近终点/终止等情形下，路线速度不足2.5m/s的连续惩罚；权重.1。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.08981788903474808,
+          "last_value": -0.10228564590215683
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.07982801645994186,
+          "last_value": -0.12886522710323334
+        }
+      }
+    },
+    {
+      "tag": "reward_component/primary_event_bonus",
+      "meaning": "同一红蓝配对.5<TTC<=1.5s连续>=.3s等条件成立后的单次+5；每回合最多一次。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 1.25,
+          "last_value": 2.1875
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 1.875,
+          "last_value": 1.5625
+        }
+      }
+    },
+    {
+      "tag": "reward_component/risk",
+      "meaning": "蓝车基础超速、射线近障和TTC成本之和的负值，两蓝平均。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.21232877671718597,
+          "last_value": -0.1355324536561966
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.09729697555303574,
+          "last_value": -0.06613104045391083
+        }
+      }
+    },
+    {
+      "tag": "reward_component/safety_event",
+      "meaning": "蓝方碰撞/越界/道路违规每类首次-50，任务违规首次-20；同类团队事件不反复扣，可跨类叠加。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -25.0,
+          "last_value": -18.75
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -31.25,
+          "last_value": -34.375
+        }
+      }
+    },
+    {
+      "tag": "reward_component/severe",
+      "meaning": "红蓝TTC<=.5s的严重险情连续惩罚，按2*dt*严重程度扣分，不作为正攻击收益。",
+      "unit": "回合累计奖励单位",
+      "note": "先累计每回合分项，再对16回合取均值；分项一般未折扣，不能相加当折扣回报。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.42712050676345825,
+          "last_value": -0.5252204537391663
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": -0.6060417890548706,
+          "last_value": -0.544161319732666
+        }
+      }
+    },
+    {
+      "tag": "safety/blue_bad_rate",
+      "meaning": "至少一辆蓝车发生碰撞、越界、道路违规或任务违规的回合比例。",
+      "unit": "比例0~1",
+      "note": "越低越好；训练批次16回合。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.5,
+          "last_value": 0.375
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.625,
+          "last_value": 0.6875
+        }
+      }
+    },
+    {
+      "tag": "safety/blue_event_eligible_rate",
+      "meaning": "两辆蓝车均没有已登记安全/任务违规事件的回合比例G。",
+      "unit": "比例0~1",
+      "note": "不是完整速度、车道、转向驾驶质量。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.5833333134651184,
+          "last_value": 0.7916666865348816
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.5833333134651184,
+          "last_value": 0.75
+        }
+      }
+    },
+    {
+      "tag": "safety/collision_rate",
+      "meaning": "至少一辆蓝车发生碰撞的案例比例。",
+      "unit": "比例0~1",
+      "note": "每例最多记1；各事件可重叠，不能相加当总失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.3333333432674408,
+          "last_value": 0.0416666679084301
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.3333333432674408,
+          "last_value": 0.2083333283662796
+        }
+      }
+    },
+    {
+      "tag": "safety/offroad_rate",
+      "meaning": "至少一辆蓝车发生越界的案例比例。",
+      "unit": "比例0~1",
+      "note": "每例最多记1；各事件可重叠，不能相加当总失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0833333358168602,
+          "last_value": 0.1666666716337204
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0833333358168602,
+          "last_value": 0.0416666679084301
+        }
+      }
+    },
+    {
+      "tag": "safety/road_rule_rate",
+      "meaning": "至少一辆蓝车发生道路违规的案例比例。",
+      "unit": "比例0~1",
+      "note": "每例最多记1；各事件可重叠，不能相加当总失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0,
+          "last_value": 0.0
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0,
+          "last_value": 0.0
+        }
+      }
+    },
+    {
+      "tag": "safety/task_violation_rate",
+      "meaning": "至少一辆蓝车发生任务违规（如登记的无故停滞）的案例比例。",
+      "unit": "比例0~1",
+      "note": "每例最多记1；各事件可重叠，不能相加当总失败率。",
+      "runs": {
+        "frozen/A": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0,
+          "last_value": 0.0
+        },
+        "frozen/B": {
+          "points": 4,
+          "first_step": 0,
+          "last_step": 72585,
+          "first_value": 0.0,
+          "last_value": 0.0
+        }
+      }
+    },
+    {
+      "tag": "value/absolute_error_logged_mean",
+      "meaning": "更新后Critic预测与本批GAE目标的平均绝对误差，原奖励尺度。",
+      "unit": "奖励单位",
+      "note": "越低通常拟合越好；目标分布改变会影响其可比性。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 10.355988502502441,
+          "last_value": 8.099459648132324
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 12.188340187072754,
+          "last_value": 8.463805198669434
+        }
+      }
+    },
+    {
+      "tag": "value/critic_loss_logged_mean",
+      "meaning": "ValueNorm归一化空间的Critic Huber回归损失，取日志中epoch/小批次均值。",
+      "unit": "归一化损失",
+      "note": "降低只支持价值拟合改善；不是原始回报MSE。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.4721828103065491,
+          "last_value": 0.23826582729816437
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.4825843572616577,
+          "last_value": 0.2427089512348175
+        }
+      }
+    },
+    {
+      "tag": "value/explained_variance",
+      "meaning": "更新后Critic在本批GAE目标上的EV=1-Var(target-prediction)/(Var(target)+1e-8)。",
+      "unit": "无量纲",
+      "note": "1接近完美，0不优于常数方差解释，负数更差；不是策略成功率。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.12045294046401978,
+          "last_value": 0.49243026971817017
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 0.1037360429763794,
+          "last_value": 0.527739942073822
+        }
+      }
+    },
+    {
+      "tag": "value/return_target_std",
+      "meaning": "本批两蓝角色GAE回归目标在原奖励尺度上的总体标准差。",
+      "unit": "奖励单位",
+      "note": "目标=旧value+raw GAE；不是整回合return的标准差。结合MAE/EV看。",
+      "runs": {
+        "training/A": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 13.940070152282715,
+          "last_value": 15.048070907592773
+        },
+        "training/B": {
+          "points": 31,
+          "first_step": 2226,
+          "last_step": 72585,
+          "first_value": 14.968653678894043,
+          "last_value": 15.3770170211792
+        }
+      }
+    }
+  ],
+  "script_sha256": "1d2a37284f6ff0083c8fb51759f2dc182f3fa395a5de460c636353fb0a3e1285"
+}

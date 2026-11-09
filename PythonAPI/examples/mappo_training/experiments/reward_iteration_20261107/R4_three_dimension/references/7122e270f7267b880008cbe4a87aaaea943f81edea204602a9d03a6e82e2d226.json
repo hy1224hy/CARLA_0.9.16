@@ -1,0 +1,1305 @@
+{
+  "case_key": "train_crossing_westbound_front_left_r0l",
+  "identity": {
+    "case_manifest_sha256": "64898e3f1c9e3a3edd213c2a4769a70154b7ca47c33f3d823dd6e3a4ccde185b",
+    "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+    "task_sha256": "d518fc3c7dfa0600f713ba68ea831add3d7a1c0d1e78d4cbee12eef6e8851be1"
+  },
+  "progress": {
+    "0": [
+      0.0,
+      0.007638783776437395,
+      0.015251671413602945,
+      0.02285154272679653,
+      0.03042864359999615,
+      0.03799933499340962,
+      0.0455204658427827,
+      0.05451008451130976,
+      0.06639625651006455,
+      0.07981156971159546,
+      0.09416951231187011,
+      0.10924355612302215,
+      0.12487870607070581,
+      0.14065244132524812,
+      0.15641161479414303,
+      0.17215679666494824,
+      0.18788153690401652,
+      0.20353959822151918,
+      0.2192310640609493,
+      0.2348442168262902,
+      0.2504615410132342,
+      0.26595941670798984,
+      0.28140989232829877,
+      0.29670399159655414,
+      0.3118490139836631,
+      0.32671757487032527,
+      0.34134195726747707,
+      0.355702895320255,
+      0.36987698247174394,
+      0.3838643936983405,
+      0.39775928919589826,
+      0.4118713342716646
+    ],
+    "1": [
+      0.0,
+      0.007579989800251785,
+      0.01509547943485103,
+      0.022524472784172765,
+      0.02993909080370213,
+      0.037311412962992285,
+      0.04468899294332687,
+      0.05203718718891227,
+      0.05939643817229843,
+      0.06673834986360079,
+      0.07409038506289967,
+      0.0814298945150382,
+      0.08874429430991382,
+      0.09602760430809092,
+      0.10329872953429615,
+      0.11056650501801707,
+      0.11768605569002827,
+      0.12472233744368703,
+      0.1316867963835721,
+      0.13865084436434477,
+      0.1455645653003196,
+      0.1525307491169075,
+      0.1594801859324394,
+      0.16647027491740884,
+      0.17337019901973696,
+      0.18028162998539551,
+      0.1871432736911351,
+      0.19402447091987687,
+      0.20093531072090756,
+      0.20785683299102567,
+      0.21476596690950542,
+      0.2216733072652632
+    ]
+  },
+  "qualified": false,
+  "reference_runs": [
+    {
+      "agent_outcomes": {
+        "0": "external_truncation",
+        "1": "offroad",
+        "2": "adversarial_task_end",
+        "3": "adversarial_task_end"
+      },
+      "agent_results": {
+        "0": {
+          "arrival_frame": null,
+          "arrival_seconds": null,
+          "censored": true,
+          "completion_basis": "frozen_route_completion_from_actual_goal_distance",
+          "decision_speed_samples": 31,
+          "distance_to_goal_m": 18.84215715392791,
+          "end_reason": "external_truncation",
+          "evidence_frame": 1052120,
+          "evidence_step": 31,
+          "initial_distance_to_goal_m": 32.00930404663086,
+          "last_speed_mps": 4.615345143108931,
+          "max_speed_mps": 5.0851269792902745,
+          "mean_decision_speed_mps": 4.305978202356001,
+          "route_completion": 0.4113537386980101,
+          "success": false
+        },
+        "1": {
+          "arrival_frame": null,
+          "arrival_seconds": null,
+          "censored": false,
+          "completion_basis": "frozen_route_completion_from_actual_goal_distance",
+          "decision_speed_samples": 31,
+          "distance_to_goal_m": 24.9509793022265,
+          "end_reason": "offroad",
+          "evidence_frame": 1052120,
+          "evidence_step": 31,
+          "initial_distance_to_goal_m": 32.009273529052734,
+          "last_speed_mps": 2.255294409379135,
+          "max_speed_mps": 2.4685903863859386,
+          "mean_decision_speed_mps": 2.3552291398386376,
+          "route_completion": 0.22050779191910994,
+          "success": false
+        },
+        "2": {
+          "arrival_frame": null,
+          "arrival_seconds": null,
+          "censored": false,
+          "completion_basis": "frozen_route_completion_from_actual_goal_distance",
+          "decision_speed_samples": 31,
+          "distance_to_goal_m": 4.655105082312828,
+          "end_reason": "adversarial_task_end",
+          "evidence_frame": 1052120,
+          "evidence_step": 31,
+          "initial_distance_to_goal_m": 22.01106834411621,
+          "last_speed_mps": 8.228851792591417,
+          "max_speed_mps": 8.228851792591417,
+          "mean_decision_speed_mps": 5.738714824564295,
+          "route_completion": 0.7885107160844745,
+          "success": false
+        },
+        "3": {
+          "arrival_frame": null,
+          "arrival_seconds": null,
+          "censored": false,
+          "completion_basis": "frozen_route_completion_from_actual_goal_distance",
+          "decision_speed_samples": 31,
+          "distance_to_goal_m": 27.66084372561369,
+          "end_reason": "adversarial_task_end",
+          "evidence_frame": 1052120,
+          "evidence_step": 31,
+          "initial_distance_to_goal_m": 40.01073455810547,
+          "last_speed_mps": 4.614625816650986,
+          "max_speed_mps": 5.145857637759534,
+          "mean_decision_speed_mps": 4.109005741825591,
+          "route_completion": 0.3086644364041026,
+          "success": false
+        }
+      },
+      "agent_terminated": {
+        "0": false,
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "agent_truncated": {
+        "0": true,
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "attack_integral": 0.0,
+      "blue_eligible": true,
+      "blue_safe": true,
+      "brake_mode_rate": {
+        "0": 0.0,
+        "1": 0.03225806451612903,
+        "2": 0.0,
+        "3": 0.06451612903225806
+      },
+      "case_geometry": {
+        "base_scenario": "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0l.json",
+        "case_key": "train_crossing_westbound_front_left_r0l",
+        "goal_waypoints": {
+          "agent0": {
+            "is_junction": false,
+            "lane_change": "Right",
+            "lane_id": -1,
+            "left_marking": "SolidSolid",
+            "right_marking": "Broken",
+            "road_id": 3,
+            "s": 41.99715805053713,
+            "section_id": 0
+          },
+          "agent1": {
+            "is_junction": false,
+            "lane_change": "Left",
+            "lane_id": -2,
+            "left_marking": "Broken",
+            "right_marking": "Solid",
+            "road_id": 3,
+            "s": 41.99718475341799,
+            "section_id": 0
+          },
+          "agent2": {
+            "is_junction": false,
+            "lane_change": "Right",
+            "lane_id": -1,
+            "left_marking": "SolidSolid",
+            "right_marking": "Broken",
+            "road_id": 3,
+            "s": 41.99715805053713,
+            "section_id": 0
+          },
+          "agent3": {
+            "is_junction": false,
+            "lane_change": "Left",
+            "lane_id": -2,
+            "left_marking": "Broken",
+            "right_marking": "Solid",
+            "road_id": 3,
+            "s": 41.99718475341799,
+            "section_id": 0
+          }
+        },
+        "realized_initial_states": {
+          "0": {
+            "alive": true,
+            "angular_velocity": {
+              "x": 7.1957845648285e-05,
+              "y": 0.04486169293522835,
+              "z": -1.6991252778097987e-06
+            },
+            "bounding_box": {
+              "extent": {
+                "x": 2.3958897590637207,
+                "y": 1.081725001335144,
+                "z": 0.7438300251960754
+              },
+              "location": {
+                "x": 0.02921883761882782,
+                "y": -6.482005154850867e-09,
+                "z": 0.7358605265617371
+              },
+              "rotation": {
+                "pitch": 0.0,
+                "roll": 0.0,
+                "yaw": 0.0
+              }
+            },
+            "control": {
+              "brake": 0.0,
+              "steer": 0.0,
+              "throttle": 0.0
+            },
+            "location": {
+              "x": -212.34530639648438,
+              "y": -0.43780088424682617,
+              "z": 0.0003590011619962752
+            },
+            "reached": false,
+            "rotation": {
+              "pitch": -0.0021378491073846817,
+              "roll": -6.103515261202119e-05,
+              "yaw": 179.85997009277344
+            },
+            "speed": 2.4685903863859386,
+            "velocity": {
+              "x": -2.4685757160186768,
+              "y": 0.006032643839716911,
+              "z": 0.006003103218972683
+            }
+          },
+          "1": {
+            "alive": true,
+            "angular_velocity": {
+              "x": 7.1957845648285e-05,
+              "y": 0.04486169293522835,
+              "z": -1.6991252778097987e-06
+            },
+            "bounding_box": {
+              "extent": {
+                "x": 2.3958897590637207,
+                "y": 1.081725001335144,
+                "z": 0.7438300251960754
+              },
+              "location": {
+                "x": 0.02921883761882782,
+                "y": -6.482005154850867e-09,
+                "z": 0.7358605265617371
+              },
+              "rotation": {
+                "pitch": 0.0,
+                "roll": 0.0,
+                "yaw": 0.0
+              }
+            },
+            "control": {
+              "brake": 0.0,
+              "steer": 0.0,
+              "throttle": 0.0
+            },
+            "location": {
+              "x": -212.3538818359375,
+              "y": -3.9377903938293457,
+              "z": 0.0003590011619962752
+            },
+            "reached": false,
+            "rotation": {
+              "pitch": -0.0021378491073846817,
+              "roll": -6.103515261202119e-05,
+              "yaw": 179.85997009277344
+            },
+            "speed": 2.4685903863859386,
+            "velocity": {
+              "x": -2.4685757160186768,
+              "y": 0.006032643839716911,
+              "z": 0.006003103218972683
+            }
+          },
+          "2": {
+            "alive": true,
+            "angular_velocity": {
+              "x": 0.00018063736206386238,
+              "y": 0.044879402965307236,
+              "z": 4.8891994453015286e-08
+            },
+            "bounding_box": {
+              "extent": {
+                "x": 2.3958897590637207,
+                "y": 1.081725001335144,
+                "z": 0.7438300251960754
+              },
+              "location": {
+                "x": 0.02921883761882782,
+                "y": -1.4603137366009378e-08,
+                "z": 0.7358605265617371
+              },
+              "rotation": {
+                "pitch": 0.0,
+                "roll": 0.0,
+                "yaw": 0.0
+              }
+            },
+            "control": {
+              "brake": 0.0,
+              "steer": 0.0,
+              "throttle": 0.0
+            },
+            "location": {
+              "x": -222.34527587890625,
+              "y": -0.40948382019996643,
+              "z": 0.0003590011619962752
+            },
+            "reached": false,
+            "rotation": {
+              "pitch": -0.0021378491073846817,
+              "roll": -6.103514533606358e-05,
+              "yaw": 179.86048889160156
+            },
+            "speed": 2.4685912875299003,
+            "velocity": {
+              "x": -2.468576669692993,
+              "y": 0.00600915914401412,
+              "z": 0.006005058065056801
+            }
+          },
+          "3": {
+            "alive": true,
+            "angular_velocity": {
+              "x": 5.5935128330020234e-05,
+              "y": 0.038772959262132645,
+              "z": -1.742744461807888e-05
+            },
+            "bounding_box": {
+              "extent": {
+                "x": 2.3958897590637207,
+                "y": 1.081725001335144,
+                "z": 0.7438300251960754
+              },
+              "location": {
+                "x": 0.02921883761882782,
+                "y": 2.354383354941092e-08,
+                "z": 0.7358605265617371
+              },
+              "rotation": {
+                "pitch": 0.0,
+                "roll": 0.0,
+                "yaw": 0.0
+              }
+            },
+            "control": {
+              "brake": 0.0,
+              "steer": 0.0,
+              "throttle": 0.0
+            },
+            "location": {
+              "x": -204.35165405273438,
+              "y": -3.9532899856567383,
+              "z": 0.0003651046718005091
+            },
+            "reached": false,
+            "rotation": {
+              "pitch": -0.0032033585011959076,
+              "roll": -6.103515261202119e-05,
+              "yaw": 179.86048889160156
+            },
+            "speed": 3.4424342523469877,
+            "velocity": {
+              "x": -3.4424188137054443,
+              "y": 0.008380074054002762,
+              "z": 0.006005592178553343
+            }
+          }
+        },
+        "status": "runtime_map_and_spawn_checked",
+        "waypoints": {
+          "agent0": {
+            "is_junction": false,
+            "lane_change": "Right",
+            "lane_id": -1,
+            "left_marking": "SolidSolid",
+            "right_marking": "Broken",
+            "road_id": 3,
+            "s": 9.997151374816914,
+            "section_id": 0
+          },
+          "agent1": {
+            "is_junction": false,
+            "lane_change": "Left",
+            "lane_id": -2,
+            "left_marking": "Broken",
+            "right_marking": "Solid",
+            "road_id": 3,
+            "s": 9.997196197509785,
+            "section_id": 0
+          },
+          "agent2": {
+            "is_junction": false,
+            "lane_change": "Right",
+            "lane_id": -1,
+            "left_marking": "SolidSolid",
+            "right_marking": "Broken",
+            "road_id": 3,
+            "s": 19.997151374816912,
+            "section_id": 0
+          },
+          "agent3": {
+            "is_junction": false,
+            "lane_change": "Left",
+            "lane_id": -2,
+            "left_marking": "Broken",
+            "right_marking": "Solid",
+            "road_id": 3,
+            "s": 1.9971961975097874,
+            "section_id": 0
+          }
+        }
+      },
+      "case_key": "train_crossing_westbound_front_left_r0l",
+      "condition": "C2",
+      "contact_events": [],
+      "contract_status": "candidate",
+      "created_at": "2026-11-07T04:50:16.152508+00:00",
+      "credited_primary_event": false,
+      "critical_credit_grace_s": 1.0,
+      "critical_event": true,
+      "critical_exposure_s": 0.0,
+      "critical_geometry_protocol": "actual_bbox_fixed_yaw_constant_velocity_v1",
+      "critical_min_ttc_s": 0.022577466370408934,
+      "critical_prediction_horizon_s": 5.0,
+      "critical_tet_s": 0.9999999999999999,
+      "critical_tit_s": 1.007971436340907,
+      "direction": "westbound",
+      "driving_metrics": {
+        "0": {
+          "above_preferred_speed_fraction": 0.7419354838709677,
+          "abs_acceleration_p95_mps2": 5.388605841881121,
+          "abs_jerk_p95_mps3": 30.37093433188201,
+          "active_steps": 31,
+          "actual_control_fraction": 1.0,
+          "actual_steer_rate_p95_per_second": 3.170788563322275,
+          "closing_ttc_below_3s_fraction": 0.0,
+          "comfort_definition": "raw 0.1s road-tangent finite differences; no calibrated comfort pass threshold",
+          "longitudinal_exposure_samples": 31,
+          "mean_speed_mps": 4.305978202356001,
+          "measured_state_fraction": 1.0,
+          "minimum_closing_ttc_s": 108.71829164514135,
+          "minimum_moving_headway_s": 1.0388164973613345,
+          "minimum_net_gap_m": 5.135389480626901,
+          "peak_speed_mps": 5.0851269792902745,
+          "preferred_speed_fraction": 0.0,
+          "reference_lateral_p95_m": 0.582389921285444,
+          "reference_lateral_peak_m": 0.6836130586145823,
+          "startup_applicable": false,
+          "unblocked_first_motion_seconds": null,
+          "unblocked_low_speed_fraction": 0.0,
+          "unblocked_low_speed_longest_seconds": 0.0
+        },
+        "1": {
+          "above_preferred_speed_fraction": 0.0,
+          "abs_acceleration_p95_mps2": 0.7216534861587033,
+          "abs_jerk_p95_mps3": 12.904876342028842,
+          "active_steps": 31,
+          "actual_control_fraction": 1.0,
+          "actual_steer_rate_p95_per_second": 2.625585323199629,
+          "closing_ttc_below_3s_fraction": null,
+          "comfort_definition": "raw 0.1s road-tangent finite differences; no calibrated comfort pass threshold",
+          "longitudinal_exposure_samples": 0,
+          "mean_speed_mps": 2.3552291398386376,
+          "measured_state_fraction": 1.0,
+          "minimum_closing_ttc_s": null,
+          "minimum_moving_headway_s": null,
+          "minimum_net_gap_m": null,
+          "peak_speed_mps": 2.440614528904033,
+          "preferred_speed_fraction": 1.0,
+          "reference_lateral_p95_m": 1.2854445079041557,
+          "reference_lateral_peak_m": 1.3317681870613964,
+          "startup_applicable": false,
+          "unblocked_first_motion_seconds": null,
+          "unblocked_low_speed_fraction": 0.0,
+          "unblocked_low_speed_longest_seconds": 0.0
+        },
+        "2": {
+          "above_preferred_speed_fraction": 0.7741935483870968,
+          "abs_acceleration_p95_mps2": 5.173954016616612,
+          "abs_jerk_p95_mps3": 41.222942348261036,
+          "active_steps": 31,
+          "actual_control_fraction": 1.0,
+          "actual_steer_rate_p95_per_second": 0.8304481953382485,
+          "closing_ttc_below_3s_fraction": null,
+          "comfort_definition": "raw 0.1s road-tangent finite differences; no calibrated comfort pass threshold",
+          "longitudinal_exposure_samples": 0,
+          "mean_speed_mps": 5.738714824564295,
+          "measured_state_fraction": 1.0,
+          "minimum_closing_ttc_s": null,
+          "minimum_moving_headway_s": null,
+          "minimum_net_gap_m": null,
+          "peak_speed_mps": 8.228851792591417,
+          "preferred_speed_fraction": 0.0,
+          "reference_lateral_p95_m": 0.9108316352631515,
+          "reference_lateral_peak_m": 0.9137806259314084,
+          "startup_applicable": false,
+          "unblocked_first_motion_seconds": null,
+          "unblocked_low_speed_fraction": 0.0,
+          "unblocked_low_speed_longest_seconds": 0.0
+        },
+        "3": {
+          "above_preferred_speed_fraction": 0.5806451612903226,
+          "abs_acceleration_p95_mps2": 4.39560689716926,
+          "abs_jerk_p95_mps3": 46.865865271752554,
+          "active_steps": 31,
+          "actual_control_fraction": 1.0,
+          "actual_steer_rate_p95_per_second": 5.863391779363152,
+          "closing_ttc_below_3s_fraction": 0.32142857142857145,
+          "comfort_definition": "raw 0.1s road-tangent finite differences; no calibrated comfort pass threshold",
+          "longitudinal_exposure_samples": 31,
+          "mean_speed_mps": 4.109005741825591,
+          "measured_state_fraction": 1.0,
+          "minimum_closing_ttc_s": 0.0642960544924093,
+          "minimum_moving_headway_s": 0.03559458809553056,
+          "minimum_net_gap_m": 0.18010588123509086,
+          "peak_speed_mps": 5.145857637759534,
+          "preferred_speed_fraction": null,
+          "reference_lateral_p95_m": 1.6480328835516462,
+          "reference_lateral_peak_m": 1.6937408485524656,
+          "startup_applicable": false,
+          "unblocked_first_motion_seconds": null,
+          "unblocked_low_speed_fraction": null,
+          "unblocked_low_speed_longest_seconds": 0.0
+        }
+      },
+      "end_reason": "cooperative_offroad",
+      "execution_mode": "deterministic",
+      "family": "cut_in",
+      "individual_reward_components": {
+        "2": {
+          "base_soft": 0.4669820470100057,
+          "collision": 0.0,
+          "control_cost": -2.013774897611639,
+          "offroad": 0.0,
+          "response_reward": 0.0,
+          "risk_reward": 0.2177147424796804,
+          "road_rule": 0.0,
+          "severe": 0.0,
+          "task_violation": 0.0
+        },
+        "3": {
+          "base_soft": 0.18255173689006726,
+          "collision": 0.0,
+          "control_cost": -1.531168263413398,
+          "offroad": 0.0,
+          "response_reward": 0.0,
+          "risk_reward": 0.24071674867694492,
+          "road_rule": 0.0,
+          "severe": -1.2,
+          "task_violation": 0.0
+        }
+      },
+      "individual_risk_metrics": {
+        "2": {
+          "credit_blocked": false,
+          "hard_brake_duration_s": 0.0,
+          "max_red_deceleration_mps2": 0.9548445493567972,
+          "metric_protocol": "r4_risk_v1",
+          "min_headway_s": 1.0336245259506138,
+          "min_longitudinal_gap_m": 5.140849128641665,
+          "observed_s": 3.1000000000000014,
+          "response_claim": "temporal association, not causality",
+          "response_excess_integral_s": 0.0,
+          "response_reference_samples": 0,
+          "response_samples": 30,
+          "risk_integral_s": 0.2783828371586386,
+          "severe_duration_s": 0.0,
+          "spacing_duration_s": 1.7000000000000004,
+          "spacing_longest_s": 1.7000000000000002,
+          "ttc_duration_s": 0.0,
+          "ttc_longest_s": 0.0
+        },
+        "3": {
+          "credit_blocked": false,
+          "hard_brake_duration_s": 0.0,
+          "max_red_deceleration_mps2": 0.6622497357939441,
+          "metric_protocol": "r4_risk_v1",
+          "min_headway_s": null,
+          "min_longitudinal_gap_m": null,
+          "observed_s": 3.1000000000000014,
+          "response_claim": "temporal association, not causality",
+          "response_excess_integral_s": 0.0,
+          "response_reference_samples": 0,
+          "response_samples": 30,
+          "risk_integral_s": 0.24071674867694492,
+          "severe_duration_s": 0.6,
+          "spacing_duration_s": 0.0,
+          "spacing_longest_s": 0.0,
+          "ttc_duration_s": 0.4,
+          "ttc_longest_s": 0.4
+        }
+      },
+      "initial_evidence_identity": {
+        "base_scenario_sha256": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+        "case_key": "train_crossing_westbound_front_left_r0l",
+        "case_manifest_sha256": "64898e3f1c9e3a3edd213c2a4769a70154b7ca47c33f3d823dd6e3a4ccde185b",
+        "condition": "C2",
+        "family": "cut_in",
+        "red_checkpoint_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+        "seed": 75020,
+        "team": "A"
+      },
+      "invalid_reason": null,
+      "max_abs_reward_residual": 0.0,
+      "normal_blue_controller": null,
+      "pair_id": "train_crossing_westbound_front_left",
+      "physical_contacts": {
+        "0": [],
+        "1": [],
+        "2": [],
+        "3": []
+      },
+      "qualified_primary_event_credit": 0.0,
+      "qualified_response": false,
+      "record_kind": "independent_evaluation",
+      "red0_role": "left_parallel",
+      "red_results": {
+        "0": {
+          "arrival_frame": null,
+          "arrival_seconds": null,
+          "censored": true,
+          "completion_basis": "frozen_route_completion_from_actual_goal_distance",
+          "decision_speed_samples": 31,
+          "distance_to_goal_m": 18.84215715392791,
+          "end_reason": "external_truncation",
+          "evidence_frame": 1052120,
+          "evidence_step": 31,
+          "initial_distance_to_goal_m": 32.00930404663086,
+          "last_speed_mps": 4.615345143108931,
+          "max_speed_mps": 5.0851269792902745,
+          "mean_decision_speed_mps": 4.305978202356001,
+          "route_completion": 0.4113537386980101,
+          "success": false
+        },
+        "1": {
+          "arrival_frame": null,
+          "arrival_seconds": null,
+          "censored": false,
+          "completion_basis": "frozen_route_completion_from_actual_goal_distance",
+          "decision_speed_samples": 31,
+          "distance_to_goal_m": 24.9509793022265,
+          "end_reason": "offroad",
+          "evidence_frame": 1052120,
+          "evidence_step": 31,
+          "initial_distance_to_goal_m": 32.009273529052734,
+          "last_speed_mps": 2.255294409379135,
+          "max_speed_mps": 2.4685903863859386,
+          "mean_decision_speed_mps": 2.3552291398386376,
+          "route_completion": 0.22050779191910994,
+          "success": false
+        }
+      },
+      "red_success": false,
+      "response": false,
+      "response_event_count": 0,
+      "response_events": [],
+      "returns": {
+        "0": 5.606405952642044,
+        "1": -50.18177120607109,
+        "2": -1.3290781081219527,
+        "3": -2.3078997778463863
+      },
+      "reward_semantics": "individual_three_dimension_r4",
+      "route_progress": {
+        "0": 0.4118713342716646,
+        "1": 0.2216733072652632,
+        "2": 0.7937684421064732,
+        "3": 0.31048064034756473
+      },
+      "safe_critical_event": 1.0,
+      "safe_efficiency_utility": 0.0,
+      "safety": {
+        "collision": false,
+        "offroad": false,
+        "per_agent": {
+          "2": {
+            "collision": false,
+            "offroad": false,
+            "road_rule": false,
+            "task_violation": false
+          },
+          "3": {
+            "collision": false,
+            "offroad": false,
+            "road_rule": false,
+            "task_violation": false
+          }
+        },
+        "road_rule": false,
+        "task_violation": false
+      },
+      "seed": 75020,
+      "sensor_timing": {
+        "collision_callback_frame_barrier": "not_enforced",
+        "validation_status": "live_validation_pending"
+      },
+      "setup_contacts": {
+        "0": [],
+        "1": [],
+        "2": [],
+        "3": []
+      },
+      "startup_mode": "rolling",
+      "steer_diagnostics": [
+        {
+          "attack_credit": 0.0,
+          "frame": 1052102,
+          "kind": "steer_jump_diagnostic",
+          "red_id": 0,
+          "step": 13
+        },
+        {
+          "attack_credit": 0.0,
+          "frame": 1052105,
+          "kind": "steer_jump_diagnostic",
+          "red_id": 1,
+          "step": 16
+        },
+        {
+          "attack_credit": 0.0,
+          "frame": 1052106,
+          "kind": "steer_jump_diagnostic",
+          "red_id": 0,
+          "step": 17
+        }
+      ],
+      "steps": 31,
+      "task_stall": {
+        "2": {
+          "birth_protected": false,
+          "consecutive_seconds": 0.0,
+          "enabled": true,
+          "front_blocker_exempt": false,
+          "near_goal_exempt": true,
+          "partial_observability": true,
+          "route_speed_mps": 8.2286205466181,
+          "task_violation": false
+        },
+        "3": {
+          "birth_protected": false,
+          "consecutive_seconds": 0.0,
+          "enabled": true,
+          "front_blocker_exempt": true,
+          "near_goal_exempt": false,
+          "partial_observability": true,
+          "route_speed_mps": 4.526344207712409,
+          "task_violation": false
+        }
+      },
+      "team": "A",
+      "team_cost_total": 2.3724715805125185,
+      "team_reward_components": {
+        "base_soft": 0.3247668919500365,
+        "collision": 0.0,
+        "control_cost": -1.7724715805125184,
+        "offroad": 0.0,
+        "response_reward": 0.0,
+        "risk_reward": 0.22921574557831265,
+        "road_rule": 0.0,
+        "severe": -0.6,
+        "task_violation": 0.0
+      },
+      "team_tail_credit": {},
+      "team_utility_total": -1.8184889429841689,
+      "threat_reward_total": 0.0,
+      "tick_count_scope": "per_case_explicit_ticks_including_reset",
+      "tick_counts": {
+        "decision": 31,
+        "setup": 13,
+        "total": 44
+      },
+      "valid": true
+    }
+  ],
+  "response_reference_mode": "frozen_base_blue",
+  "response_states": {
+    "1": {},
+    "10": {
+      "0": {
+        "acceleration_mps2": 2.5638048037201644,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 13.021604042997765,
+        "response_score": 0.4277047888026573,
+        "steer_rate_s": 0.7108191552106291
+      },
+      "1": {
+        "acceleration_mps2": 0.027390964453823476,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 0.7802935170570038,
+        "response_score": 0.1286304039941207,
+        "steer_rate_s": 0.43649226427078247
+      }
+    },
+    "11": {
+      "0": {
+        "acceleration_mps2": 2.053177342355816,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 5.1062746136434845,
+        "response_score": 0.37397828925164533,
+        "steer_rate_s": 0.9852856956422329
+      },
+      "1": {
+        "acceleration_mps2": -0.032952071253899005,
+        "deceleration_mps2": 0.032952071253899005,
+        "jerk_mps3": 0.6034303570772248,
+        "response_score": 0.05052953321059857,
+        "steer_rate_s": 0.11980704963207245
+      }
+    },
+    "12": {
+      "0": {
+        "acceleration_mps2": 1.66412678272078,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 3.89050559635036,
+        "response_score": 0.2849355241122526,
+        "steer_rate_s": 0.7506915368139744
+      },
+      "1": {
+        "acceleration_mps2": -0.03890422660271135,
+        "deceleration_mps2": 0.03890422660271135,
+        "jerk_mps3": 0.05952155348812348,
+        "response_score": 0.11193421862478559,
+        "steer_rate_s": 0.4158485680818558
+      }
+    },
+    "13": {
+      "0": {
+        "acceleration_mps2": -0.8572987266475826,
+        "deceleration_mps2": 0.8572987266475826,
+        "jerk_mps3": 25.214255093683622,
+        "response_score": 0.6428831211079304,
+        "steer_rate_s": 2.995896600186825
+      },
+      "1": {
+        "acceleration_mps2": -0.11966197241959675,
+        "deceleration_mps2": 0.11966197241959675,
+        "jerk_mps3": 0.807577458168854,
+        "response_score": 0.08375898600751253,
+        "steer_rate_s": 0.17450354993343353
+      }
+    },
+    "14": {
+      "0": {
+        "acceleration_mps2": -0.022477694613552188,
+        "deceleration_mps2": 0.022477694613552188,
+        "jerk_mps3": 8.348210320340304,
+        "response_score": 0.46245154044409964,
+        "steer_rate_s": 2.8168983943760395
+      },
+      "1": {
+        "acceleration_mps2": -0.022487881197470624,
+        "deceleration_mps2": 0.022487881197470624,
+        "jerk_mps3": 0.9717409122212612,
+        "response_score": 0.07043513896354311,
+        "steer_rate_s": 0.1695745438337326
+      }
+    },
+    "15": {
+      "0": {
+        "acceleration_mps2": 0.6548282703143053,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 6.773059649278575,
+        "response_score": 0.41932649123196436,
+        "steer_rate_s": 1.6679743118584156
+      },
+      "1": {
+        "acceleration_mps2": 0.0013871843243889945,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 0.23875065521859618,
+        "response_score": 0.054581616167342535,
+        "steer_rate_s": 0.19445139914751053
+      }
+    },
+    "16": {
+      "0": {
+        "acceleration_mps2": -0.2797004638025863,
+        "deceleration_mps2": 0.2797004638025863,
+        "jerk_mps3": 9.345287341168916,
+        "response_score": 0.5302489274963207,
+        "steer_rate_s": 1.9094294682145119
+      },
+      "1": {
+        "acceleration_mps2": -0.6622497357939441,
+        "deceleration_mps2": 0.6622497357939441,
+        "jerk_mps3": 6.636369201183331,
+        "response_score": 0.5262841859952406,
+        "steer_rate_s": 2.786877565085888
+      }
+    },
+    "17": {
+      "0": {
+        "acceleration_mps2": -0.4134785177557686,
+        "deceleration_mps2": 0.4134785177557686,
+        "jerk_mps3": 1.3377805395318232,
+        "response_score": 0.3523575997809237,
+        "steer_rate_s": 3.986400254070759
+      },
+      "1": {
+        "acceleration_mps2": 0.2499687624928198,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 9.122184982867637,
+        "response_score": 0.4780546245716909,
+        "steer_rate_s": 2.428450360894203
+      }
+    },
+    "18": {
+      "0": {
+        "acceleration_mps2": 0.42789821623851104,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 8.413767339942796,
+        "response_score": 0.46034418349856987,
+        "steer_rate_s": 3.3138819877058268
+      },
+      "1": {
+        "acceleration_mps2": -0.38601723108383984,
+        "deceleration_mps2": 0.38601723108383984,
+        "jerk_mps3": 6.359859935766596,
+        "response_score": 0.4733327035748049,
+        "steer_rate_s": 1.369011327624321
+      }
+    },
+    "19": {
+      "0": {
+        "acceleration_mps2": -0.423261081620832,
+        "deceleration_mps2": 0.423261081620832,
+        "jerk_mps3": 8.511592978593429,
+        "response_score": 0.5333333380683077,
+        "steer_rate_s": 2.0866908971220255
+      },
+      "1": {
+        "acceleration_mps2": 0.16711331492127973,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 5.531305460051195,
+        "response_score": 0.38828263650127987,
+        "steer_rate_s": 1.3099713623523712
+      }
+    },
+    "2": {
+      "0": {
+        "acceleration_mps2": -0.10465266467675274,
+        "deceleration_mps2": 0.10465266467675274,
+        "jerk_mps3": null,
+        "response_score": 0.25845774807291677,
+        "steer_rate_s": 0.9640625491738319
+      },
+      "1": {
+        "acceleration_mps2": 0.13704644565591054,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": null,
+        "response_score": 0.25,
+        "steer_rate_s": 3.0598658323287964
+      }
+    },
+    "20": {
+      "0": {
+        "acceleration_mps2": -0.00992601812875335,
+        "deceleration_mps2": 0.00992601812875335,
+        "jerk_mps3": 4.133350634920785,
+        "response_score": 0.35498810222781185,
+        "steer_rate_s": 2.2799553023651242
+      },
+      "1": {
+        "acceleration_mps2": -0.16610351685716068,
+        "deceleration_mps2": 0.16610351685716068,
+        "jerk_mps3": 3.332168317784404,
+        "response_score": 0.2730164624556508,
+        "steer_rate_s": 0.648113340139389
+      }
+    },
+    "21": {
+      "0": {
+        "acceleration_mps2": -0.34399506768520605,
+        "deceleration_mps2": 0.34399506768520605,
+        "jerk_mps3": 3.3406904955645267,
+        "response_score": 0.39084977366998086,
+        "steer_rate_s": 1.287107770331204
+      },
+      "1": {
+        "acceleration_mps2": 0.0771638115053973,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 2.4326732836255798,
+        "response_score": 0.3108168320906395,
+        "steer_rate_s": 1.3788236677646637
+      }
+    },
+    "22": {
+      "0": {
+        "acceleration_mps2": -0.19652462008227709,
+        "deceleration_mps2": 0.19652462008227709,
+        "jerk_mps3": 1.4747044760292896,
+        "response_score": 0.31962171524777844,
+        "steer_rate_s": 1.4227280765771866
+      },
+      "1": {
+        "acceleration_mps2": -0.06409949051409952,
+        "deceleration_mps2": 0.06409949051409952,
+        "jerk_mps3": 1.4126330201949682,
+        "response_score": 0.1716273553085973,
+        "steer_rate_s": 0.502513125538826
+      }
+    },
+    "23": {
+      "0": {
+        "acceleration_mps2": -0.5645962692596738,
+        "deceleration_mps2": 0.5645962692596738,
+        "jerk_mps3": 3.6807164917739663,
+        "response_score": 0.4361172905042948,
+        "steer_rate_s": 1.088796928524971
+      },
+      "1": {
+        "acceleration_mps2": -0.05323191260001264,
+        "deceleration_mps2": 0.05323191260001264,
+        "jerk_mps3": 0.10867577914086879,
+        "response_score": 0.26158887991185714,
+        "steer_rate_s": 1.1903322860598564
+      }
+    },
+    "24": {
+      "0": {
+        "acceleration_mps2": -0.4726084753727764,
+        "deceleration_mps2": 0.4726084753727764,
+        "jerk_mps3": 0.9198779388689737,
+        "response_score": 0.33511974344734785,
+        "steer_rate_s": 0.9334188629873097
+      },
+      "1": {
+        "acceleration_mps2": -0.16852824647864445,
+        "deceleration_mps2": 0.16852824647864445,
+        "jerk_mps3": 1.152963338786318,
+        "response_score": 0.306912124549432,
+        "steer_rate_s": 1.4981623366475105
+      }
+    },
+    "25": {
+      "0": {
+        "acceleration_mps2": -0.9548445493567972,
+        "deceleration_mps2": 0.9548445493567972,
+        "jerk_mps3": 4.8223607398402075,
+        "response_score": 0.5296997767221381,
+        "steer_rate_s": 1.2038008053787053
+      },
+      "1": {
+        "acceleration_mps2": -0.10409537190522927,
+        "deceleration_mps2": 0.10409537190522927,
+        "jerk_mps3": 0.6443287457341518,
+        "response_score": 0.28345744729422534,
+        "steer_rate_s": 1.7918561398983002
+      }
+    },
+    "26": {
+      "0": {
+        "acceleration_mps2": -0.7490243986953502,
+        "deceleration_mps2": 0.7490243986953502,
+        "jerk_mps3": 2.05820150661447,
+        "response_score": 0.4262924374479201,
+        "steer_rate_s": 1.4199215546250343
+      },
+      "1": {
+        "acceleration_mps2": -0.06083021554407669,
+        "deceleration_mps2": 0.06083021554407669,
+        "jerk_mps3": 0.4326515636115258,
+        "response_score": 0.27095465834763427,
+        "steer_rate_s": 1.1651688069105148
+      }
+    },
+    "27": {
+      "0": {
+        "acceleration_mps2": -0.7782924626572372,
+        "deceleration_mps2": 0.7782924626572372,
+        "jerk_mps3": 0.2926806396188697,
+        "response_score": 0.3772085323051412,
+        "steer_rate_s": 0.9607044234871864
+      },
+      "1": {
+        "acceleration_mps2": -0.10285751810188065,
+        "deceleration_mps2": 0.10285751810188065,
+        "jerk_mps3": 0.4202730255780396,
+        "response_score": 0.2776497453230978,
+        "steer_rate_s": 1.2330686300992966
+      }
+    },
+    "28": {
+      "0": {
+        "acceleration_mps2": -0.596972189875648,
+        "deceleration_mps2": 0.596972189875648,
+        "jerk_mps3": 1.8132027278158913,
+        "response_score": 0.39482543317467195,
+        "steer_rate_s": 1.0336056724190712
+      },
+      "1": {
+        "acceleration_mps2": -0.26347612274879895,
+        "deceleration_mps2": 0.26347612274879895,
+        "jerk_mps3": 1.6061860464691828,
+        "response_score": 0.3340673382865294,
+        "steer_rate_s": 1.058528572320938
+      }
+    },
+    "29": {
+      "0": {
+        "acceleration_mps2": -0.4992092928629024,
+        "deceleration_mps2": 0.4992092928629024,
+        "jerk_mps3": 0.9776289701274565,
+        "response_score": 0.29359557723523233,
+        "steer_rate_s": 0.7438132166862488
+      },
+      "1": {
+        "acceleration_mps2": -0.09697403453854907,
+        "deceleration_mps2": 0.09697403453854907,
+        "jerk_mps3": 1.6650208821024985,
+        "response_score": 0.0939144971110058,
+        "steer_rate_s": 0.1445065438747406
+      }
+    },
+    "3": {
+      "0": {
+        "acceleration_mps2": -0.02241736187403851,
+        "deceleration_mps2": 0.02241736187403851,
+        "jerk_mps3": 0.8223530280271424,
+        "response_score": 0.25798301135977825,
+        "steer_rate_s": 0.9347518347203732
+      },
+      "1": {
+        "acceleration_mps2": -0.502558739962513,
+        "deceleration_mps2": 0.502558739962513,
+        "jerk_mps3": 6.3960518561842346,
+        "response_score": 0.49366108639835804,
+        "steer_rate_s": 1.5735998749732971
+      }
+    },
+    "30": {
+      "0": {
+        "acceleration_mps2": 0.2006102722080724,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 6.998195650709747,
+        "response_score": 0.1770074051502615,
+        "steer_rate_s": 0.008210055530071259
+      },
+      "1": {
+        "acceleration_mps2": 0.12625331187589373,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 2.232273464144428,
+        "response_score": 0.3058068366036107,
+        "steer_rate_s": 1.2128589302301407
+      }
+    },
+    "31": {
+      "0": {
+        "acceleration_mps2": 0.990178661754273,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 7.895683895462007,
+        "response_score": 0.2157897415487282,
+        "steer_rate_s": 0.07359057664871216
+      },
+      "1": {
+        "acceleration_mps2": -0.07546434703660157,
+        "deceleration_mps2": 0.07546434703660157,
+        "jerk_mps3": 2.017176589124953,
+        "response_score": 0.15903640789206736,
+        "steer_rate_s": 0.3841184079647064
+      }
+    },
+    "4": {
+      "0": {
+        "acceleration_mps2": -0.07587903313529787,
+        "deceleration_mps2": 0.07587903313529787,
+        "jerk_mps3": 0.5346167126125936,
+        "response_score": 0.2233041869574662,
+        "steer_rate_s": 0.7891690544784069
+      },
+      "1": {
+        "acceleration_mps2": 0.20663063579882596,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 7.09189375761339,
+        "response_score": 0.42729734394033475,
+        "steer_rate_s": 1.3998892158269882
+      }
+    },
+    "5": {
+      "0": {
+        "acceleration_mps2": -0.01371034910728685,
+        "deceleration_mps2": 0.01371034910728685,
+        "jerk_mps3": 0.6216868402801101,
+        "response_score": 0.192699925125578,
+        "steer_rate_s": 0.6994907837361097
+      },
+      "1": {
+        "acceleration_mps2": -0.22045827882681437,
+        "deceleration_mps2": 0.22045827882681437,
+        "jerk_mps3": 4.270889146256403,
+        "response_score": 0.32569491610612056,
+        "steer_rate_s": 0.728718563914299
+      }
+    },
+    "6": {
+      "0": {
+        "acceleration_mps2": -0.28262949818817185,
+        "deceleration_mps2": 0.28262949818817185,
+        "jerk_mps3": 2.6891914908088497,
+        "response_score": 0.36433470363491655,
+        "steer_rate_s": 1.5191247034817934
+      },
+      "1": {
+        "acceleration_mps2": 0.08683572366272235,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 3.0729400248953676,
+        "response_score": 0.2524230123351737,
+        "steer_rate_s": 0.7023980468511581
+      }
+    },
+    "7": {
+      "0": {
+        "acceleration_mps2": 9.86108842289698,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 101.43717921085151,
+        "response_score": 0.5,
+        "steer_rate_s": 1.2362069636583328
+      },
+      "1": {
+        "acceleration_mps2": -0.10830753522409162,
+        "deceleration_mps2": 0.10830753522409162,
+        "jerk_mps3": 1.9514325888681396,
+        "response_score": 0.15152519390795816,
+        "steer_rate_s": 0.33875249326229095
+      }
+    },
+    "8": {
+      "0": {
+        "acceleration_mps2": 6.635406556609078,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 32.25681866287902,
+        "response_score": 0.4235065318644047,
+        "steer_rate_s": 0.6940261274576187
+      },
+      "1": {
+        "acceleration_mps2": 0.05374479188148397,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 1.620523271055756,
+        "response_score": 0.18016575865675355,
+        "steer_rate_s": 0.5586107075214386
+      }
+    },
+    "9": {
+      "0": {
+        "acceleration_mps2": 3.865965208019941,
+        "deceleration_mps2": 0.0,
+        "jerk_mps3": 27.694413485891367,
+        "response_score": 0.5,
+        "steer_rate_s": 1.0655628296080977
+      },
+      "1": {
+        "acceleration_mps2": -0.050638387251876915,
+        "deceleration_mps2": 0.050638387251876915,
+        "jerk_mps3": 1.0438317913336088,
+        "response_score": 0.07302967707760152,
+        "steer_rate_s": 0.15397660434246063
+      }
+    }
+  },
+  "scope": "normal traffic reference; qualified here means C1 reached and blue-safe, not full base-driving qualification",
+  "split": "train"
+}

@@ -1,0 +1,137 @@
+{
+  "algorithm": "mappo",
+  "case_manifest": "data/mut_mappo/interaction_small_v4/cases.json",
+  "communication": {
+    "enabled": false,
+    "message_dim": 8,
+    "status": "planned_not_implemented"
+  },
+  "device": "cpu",
+  "diagnostic_authorization": {
+    "formal_red_qualification": false,
+    "live_execution": true,
+    "source": "2026-11-07 user authorized iterative 66-update B0 reward optimization prioritizing dangerous exposure with relaxed bad-rate screening",
+    "weak_red_diagnostic_only": true
+  },
+  "evaluation": {
+    "max_invalid_retries": 1,
+    "mode": "deterministic",
+    "selection_max_bad_rate": 0.125,
+    "selection_metric": "qualified_primary_event_credit"
+  },
+  "host": "127.0.0.1",
+  "learning": {
+    "anchor_beta": 0.0,
+    "beta": 0.0,
+    "clip_eps": 0.15,
+    "distillation": {
+      "direction": "student_to_teacher",
+      "gate_variant": "evidence",
+      "reduction": "all_valid"
+    },
+    "ent_coef": 0.01,
+    "gae_lambda": 0.95,
+    "gamma": 0.999,
+    "hidden_dim": 128,
+    "init_log_std": -0.5,
+    "lr_actor": 0.0003,
+    "lr_critic": 0.0003,
+    "max_grad_norm": 0.5,
+    "max_log_std": 0.0,
+    "min_log_std": -2.0,
+    "minibatch_size": 128,
+    "ppo_epochs": 2,
+    "target_kl": 0.02
+  },
+  "method": "off",
+  "model_spec": {
+    "action_dim": 2,
+    "critic_num_agents": 4,
+    "learner_ids": [
+      2,
+      3
+    ],
+    "obs_dim": 20,
+    "physical_ids": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "state_dim": 80
+  },
+  "mutual": {
+    "gate_max_bad_rate": 0.125,
+    "gate_min_cases": 8,
+    "gate_min_q_gap": 0.25,
+    "min_efficiency_gap": 0.02,
+    "quality_metric": "critical",
+    "refresh_rounds": 10,
+    "refresh_train_ticks": 20000,
+    "schedule_clock": "train_ticks",
+    "warmup_rounds": 5,
+    "warmup_train_ticks": 10000
+  },
+  "port": 2000,
+  "protocol": "mut_mappo_four_car_20_2_v1",
+  "red_checkpoint": {
+    "capability_status": "NOT_QUALIFIED_diagnostic_candidate_only",
+    "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u001000.pt",
+    "sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a"
+  },
+  "research_status": "candidate",
+  "run": {
+    "cost_down": 0.95,
+    "cost_max": 10.0,
+    "cost_min": 1.0,
+    "cost_target": 0.05,
+    "cost_up": 1.2,
+    "episodes_per_team_update": 16,
+    "lr_horizon_rounds": 66,
+    "rounds": 66,
+    "schedule_clock": "rounds",
+    "stop_rule": "rounds",
+    "train_tick_budget": 100000000,
+    "lr_schedule": "linear",
+    "lr_min_factor": 0.1
+  },
+  "schema_version": "mut_mappo_config_v1",
+  "seed": 42,
+  "task": {
+    "c1_controller": "lane_pid_v1",
+    "cameras_enabled": false,
+    "follow_spectator": true,
+    "max_steps": 500,
+    "reward": {
+      "base_driving_weight": 0.3,
+      "birth_protect_secs": 3.0,
+      "cap_slowdown": 3,
+      "free_flow_target_mps": 2.5,
+      "overspeed_start_mps": 4.1666666667,
+      "reward_slowdown": 5.0,
+      "reward_timeout": 15.0,
+      "safety_lambda": 1.0,
+      "slowdown_drop_thresh": 2.0,
+      "slowdown_persistence_secs": 0.5,
+      "slowdown_window_secs": 2.0,
+      "threat_cap_per_episode": 20.0
+    },
+    "reward_profile": "individual_driving_critical_v3",
+    "stall": {
+      "enabled": true,
+      "seconds": 3.0,
+      "speed_mps": 0.2
+    },
+    "team_reward": {
+      "base_soft_weight": 0.03,
+      "adversarial_weight": 1.0,
+      "critical_weight": 3.0,
+      "primary_event_reward": 5.0,
+      "reference_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\R3_B0_u325_s42_20261106_182247\\references",
+      "gamma": 0.999
+    },
+    "timestep": 0.1
+  },
+  "team_count": 2,
+  "town": "Town05"
+}

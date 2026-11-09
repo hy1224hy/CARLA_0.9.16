@@ -1,0 +1,27 @@
+{
+  "case_manifest_sha256": "64898e3f1c9e3a3edd213c2a4769a70154b7ca47c33f3d823dd6e3a4ccde185b",
+  "close_server": "after all requested or early-stop frozen stages exited0, evidence checked, shared lease acquired and world idle; exact PID/path/creation identity only",
+  "config": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\configs\\R2_B0_s42.json",
+  "config_sha256": "226044682dcc724a4edd8e57f3fdd0eb52ba584570c91179e38541ec27df9d14",
+  "early_stop": "At48k, stop if BOTH teams have frozen mean return below initial AND24k, and event eligibility below24k. Engineering regression guard, no threshold changes.",
+  "environment": {
+    "MKL_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "episodes_per_team_update": 16,
+  "estimated_scope": "training ticks include setup and cleanup; validation/frozen/failed sampling separate",
+  "frozen_episode_budget": 576,
+  "frozen_episodes_per_node": 144,
+  "initialization": "fixed u1000 Actors; fresh four-car Critic, optimizer, ValueNorm",
+  "lr_horizon_train_ticks": 72000,
+  "milestone_ticks": [
+    0,
+    24000,
+    48000,
+    72000
+  ],
+  "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+  "scope": "one outer seed42; A/B are two learners, weak-red engineering only",
+  "train_tick_budget": 72000,
+  "user_authorization": "2026-11-05 current chat"
+}

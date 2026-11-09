@@ -1,0 +1,1 @@
+User authorized three-step diagnosis. Read plan.json, pipeline_status.json, source_hashes.json, updates.jsonl. Follow existing worker; never duplicate CARLA controller. All groups 24k soft train tick cap, same72k LR horizon. N4 then R4 then R16, frozen0/12k/24k. Failure is retained, not automatically restarted. Do not change thresholds/red. Delete monitor after completion.

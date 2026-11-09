@@ -1,0 +1,950 @@
+{
+  "automatic_restart": false,
+  "checked_at": "2026-11-04T06:26:55.843957+00:00",
+  "dispatch_meaning": "DISPATCHED is a request, not evidence that training is RUNNING",
+  "exit": {},
+  "exit_is_current_launch": false,
+  "inspection_mode": "FILES_ONLY",
+  "last_actual_cost_audit": {
+    "actual_counters": {
+      "setup": 15158,
+      "total": 81853,
+      "train": 71213,
+      "train_decision": 58016,
+      "validation": 10640,
+      "validation_decision": 8679
+    },
+    "audited_at": "2026-11-04T06:26:55.814177+00:00",
+    "kind": "world_ticks",
+    "phase": "validation",
+    "tick_kind": "decision"
+  },
+  "last_committed_metrics": {
+    "actual_counters": {
+      "setup": 14989,
+      "total": 80930,
+      "train": 70595,
+      "train_decision": 57502,
+      "validation": 10335,
+      "validation_decision": 8439
+    },
+    "algorithm": "mappo",
+    "budget_policy": "complete_boundary_soft_cap",
+    "completed_round": 125,
+    "created_at": "2026-11-04T06:25:47.714095+00:00",
+    "gate": {
+      "config": {
+        "gate_max_bad_rate": 0.125,
+        "gate_min_cases": 8,
+        "gate_min_q_gap": 0.25,
+        "min_efficiency_gap": 0.02,
+        "quality_metric": "critical",
+        "refresh_rounds": 10,
+        "refresh_train_ticks": 20000,
+        "schedule_clock": "train_ticks",
+        "warmup_rounds": 5,
+        "warmup_train_ticks": 10000
+      },
+      "gates": {
+        "A": {
+          "blocking": 0,
+          "cut_in": 0
+        },
+        "B": {
+          "blocking": 0,
+          "cut_in": 0
+        }
+      },
+      "refresh_round": 91,
+      "statistics": {
+        "A": {
+          "blocking": {
+            "b_count": 8,
+            "case_keys": [
+              "gate_sequential_northbound_front_both_r0l",
+              "gate_sequential_northbound_front_both_r0r",
+              "gate_sequential_southbound_front_both_r0l",
+              "gate_sequential_southbound_front_both_r0r",
+              "gate_sequential_eastbound_front_both_r0l",
+              "gate_sequential_eastbound_front_both_r0r",
+              "gate_sequential_westbound_front_both_r0l",
+              "gate_sequential_westbound_front_both_r0r"
+            ],
+            "n_all": 8,
+            "q_count": 0,
+            "teacher_hash": "3fd85f12330b6a5696c663184c2dfb45853212e010c96d1c8575ed4a04509364",
+            "version": 3
+          },
+          "cut_in": {
+            "b_count": 12,
+            "case_keys": [
+              "gate_crossing_northbound_front_left_r0l",
+              "gate_crossing_northbound_front_left_r0r",
+              "gate_crossing_northbound_front_right_r0l",
+              "gate_crossing_northbound_front_right_r0r",
+              "gate_crossing_southbound_front_left_r0l",
+              "gate_crossing_southbound_front_left_r0r",
+              "gate_crossing_southbound_front_right_r0l",
+              "gate_crossing_southbound_front_right_r0r",
+              "gate_crossing_eastbound_front_left_r0l",
+              "gate_crossing_eastbound_front_left_r0r",
+              "gate_crossing_eastbound_front_right_r0l",
+              "gate_crossing_eastbound_front_right_r0r",
+              "gate_crossing_westbound_front_left_r0l",
+              "gate_crossing_westbound_front_left_r0r",
+              "gate_crossing_westbound_front_right_r0l",
+              "gate_crossing_westbound_front_right_r0r"
+            ],
+            "n_all": 16,
+            "q_count": 1,
+            "teacher_hash": "3fd85f12330b6a5696c663184c2dfb45853212e010c96d1c8575ed4a04509364",
+            "version": 3
+          }
+        },
+        "B": {
+          "blocking": {
+            "b_count": 8,
+            "case_keys": [
+              "gate_sequential_northbound_front_both_r0l",
+              "gate_sequential_northbound_front_both_r0r",
+              "gate_sequential_southbound_front_both_r0l",
+              "gate_sequential_southbound_front_both_r0r",
+              "gate_sequential_eastbound_front_both_r0l",
+              "gate_sequential_eastbound_front_both_r0r",
+              "gate_sequential_westbound_front_both_r0l",
+              "gate_sequential_westbound_front_both_r0r"
+            ],
+            "n_all": 8,
+            "q_count": 0,
+            "teacher_hash": "616a66767077942b946be36669604d87cab352cd585b1b8d821d8d0e3c0d9ff4",
+            "version": 3
+          },
+          "cut_in": {
+            "b_count": 7,
+            "case_keys": [
+              "gate_crossing_northbound_front_left_r0l",
+              "gate_crossing_northbound_front_left_r0r",
+              "gate_crossing_northbound_front_right_r0l",
+              "gate_crossing_northbound_front_right_r0r",
+              "gate_crossing_southbound_front_left_r0l",
+              "gate_crossing_southbound_front_left_r0r",
+              "gate_crossing_southbound_front_right_r0l",
+              "gate_crossing_southbound_front_right_r0r",
+              "gate_crossing_eastbound_front_left_r0l",
+              "gate_crossing_eastbound_front_left_r0r",
+              "gate_crossing_eastbound_front_right_r0l",
+              "gate_crossing_eastbound_front_right_r0r",
+              "gate_crossing_westbound_front_left_r0l",
+              "gate_crossing_westbound_front_left_r0r",
+              "gate_crossing_westbound_front_right_r0l",
+              "gate_crossing_westbound_front_right_r0r"
+            ],
+            "n_all": 16,
+            "q_count": 4,
+            "teacher_hash": "616a66767077942b946be36669604d87cab352cd585b1b8d821d8d0e3c0d9ff4",
+            "version": 3
+          }
+        }
+      },
+      "teacher_hashes": {
+        "A": "3fd85f12330b6a5696c663184c2dfb45853212e010c96d1c8575ed4a04509364",
+        "B": "616a66767077942b946be36669604d87cab352cd585b1b8d821d8d0e3c0d9ff4"
+      },
+      "version": 3
+    },
+    "method": "off",
+    "schedule_clock": "train_ticks",
+    "segment_id": "57d1fa28f9a14e3c92d07b09917661d5",
+    "source": "training_window_not_independent_evaluation",
+    "stop_rule": "train_ticks",
+    "team_count": 2,
+    "teams": {
+      "A": {
+        "actor_loss_2": [
+          -0.026216849451884627,
+          -0.009887666441500187
+        ],
+        "actor_loss_3": [
+          0.0013455525040626526,
+          0.0037933755666017532
+        ],
+        "actor_samples_seen_2": 306,
+        "actor_samples_seen_3": 394,
+        "agent_stop_epoch": {
+          "2": 2,
+          "3": 2
+        },
+        "algorithm": "mappo",
+        "anchor_beta": 0.0,
+        "anchor_kl_2": 0.0,
+        "anchor_kl_3": 0.0,
+        "approx_kl_2": [
+          2.680346369743347e-06,
+          3.5071699358013575e-06
+        ],
+        "approx_kl_3": [
+          9.531891009828541e-06,
+          0.0001159252060460858
+        ],
+        "clip_frac_2": [
+          0.0,
+          0.0
+        ],
+        "clip_frac_3": [
+          0.0,
+          0.0
+        ],
+        "critic_absolute_error_mean_agent_2": 15.166026208914962,
+        "critic_absolute_error_mean_agent_3": 9.752482118945437,
+        "critic_explained_variance_agent_2": 0.15254844140468682,
+        "critic_explained_variance_agent_3": 0.6287527066953256,
+        "critic_input_scope": "all_physical_observation_slots_plus_id",
+        "critic_loss": [
+          0.3937750260035197,
+          0.3953564763069153
+        ],
+        "critic_prediction_target_std_ratio_agent_2": 0.4817696348593069,
+        "critic_prediction_target_std_ratio_agent_3": 0.8882186440458183,
+        "critic_samples_seen": 700,
+        "critic_signed_bias_agent_2": -5.157522176605424,
+        "critic_signed_bias_agent_3": -4.094829346322771,
+        "deterministic_longitudinal_mean_2": [
+          0.3515566885471344,
+          0.36549095809459686
+        ],
+        "deterministic_longitudinal_mean_3": [
+          0.26538775861263275,
+          0.2620796412229538
+        ],
+        "deterministic_longitudinal_saturation_2": [
+          0.0,
+          0.0
+        ],
+        "deterministic_longitudinal_saturation_3": [
+          0.0,
+          0.0
+        ],
+        "deterministic_steer_mean_2": [
+          0.09245068579912186,
+          0.12509096041321754
+        ],
+        "deterministic_steer_mean_3": [
+          -0.025485830730758607,
+          -0.04573414288461208
+        ],
+        "deterministic_steer_saturation_2": [
+          0.0,
+          0.0
+        ],
+        "deterministic_steer_saturation_3": [
+          0.0,
+          0.0
+        ],
+        "distillation": {
+          "direction": "student_to_teacher",
+          "gate_variant": "evidence",
+          "reduction": "all_valid"
+        },
+        "entropy_2": [
+          0.6457175612449646,
+          0.7338207066059113
+        ],
+        "entropy_3": [
+          0.816993236541748,
+          0.833494633436203
+        ],
+        "entropy_bonus_2": [
+          0.006457175360992551,
+          0.007338206749409437
+        ],
+        "entropy_bonus_3": [
+          0.00816993205808103,
+          0.008334946352988482
+        ],
+        "evidence_gate_fraction_2": 0.0,
+        "evidence_gate_fraction_3": 0.0,
+        "explained_variance": 0.4795404076576233,
+        "gate_fraction_2": 0.0,
+        "gate_fraction_3": 0.0,
+        "gate_nonzero_coverage_2": 0.0,
+        "gate_nonzero_coverage_3": 0.0,
+        "gate_weight_mean_2": 0.0,
+        "gate_weight_mean_3": 0.0,
+        "grad_norm_actor_2": [
+          2.2858216762542725,
+          1.4463128447532654
+        ],
+        "grad_norm_actor_3": [
+          0.8723181486129761,
+          1.0776327252388
+        ],
+        "grad_norm_critic": [
+          1.279671311378479,
+          1.0039527416229248,
+          1.5850883722305298,
+          1.0106873512268066,
+          1.3016432523727417,
+          1.6261252164840698
+        ],
+        "method": "off",
+        "mutual_beta": 0.0,
+        "mutual_gated_kl_2": 0.0,
+        "mutual_gated_kl_3": 0.0,
+        "mutual_kl_2": 0.0,
+        "mutual_kl_3": 0.0,
+        "normalized_return_target_mean": 0.05379682779312134,
+        "normalized_return_target_std": 1.1830676794052124,
+        "normalized_value_prediction_mean": -0.1737772524356842,
+        "normalized_value_prediction_std": 0.9263312220573425,
+        "peer_hash": "616a66767077942b946be36669604d87cab352cd585b1b8d821d8d0e3c0d9ff4",
+        "post_tanh_entropy_2": [
+          0.6457175612449646,
+          0.7338207066059113
+        ],
+        "post_tanh_entropy_3": [
+          0.816993236541748,
+          0.833494633436203
+        ],
+        "pre_post_entropy_gap_2": [
+          0.9808255434036255,
+          0.8927517235279083
+        ],
+        "pre_post_entropy_gap_3": [
+          0.8766717910766602,
+          0.8601963818073273
+        ],
+        "pre_tanh_entropy_2": [
+          1.62654310464859,
+          1.6265724301338196
+        ],
+        "pre_tanh_entropy_3": [
+          1.6936650276184082,
+          1.6936910152435303
+        ],
+        "preupdate_ratio_errors": {
+          "2": 0.0,
+          "3": 0.0
+        },
+        "ratio_max_2": [
+          1.0033386945724487,
+          1.0084292888641357
+        ],
+        "ratio_max_3": [
+          1.012573003768921,
+          1.0394220352172852
+        ],
+        "ratio_mean_2": [
+          0.9996165931224823,
+          1.0001645982265472
+        ],
+        "ratio_mean_3": [
+          0.999986082315445,
+          0.9991259872913361
+        ],
+        "ratio_min_2": [
+          0.9887272119522095,
+          0.9833657145500183
+        ],
+        "ratio_min_3": [
+          0.986805260181427,
+          0.9547978639602661
+        ],
+        "ratio_std_2": [
+          0.0015881857473800665,
+          0.0026046392740681767
+        ],
+        "ratio_std_3": [
+          0.0030863376217240557,
+          0.014998030383139849
+        ],
+        "return_target_mean": -39.36210250854492,
+        "return_target_std": 23.702404022216797,
+        "surrogate_loss_2": [
+          -0.01975967362523079,
+          -0.0025494596920907497
+        ],
+        "surrogate_loss_3": [
+          0.009515483863651752,
+          0.012128321453928947
+        ],
+        "team": "A",
+        "update": 125,
+        "value_error_abs_mean": 12.118972778320312,
+        "value_normalizer_debiasing_term": 0.0012492238311097026,
+        "value_normalizer_mean": -40.439910888671875,
+        "value_normalizer_scope": "pooled_active_blue_role_returns",
+        "value_normalizer_std": 20.034698486328125,
+        "value_normalizer_update_count": 125.0,
+        "value_normalizer_variance": 401.38916015625,
+        "value_prediction_mean": -43.921485900878906,
+        "value_prediction_std": 18.558767318725586
+      },
+      "B": {
+        "actor_loss_2": [
+          0.1294659674167633,
+          0.045841777697205544
+        ],
+        "actor_loss_3": [
+          -0.006514137145131826,
+          -0.007121701259166002
+        ],
+        "actor_samples_seen_2": 300,
+        "actor_samples_seen_3": 238,
+        "agent_stop_epoch": {
+          "2": 2,
+          "3": 2
+        },
+        "algorithm": "mappo",
+        "anchor_beta": 0.0,
+        "anchor_kl_2": 0.0,
+        "anchor_kl_3": 0.0,
+        "approx_kl_2": [
+          3.253152044635499e-06,
+          2.6609504857333377e-05
+        ],
+        "approx_kl_3": [
+          -1.252198456036524e-09,
+          8.273776074929629e-06
+        ],
+        "clip_frac_2": [
+          0.0,
+          0.0
+        ],
+        "clip_frac_3": [
+          0.0,
+          0.0
+        ],
+        "critic_absolute_error_mean_agent_2": 12.085910517374675,
+        "critic_absolute_error_mean_agent_3": 11.896105441726556,
+        "critic_explained_variance_agent_2": 0.47525509895096274,
+        "critic_explained_variance_agent_3": 0.6566031362832535,
+        "critic_input_scope": "all_physical_observation_slots_plus_id",
+        "critic_loss": [
+          0.4189189871152242,
+          0.48435986042022705
+        ],
+        "critic_prediction_target_std_ratio_agent_2": 0.7882562744326657,
+        "critic_prediction_target_std_ratio_agent_3": 0.552658111168153,
+        "critic_samples_seen": 538,
+        "critic_signed_bias_agent_2": 4.350487302144368,
+        "critic_signed_bias_agent_3": 4.219305026431043,
+        "deterministic_longitudinal_mean_2": [
+          0.5478301644325256,
+          0.5286783576011658
+        ],
+        "deterministic_longitudinal_mean_3": [
+          0.39560970664024353,
+          0.39490073919296265
+        ],
+        "deterministic_longitudinal_saturation_2": [
+          0.0,
+          0.0
+        ],
+        "deterministic_longitudinal_saturation_3": [
+          0.0,
+          0.0
+        ],
+        "deterministic_steer_mean_2": [
+          -0.015816751190868672,
+          -0.050781930796802044
+        ],
+        "deterministic_steer_mean_3": [
+          0.052042730152606964,
+          0.053724851459264755
+        ],
+        "deterministic_steer_saturation_2": [
+          0.0,
+          0.0
+        ],
+        "deterministic_steer_saturation_3": [
+          0.0,
+          0.0
+        ],
+        "distillation": {
+          "direction": "student_to_teacher",
+          "gate_variant": "evidence",
+          "reduction": "all_valid"
+        },
+        "entropy_2": [
+          0.8239044547080994,
+          0.5725101232528687
+        ],
+        "entropy_3": [
+          0.6514135599136353,
+          0.7126263380050659
+        ],
+        "entropy_bonus_2": [
+          0.008239044342190027,
+          0.005725101102143526
+        ],
+        "entropy_bonus_3": [
+          0.006514135282486677,
+          0.007126263342797756
+        ],
+        "evidence_gate_fraction_2": 0.0,
+        "evidence_gate_fraction_3": 0.0,
+        "explained_variance": 0.5859428644180298,
+        "gate_fraction_2": 0.0,
+        "gate_fraction_3": 0.0,
+        "gate_nonzero_coverage_2": 0.0,
+        "gate_nonzero_coverage_3": 0.0,
+        "gate_weight_mean_2": 0.0,
+        "gate_weight_mean_3": 0.0,
+        "grad_norm_actor_2": [
+          1.294845998287201,
+          1.105705052614212
+        ],
+        "grad_norm_actor_3": [
+          0.4768717885017395,
+          0.47209152579307556
+        ],
+        "grad_norm_critic": [
+          2.2541489601135254,
+          1.6845401525497437,
+          4.800590991973877,
+          1.9775923490524292,
+          1.7043956518173218,
+          2.8563995361328125
+        ],
+        "method": "off",
+        "mutual_beta": 0.0,
+        "mutual_gated_kl_2": 0.0,
+        "mutual_gated_kl_3": 0.0,
+        "mutual_kl_2": 0.0,
+        "mutual_kl_3": 0.0,
+        "normalized_return_target_mean": -0.33177152276039124,
+        "normalized_return_target_std": 1.329145073890686,
+        "normalized_value_prediction_mean": -0.08803125470876694,
+        "normalized_value_prediction_std": 0.8825797438621521,
+        "peer_hash": "3fd85f12330b6a5696c663184c2dfb45853212e010c96d1c8575ed4a04509364",
+        "post_tanh_entropy_2": [
+          0.8239044547080994,
+          0.5725101232528687
+        ],
+        "post_tanh_entropy_3": [
+          0.6514135599136353,
+          0.7126263380050659
+        ],
+        "pre_post_entropy_gap_2": [
+          0.793847918510437,
+          1.045265257358551
+        ],
+        "pre_post_entropy_gap_3": [
+          1.0382839441299438,
+          0.9770553112030029
+        ],
+        "pre_tanh_entropy_2": [
+          1.6177523732185364,
+          1.6177753806114197
+        ],
+        "pre_tanh_entropy_3": [
+          1.689697504043579,
+          1.6896816492080688
+        ],
+        "preupdate_ratio_errors": {
+          "2": 0.0,
+          "3": 0.0
+        },
+        "ratio_max_2": [
+          1.0061955451965332,
+          1.0177607536315918
+        ],
+        "ratio_max_3": [
+          1.0000009536743164,
+          1.0085668563842773
+        ],
+        "ratio_mean_2": [
+          0.9998126327991486,
+          1.0005603730678558
+        ],
+        "ratio_mean_3": [
+          1.0,
+          1.000135898590088
+        ],
+        "ratio_min_2": [
+          0.9908014535903931,
+          0.9800176024436951
+        ],
+        "ratio_min_3": [
+          0.9999992847442627,
+          0.9912900924682617
+        ],
+        "ratio_std_2": [
+          0.0017928393300863377,
+          0.007221665466204286
+        ],
+        "ratio_std_3": [
+          2.453915328715084e-07,
+          0.004067069850862026
+        ],
+        "return_target_mean": -36.675533294677734,
+        "return_target_std": 23.407276153564453,
+        "surrogate_loss_2": [
+          0.1377050057053566,
+          0.05156687740236521
+        ],
+        "surrogate_loss_3": [
+          -2.0035175740673594e-09,
+          4.562009507935727e-06
+        ],
+        "team": "B",
+        "update": 125,
+        "value_error_abs_mean": 12.001945495605469,
+        "value_normalizer_debiasing_term": 0.0012492238311097026,
+        "value_normalizer_mean": -30.83277702331543,
+        "value_normalizer_scope": "pooled_active_blue_role_returns",
+        "value_normalizer_std": 17.610774993896484,
+        "value_normalizer_update_count": 125.0,
+        "value_normalizer_variance": 310.139404296875,
+        "value_prediction_mean": -32.38307571411133,
+        "value_prediction_std": 15.542913436889648
+      }
+    },
+    "train_tick_budget": 72000,
+    "train_tick_overshoot": 0,
+    "training_parameter_counts": {
+      "A": {
+        "actors": 38920,
+        "critics": 27521
+      },
+      "B": {
+        "actors": 38920,
+        "critics": 27521
+      }
+    },
+    "training_window": {
+      "A": {
+        "agents": {
+          "0": {
+            "brake_mode_rate": 0.03666666666666667,
+            "mean_completion": 0.7300225633580193,
+            "mean_speed_mps": 4.224494726025052
+          },
+          "1": {
+            "brake_mode_rate": 0.057974683544303796,
+            "mean_completion": 0.7485682395027804,
+            "mean_speed_mps": 3.6305187494183175
+          },
+          "2": {
+            "brake_mode_rate": 0.2101728252994076,
+            "mean_completion": 0.3546514295889778,
+            "mean_speed_mps": 3.0838222528539907
+          },
+          "3": {
+            "brake_mode_rate": 0.2824470552126317,
+            "mean_completion": 0.565825597315622,
+            "mean_speed_mps": 2.966689047751278
+          }
+        },
+        "b": 0.75,
+        "critical_exposure_s": 0.17972825782657198,
+        "critical_tet_s": 0.375,
+        "critical_tit_s": 0.18145958314698982,
+        "max_abs_reward_residual": 0.0,
+        "n": 4,
+        "q": 0.0,
+        "red_success_rate": 0.75,
+        "reward_components_mean": {
+          "attack": -0.00040996456012265536,
+          "comfort": -0.7203707139336912,
+          "completed_task_tail": 0.0,
+          "critical": 0.269592386739858,
+          "driving": 0.4488749904667229,
+          "normal_comfort": -2.881482855734765,
+          "normal_lane": -6.870965542268328,
+          "normal_overspeed": -0.2412434411652113,
+          "pace": -0.06037694590212332,
+          "primary_event_bonus": 1.25,
+          "risk": -0.03482851464655388,
+          "safety_event": -37.5,
+          "severe": 0.0
+        },
+        "safe_critical_event": 0.0,
+        "safe_efficiency_utility": 6.232482272844037e-06,
+        "scenario_coverage": {
+          "train_crossing_eastbound_front_left_r0l": 0,
+          "train_crossing_eastbound_front_left_r0r": 0,
+          "train_crossing_eastbound_front_right_r0l": 0,
+          "train_crossing_eastbound_front_right_r0r": 0,
+          "train_crossing_northbound_front_left_r0l": 0,
+          "train_crossing_northbound_front_left_r0r": 0,
+          "train_crossing_northbound_front_right_r0l": 0,
+          "train_crossing_northbound_front_right_r0r": 0,
+          "train_crossing_southbound_front_left_r0l": 0,
+          "train_crossing_southbound_front_left_r0r": 0,
+          "train_crossing_southbound_front_right_r0l": 1,
+          "train_crossing_southbound_front_right_r0r": 1,
+          "train_crossing_westbound_front_left_r0l": 0,
+          "train_crossing_westbound_front_left_r0r": 0,
+          "train_crossing_westbound_front_right_r0l": 0,
+          "train_crossing_westbound_front_right_r0r": 0,
+          "train_sequential_eastbound_front_both_r0l": 0,
+          "train_sequential_eastbound_front_both_r0r": 0,
+          "train_sequential_northbound_front_both_r0l": 1,
+          "train_sequential_northbound_front_both_r0r": 1,
+          "train_sequential_southbound_front_both_r0l": 0,
+          "train_sequential_southbound_front_both_r0r": 0,
+          "train_sequential_westbound_front_both_r0l": 0,
+          "train_sequential_westbound_front_both_r0r": 0
+        }
+      },
+      "B": {
+        "agents": {
+          "0": {
+            "brake_mode_rate": 0.0,
+            "mean_completion": 0.7993332642382198,
+            "mean_speed_mps": 5.098322904384993
+          },
+          "1": {
+            "brake_mode_rate": 0.037911025145067695,
+            "mean_completion": 0.7541358045316842,
+            "mean_speed_mps": 4.2605126361545995
+          },
+          "2": {
+            "brake_mode_rate": 0.11983537296037296,
+            "mean_completion": 0.62358326341082,
+            "mean_speed_mps": 4.171191028328274
+          },
+          "3": {
+            "brake_mode_rate": 0.1930322966507177,
+            "mean_completion": 0.32379894151760463,
+            "mean_speed_mps": 3.196412681191335
+          }
+        },
+        "b": 0.75,
+        "critical_exposure_s": 0.1558433193302064,
+        "critical_tet_s": 0.6750000000000003,
+        "critical_tit_s": 0.6042735646768583,
+        "max_abs_reward_residual": 0.0,
+        "n": 4,
+        "q": 0.0,
+        "red_success_rate": 0.5,
+        "reward_components_mean": {
+          "attack": -0.008802201560873347,
+          "comfort": -0.5214206718122982,
+          "completed_task_tail": -0.231813880727926,
+          "critical": 0.23376497899530965,
+          "driving": 0.49176188083159456,
+          "normal_comfort": -2.085682687249193,
+          "normal_lane": -2.9168267526546225,
+          "normal_overspeed": -0.952244794944407,
+          "pace": -0.010469167620943095,
+          "primary_event_bonus": 0.0,
+          "risk": -0.11124269049540934,
+          "safety_event": -50.0,
+          "severe": -0.3902969796735967
+        },
+        "safe_critical_event": 0.0,
+        "safe_efficiency_utility": -0.14794731677028825,
+        "scenario_coverage": {
+          "train_crossing_eastbound_front_left_r0l": 0,
+          "train_crossing_eastbound_front_left_r0r": 0,
+          "train_crossing_eastbound_front_right_r0l": 0,
+          "train_crossing_eastbound_front_right_r0r": 0,
+          "train_crossing_northbound_front_left_r0l": 0,
+          "train_crossing_northbound_front_left_r0r": 0,
+          "train_crossing_northbound_front_right_r0l": 0,
+          "train_crossing_northbound_front_right_r0r": 0,
+          "train_crossing_southbound_front_left_r0l": 0,
+          "train_crossing_southbound_front_left_r0r": 0,
+          "train_crossing_southbound_front_right_r0l": 1,
+          "train_crossing_southbound_front_right_r0r": 1,
+          "train_crossing_westbound_front_left_r0l": 0,
+          "train_crossing_westbound_front_left_r0r": 0,
+          "train_crossing_westbound_front_right_r0l": 0,
+          "train_crossing_westbound_front_right_r0r": 0,
+          "train_sequential_eastbound_front_both_r0l": 0,
+          "train_sequential_eastbound_front_both_r0r": 0,
+          "train_sequential_northbound_front_both_r0l": 1,
+          "train_sequential_northbound_front_both_r0r": 1,
+          "train_sequential_southbound_front_both_r0l": 0,
+          "train_sequential_southbound_front_both_r0r": 0,
+          "train_sequential_westbound_front_both_r0l": 0,
+          "train_sequential_westbound_front_both_r0r": 0
+        }
+      }
+    }
+  },
+  "latest_dispatch": {},
+  "launch": {
+    "command": [
+      "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+      "-u",
+      "-m",
+      "training.train_mut_mappo",
+      "--config",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R2_budget_20261104_v1\\configs\\R2_B0_s42.json",
+      "--run-dir",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R2_budget_20261104_v1\\runs\\R2",
+      "--allow-candidate"
+    ],
+    "launch_id": "20261104T044655587332Z_ad8d4cf62ad6",
+    "log_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R2_budget_20261104_v1\\runs\\R2\\session\\training_20261104T044655587332Z_ad8d4cf62ad6.log",
+    "started_at": "2026-11-04T04:46:55.595443+00:00",
+    "status": "TRAINER_DISPATCHED_VERIFY_STATUS",
+    "supervisor_command": [
+      "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\utils\\mut_mappo_session.py",
+      "supervise",
+      "--config",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R2_budget_20261104_v1\\configs\\R2_B0_s42.json",
+      "--run-dir",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R2_budget_20261104_v1\\runs\\R2"
+    ],
+    "supervisor_log_path": null,
+    "supervisor_pid": 5972,
+    "trainer_pid": 27984
+  },
+  "manifest": {
+    "checkpoint": "boundaries/round_00000125_96df34a0c195.pt",
+    "completed_round": 125,
+    "identity": {
+      "algorithm": "mappo",
+      "case_manifest_sha256": "64898e3f1c9e3a3edd213c2a4769a70154b7ca47c33f3d823dd6e3a4ccde185b",
+      "config_sha256": "7af3ed68f1105886ea764db3fb31ebfe772532ca80306c4222a74af6697b3add",
+      "model_spec": {
+        "action_dim": 2,
+        "critic_num_agents": 4,
+        "learner_ids": [
+          2,
+          3
+        ],
+        "obs_dim": 20,
+        "physical_ids": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "state_dim": 80
+      },
+      "protocol": "mut_mappo_four_car_20_2_v1",
+      "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+      "scenario_hashes": {
+        "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0l.json": "8f5bc26f863190584f3f3ee5ef9eeabe03464117cfdc8476b750a7b630900332",
+        "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0r.json": "f42474dc6904b6bfc59d6b3563a56de6baca83fcd487cdecc3b960ecca44e5d2",
+        "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0l.json": "3194485a62479a7ec9eb7fb8edd5bbb7bea319db359a7ea6dc73c77faa255a36",
+        "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0r.json": "ec5f9b52b2bf166d0896d6abb81114630239ef440e7e5bd8d0076cd3eb9833e8",
+        "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0l.json": "2d530107ade6d51d39e761681aed8e31b0450f9252de003e8ecfbae9cd43800b",
+        "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0r.json": "78c88f13ddda9c2922bca2dbc98247596bdd9b5baef95581931e0bac4ab6f21e",
+        "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0l.json": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+        "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0r.json": "072e339165429689e764872e0f69acd60c5aa0dc6b8802bcc82d1f2b968a612f"
+      },
+      "source_hashes": {
+        "@carla/agents/navigation/controller.py": "35dbabac3b7bf69fd7f1272fcd8af97aa7797a537af2e58a31d9d6b67c1f3a0e",
+        "@carla/agents/tools/misc.py": "8b3ecbd8e07116dc1617114fc2fe03f84fbac2ad323a652c438db8e12b1b49f5",
+        "environment/base_reward_v4.py": "57ddbf702ced7b98fb33d6175143644936744859964c2def4a26a717b631850e",
+        "environment/base_reward_v5.py": "3e3032bfca75fdb8acfa6b59878e57b8dbd3665d4826a3c7a1733e140627665f",
+        "environment/base_reward_v6.py": "f39af641933a12f3cfac92589dcad402c07390bf1fbc2ad29afd109a088f8bbf",
+        "environment/carla_multi_agent_env.py": "af03ff79e8f89230faddaf4bfefb71e9a97cf1df3158b067f30c8e0ff0c7b203",
+        "environment/frozen_lane_traffic.py": "4b133dbaea4aa22366f296fd88058e69b15b18495b530922f4857a98215c891b",
+        "environment/mut_mappo_critical_reward.py": "cbea0d8e2cfbb0975b716262177c0266b0695252ec8ef8dee86a0094fb1f491e",
+        "environment/mut_mappo_critical_reward_v2.py": "495f6ab3b6762bb0b3691a0dc2b9149947c38186a9bdb043656964022d05b490",
+        "environment/mut_mappo_efficiency_reward.py": "fab4f2d17d02c0d0952d8a539b1c55f3aaae12e8cccc11fba041b166b72b089b",
+        "environment/mut_mappo_env.py": "668f8df3cfb01dccae7cdf44311591f44bf8e52a365c28c3a5b042a50934037f",
+        "environment/mut_mappo_events.py": "6f44ff9c3ce0c2b33e1db3881abd6db2a36cff5f8a388a1a6a2f347b54160ba9",
+        "environment/route_pace_reward.py": "a9b9a14b107013b010c730c520d90027046dfd5f662a27bbf8b2837a426a2fe5",
+        "evaluation/critical_interaction_metrics.py": "184f3760647ebafa294af0ef4cc2a63d7dbfebcb22296bfcdd575db7bd840384",
+        "evaluation/driving_policy_metrics.py": "ba8971d09e48ac22a6f2b01fc3d48e78d5f3c62c5e0ff59a88b43656ceec4bb4",
+        "evaluation/evaluate_mut_mappo.py": "792bc1252efebb7098f1ea321fca40fbb40d5f84796dc91d66837141711b370a",
+        "evaluation/mut_mappo_metrics.py": "e643dd30227961e5535e4ca45f935af6370eafb9abaf9431a214c73353ca2085",
+        "evaluation/mut_mappo_selection.py": "350cc698f9fc95ab8cf9bccf415fff459ea8f1cffd1e316cff4b8468d7022f94",
+        "models/actor_critic.py": "f37b7358a77d682b010b3e75c267390b22a7cee6b5106bb01559295386bfaf80",
+        "models/mut_mappo_critics.py": "12bcb4f05920a0b86128b6e48411f1df72a01d138a23ec1b1b1ae699bc2a55d7",
+        "training/action_protocol.py": "7135ebfd5960ce3826beba63f9ae62d66bc89eb6b41fc2992c10f721562472f5",
+        "training/checkpoint_protocol.py": "e1bd19f6723442d22b44e8cfad7c1b1731147ae8f52523e31ceaeaf1884f0d63",
+        "training/first_point_scenarios.py": "4739e67584c4bc5bedf5a2a88be9c05ff5d916a52a8622a6be1389a8a2d4b15b",
+        "training/mut_mappo_checkpoint.py": "292db9bcc0ca1ce10acc9c136386ab2939e7a2327d279ec9bcc353f954d84043",
+        "training/mut_mappo_config.py": "e9bba0c5e1d753ede6cc7f5611645b102baf88084e643191f27d006c30dbf216",
+        "training/mut_mappo_learning.py": "55c302119a8c30a9b0e74b71caa4a6a93a377444e5e2f23d38e8acd06d0c6293",
+        "training/mutual_distillation.py": "61d93718d7748cefc7b9afb4b776a33b0f95f3d507540d9eb9853d713e40558a",
+        "training/train_mut_mappo.py": "b7efa43cab157550c815b38bdfddc3d9c4cb2303b1c2c69085c823228ebf4996",
+        "training/train_no_rllib_mappo_robust_v2.py": "5c077ac4f2c91b6573fdc4acb4e70e1a9756ce8a9624cffd3814fb7b3811cd32",
+        "training/value_normalization.py": "46f16d1b937eedcafb8489d90f061b709b86ac76ab71200a50c4a463640e5aa1",
+        "utils/adversarial_metrics.py": "e8cbf2fe88d77592c211b6c14865930a0128eaa1952fb68bfded1623671b5f64",
+        "utils/mut_mappo_session.py": "082da5a7a4a2bf786c7245732a95510bcd974da51959e4efcf57b7e3c5c0f3d5"
+      },
+      "task_contract_sha256": "a845ab690089442703d499355f8bb2c20b6e260dc38f9d5e66d71588a09b6eb3",
+      "team_count": 2,
+      "training_reference_hashes": {
+        "gate_crossing_eastbound_front_left_r0l": "06e39bc579cfd89a146557523ffaa85da8954fdf7000a5fa98cad0cb99de6118",
+        "gate_crossing_eastbound_front_left_r0r": "79c8cd8162f68a1d78a8bd3160429139dc6155164494e8636b15c3671b02f28e",
+        "gate_crossing_eastbound_front_right_r0l": "3b92875fae0a68278a7b485c7ad58c1a5d972f3cf211ab8519055fd546151f77",
+        "gate_crossing_eastbound_front_right_r0r": "7767d51a9c7323e47acc8dee1a3f0ca8b2677f241db68fbb801e2e69f179b793",
+        "gate_crossing_northbound_front_left_r0l": "c2e0e46c4fd0f876e4d39d0fdca8780fd98d96836eb418806c181cb1eb54fb1c",
+        "gate_crossing_northbound_front_left_r0r": "5eeffdc25a56a6d47a23f1ca703e076b74d955c9c7d1f4b7e61340412f8c9727",
+        "gate_crossing_northbound_front_right_r0l": "a9e34068a329dad02b221c4d2766a0b0b9dd4087c9c044d4d12e2d3e366feafe",
+        "gate_crossing_northbound_front_right_r0r": "1d2983c82247bde5ca1acc5f3eacef0480ae34a63dadd4521fb4f8ed0d44c2a8",
+        "gate_crossing_southbound_front_left_r0l": "be23158e5e3c570a0b0f9668a887bffe9daeaf10a6d26e6d796ad7763f5c275c",
+        "gate_crossing_southbound_front_left_r0r": "c0048cb5d387d6aeeb7202491fdc3b8ea97689932f36391a935bed299da7aec2",
+        "gate_crossing_southbound_front_right_r0l": "73ab8857af716cde0c781b0696b587484cb9e7becd0b2bf0547afe9b4a685497",
+        "gate_crossing_southbound_front_right_r0r": "a32cb8fef07075147c56f3419be8ecbc55c81591cd51555bf4e6e3dfe72e3bf0",
+        "gate_crossing_westbound_front_left_r0l": "cbc1397d41a8867084cc9728e7e0815b4bcd0f7d5c168daa3625d8751869f60b",
+        "gate_crossing_westbound_front_left_r0r": "61e6ab1a1bc435ecfb2980704da385610d322b04d186e787343ac61d7f62736b",
+        "gate_crossing_westbound_front_right_r0l": "37348e1061c8c6e007ad90babb0a5c45a738e35ca3cfb4975c4b4380ca3c0d5e",
+        "gate_crossing_westbound_front_right_r0r": "75b0b9d9e007a5252f0cc13c59647342da4e9894f85d31d64033f6a1426932f2",
+        "gate_sequential_eastbound_front_both_r0l": "4eb52151abae7503004523458315a5e4f2bcf76944742ed27e403451d9666998",
+        "gate_sequential_eastbound_front_both_r0r": "a22605fc6f4407882f720ad7013f6d82ebf89e9ca75f2f783e3f20f9ce4a46ce",
+        "gate_sequential_northbound_front_both_r0l": "36580ca3cb788c5eaa29a061660dd3a2e0750f2588fa4ac54d95347a61301c81",
+        "gate_sequential_northbound_front_both_r0r": "e9d16b7eada772479dbc85c9fdb5b115aca3449e41d67540f50b7e0635dc2645",
+        "gate_sequential_southbound_front_both_r0l": "3334a063f6696a694391e76611247959eb69cf05fce548bb11c866153464f1a3",
+        "gate_sequential_southbound_front_both_r0r": "2576655a3e8ed77f63bfc09cb772111ecf3770691a237867b09c2332b5d97d9a",
+        "gate_sequential_westbound_front_both_r0l": "746be3fce94bcbc637cd3a33545063719d8eb896f4c458435054462faada9594",
+        "gate_sequential_westbound_front_both_r0r": "4a72549cc56f573946b6acefa053c4b0fdf3b5d713d7357c4a2b25dc866d9214",
+        "train_crossing_eastbound_front_left_r0l": "2d6fe04c227b0244d22651360c7ad05209b2027f0b557897065cd5218850292e",
+        "train_crossing_eastbound_front_left_r0r": "5f3698619030c8c7f41bcda3b636d82f53d88ea859de7f9858a5ad617d38afa9",
+        "train_crossing_eastbound_front_right_r0l": "47ee8c689dcabdcbd089c7df42c28b320c578f0264f846036157d45811fe354f",
+        "train_crossing_eastbound_front_right_r0r": "ec69477b07b42efa1fe300991dab27886a48eae679c2c074b9373397b3f241c3",
+        "train_crossing_northbound_front_left_r0l": "7778727d677f1fd28a0683ca212957dd92afb8721396f1ca14c9a9e08b800bbf",
+        "train_crossing_northbound_front_left_r0r": "1d298ea14b5c6725f29ffdd7bd070205528cc4368412e5b7c94cf174df573bcc",
+        "train_crossing_northbound_front_right_r0l": "95c79332046c479fafa1c0039f597661bbc02af146a31ce8344decfacd362c26",
+        "train_crossing_northbound_front_right_r0r": "de48723977fe116eaac5dd748780f07774d32cd1c4dd2f375413a44577c52e07",
+        "train_crossing_southbound_front_left_r0l": "1dfb8a57408634ce678713da5a8295e7ccfea7d56873275c479b91461641fc94",
+        "train_crossing_southbound_front_left_r0r": "5c473b742ac63bdef2561ae2a10f4d2ec704574eb547b3787b4642d4a1aa9bd5",
+        "train_crossing_southbound_front_right_r0l": "a8ccfcedce4f99b5f6b7955eedf2994f29c0fd9e44fed2b2fef7f925703f57e1",
+        "train_crossing_southbound_front_right_r0r": "ea499c99757db4cd64786252873704367dda77bfa52517121427bb0e3c78e529",
+        "train_crossing_westbound_front_left_r0l": "41408141f6b2622bcc3967e87f8e36f44a039ac01b2d096839fe359322133647",
+        "train_crossing_westbound_front_left_r0r": "76ed762359076a3f4b6e558f5025c32af8fe9fcdf89cf8fc4368a28ccac6fd8d",
+        "train_crossing_westbound_front_right_r0l": "35d4cd22f7169166fae56a189155099651b1efc631f615091939457bdfb525cd",
+        "train_crossing_westbound_front_right_r0r": "1bd0e5ba9b921f92abe124605959e5046cf3fc328ca9392f2f9a61e68ec90686",
+        "train_sequential_eastbound_front_both_r0l": "6c7d43a86686855f8c50d13fc2f59db224947f76800ac928b314df5a8fcf5638",
+        "train_sequential_eastbound_front_both_r0r": "f42f2619682adeb22a2efed4720558f71226652fb474391d022f1c4b981b0eeb",
+        "train_sequential_northbound_front_both_r0l": "7658ae3c404687ffd8aad49f6529329f43451dbd663364d61f8cf5fdcba37bdb",
+        "train_sequential_northbound_front_both_r0r": "536c8f7290267fb570cc495e469d4f0373fde94c479e8af8af1a1ad73ca9d141",
+        "train_sequential_southbound_front_both_r0l": "21280c9e8c7499e38324ef26a25eb1330de5922429a253110bc1d533c773112b",
+        "train_sequential_southbound_front_both_r0r": "b2b47d35c3c739fd48a20fe6010b2e554da0f1d8308e33fc3fc0f7a33b851cb6",
+        "train_sequential_westbound_front_both_r0l": "ea1da28ca17e50c2869f7f0127aab8a41113ad3eb62eea7d7112621f2ac70bf4",
+        "train_sequential_westbound_front_both_r0r": "d7f511c7119547702c31531a0e7122101456872bee106e55516884d22a50404a"
+      }
+    },
+    "saved_at": "2026-11-04T06:25:47.820218+00:00",
+    "schema_version": "mut_mappo_complete_team_boundary_v2",
+    "sha256": "a1d267d2d2d886a2c3eb01aabe6d3ced3ce7b121bdfec278204031600a33bfc6"
+  },
+  "metrics_age_seconds": 67.93182516098022,
+  "process_liveness": "NOT_QUERIED_FILES_ONLY",
+  "run_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R2_budget_20261104_v1\\runs\\R2",
+  "session": {
+    "actual_counters": {
+      "setup": 15093,
+      "total": 81548,
+      "train": 71213,
+      "train_decision": 58016,
+      "validation": 10335,
+      "validation_decision": 8439
+    },
+    "at": "2026-11-04T06:26:36.594495+00:00",
+    "collecting_team": "A",
+    "completed_round": 125,
+    "in_progress_round": 126,
+    "method": "off",
+    "segment_id": "57d1fa28f9a14e3c92d07b09917661d5",
+    "started_at": "2026-11-04T04:47:04.261564+00:00",
+    "status": "RUNNING_PARTIAL_AB"
+  },
+  "supervisor_logs": [],
+  "trainer_log": {
+    "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R2_budget_20261104_v1\\runs\\R2\\session\\training_20261104T044655587332Z_ad8d4cf62ad6.log",
+    "tail": "  智能体 3 起始位置已设置: x=-184.58, y=-35.59, z=0.50, yaw=-90.02 (用户指定)\n车辆 0 生成成功，位置: Location(x=-188.081741, y=-24.584389, z=0.500000)\n车辆 1 生成成功，位置: Location(x=-184.581741, y=-24.585611, z=0.500000)\n车辆 2 生成成功，位置: Location(x=-188.080917, y=-35.584393, z=0.500000)\n车辆 3 生成成功，位置: Location(x=-184.580917, y=-35.585617, z=0.500000)\n检测到红车严重碰撞，结束本回合\n终点区域已设置: center=(-186.3,-56.6), yaw=-90.0°, size=6.0m×3.2m\n  智能体 0 起始位置已设置: x=-184.58, y=-24.59, z=0.50, yaw=-90.02 (用户指定)\n  智能体 1 起始位置已设置: x=-188.08, y=-24.58, z=0.50, yaw=-90.02 (用户指定)\n  智能体 2 起始位置已设置: x=-184.58, y=-35.59, z=0.50, yaw=-90.02 (用户指定)\n  智能体 3 起始位置已设置: x=-188.08, y=-35.58, z=0.50, yaw=-90.02 (用户指定)\n车辆 0 生成成功，位置: Location(x=-184.581741, y=-24.585611, z=0.500000)\n车辆 1 生成成功，位置: Location(x=-188.081741, y=-24.584389, z=0.500000)\n车辆 2 生成成功，位置: Location(x=-184.580917, y=-35.585617, z=0.500000)\n车辆 3 生成成功，位置: Location(x=-188.080917, y=-35.584393, z=0.500000)\n红车已全部到达终点，结束本回合\n终点区域已设置: center=(-215.3,4.8), yaw=359.9°, size=6.0m×3.2m\n  智能体 0 起始位置已设置: x=-247.34, y=3.15, z=0.50, yaw=359.86 (用户指定)\n  智能体 1 起始位置已设置: x=-247.34, y=6.65, z=0.50, yaw=359.86 (用户指定)\n  智能体 2 起始位置已设置: x=-236.34, y=3.12, z=0.50, yaw=359.86 (用户指定)\n  智能体 3 起始位置已设置: x=-236.34, y=6.62, z=0.50, yaw=359.86 (用户指定)\n车辆 0 生成成功，位置: Location(x=-247.344284, y=3.147788, z=0.500000)\n车辆 1 生成成功，位置: Location(x=-247.335739, y=6.647778, z=0.500000)\n车辆 2 生成成功，位置: Location(x=-236.344345, y=3.124601, z=0.500000)\n车辆 3 生成成功，位置: Location(x=-236.335800, y=6.624590, z=0.500000)"
+  }
+}

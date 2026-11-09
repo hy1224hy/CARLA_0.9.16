@@ -1,0 +1,220 @@
+{
+  "actor_state_sha256_before": {
+    "0": "5d2bcc41e4ba7c160663dc16a0040d46bf2805c4e4c68e737a7fdd9aba00f658",
+    "1": "fd3679286ec7e518a52eccfb84f8008890ea83b1ff71fbde9c697441d5dddb2d"
+  },
+  "case_count": 4,
+  "cases": [
+    {
+      "case_id": "short_probe:scenario_01_north_short_rolling_a0_left:s61001",
+      "case_ordinal": 1,
+      "direction": "northbound",
+      "effective_episode_max_steps": 200,
+      "episode_seed": 61001,
+      "scenario_difficulty": 1,
+      "scenario_family": "r8a_short_free_flow_rolling",
+      "scenario_group": "short_rolling_trained",
+      "scenario_name": "scenario_01_north_short_rolling_a0_left.json",
+      "scenario_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_01_north_short_rolling_a0_left.json",
+      "scenario_sha256": "1496f0764c5c1112c484d2fdf98a491ab3566286f0c49c7642154ef3092b6cb0"
+    },
+    {
+      "case_id": "short_probe:scenario_02_south_short_rolling_a1_left:s61001",
+      "case_ordinal": 2,
+      "direction": "southbound",
+      "effective_episode_max_steps": 200,
+      "episode_seed": 61001,
+      "scenario_difficulty": 1,
+      "scenario_family": "r8a_short_free_flow_rolling",
+      "scenario_group": "short_rolling_trained",
+      "scenario_name": "scenario_02_south_short_rolling_a1_left.json",
+      "scenario_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_02_south_short_rolling_a1_left.json",
+      "scenario_sha256": "2ec1297a5aa5e6b70c926ddd1e145a0e3c0e99cc9992d4c382382b08c4b6a58a"
+    },
+    {
+      "case_id": "short_probe:scenario_03_north_short_stationary_a0_left:s61001",
+      "case_ordinal": 3,
+      "direction": "northbound",
+      "effective_episode_max_steps": 200,
+      "episode_seed": 61001,
+      "scenario_difficulty": 2,
+      "scenario_family": "r8a_short_free_flow_stationary",
+      "scenario_group": "short_stationary_transfer",
+      "scenario_name": "scenario_03_north_short_stationary_a0_left.json",
+      "scenario_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_03_north_short_stationary_a0_left.json",
+      "scenario_sha256": "b377efaa41b099a9240bc249dd633188aaac0f419d12f894df1bfb9c21d8cc03"
+    },
+    {
+      "case_id": "short_probe:scenario_04_south_short_stationary_a1_left:s61001",
+      "case_ordinal": 4,
+      "direction": "southbound",
+      "effective_episode_max_steps": 200,
+      "episode_seed": 61001,
+      "scenario_difficulty": 2,
+      "scenario_family": "r8a_short_free_flow_stationary",
+      "scenario_group": "short_stationary_transfer",
+      "scenario_name": "scenario_04_south_short_stationary_a1_left.json",
+      "scenario_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\data\\training_scenarios_town05_r8a_v1\\scenario_04_south_short_stationary_a1_left.json",
+      "scenario_sha256": "d4793adf90f588db389dc1a7599ab4cefaee42bbfb836785d0871d46a2a749ad"
+    }
+  ],
+  "checkpoint_formal_eligible": false,
+  "checkpoint_formal_ineligibility_reasons": [
+    "diagnostic_only: model selection and performance decisions are forbidden"
+  ],
+  "checkpoint_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\logs\\P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224\\periodic\\ckpt_update_000020.pt",
+  "checkpoint_sha256": "1cfd66872171427ecf68eddb530df5defe976503d5b172549dbb8291c5ec51be",
+  "checkpoint_update": 20,
+  "command": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\evaluation\\evaluate_base_policy_c0.py --eval-contract configs/evaluation/p0_base_c0_town05_r8c1_probe_v1.json --checkpoint logs/P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224/periodic/ckpt_update_000020.pt --profile short_probe --eval-id P0_BASE_C0_short_probe_u000020_20260915_091925 --output-dir D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\evaluations\\P0_BASE_C0_short_probe_u000020_20260915_091925 --host 127.0.0.1 --port 2000",
+  "contract_canonical_sha256": "093c0ff25f3757ac27809464dd3858a982a184925dbb1516075cb4f1fcfd0f09",
+  "contract_id": "P0_BASE_C0_TOWN05_R8C1_PROBE_V1",
+  "contract_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\configs\\evaluation\\p0_base_c0_town05_r8c1_probe_v1.json",
+  "contract_sha256": "0654a931a0387ffdbf3884bf83ef5ae63899fcf0aa5ba922a9acc6f4748e736d",
+  "created_at": "2026-09-15T01:19:30.217363+00:00",
+  "device": "cpu",
+  "environment_spec": {
+    "adversarial_agent_ids": [],
+    "allow_extra_traffic": false,
+    "carla_version": "0.9.16",
+    "lidar_range_m": 20.0,
+    "max_steps": 500,
+    "num_agents": 2,
+    "offroad_protocol": {
+      "boundary_sample_count": 8,
+      "footprint_inset_fraction": 0.9,
+      "membership_rule": "exact_OpenDRIVE_Driving_union_no_projection",
+      "outside_count_threshold": 3,
+      "persistence_ticks": 3,
+      "protocol_version": "driving_footprint_offroad_v2_r6",
+      "raw_rule": "center_not_driving_or_boundary_outside_count_gte_threshold",
+      "sample_count": 9,
+      "terminal_penalty": -50.0
+    },
+    "reward_gamma": 0.999,
+    "reward_version": "v6",
+    "road_legality_protocol": {
+      "broken_marking_semantics": "audit_only_never_sufficient_or_required",
+      "junction_semantics": "nonterminal_ambiguous_but_success_ineligible",
+      "legal_lane_change_evidence": [
+        "adjacent_waypoint_topology",
+        "carla_lane_change_permission",
+        "same_direction_alignment"
+      ],
+      "observation_space_change": false,
+      "offroad_delegation": "exact_driving_footprint_protocol",
+      "parameters": {
+        "legal_transition_grace_ticks": 10,
+        "opposing_direction_max_cosine": -0.5,
+        "same_direction_min_cosine": 0.5,
+        "violation_persistence_ticks": 5,
+        "wrong_way_heading_max_cosine": -0.1736481776669303,
+        "wrong_way_min_speed_mps": 0.5
+      },
+      "reference_lane_key": [
+        "road_id",
+        "lane_id"
+      ],
+      "road_legality_protocol_version": "town05_road_legality_r7_v1",
+      "terminal_rule": "same_reason_persists_for_frozen_tick_threshold"
+    },
+    "straight_road_length": 50.0,
+    "timestep": 0.1,
+    "town": "Town05",
+    "ttc_max_range_m": 20.0
+  },
+  "eval_id": "P0_BASE_C0_short_probe_u000020_20260915_091925",
+  "evaluation_purpose": "diagnostic_only",
+  "git": {
+    "commit": "050fe9fc72b9639b3048f56384cc48ad0d8d0214",
+    "dirty": true,
+    "dirty_paths": [
+      "M \"PythonAPI/examples/mappo_training/docs/P0-BASE_\\345\\237\\272\\347\\241\\200\\347\\255\\226\\347\\225\\245\\345\\256\\236\\351\\252\\214\\350\\256\\260\\345\\275\\225.md\"",
+      " M \"PythonAPI/examples/mappo_training/docs/P0-T05-11-R8A_\\350\\257\\276\\347\\250\\213\\345\\217\\257\\350\\276\\276\\346\\200\\247\\346\\266\\210\\350\\236\\215_\\345\\256\\236\\347\\216\\260\\344\\270\\216\\351\\252\\214\\346\\224\\266.md\"",
+      " M \"PythonAPI/examples/mappo_training/docs/\\346\\257\\225\\344\\270\\232\\350\\257\\276\\351\\242\\230_\\347\\240\\224\\347\\251\\266\\346\\216\\250\\350\\277\\233TODO.md\"",
+      " M PythonAPI/examples/mappo_training/evaluation/base_c0_protocol.py",
+      " M PythonAPI/examples/mappo_training/evaluation/evaluate_base_policy_c0.py",
+      " M PythonAPI/examples/mappo_training/evaluation/validate_base_c0_run.py",
+      " M PythonAPI/examples/mappo_training/experiments/base_mappo_registry.csv"
+    ]
+  },
+  "host": "127.0.0.1",
+  "performance_decision": "NOT_EVALUATED",
+  "port": 2000,
+  "profile": "short_probe",
+  "resolved_config_version": "p0_base_c0_town05_r8c1_diag_resolved_v1",
+  "runtime": {
+    "carla_client_version": "0.9.16",
+    "carla_python_module": "D:\\study\\yan2\\CARLA_0.9.16\\venv\\lib\\site-packages\\carla\\__init__.py",
+    "carla_server_version": "0.9.16",
+    "cuda_available": true,
+    "cuda_device_count": 1,
+    "cuda_version": "12.6",
+    "numpy": "2.2.6",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.10.8 (tags/v3.10.8:aaaf517, Oct 11 2022, 16:50:30) [MSC v.1933 64 bit (AMD64)]",
+    "torch": "2.9.1+cu126"
+  },
+  "selection_allowed": false,
+  "source_provenance": {
+    "evaluation": {
+      "git_sha": "050fe9fc72b9639b3048f56384cc48ad0d8d0214",
+      "source_fingerprint": "494359502c7a93d9f4e944f9313d087c2abb709ea51751a03c18fec176a45c49",
+      "source_sha256": {
+        "configs/evaluation/p0_base_c0_town05_r8c1_probe_v1.json": "0654a931a0387ffdbf3884bf83ef5ae63899fcf0aa5ba922a9acc6f4748e736d",
+        "evaluation/base_c0_protocol.py": "9942acfe14b9429f064dc42f9316a9bfa309e21c79130907e1b960951ca0da1b",
+        "evaluation/evaluate_base_policy_c0.py": "57ff5401ead00c64acc1b04b7028a6e5834bea83606d3729f7a72330321348ee",
+        "evaluation/r8c1_diagnostic_protocol.py": "a3ee52fc516a8656563be247bbc8d7efb6f4a974bf8eb2ad465f02c0ecc76f84",
+        "evaluation/validate_base_c0_run.py": "5544638d03ac379d34f7c5408420d8b5866153d8a243a7726e7f3183769d1371"
+      }
+    },
+    "shared_source_identity": "MATCH",
+    "source_provenance_version": "r8c1_diagnostic_source_provenance_v1",
+    "training": {
+      "code_fingerprint": "16e3a2ba1bc7d7ba09fde469de93c11d1de311f2a7651347af47fae597e31701",
+      "contract_sha256": "88bdb9dcac5b238d371d5718d346dc7e43b287b8cb725292ddb25b8862d053f4",
+      "git_sha": "050fe9fc72b9639b3048f56384cc48ad0d8d0214",
+      "run_id": "P0_BASE_MAPPO_Town05R8C1PaceU100_s42_20260903_180224",
+      "source_sha256": {
+        "configs/base_mappo/p0_base_town05_r8c1_pace_v1.json": "88bdb9dcac5b238d371d5718d346dc7e43b287b8cb725292ddb25b8862d053f4",
+        "data/town05_parallel_routes_v1.json": "ebbbfa0bf3f7ea190c89627370aa6ebd80d85e6c34480a98b8c85704a45e6b1f",
+        "data/training_scenarios_town05_r8a_v1/scenario_01_north_short_rolling_a0_left.json": "1496f0764c5c1112c484d2fdf98a491ab3566286f0c49c7642154ef3092b6cb0",
+        "data/training_scenarios_town05_r8a_v1/scenario_02_south_short_rolling_a1_left.json": "2ec1297a5aa5e6b70c926ddd1e145a0e3c0e99cc9992d4c382382b08c4b6a58a",
+        "data/training_scenarios_town05_r8a_v1/scenario_03_north_short_stationary_a0_left.json": "b377efaa41b099a9240bc249dd633188aaac0f419d12f894df1bfb9c21d8cc03",
+        "data/training_scenarios_town05_r8a_v1/scenario_04_south_short_stationary_a1_left.json": "d4793adf90f588db389dc1a7599ab4cefaee42bbfb836785d0871d46a2a749ad",
+        "data/training_scenarios_town05_r8a_v1/scenario_05_northbound_free_flow.json": "223ec843c6eb4652f7338d145d874a2d6557ef6e8417d4c4b32754453b7a24b7",
+        "data/training_scenarios_town05_r8a_v1/scenario_06_southbound_free_flow.json": "0fd0fc0b0c6030e3b03ad30f7a0f225f834fe3bff2f8c2db35b3485bd89a44c1",
+        "data/training_scenarios_town05_r8a_v1/scenario_07_eastbound_free_flow.json": "fefb17c3b163b190b9dc49f699b4a2e94de926bb9f5f63306695c625798459d4",
+        "data/training_scenarios_town05_r8a_v1/scenario_08_westbound_free_flow.json": "4afaeb80af8124136b9d676b4e3b6f642bd73aa14b018fd378374fdeb35613ad",
+        "data/training_scenarios_town05_r8a_v1/scenario_09_north_parallel_stationary_a0_left.json": "c60e73426faf7a0f6d129097f4f685cd65155c1d12227da3229e9fb1043dddd2",
+        "data/training_scenarios_town05_r8a_v1/scenario_10_south_parallel_stationary_a1_left.json": "1b5c2a9b668e2baf0bfb05584c85308d87da79c42f2314b6419a1741cc516a56",
+        "data/training_scenarios_town05_r8a_v1/scenario_11_east_parallel_stationary_a1_left.json": "4542c2de5918a01ae986e59f2c31444d385724dbbef869040fcc70681c7bc770",
+        "data/training_scenarios_town05_r8a_v1/scenario_12_west_parallel_stationary_a0_left.json": "32419f45c7f3d52e8e595e50569e17a99c72df8379f85e564b311d6fff62d5a3",
+        "environment/base_reward_v3.py": "4bc07ceff98429e1c5f23cbf710523092d1f72f233c46b751a87db0f02c20478",
+        "environment/base_reward_v4.py": "57ddbf702ced7b98fb33d6175143644936744859964c2def4a26a717b631850e",
+        "environment/base_reward_v5.py": "3e3032bfca75fdb8acfa6b59878e57b8dbd3665d4826a3c7a1733e140627665f",
+        "environment/base_reward_v6.py": "f39af641933a12f3cfac92589dcad402c07390bf1fbc2ad29afd109a088f8bbf",
+        "environment/carla_multi_agent_env.py": "2f21c24d2fd7dd7f760553e3338e00b59d3d11292c061c2d43837725524f6d9c",
+        "environment/offroad_protocol.py": "9ecc3e864f0e45d198b7eb68dc6f3f552d09c7368b19e4d0e0fa8a114baacc6f",
+        "environment/road_legality_protocol.py": "ba570d7c35ce976e99448e3d7f94aabf5500d0ac4aabe23f195b52cef5ac3f6c",
+        "environment/stall_protocol.py": "b33054a5fa9fe9a1d6d5721a3719c19b134a14872b228efb5aa38c864f8c8c8a",
+        "models/actor_critic.py": "f37b7358a77d682b010b3e75c267390b22a7cee6b5106bb01559295386bfaf80",
+        "training/action_protocol.py": "7135ebfd5960ce3826beba63f9ae62d66bc89eb6b41fc2992c10f721562472f5",
+        "training/checkpoint_protocol.py": "a591832ffaf3aac439287c485702061a77de18d27cf22323017aa331e1e59e3b",
+        "training/critic_diagnostics.py": "adbf6701c4da3931f8acc25dc5f2ab58515bcbd9f7a909f919f02f112027e631",
+        "training/experiment_contract.py": "1dbbf436ef5b0ba0d8b59c16cccfc08531c99a939278b861190c12180c12902d",
+        "training/learning_rate_protocol.py": "8bcc40d3d8f435d572e45fe1b3d04e305c9a6b96031fe0a907fe48e1d2f031ed",
+        "training/lifecycle_semantics.py": "d20ccdbae6563f4e113134308559e1269f91569587bddbfaddb455804fdda3af",
+        "training/mastery_curriculum.py": "2dbd0bd562e0ba11ef0f5c5958534d033810c9ffac8891d8f7791b0515aa2e8d",
+        "training/metrics_protocol.py": "59b373f4a1486e0a91e2a778422f4903a0ec80717e92b268ec898d7f02f693a7",
+        "training/policy_distribution_protocol.py": "4fea2ce93fe321baa2925443cd98bf9afadc4918b6d0890c2e810fcb1eb7772c",
+        "training/r8a_curriculum.py": "d7ffb082b08954498a186eb80a2173211d3ec7b5d553d0ad657e2bd1d8ec551f",
+        "training/train_no_rllib_mappo_robust_v2.py": "714cac887d53ffc4e54fc202c02114c7e4b977d04ce9d88f08f182fd971cc22f",
+        "training/value_normalization.py": "46f16d1b937eedcafb8489d90f061b709b86ac76ab71200a50c4a463640e5aa1",
+        "utils/training_metrics_recorder.py": "9a8e3475e2337665ec163ad4ebc57cdae09406da97e13d8b6d63df818f9648c0",
+        "utils/validate_r8a_scenarios.py": "3feacd38f427b58e9e8f5087ca2f9395393b2e3e4f2242a07d8466e93a19e2e4",
+        "utils/validate_tensorboard_run.py": "e14cb3153270faa9613e2ceaace8e0fa91fb4cf5c91766b99fac4ac4881c5ac1",
+        "utils/validate_training_scenarios.py": "e749fa8a2b4ed0005b355b9032d2de39e4581993d7fb1849dbe63acc653a7e49"
+      }
+    }
+  }
+}

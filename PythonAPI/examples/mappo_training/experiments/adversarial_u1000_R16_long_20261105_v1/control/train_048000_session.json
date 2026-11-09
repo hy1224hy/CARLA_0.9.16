@@ -1,0 +1,72 @@
+{
+  "exit": {
+    "automatic_restart": false,
+    "ended_at": "2026-11-04T18:12:28.169914+00:00",
+    "launch_id": "20261104T174552528619Z_bff76fe3f422",
+    "returncode": 0,
+    "status": "EXITED",
+    "supervisor_pid": 33288,
+    "trainer_pid": 27024
+  },
+  "launch": {
+    "command": [
+      "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+      "-u",
+      "-m",
+      "training.train_mut_mappo",
+      "--config",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\configs\\R2_B0_s42.json",
+      "--run-dir",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\runs\\R2",
+      "--allow-candidate",
+      "--resume",
+      "--stop-train-ticks",
+      "48000"
+    ],
+    "launch_id": "20261104T174552528619Z_bff76fe3f422",
+    "log_path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\runs\\R2\\session\\training_20261104T174552528619Z_bff76fe3f422.log",
+    "started_at": "2026-11-04T17:45:52.536422+00:00",
+    "status": "TRAINER_DISPATCHED_VERIFY_STATUS",
+    "supervisor_command": [
+      "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\utils\\mut_mappo_session.py",
+      "supervise",
+      "--config",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\configs\\R2_B0_s42.json",
+      "--run-dir",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\runs\\R2",
+      "--stop-train-ticks",
+      "48000",
+      "--resume"
+    ],
+    "supervisor_log_path": null,
+    "supervisor_pid": 33288,
+    "trainer_pid": 27024
+  },
+  "status": {
+    "actual_counters": {
+      "setup": 10081,
+      "total": 54930,
+      "train": 48119,
+      "train_decision": 39292,
+      "validation": 6811,
+      "validation_decision": 5557
+    },
+    "at": "2026-11-04T18:12:24.269508+00:00",
+    "budget_policy": "complete_boundary_soft_cap",
+    "collecting_team": "B",
+    "completed_round": 21,
+    "ended_at": "2026-11-04T18:12:24.273966+00:00",
+    "in_progress_round": 21,
+    "method": "off",
+    "segment_id": "030d57f443964e1881cdf7f67566fd87",
+    "segment_tick_cap_reached": true,
+    "segment_train_tick_cap": 48000,
+    "started_at": "2026-11-04T17:45:59.726041+00:00",
+    "status": "SEGMENT_COMPLETED",
+    "stop_rule": "train_ticks",
+    "train_tick_budget": 72000,
+    "train_tick_overshoot": 0,
+    "training_budget_reached": false
+  }
+}

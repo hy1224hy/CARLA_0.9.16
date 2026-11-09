@@ -1,0 +1,442 @@
+{
+  "schema": "b2_gate_audit_v1",
+  "created_at": "2026-11-03T12:17:44.019701+00:00",
+  "scope": "file-only B0 evidence replay, not B2 training performance",
+  "live_world_ticks": 0,
+  "artifacts": {
+    "experiments\\adversarial_u1000_critical_reward_20261101_v4\\configs\\R2_B0_s42.json": "9b26e10c0c6bdaba6395e4b0589b5cdea3e90dbe9706bedc62c268d349ce966b",
+    "experiments\\adversarial_u1000_critical_reward_20261101_v4\\runs\\R2\\metrics.jsonl": "cead64872c4f164790f34ec7273c5d32ab521c998abdbb3993a46c3b7138d3d5",
+    "experiments\\adversarial_u1000_critical_reward_20261101_v4\\control\\R2_gate_completed.json": "49542474cae000f9a2d811a252e09dd5528b85f553bd4e452f986d66408887bb",
+    "experiments\\adversarial_u1000_critical_reward_20261101_v4\\evaluations\\R2_gate_retry1\\analysis\\critical_report.json": "ba8e2debbe002c82deb239d3adb6f146c31d047840c74596a47780a872087775",
+    "experiments\\adversarial_u1000_critical_reward_20261101_v4\\runs\\R2\\latest.pt": "4fcc1a7bce140871f14ce709fcbc4edd27302dafcc64562d2775e57a66c1108a",
+    "training\\mut_mappo_learning.py": "55c302119a8c30a9b0e74b71caa4a6a93a377444e5e2f23d38e8acd06d0c6293",
+    "training\\train_mut_mappo.py": "b7efa43cab157550c815b38bdfddc3d9c4cb2303b1c2c69085c823228ebf4996",
+    "training\\mutual_distillation.py": "61d93718d7748cefc7b9afb4b776a33b0f95f3d507540d9eb9853d713e40558a",
+    "utils\\run_first_point_experiments.py": "ae7d8240ee7c24bc6493e2638133b94574249c1618bdc9aaa819d6246eada980",
+    "utils\\audit_mut_mappo_gate.py": "7f48cbd8384b96cb10a7360f701951481ef901a5e1daad65a7b743f2a10475f9"
+  },
+  "actual_refresh_schedule": [
+    {
+      "round": 19,
+      "train_ticks": 10281,
+      "version": 1
+    }
+  ],
+  "actual_saved_gate": {
+    "state": {
+      "config": {
+        "gate_max_bad_rate": 0.125,
+        "gate_min_cases": 8,
+        "gate_min_q_gap": 0.25,
+        "min_efficiency_gap": 0.02,
+        "quality_metric": "critical",
+        "refresh_rounds": 10,
+        "refresh_train_ticks": 20000,
+        "schedule_clock": "train_ticks",
+        "warmup_rounds": 5,
+        "warmup_train_ticks": 10000
+      },
+      "version": 1,
+      "refresh_round": 19,
+      "teacher_hashes": {
+        "A": "16e4487cd045d8d39f9ccbc84db38945e832e1f16cd6e4b91208ecca7250662b",
+        "B": "837e4b3153d2e472dfa85821cea9f022886eb552959a8fb002879ab9437f76fb"
+      },
+      "statistics": {
+        "A": {
+          "blocking": {
+            "n_all": 8,
+            "q_count": 0,
+            "b_count": 8,
+            "case_keys": [
+              "gate_sequential_northbound_front_both_r0l",
+              "gate_sequential_northbound_front_both_r0r",
+              "gate_sequential_southbound_front_both_r0l",
+              "gate_sequential_southbound_front_both_r0r",
+              "gate_sequential_eastbound_front_both_r0l",
+              "gate_sequential_eastbound_front_both_r0r",
+              "gate_sequential_westbound_front_both_r0l",
+              "gate_sequential_westbound_front_both_r0r"
+            ],
+            "teacher_hash": "16e4487cd045d8d39f9ccbc84db38945e832e1f16cd6e4b91208ecca7250662b",
+            "version": 1
+          },
+          "cut_in": {
+            "n_all": 16,
+            "q_count": 5,
+            "b_count": 7,
+            "case_keys": [
+              "gate_crossing_northbound_front_left_r0l",
+              "gate_crossing_northbound_front_left_r0r",
+              "gate_crossing_northbound_front_right_r0l",
+              "gate_crossing_northbound_front_right_r0r",
+              "gate_crossing_southbound_front_left_r0l",
+              "gate_crossing_southbound_front_left_r0r",
+              "gate_crossing_southbound_front_right_r0l",
+              "gate_crossing_southbound_front_right_r0r",
+              "gate_crossing_eastbound_front_left_r0l",
+              "gate_crossing_eastbound_front_left_r0r",
+              "gate_crossing_eastbound_front_right_r0l",
+              "gate_crossing_eastbound_front_right_r0r",
+              "gate_crossing_westbound_front_left_r0l",
+              "gate_crossing_westbound_front_left_r0r",
+              "gate_crossing_westbound_front_right_r0l",
+              "gate_crossing_westbound_front_right_r0r"
+            ],
+            "teacher_hash": "16e4487cd045d8d39f9ccbc84db38945e832e1f16cd6e4b91208ecca7250662b",
+            "version": 1
+          }
+        },
+        "B": {
+          "blocking": {
+            "n_all": 8,
+            "q_count": 2,
+            "b_count": 4,
+            "case_keys": [
+              "gate_sequential_northbound_front_both_r0l",
+              "gate_sequential_northbound_front_both_r0r",
+              "gate_sequential_southbound_front_both_r0l",
+              "gate_sequential_southbound_front_both_r0r",
+              "gate_sequential_eastbound_front_both_r0l",
+              "gate_sequential_eastbound_front_both_r0r",
+              "gate_sequential_westbound_front_both_r0l",
+              "gate_sequential_westbound_front_both_r0r"
+            ],
+            "teacher_hash": "837e4b3153d2e472dfa85821cea9f022886eb552959a8fb002879ab9437f76fb",
+            "version": 1
+          },
+          "cut_in": {
+            "n_all": 16,
+            "q_count": 6,
+            "b_count": 6,
+            "case_keys": [
+              "gate_crossing_northbound_front_left_r0l",
+              "gate_crossing_northbound_front_left_r0r",
+              "gate_crossing_northbound_front_right_r0l",
+              "gate_crossing_northbound_front_right_r0r",
+              "gate_crossing_southbound_front_left_r0l",
+              "gate_crossing_southbound_front_left_r0r",
+              "gate_crossing_southbound_front_right_r0l",
+              "gate_crossing_southbound_front_right_r0r",
+              "gate_crossing_eastbound_front_left_r0l",
+              "gate_crossing_eastbound_front_left_r0r",
+              "gate_crossing_eastbound_front_right_r0l",
+              "gate_crossing_eastbound_front_right_r0r",
+              "gate_crossing_westbound_front_left_r0l",
+              "gate_crossing_westbound_front_left_r0r",
+              "gate_crossing_westbound_front_right_r0l",
+              "gate_crossing_westbound_front_right_r0r"
+            ],
+            "teacher_hash": "837e4b3153d2e472dfa85821cea9f022886eb552959a8fb002879ab9437f76fb",
+            "version": 1
+          }
+        }
+      },
+      "gates": {
+        "A": {
+          "blocking": 0,
+          "cut_in": 0
+        },
+        "B": {
+          "blocking": 0,
+          "cut_in": 0
+        }
+      }
+    },
+    "decisions": [
+      {
+        "student": "A",
+        "teacher": "B",
+        "family": "blocking",
+        "n": 8,
+        "student_q": 0,
+        "student_bad": 8,
+        "teacher_q": 2,
+        "teacher_bad": 4,
+        "maximum_teacher_bad_count": 1,
+        "required_quality_count_gap": 2,
+        "gate": 0,
+        "checks": {
+          "enough_samples": true,
+          "teacher_bad_within_limit": false,
+          "teacher_no_worse_bad_rate": true,
+          "teacher_quality_gap": true
+        }
+      },
+      {
+        "student": "A",
+        "teacher": "B",
+        "family": "cut_in",
+        "n": 16,
+        "student_q": 5,
+        "student_bad": 7,
+        "teacher_q": 6,
+        "teacher_bad": 6,
+        "maximum_teacher_bad_count": 2,
+        "required_quality_count_gap": 4,
+        "gate": 0,
+        "checks": {
+          "enough_samples": true,
+          "teacher_bad_within_limit": false,
+          "teacher_no_worse_bad_rate": true,
+          "teacher_quality_gap": false
+        }
+      },
+      {
+        "student": "B",
+        "teacher": "A",
+        "family": "blocking",
+        "n": 8,
+        "student_q": 2,
+        "student_bad": 4,
+        "teacher_q": 0,
+        "teacher_bad": 8,
+        "maximum_teacher_bad_count": 1,
+        "required_quality_count_gap": 2,
+        "gate": 0,
+        "checks": {
+          "enough_samples": true,
+          "teacher_bad_within_limit": false,
+          "teacher_no_worse_bad_rate": false,
+          "teacher_quality_gap": false
+        }
+      },
+      {
+        "student": "B",
+        "teacher": "A",
+        "family": "cut_in",
+        "n": 16,
+        "student_q": 6,
+        "student_bad": 6,
+        "teacher_q": 5,
+        "teacher_bad": 7,
+        "maximum_teacher_bad_count": 2,
+        "required_quality_count_gap": 4,
+        "gate": 0,
+        "checks": {
+          "enough_samples": true,
+          "teacher_bad_within_limit": false,
+          "teacher_no_worse_bad_rate": false,
+          "teacher_quality_gap": false
+        }
+      }
+    ]
+  },
+  "counterfactual_final_gate": {
+    "state": {
+      "config": {
+        "gate_max_bad_rate": 0.125,
+        "gate_min_cases": 8,
+        "gate_min_q_gap": 0.25,
+        "min_efficiency_gap": 0.02,
+        "quality_metric": "critical",
+        "refresh_rounds": 10,
+        "refresh_train_ticks": 20000,
+        "schedule_clock": "train_ticks",
+        "warmup_rounds": 5,
+        "warmup_train_ticks": 10000
+      },
+      "version": 2,
+      "refresh_round": 43,
+      "teacher_hashes": {
+        "A": "a0a4600cd7c9d76d8fdd2b9499c95ae933023b7f2172c95083b0fdc7f7cb5a83",
+        "B": "e647e66c0e45f44c29a7f36a1fca44c9fe4b2e5d9fa167a1e69ef08b52fce38c"
+      },
+      "statistics": {
+        "A": {
+          "blocking": {
+            "n_all": 8,
+            "q_count": 1,
+            "b_count": 4,
+            "case_keys": [
+              "gate_sequential_northbound_front_both_r0l",
+              "gate_sequential_northbound_front_both_r0r",
+              "gate_sequential_southbound_front_both_r0l",
+              "gate_sequential_southbound_front_both_r0r",
+              "gate_sequential_eastbound_front_both_r0l",
+              "gate_sequential_eastbound_front_both_r0r",
+              "gate_sequential_westbound_front_both_r0l",
+              "gate_sequential_westbound_front_both_r0r"
+            ],
+            "teacher_hash": "a0a4600cd7c9d76d8fdd2b9499c95ae933023b7f2172c95083b0fdc7f7cb5a83",
+            "version": 2
+          },
+          "cut_in": {
+            "n_all": 16,
+            "q_count": 4,
+            "b_count": 10,
+            "case_keys": [
+              "gate_crossing_northbound_front_left_r0l",
+              "gate_crossing_northbound_front_left_r0r",
+              "gate_crossing_northbound_front_right_r0l",
+              "gate_crossing_northbound_front_right_r0r",
+              "gate_crossing_southbound_front_left_r0l",
+              "gate_crossing_southbound_front_left_r0r",
+              "gate_crossing_southbound_front_right_r0l",
+              "gate_crossing_southbound_front_right_r0r",
+              "gate_crossing_eastbound_front_left_r0l",
+              "gate_crossing_eastbound_front_left_r0r",
+              "gate_crossing_eastbound_front_right_r0l",
+              "gate_crossing_eastbound_front_right_r0r",
+              "gate_crossing_westbound_front_left_r0l",
+              "gate_crossing_westbound_front_left_r0r",
+              "gate_crossing_westbound_front_right_r0l",
+              "gate_crossing_westbound_front_right_r0r"
+            ],
+            "teacher_hash": "a0a4600cd7c9d76d8fdd2b9499c95ae933023b7f2172c95083b0fdc7f7cb5a83",
+            "version": 2
+          }
+        },
+        "B": {
+          "blocking": {
+            "n_all": 8,
+            "q_count": 3,
+            "b_count": 2,
+            "case_keys": [
+              "gate_sequential_northbound_front_both_r0l",
+              "gate_sequential_northbound_front_both_r0r",
+              "gate_sequential_southbound_front_both_r0l",
+              "gate_sequential_southbound_front_both_r0r",
+              "gate_sequential_eastbound_front_both_r0l",
+              "gate_sequential_eastbound_front_both_r0r",
+              "gate_sequential_westbound_front_both_r0l",
+              "gate_sequential_westbound_front_both_r0r"
+            ],
+            "teacher_hash": "e647e66c0e45f44c29a7f36a1fca44c9fe4b2e5d9fa167a1e69ef08b52fce38c",
+            "version": 2
+          },
+          "cut_in": {
+            "n_all": 16,
+            "q_count": 6,
+            "b_count": 3,
+            "case_keys": [
+              "gate_crossing_northbound_front_left_r0l",
+              "gate_crossing_northbound_front_left_r0r",
+              "gate_crossing_northbound_front_right_r0l",
+              "gate_crossing_northbound_front_right_r0r",
+              "gate_crossing_southbound_front_left_r0l",
+              "gate_crossing_southbound_front_left_r0r",
+              "gate_crossing_southbound_front_right_r0l",
+              "gate_crossing_southbound_front_right_r0r",
+              "gate_crossing_eastbound_front_left_r0l",
+              "gate_crossing_eastbound_front_left_r0r",
+              "gate_crossing_eastbound_front_right_r0l",
+              "gate_crossing_eastbound_front_right_r0r",
+              "gate_crossing_westbound_front_left_r0l",
+              "gate_crossing_westbound_front_left_r0r",
+              "gate_crossing_westbound_front_right_r0l",
+              "gate_crossing_westbound_front_right_r0r"
+            ],
+            "teacher_hash": "e647e66c0e45f44c29a7f36a1fca44c9fe4b2e5d9fa167a1e69ef08b52fce38c",
+            "version": 2
+          }
+        }
+      },
+      "gates": {
+        "A": {
+          "blocking": 0,
+          "cut_in": 0
+        },
+        "B": {
+          "blocking": 0,
+          "cut_in": 0
+        }
+      }
+    },
+    "decisions": [
+      {
+        "student": "A",
+        "teacher": "B",
+        "family": "blocking",
+        "n": 8,
+        "student_q": 1,
+        "student_bad": 4,
+        "teacher_q": 3,
+        "teacher_bad": 2,
+        "maximum_teacher_bad_count": 1,
+        "required_quality_count_gap": 2,
+        "gate": 0,
+        "checks": {
+          "enough_samples": true,
+          "teacher_bad_within_limit": false,
+          "teacher_no_worse_bad_rate": true,
+          "teacher_quality_gap": true
+        }
+      },
+      {
+        "student": "A",
+        "teacher": "B",
+        "family": "cut_in",
+        "n": 16,
+        "student_q": 4,
+        "student_bad": 10,
+        "teacher_q": 6,
+        "teacher_bad": 3,
+        "maximum_teacher_bad_count": 2,
+        "required_quality_count_gap": 4,
+        "gate": 0,
+        "checks": {
+          "enough_samples": true,
+          "teacher_bad_within_limit": false,
+          "teacher_no_worse_bad_rate": true,
+          "teacher_quality_gap": false
+        }
+      },
+      {
+        "student": "B",
+        "teacher": "A",
+        "family": "blocking",
+        "n": 8,
+        "student_q": 3,
+        "student_bad": 2,
+        "teacher_q": 1,
+        "teacher_bad": 4,
+        "maximum_teacher_bad_count": 1,
+        "required_quality_count_gap": 2,
+        "gate": 0,
+        "checks": {
+          "enough_samples": true,
+          "teacher_bad_within_limit": false,
+          "teacher_no_worse_bad_rate": false,
+          "teacher_quality_gap": false
+        }
+      },
+      {
+        "student": "B",
+        "teacher": "A",
+        "family": "cut_in",
+        "n": 16,
+        "student_q": 6,
+        "student_bad": 3,
+        "teacher_q": 4,
+        "teacher_bad": 10,
+        "maximum_teacher_bad_count": 2,
+        "required_quality_count_gap": 4,
+        "gate": 0,
+        "checks": {
+          "enough_samples": true,
+          "teacher_bad_within_limit": false,
+          "teacher_no_worse_bad_rate": false,
+          "teacher_quality_gap": false
+        }
+      }
+    ]
+  },
+  "online_offline_quality_disagreements": [],
+  "qualified_danger_speed_diagnostic": {
+    "A": {
+      "qualified_danger": 5,
+      "both_blue_above_speed_fraction_at_most_005": 0
+    },
+    "B": {
+      "qualified_danger": 9,
+      "both_blue_above_speed_fraction_at_most_005": 0
+    }
+  },
+  "limitations": [
+    "A/B are two learners of one outer seed; no independent-seed inference",
+    "Final replay uses B0 policies and cannot predict a trained B2 trajectory",
+    "Gate quality counts event eligibility, not full normal driving or C1-relative causal attack gain",
+    "Gate split reused for development; test split not accessed"
+  ]
+}

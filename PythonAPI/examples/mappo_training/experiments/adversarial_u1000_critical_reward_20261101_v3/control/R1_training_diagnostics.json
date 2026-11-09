@@ -1,0 +1,85 @@
+{
+  "scope": "stochastic training windows; not frozen paired effectiveness; quality is case means, not global P95",
+  "teams": {
+    "A": {
+      "episodes": 168,
+      "bad_rate": 0.5416666666666666,
+      "safety_agent_category_counts_overlapping": {
+        "3/collision": 68,
+        "2/collision": 13,
+        "2/road_rule": 6,
+        "3/offroad": 16,
+        "2/offroad": 4
+      },
+      "outcomes": {
+        "2/adversarial_task_end": 77,
+        "3/collision": 68,
+        "2/success": 68,
+        "3/success": 52,
+        "3/adversarial_task_end": 32,
+        "2/collision": 13,
+        "2/road_rule": 6,
+        "3/offroad": 16,
+        "2/offroad": 4
+      },
+      "episodes_two_blue_same_bad_category": 11,
+      "recent_case_mean_driving_metrics": {
+        "2": {
+          "mean_speed_mps": 4.192250543344733,
+          "above_preferred_speed_fraction": 0.5455997381931352,
+          "reference_lateral_p95_m": 1.0790036530297173,
+          "actual_steer_rate_p95_per_second": 14.01434548832476
+        },
+        "3": {
+          "mean_speed_mps": 3.2436290218870494,
+          "above_preferred_speed_fraction": 0.3575271153872427,
+          "reference_lateral_p95_m": 0.9064020928389807,
+          "actual_steer_rate_p95_per_second": 13.22548039741814
+        }
+      },
+      "positive_critical_without_event": 7,
+      "positive_total_utility_in_ineligible_episode": 0
+    },
+    "B": {
+      "episodes": 168,
+      "bad_rate": 0.5119047619047619,
+      "safety_agent_category_counts_overlapping": {
+        "3/collision": 52,
+        "3/offroad": 2,
+        "3/road_rule": 12,
+        "2/collision": 22,
+        "2/offroad": 12,
+        "2/road_rule": 1
+      },
+      "outcomes": {
+        "2/adversarial_task_end": 63,
+        "3/collision": 52,
+        "2/success": 70,
+        "3/success": 60,
+        "3/adversarial_task_end": 42,
+        "3/offroad": 2,
+        "3/road_rule": 12,
+        "2/collision": 22,
+        "2/offroad": 12,
+        "2/road_rule": 1
+      },
+      "episodes_two_blue_same_bad_category": 13,
+      "recent_case_mean_driving_metrics": {
+        "2": {
+          "mean_speed_mps": 4.3545000709086406,
+          "above_preferred_speed_fraction": 0.583148990885442,
+          "reference_lateral_p95_m": 1.0826176643252978,
+          "actual_steer_rate_p95_per_second": 12.761325814574956
+        },
+        "3": {
+          "mean_speed_mps": 3.54950457894372,
+          "above_preferred_speed_fraction": 0.4093433223138525,
+          "reference_lateral_p95_m": 1.2156862878544163,
+          "actual_steer_rate_p95_per_second": 13.328655170090496
+        }
+      },
+      "positive_critical_without_event": 13,
+      "positive_total_utility_in_ineligible_episode": 0
+    }
+  }
+}

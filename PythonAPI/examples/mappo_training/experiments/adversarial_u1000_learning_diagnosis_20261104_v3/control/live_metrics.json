@@ -1,0 +1,2281 @@
+{
+  "at": "2026-11-04T12:32:05.698455+00:00",
+  "metrics": {
+    "N4": {
+      "actual_counters": {
+        "setup": 4912,
+        "total": 27790,
+        "train": 24171,
+        "train_decision": 19889,
+        "validation": 3619,
+        "validation_decision": 2989
+      },
+      "algorithm": "mappo",
+      "budget_policy": "complete_boundary_soft_cap",
+      "completed_round": 41,
+      "created_at": "2026-11-04T09:33:59.614360+00:00",
+      "gate": {
+        "config": {
+          "gate_max_bad_rate": 0.125,
+          "gate_min_cases": 8,
+          "gate_min_q_gap": 0.25,
+          "min_efficiency_gap": 0.02,
+          "quality_metric": "critical",
+          "refresh_rounds": 10,
+          "refresh_train_ticks": 20000,
+          "schedule_clock": "train_ticks",
+          "warmup_rounds": 5,
+          "warmup_train_ticks": 10000
+        },
+        "gates": {
+          "A": {
+            "blocking": 0,
+            "cut_in": 0
+          },
+          "B": {
+            "blocking": 0,
+            "cut_in": 0
+          }
+        },
+        "refresh_round": 19,
+        "statistics": {
+          "A": {
+            "blocking": {
+              "b_count": 4,
+              "case_keys": [
+                "gate_sequential_northbound_front_both_r0l",
+                "gate_sequential_northbound_front_both_r0r",
+                "gate_sequential_southbound_front_both_r0l",
+                "gate_sequential_southbound_front_both_r0r",
+                "gate_sequential_eastbound_front_both_r0l",
+                "gate_sequential_eastbound_front_both_r0r",
+                "gate_sequential_westbound_front_both_r0l",
+                "gate_sequential_westbound_front_both_r0r"
+              ],
+              "n_all": 8,
+              "q_count": 4,
+              "teacher_hash": "e36d252a43d88005c99c473dab1b3c1ae5afdb4169f06474252390bdccf97fa5",
+              "version": 1
+            },
+            "cut_in": {
+              "b_count": 6,
+              "case_keys": [
+                "gate_crossing_northbound_front_left_r0l",
+                "gate_crossing_northbound_front_left_r0r",
+                "gate_crossing_northbound_front_right_r0l",
+                "gate_crossing_northbound_front_right_r0r",
+                "gate_crossing_southbound_front_left_r0l",
+                "gate_crossing_southbound_front_left_r0r",
+                "gate_crossing_southbound_front_right_r0l",
+                "gate_crossing_southbound_front_right_r0r",
+                "gate_crossing_eastbound_front_left_r0l",
+                "gate_crossing_eastbound_front_left_r0r",
+                "gate_crossing_eastbound_front_right_r0l",
+                "gate_crossing_eastbound_front_right_r0r",
+                "gate_crossing_westbound_front_left_r0l",
+                "gate_crossing_westbound_front_left_r0r",
+                "gate_crossing_westbound_front_right_r0l",
+                "gate_crossing_westbound_front_right_r0r"
+              ],
+              "n_all": 16,
+              "q_count": 5,
+              "teacher_hash": "e36d252a43d88005c99c473dab1b3c1ae5afdb4169f06474252390bdccf97fa5",
+              "version": 1
+            }
+          },
+          "B": {
+            "blocking": {
+              "b_count": 4,
+              "case_keys": [
+                "gate_sequential_northbound_front_both_r0l",
+                "gate_sequential_northbound_front_both_r0r",
+                "gate_sequential_southbound_front_both_r0l",
+                "gate_sequential_southbound_front_both_r0r",
+                "gate_sequential_eastbound_front_both_r0l",
+                "gate_sequential_eastbound_front_both_r0r",
+                "gate_sequential_westbound_front_both_r0l",
+                "gate_sequential_westbound_front_both_r0r"
+              ],
+              "n_all": 8,
+              "q_count": 2,
+              "teacher_hash": "e1a70fe9503cbb0950bd8c8928801b872c253531d2f563eb9664da5c0a485604",
+              "version": 1
+            },
+            "cut_in": {
+              "b_count": 1,
+              "case_keys": [
+                "gate_crossing_northbound_front_left_r0l",
+                "gate_crossing_northbound_front_left_r0r",
+                "gate_crossing_northbound_front_right_r0l",
+                "gate_crossing_northbound_front_right_r0r",
+                "gate_crossing_southbound_front_left_r0l",
+                "gate_crossing_southbound_front_left_r0r",
+                "gate_crossing_southbound_front_right_r0l",
+                "gate_crossing_southbound_front_right_r0r",
+                "gate_crossing_eastbound_front_left_r0l",
+                "gate_crossing_eastbound_front_left_r0r",
+                "gate_crossing_eastbound_front_right_r0l",
+                "gate_crossing_eastbound_front_right_r0r",
+                "gate_crossing_westbound_front_left_r0l",
+                "gate_crossing_westbound_front_left_r0r",
+                "gate_crossing_westbound_front_right_r0l",
+                "gate_crossing_westbound_front_right_r0r"
+              ],
+              "n_all": 16,
+              "q_count": 6,
+              "teacher_hash": "e1a70fe9503cbb0950bd8c8928801b872c253531d2f563eb9664da5c0a485604",
+              "version": 1
+            }
+          }
+        },
+        "teacher_hashes": {
+          "A": "e36d252a43d88005c99c473dab1b3c1ae5afdb4169f06474252390bdccf97fa5",
+          "B": "e1a70fe9503cbb0950bd8c8928801b872c253531d2f563eb9664da5c0a485604"
+        },
+        "version": 1
+      },
+      "method": "off",
+      "schedule_clock": "train_ticks",
+      "segment_id": "f8bd4537c1d74f5daa609008cbc127a1",
+      "source": "training_window_not_independent_evaluation",
+      "stop_rule": "train_ticks",
+      "team_count": 2,
+      "teams": {
+        "A": {
+          "actor_loss_2": [
+            -0.01644238969311118,
+            0.01135508343577385
+          ],
+          "actor_loss_3": [
+            -0.0034473929554224014,
+            -0.003117181360721588
+          ],
+          "actor_samples_seen_2": 372,
+          "actor_samples_seen_3": 426,
+          "agent_stop_epoch": {
+            "2": 2,
+            "3": 2
+          },
+          "algorithm": "mappo",
+          "anchor_beta": 0.0,
+          "anchor_kl_2": 0.0,
+          "anchor_kl_3": 0.0,
+          "approx_kl_2": [
+            0.00016965335817076266,
+            0.0018349143210798502
+          ],
+          "approx_kl_3": [
+            0.00038655014941468835,
+            0.008059298270381987
+          ],
+          "clip_frac_2": [
+            0.0,
+            0.03448275849223137
+          ],
+          "clip_frac_3": [
+            0.0,
+            0.23318015038967133
+          ],
+          "critic_absolute_error_mean_agent_2": 7.629679690125168,
+          "critic_absolute_error_mean_agent_3": 7.938948411896755,
+          "critic_explained_variance_agent_2": 0.5709966347478539,
+          "critic_explained_variance_agent_3": -0.3773722536401971,
+          "critic_input_scope": "all_physical_observation_slots_plus_id",
+          "critic_loss": [
+            0.2549358420073986,
+            0.2191862389445305
+          ],
+          "critic_prediction_target_std_ratio_agent_2": 0.45573062379788004,
+          "critic_prediction_target_std_ratio_agent_3": 0.6406002393869601,
+          "critic_samples_seen": 798,
+          "critic_signed_bias_agent_2": -0.7815198590678554,
+          "critic_signed_bias_agent_3": -0.6748365572360759,
+          "deterministic_longitudinal_mean_2": [
+            0.3224203735589981,
+            0.2730207145214081
+          ],
+          "deterministic_longitudinal_mean_3": [
+            0.40971560776233673,
+            0.40855835378170013
+          ],
+          "deterministic_longitudinal_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_longitudinal_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_mean_2": [
+            -0.04962746612727642,
+            -0.04015508480370045
+          ],
+          "deterministic_steer_mean_3": [
+            0.023195956833660603,
+            0.0742657221853733
+          ],
+          "deterministic_steer_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "distillation": {
+            "direction": "student_to_teacher",
+            "gate_variant": "evidence",
+            "reduction": "all_valid"
+          },
+          "entropy_2": [
+            0.7970474660396576,
+            0.7685970664024353
+          ],
+          "entropy_3": [
+            0.6669732928276062,
+            0.5089359432458878
+          ],
+          "entropy_bonus_2": [
+            0.007970474427565932,
+            0.0076859702821820974
+          ],
+          "entropy_bonus_3": [
+            0.006669732974842191,
+            0.005089359357953072
+          ],
+          "evidence_gate_fraction_2": 0.0,
+          "evidence_gate_fraction_3": 0.0,
+          "explained_variance": 0.2730644941329956,
+          "gate_fraction_2": 0.0,
+          "gate_fraction_3": 0.0,
+          "gate_nonzero_coverage_2": 0.0,
+          "gate_nonzero_coverage_3": 0.0,
+          "gate_weight_mean_2": 0.0,
+          "gate_weight_mean_3": 0.0,
+          "grad_norm_actor_2": [
+            1.0559329688549042,
+            0.6504058092832565
+          ],
+          "grad_norm_actor_3": [
+            1.7740578651428223,
+            1.2117185592651367
+          ],
+          "grad_norm_critic": [
+            0.4027886688709259,
+            0.5415959358215332,
+            0.5751358866691589,
+            1.613682746887207,
+            0.3354359269142151,
+            0.4309981167316437,
+            0.3309626877307892,
+            0.5937579870223999
+          ],
+          "method": "off",
+          "mutual_beta": 0.0,
+          "mutual_gated_kl_2": 0.0,
+          "mutual_gated_kl_3": 0.0,
+          "mutual_kl_2": 0.0,
+          "mutual_kl_3": 0.0,
+          "normalized_return_target_mean": -0.2550729811191559,
+          "normalized_return_target_std": 0.7891515493392944,
+          "normalized_value_prediction_mean": -0.30306771397590637,
+          "normalized_value_prediction_std": 0.4112270474433899,
+          "peer_hash": "e1a70fe9503cbb0950bd8c8928801b872c253531d2f563eb9664da5c0a485604",
+          "post_tanh_entropy_2": [
+            0.7970474660396576,
+            0.7685970664024353
+          ],
+          "post_tanh_entropy_3": [
+            0.6669732928276062,
+            0.5089359432458878
+          ],
+          "pre_post_entropy_gap_2": [
+            0.8353755176067352,
+            0.8637266159057617
+          ],
+          "pre_post_entropy_gap_3": [
+            1.0223210453987122,
+            1.1804129928350449
+          ],
+          "pre_tanh_entropy_2": [
+            1.6324229836463928,
+            1.632323682308197
+          ],
+          "pre_tanh_entropy_3": [
+            1.6892943382263184,
+            1.6893489360809326
+          ],
+          "preupdate_ratio_errors": {
+            "2": 0.0,
+            "3": 0.0
+          },
+          "ratio_max_2": [
+            1.0573619604110718,
+            1.1935235261917114
+          ],
+          "ratio_max_3": [
+            1.108601450920105,
+            1.4598113298416138
+          ],
+          "ratio_mean_2": [
+            0.9988560378551483,
+            0.9926744103431702
+          ],
+          "ratio_mean_3": [
+            0.9978137314319611,
+            0.9961597621440887
+          ],
+          "ratio_min_2": [
+            0.9335832595825195,
+            0.8468148112297058
+          ],
+          "ratio_min_3": [
+            0.9099990725517273,
+            0.7045515179634094
+          ],
+          "ratio_std_2": [
+            0.01293337795741678,
+            0.05812361463904381
+          ],
+          "ratio_std_3": [
+            0.01952274030284684,
+            0.12163384258747101
+          ],
+          "return_target_mean": -37.864566802978516,
+          "return_target_std": 11.913683891296387,
+          "surrogate_loss_2": [
+            -0.008471915498375893,
+            0.01904105208814144
+          ],
+          "surrogate_loss_3": [
+            0.0032223397865891457,
+            0.0019721798598766327
+          ],
+          "team": "A",
+          "update": 41,
+          "value_error_abs_mean": 7.794778823852539,
+          "value_normalizer_debiasing_term": 0.0004099177895113826,
+          "value_normalizer_mean": -34.01377487182617,
+          "value_normalizer_scope": "pooled_active_blue_role_returns",
+          "value_normalizer_std": 15.096826553344727,
+          "value_normalizer_update_count": 41.0,
+          "value_normalizer_variance": 227.9141845703125,
+          "value_prediction_mean": -38.589134216308594,
+          "value_prediction_std": 6.208223342895508
+        },
+        "B": {
+          "actor_loss_2": [
+            -0.006614851299673319,
+            -0.018738018348813057
+          ],
+          "actor_loss_3": [
+            -0.02579304203391075,
+            0.025538109242916107
+          ],
+          "actor_samples_seen_2": 382,
+          "actor_samples_seen_3": 382,
+          "agent_stop_epoch": {
+            "2": 2,
+            "3": 2
+          },
+          "algorithm": "mappo",
+          "anchor_beta": 0.0,
+          "anchor_kl_2": 0.0,
+          "anchor_kl_3": 0.0,
+          "approx_kl_2": [
+            9.605339437257499e-05,
+            0.0008081604028120637
+          ],
+          "approx_kl_3": [
+            5.533677904168144e-05,
+            0.00044149601308163255
+          ],
+          "clip_frac_2": [
+            0.0,
+            0.0
+          ],
+          "clip_frac_3": [
+            0.0,
+            0.0
+          ],
+          "critic_absolute_error_mean_agent_2": 9.537215257814417,
+          "critic_absolute_error_mean_agent_3": 7.797614347248177,
+          "critic_explained_variance_agent_2": 0.45267433842357585,
+          "critic_explained_variance_agent_3": 0.46714385447171036,
+          "critic_input_scope": "all_physical_observation_slots_plus_id",
+          "critic_loss": [
+            0.34616605440775555,
+            0.3192448715368907
+          ],
+          "critic_prediction_target_std_ratio_agent_2": 0.5466125892635156,
+          "critic_prediction_target_std_ratio_agent_3": 0.4074267101914937,
+          "critic_samples_seen": 764,
+          "critic_signed_bias_agent_2": -2.8896259387750276,
+          "critic_signed_bias_agent_3": -2.746320609646942,
+          "deterministic_longitudinal_mean_2": [
+            0.5231118202209473,
+            0.5114377737045288
+          ],
+          "deterministic_longitudinal_mean_3": [
+            0.5681177973747253,
+            0.5593324303627014
+          ],
+          "deterministic_longitudinal_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_longitudinal_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_mean_2": [
+            -0.02323771578085143,
+            -0.014655832201242447
+          ],
+          "deterministic_steer_mean_3": [
+            -0.08002195879817009,
+            -0.06318257190287113
+          ],
+          "deterministic_steer_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "distillation": {
+            "direction": "student_to_teacher",
+            "gate_variant": "evidence",
+            "reduction": "all_valid"
+          },
+          "entropy_2": [
+            0.6645215153694153,
+            0.6447605192661285
+          ],
+          "entropy_3": [
+            0.5349519103765488,
+            0.4437420666217804
+          ],
+          "entropy_bonus_2": [
+            0.006645214976742864,
+            0.0064476048573851585
+          ],
+          "entropy_bonus_3": [
+            0.0053495189640671015,
+            0.004437420517206192
+          ],
+          "evidence_gate_fraction_2": 0.0,
+          "evidence_gate_fraction_3": 0.0,
+          "explained_variance": 0.46330344676971436,
+          "gate_fraction_2": 0.0,
+          "gate_fraction_3": 0.0,
+          "gate_nonzero_coverage_2": 0.0,
+          "gate_nonzero_coverage_3": 0.0,
+          "gate_weight_mean_2": 0.0,
+          "gate_weight_mean_3": 0.0,
+          "grad_norm_actor_2": [
+            0.8867285251617432,
+            1.1465915441513062
+          ],
+          "grad_norm_actor_3": [
+            1.9432984590530396,
+            0.9280626177787781
+          ],
+          "grad_norm_critic": [
+            1.6545101404190063,
+            1.5090044736862183,
+            1.1854526996612549,
+            0.8886075615882874,
+            1.272490382194519,
+            1.3385498523712158
+          ],
+          "method": "off",
+          "mutual_beta": 0.0,
+          "mutual_gated_kl_2": 0.0,
+          "mutual_gated_kl_3": 0.0,
+          "mutual_kl_2": 0.0,
+          "mutual_kl_3": 0.0,
+          "normalized_return_target_mean": 0.21418772637844086,
+          "normalized_return_target_std": 1.0249979496002197,
+          "normalized_value_prediction_mean": 0.02106272615492344,
+          "normalized_value_prediction_std": 0.5168188810348511,
+          "peer_hash": "e36d252a43d88005c99c473dab1b3c1ae5afdb4169f06474252390bdccf97fa5",
+          "post_tanh_entropy_2": [
+            0.6645215153694153,
+            0.6447605192661285
+          ],
+          "post_tanh_entropy_3": [
+            0.5349519103765488,
+            0.4437420666217804
+          ],
+          "pre_post_entropy_gap_2": [
+            0.9643254280090332,
+            0.9839812815189362
+          ],
+          "pre_post_entropy_gap_3": [
+            1.1549561768770218,
+            1.2465406358242035
+          ],
+          "pre_tanh_entropy_2": [
+            1.6288469433784485,
+            1.6287418007850647
+          ],
+          "pre_tanh_entropy_3": [
+            1.6899080872535706,
+            1.6902827024459839
+          ],
+          "preupdate_ratio_errors": {
+            "2": 0.0,
+            "3": 0.0
+          },
+          "ratio_max_2": [
+            1.0396311283111572,
+            1.1249955892562866
+          ],
+          "ratio_max_3": [
+            1.0429768562316895,
+            1.0842583179473877
+          ],
+          "ratio_mean_2": [
+            0.9987577497959137,
+            1.0000925958156586
+          ],
+          "ratio_mean_3": [
+            0.9991026222705841,
+            0.9980297386646271
+          ],
+          "ratio_min_2": [
+            0.95149165391922,
+            0.8733443021774292
+          ],
+          "ratio_min_3": [
+            0.9551184773445129,
+            0.9206253290176392
+          ],
+          "ratio_std_2": [
+            0.009699062409772807,
+            0.03985340893268585
+          ],
+          "ratio_std_3": [
+            0.007373484827212451,
+            0.029360110871493816
+          ],
+          "return_target_mean": -27.737407684326172,
+          "return_target_std": 14.956204414367676,
+          "surrogate_loss_2": [
+            3.0363473342731595e-05,
+            -0.012290412560105324
+          ],
+          "surrogate_loss_3": [
+            -0.020443523302674294,
+            0.0299755297601223
+          ],
+          "team": "B",
+          "update": 41,
+          "value_error_abs_mean": 8.667414665222168,
+          "value_normalizer_debiasing_term": 0.0004099177895113826,
+          "value_normalizer_mean": -30.86271858215332,
+          "value_normalizer_scope": "pooled_active_blue_role_returns",
+          "value_normalizer_std": 14.591447830200195,
+          "value_normalizer_update_count": 41.0,
+          "value_normalizer_variance": 212.91033935546875,
+          "value_prediction_mean": -30.555383682250977,
+          "value_prediction_std": 7.541135311126709
+        }
+      },
+      "train_tick_budget": 24000,
+      "train_tick_overshoot": 171,
+      "training_parameter_counts": {
+        "A": {
+          "actors": 38920,
+          "critics": 27521
+        },
+        "B": {
+          "actors": 38920,
+          "critics": 27521
+        }
+      },
+      "training_window": {
+        "A": {
+          "agents": {
+            "0": {
+              "brake_mode_rate": 0.12962962962962962,
+              "mean_completion": 0.5646356743217209,
+              "mean_speed_mps": 3.7776652902203316
+            },
+            "1": {
+              "brake_mode_rate": 0.07916284052647689,
+              "mean_completion": 0.5827090840629586,
+              "mean_speed_mps": 3.069409788193844
+            },
+            "2": {
+              "brake_mode_rate": 0.1507539938391002,
+              "mean_completion": 0.636781520065661,
+              "mean_speed_mps": 4.07161755698557
+            },
+            "3": {
+              "brake_mode_rate": 0.30092592592592593,
+              "mean_completion": 0.48794339120586805,
+              "mean_speed_mps": 2.748502346113205
+            }
+          },
+          "b": 0.75,
+          "critical_exposure_s": 0.47595482042989995,
+          "critical_tet_s": 1.375,
+          "critical_tit_s": 1.3428818123102928,
+          "max_abs_reward_residual": 0.0,
+          "n": 4,
+          "q": 0.0,
+          "red_success_rate": 0.5,
+          "reward_components_mean": {
+            "attack": 0.0,
+            "comfort": -0.9575652150885531,
+            "completed_task_tail": 0.0,
+            "critical": 0.0,
+            "driving": 0.5850080613174041,
+            "normal_comfort": -3.8302608603542123,
+            "normal_lane": -3.453354068748877,
+            "normal_overspeed": -4.234357777506719,
+            "pace": -0.10322360551862145,
+            "primary_event_bonus": 0.0,
+            "risk": -0.4783888719366218,
+            "safety_event": -37.5,
+            "severe": 0.0
+          },
+          "safe_critical_event": 0.25,
+          "safe_efficiency_utility": -0.12234621774751661,
+          "scenario_coverage": {
+            "train_crossing_eastbound_front_left_r0l": 0,
+            "train_crossing_eastbound_front_left_r0r": 0,
+            "train_crossing_eastbound_front_right_r0l": 0,
+            "train_crossing_eastbound_front_right_r0r": 0,
+            "train_crossing_northbound_front_left_r0l": 0,
+            "train_crossing_northbound_front_left_r0r": 0,
+            "train_crossing_northbound_front_right_r0l": 0,
+            "train_crossing_northbound_front_right_r0r": 0,
+            "train_crossing_southbound_front_left_r0l": 1,
+            "train_crossing_southbound_front_left_r0r": 1,
+            "train_crossing_southbound_front_right_r0l": 0,
+            "train_crossing_southbound_front_right_r0r": 0,
+            "train_crossing_westbound_front_left_r0l": 0,
+            "train_crossing_westbound_front_left_r0r": 0,
+            "train_crossing_westbound_front_right_r0l": 0,
+            "train_crossing_westbound_front_right_r0r": 0,
+            "train_sequential_eastbound_front_both_r0l": 0,
+            "train_sequential_eastbound_front_both_r0r": 0,
+            "train_sequential_northbound_front_both_r0l": 1,
+            "train_sequential_northbound_front_both_r0r": 1,
+            "train_sequential_southbound_front_both_r0l": 0,
+            "train_sequential_southbound_front_both_r0r": 0,
+            "train_sequential_westbound_front_both_r0l": 0,
+            "train_sequential_westbound_front_both_r0r": 0
+          }
+        },
+        "B": {
+          "agents": {
+            "0": {
+              "brake_mode_rate": 0.014705882352941176,
+              "mean_completion": 0.7981021281137722,
+              "mean_speed_mps": 4.764166960836591
+            },
+            "1": {
+              "brake_mode_rate": 0.05013374366730737,
+              "mean_completion": 0.8675712143198786,
+              "mean_speed_mps": 4.251166729644026
+            },
+            "2": {
+              "brake_mode_rate": 0.12425856536644508,
+              "mean_completion": 0.8053383544087652,
+              "mean_speed_mps": 4.731149865255523
+            },
+            "3": {
+              "brake_mode_rate": 0.20425239061141698,
+              "mean_completion": 0.731798222391409,
+              "mean_speed_mps": 4.693943798576216
+            }
+          },
+          "b": 0.25,
+          "critical_exposure_s": 0.14673420091488687,
+          "critical_tet_s": 0.4,
+          "critical_tit_s": 0.2323212131753519,
+          "max_abs_reward_residual": 0.0,
+          "n": 4,
+          "q": 0.0,
+          "red_success_rate": 0.75,
+          "reward_components_mean": {
+            "attack": 0.0,
+            "comfort": -0.6513497615289785,
+            "completed_task_tail": 0.0,
+            "critical": 0.0,
+            "driving": 0.8114626836633467,
+            "normal_comfort": -2.605399046115914,
+            "normal_lane": -5.274765032795984,
+            "normal_overspeed": -5.566514570233475,
+            "pace": -0.02178859284383216,
+            "primary_event_bonus": 0.0,
+            "risk": -0.6274523317185283,
+            "safety_event": -12.5,
+            "severe": 0.0
+          },
+          "safe_critical_event": 0.25,
+          "safe_efficiency_utility": -0.362661568905683,
+          "scenario_coverage": {
+            "train_crossing_eastbound_front_left_r0l": 0,
+            "train_crossing_eastbound_front_left_r0r": 0,
+            "train_crossing_eastbound_front_right_r0l": 0,
+            "train_crossing_eastbound_front_right_r0r": 0,
+            "train_crossing_northbound_front_left_r0l": 0,
+            "train_crossing_northbound_front_left_r0r": 0,
+            "train_crossing_northbound_front_right_r0l": 0,
+            "train_crossing_northbound_front_right_r0r": 0,
+            "train_crossing_southbound_front_left_r0l": 1,
+            "train_crossing_southbound_front_left_r0r": 1,
+            "train_crossing_southbound_front_right_r0l": 0,
+            "train_crossing_southbound_front_right_r0r": 0,
+            "train_crossing_westbound_front_left_r0l": 0,
+            "train_crossing_westbound_front_left_r0r": 0,
+            "train_crossing_westbound_front_right_r0l": 0,
+            "train_crossing_westbound_front_right_r0r": 0,
+            "train_sequential_eastbound_front_both_r0l": 0,
+            "train_sequential_eastbound_front_both_r0r": 0,
+            "train_sequential_northbound_front_both_r0l": 1,
+            "train_sequential_northbound_front_both_r0r": 1,
+            "train_sequential_southbound_front_both_r0l": 0,
+            "train_sequential_southbound_front_both_r0r": 0,
+            "train_sequential_westbound_front_both_r0l": 0,
+            "train_sequential_westbound_front_both_r0r": 0
+          }
+        }
+      }
+    },
+    "R16": {
+      "actual_counters": {
+        "setup": 5227,
+        "total": 28230,
+        "train": 24834,
+        "train_decision": 20231,
+        "validation": 3396,
+        "validation_decision": 2772
+      },
+      "algorithm": "mappo",
+      "budget_policy": "complete_boundary_soft_cap",
+      "completed_round": 11,
+      "created_at": "2026-11-04T11:55:49.993293+00:00",
+      "gate": {
+        "config": {
+          "gate_max_bad_rate": 0.125,
+          "gate_min_cases": 8,
+          "gate_min_q_gap": 0.25,
+          "min_efficiency_gap": 0.02,
+          "quality_metric": "critical",
+          "refresh_rounds": 10,
+          "refresh_train_ticks": 20000,
+          "schedule_clock": "train_ticks",
+          "warmup_rounds": 5,
+          "warmup_train_ticks": 10000
+        },
+        "gates": {
+          "A": {
+            "blocking": 0,
+            "cut_in": 0
+          },
+          "B": {
+            "blocking": 0,
+            "cut_in": 0
+          }
+        },
+        "refresh_round": 5,
+        "statistics": {
+          "A": {
+            "blocking": {
+              "b_count": 3,
+              "case_keys": [
+                "gate_sequential_northbound_front_both_r0l",
+                "gate_sequential_northbound_front_both_r0r",
+                "gate_sequential_southbound_front_both_r0l",
+                "gate_sequential_southbound_front_both_r0r",
+                "gate_sequential_eastbound_front_both_r0l",
+                "gate_sequential_eastbound_front_both_r0r",
+                "gate_sequential_westbound_front_both_r0l",
+                "gate_sequential_westbound_front_both_r0r"
+              ],
+              "n_all": 8,
+              "q_count": 5,
+              "teacher_hash": "81e5bc0f4d19553ed4dc1ed8a01fef02a6aef9ef86a373ffaba99aecc80384da",
+              "version": 1
+            },
+            "cut_in": {
+              "b_count": 6,
+              "case_keys": [
+                "gate_crossing_northbound_front_left_r0l",
+                "gate_crossing_northbound_front_left_r0r",
+                "gate_crossing_northbound_front_right_r0l",
+                "gate_crossing_northbound_front_right_r0r",
+                "gate_crossing_southbound_front_left_r0l",
+                "gate_crossing_southbound_front_left_r0r",
+                "gate_crossing_southbound_front_right_r0l",
+                "gate_crossing_southbound_front_right_r0r",
+                "gate_crossing_eastbound_front_left_r0l",
+                "gate_crossing_eastbound_front_left_r0r",
+                "gate_crossing_eastbound_front_right_r0l",
+                "gate_crossing_eastbound_front_right_r0r",
+                "gate_crossing_westbound_front_left_r0l",
+                "gate_crossing_westbound_front_left_r0r",
+                "gate_crossing_westbound_front_right_r0l",
+                "gate_crossing_westbound_front_right_r0r"
+              ],
+              "n_all": 16,
+              "q_count": 4,
+              "teacher_hash": "81e5bc0f4d19553ed4dc1ed8a01fef02a6aef9ef86a373ffaba99aecc80384da",
+              "version": 1
+            }
+          },
+          "B": {
+            "blocking": {
+              "b_count": 4,
+              "case_keys": [
+                "gate_sequential_northbound_front_both_r0l",
+                "gate_sequential_northbound_front_both_r0r",
+                "gate_sequential_southbound_front_both_r0l",
+                "gate_sequential_southbound_front_both_r0r",
+                "gate_sequential_eastbound_front_both_r0l",
+                "gate_sequential_eastbound_front_both_r0r",
+                "gate_sequential_westbound_front_both_r0l",
+                "gate_sequential_westbound_front_both_r0r"
+              ],
+              "n_all": 8,
+              "q_count": 1,
+              "teacher_hash": "94103a427f1a49c3dbb83ef41b46ad72d13d3915ed42e2888e193fe28f73529d",
+              "version": 1
+            },
+            "cut_in": {
+              "b_count": 6,
+              "case_keys": [
+                "gate_crossing_northbound_front_left_r0l",
+                "gate_crossing_northbound_front_left_r0r",
+                "gate_crossing_northbound_front_right_r0l",
+                "gate_crossing_northbound_front_right_r0r",
+                "gate_crossing_southbound_front_left_r0l",
+                "gate_crossing_southbound_front_left_r0r",
+                "gate_crossing_southbound_front_right_r0l",
+                "gate_crossing_southbound_front_right_r0r",
+                "gate_crossing_eastbound_front_left_r0l",
+                "gate_crossing_eastbound_front_left_r0r",
+                "gate_crossing_eastbound_front_right_r0l",
+                "gate_crossing_eastbound_front_right_r0r",
+                "gate_crossing_westbound_front_left_r0l",
+                "gate_crossing_westbound_front_left_r0r",
+                "gate_crossing_westbound_front_right_r0l",
+                "gate_crossing_westbound_front_right_r0r"
+              ],
+              "n_all": 16,
+              "q_count": 5,
+              "teacher_hash": "94103a427f1a49c3dbb83ef41b46ad72d13d3915ed42e2888e193fe28f73529d",
+              "version": 1
+            }
+          }
+        },
+        "teacher_hashes": {
+          "A": "81e5bc0f4d19553ed4dc1ed8a01fef02a6aef9ef86a373ffaba99aecc80384da",
+          "B": "94103a427f1a49c3dbb83ef41b46ad72d13d3915ed42e2888e193fe28f73529d"
+        },
+        "version": 1
+      },
+      "method": "off",
+      "schedule_clock": "train_ticks",
+      "segment_id": "2f6831748c33495c823a24da77fbdf65",
+      "source": "training_window_not_independent_evaluation",
+      "stop_rule": "train_ticks",
+      "team_count": 2,
+      "teams": {
+        "A": {
+          "actor_loss_2": [
+            -0.01266074770440658,
+            -0.009376076127712926
+          ],
+          "actor_loss_3": [
+            0.006629818651293006,
+            -0.0008258489625794547
+          ],
+          "actor_samples_seen_2": 1460,
+          "actor_samples_seen_3": 1638,
+          "agent_stop_epoch": {
+            "2": 2,
+            "3": 2
+          },
+          "algorithm": "mappo",
+          "anchor_beta": 0.0,
+          "anchor_kl_2": 0.0,
+          "anchor_kl_3": 0.0,
+          "approx_kl_2": [
+            0.0005596911263031265,
+            0.0036087426900242767
+          ],
+          "approx_kl_3": [
+            0.001872136423896466,
+            0.0024142783201698747
+          ],
+          "clip_frac_2": [
+            0.0,
+            0.08301504701375961
+          ],
+          "clip_frac_3": [
+            0.034641982189246585,
+            0.046875
+          ],
+          "critic_absolute_error_mean_agent_2": 6.08634921263342,
+          "critic_absolute_error_mean_agent_3": 5.919613730921996,
+          "critic_explained_variance_agent_2": 0.6707568387434473,
+          "critic_explained_variance_agent_3": 0.6883763245870277,
+          "critic_input_scope": "all_physical_observation_slots_plus_id",
+          "critic_loss": [
+            0.18747485142487746,
+            0.15109614913280195
+          ],
+          "critic_prediction_target_std_ratio_agent_2": 0.7403991311088882,
+          "critic_prediction_target_std_ratio_agent_3": 0.8040672709850669,
+          "critic_samples_seen": 3098,
+          "critic_signed_bias_agent_2": 1.589957174862901,
+          "critic_signed_bias_agent_3": 0.6601770021685459,
+          "deterministic_longitudinal_mean_2": [
+            0.43857690195242566,
+            0.42354577283064526
+          ],
+          "deterministic_longitudinal_mean_3": [
+            0.3514396165098463,
+            0.34087330954415457
+          ],
+          "deterministic_longitudinal_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_longitudinal_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_mean_2": [
+            -0.008289910426052908,
+            0.025046210115154583
+          ],
+          "deterministic_steer_mean_3": [
+            0.02340586922530617,
+            0.03241882845759392
+          ],
+          "deterministic_steer_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "distillation": {
+            "direction": "student_to_teacher",
+            "gate_variant": "evidence",
+            "reduction": "all_valid"
+          },
+          "entropy_2": [
+            0.6935222744941711,
+            0.6995290021101633
+          ],
+          "entropy_3": [
+            0.8602107337542942,
+            0.8339019502912249
+          ],
+          "entropy_bonus_2": [
+            0.006935222695271174,
+            0.006995289741704862
+          ],
+          "entropy_bonus_3": [
+            0.008602107076772622,
+            0.00833901935922248
+          ],
+          "evidence_gate_fraction_2": 0.0,
+          "evidence_gate_fraction_3": 0.0,
+          "explained_variance": 0.681288480758667,
+          "gate_fraction_2": 0.0,
+          "gate_fraction_3": 0.0,
+          "gate_nonzero_coverage_2": 0.0,
+          "gate_nonzero_coverage_3": 0.0,
+          "gate_weight_mean_2": 0.0,
+          "gate_weight_mean_3": 0.0,
+          "grad_norm_actor_2": [
+            1.0204286376635234,
+            1.1384636958440144
+          ],
+          "grad_norm_actor_3": [
+            1.3144106354032243,
+            1.0767019476209367
+          ],
+          "grad_norm_critic": [
+            1.2575626373291016,
+            1.61990225315094,
+            0.6951858401298523,
+            1.058432698249817,
+            0.259291410446167,
+            0.23415739834308624,
+            0.33266451954841614,
+            0.49127984046936035,
+            0.6940213441848755,
+            0.7524442076683044,
+            0.680900514125824,
+            0.416098952293396,
+            0.7138909101486206,
+            0.7190267443656921,
+            0.2745043933391571,
+            0.2192300707101822,
+            0.6964916586875916,
+            0.5208430886268616,
+            0.21332094073295593,
+            0.6002752184867859,
+            0.48296409845352173,
+            0.3310391902923584,
+            0.36908286809921265,
+            0.48198992013931274,
+            0.25336122512817383,
+            0.34864622354507446
+          ],
+          "method": "off",
+          "mutual_beta": 0.0,
+          "mutual_gated_kl_2": 0.0,
+          "mutual_gated_kl_3": 0.0,
+          "mutual_kl_2": 0.0,
+          "mutual_kl_3": 0.0,
+          "normalized_return_target_mean": 0.2540024220943451,
+          "normalized_return_target_std": 0.9546452164649963,
+          "normalized_value_prediction_mean": 0.3272853195667267,
+          "normalized_value_prediction_std": 0.7407900094985962,
+          "peer_hash": "94103a427f1a49c3dbb83ef41b46ad72d13d3915ed42e2888e193fe28f73529d",
+          "post_tanh_entropy_2": [
+            0.6935222744941711,
+            0.6995290021101633
+          ],
+          "post_tanh_entropy_3": [
+            0.8602107337542942,
+            0.8339019502912249
+          ],
+          "pre_post_entropy_gap_2": [
+            0.9362625082333883,
+            0.930782288312912
+          ],
+          "pre_post_entropy_gap_3": [
+            0.8191877177783421,
+            0.8456465005874634
+          ],
+          "pre_tanh_entropy_2": [
+            1.6297847827275593,
+            1.6303112904230754
+          ],
+          "pre_tanh_entropy_3": [
+            1.6793984515326363,
+            1.6795484508786882
+          ],
+          "preupdate_ratio_errors": {
+            "2": 0.0,
+            "3": 0.0
+          },
+          "ratio_max_2": [
+            1.1311105489730835,
+            1.5702110528945923
+          ],
+          "ratio_max_3": [
+            1.2345322370529175,
+            1.2775864601135254
+          ],
+          "ratio_mean_2": [
+            1.0004766682783763,
+            1.0001083513100941
+          ],
+          "ratio_mean_3": [
+            1.0009314588138036,
+            1.0008675966944014
+          ],
+          "ratio_min_2": [
+            0.8748786449432373,
+            0.7490131855010986
+          ],
+          "ratio_min_3": [
+            0.7856477499008179,
+            0.7757018804550171
+          ],
+          "ratio_std_2": [
+            0.029782749641621347,
+            0.08068085151414077
+          ],
+          "ratio_std_3": [
+            0.05222922519731453,
+            0.06784782292587417
+          ],
+          "return_target_mean": -21.83211898803711,
+          "return_target_std": 14.308121681213379,
+          "surrogate_loss_2": [
+            -0.005725523767371972,
+            -0.0023807864636182785
+          ],
+          "surrogate_loss_3": [
+            0.015231925595019544,
+            0.007513169465320451
+          ],
+          "team": "A",
+          "update": 11,
+          "value_error_abs_mean": 5.998190402984619,
+          "value_normalizer_debiasing_term": 0.00010999450751114637,
+          "value_normalizer_mean": -25.63907814025879,
+          "value_normalizer_scope": "pooled_active_blue_role_returns",
+          "value_normalizer_std": 14.987894058227539,
+          "value_normalizer_update_count": 11.0,
+          "value_normalizer_variance": 224.636962890625,
+          "value_prediction_mean": -20.733760833740234,
+          "value_prediction_std": 11.102882385253906
+        },
+        "B": {
+          "actor_loss_2": [
+            0.005756960064172745,
+            -0.001154596544802189
+          ],
+          "actor_loss_3": [
+            0.045946332005163036,
+            -0.06686792088051637
+          ],
+          "actor_samples_seen_2": 1136,
+          "actor_samples_seen_3": 1318,
+          "agent_stop_epoch": {
+            "2": 2,
+            "3": 2
+          },
+          "algorithm": "mappo",
+          "anchor_beta": 0.0,
+          "anchor_kl_2": 0.0,
+          "anchor_kl_3": 0.0,
+          "approx_kl_2": [
+            0.0002500387723557651,
+            0.006474948022514582
+          ],
+          "approx_kl_3": [
+            0.0065075193997472525,
+            0.008111524919513613
+          ],
+          "clip_frac_2": [
+            0.0,
+            0.1790178596973419
+          ],
+          "clip_frac_3": [
+            0.148574560880661,
+            0.20442708333333334
+          ],
+          "critic_absolute_error_mean_agent_2": 8.741679589303446,
+          "critic_absolute_error_mean_agent_3": 8.166078819671423,
+          "critic_explained_variance_agent_2": 0.3885894780917072,
+          "critic_explained_variance_agent_3": 0.4780259795456424,
+          "critic_input_scope": "all_physical_observation_slots_plus_id",
+          "critic_loss": [
+            0.29959301054477694,
+            0.28431268930435183
+          ],
+          "critic_prediction_target_std_ratio_agent_2": 0.6770057047622426,
+          "critic_prediction_target_std_ratio_agent_3": 0.7214367764767985,
+          "critic_samples_seen": 2454,
+          "critic_signed_bias_agent_2": -1.1879555073002694,
+          "critic_signed_bias_agent_3": -1.2784421957678787,
+          "deterministic_longitudinal_mean_2": [
+            0.5265147447586059,
+            0.5570144414901733
+          ],
+          "deterministic_longitudinal_mean_3": [
+            0.392780269185702,
+            0.39404242237408954
+          ],
+          "deterministic_longitudinal_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_longitudinal_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_mean_2": [
+            0.014896556362509727,
+            0.004451690800487995
+          ],
+          "deterministic_steer_mean_3": [
+            0.03343045998675128,
+            0.07175668639441331
+          ],
+          "deterministic_steer_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "distillation": {
+            "direction": "student_to_teacher",
+            "gate_variant": "evidence",
+            "reduction": "all_valid"
+          },
+          "entropy_2": [
+            0.5960159659385681,
+            0.5476451218128204
+          ],
+          "entropy_3": [
+            0.84141739209493,
+            0.7687401870886484
+          ],
+          "entropy_bonus_2": [
+            0.005960159562528133,
+            0.005476451106369495
+          ],
+          "entropy_bonus_3": [
+            0.008414173886800805,
+            0.007687401569758852
+          ],
+          "evidence_gate_fraction_2": 0.0,
+          "evidence_gate_fraction_3": 0.0,
+          "explained_variance": 0.44078701734542847,
+          "gate_fraction_2": 0.0,
+          "gate_fraction_3": 0.0,
+          "gate_nonzero_coverage_2": 0.0,
+          "gate_nonzero_coverage_3": 0.0,
+          "gate_weight_mean_2": 0.0,
+          "gate_weight_mean_3": 0.0,
+          "grad_norm_actor_2": [
+            1.2160944581031798,
+            0.9973912000656128
+          ],
+          "grad_norm_actor_3": [
+            2.29839621980985,
+            1.4096913933753967
+          ],
+          "grad_norm_critic": [
+            1.3771713972091675,
+            0.2062595635652542,
+            0.9159256815910339,
+            0.6156855821609497,
+            0.6761628985404968,
+            0.21402908861637115,
+            0.26763612031936646,
+            0.8301833868026733,
+            0.700982391834259,
+            1.3221423625946045,
+            0.7268639206886292,
+            0.5944811105728149,
+            0.3789358139038086,
+            0.7224539518356323,
+            0.39097321033477783,
+            0.3607334494590759,
+            0.4645584225654602,
+            0.905988872051239,
+            1.0225682258605957,
+            0.6424088478088379
+          ],
+          "method": "off",
+          "mutual_beta": 0.0,
+          "mutual_gated_kl_2": 0.0,
+          "mutual_gated_kl_3": 0.0,
+          "mutual_kl_2": 0.0,
+          "mutual_kl_3": 0.0,
+          "normalized_return_target_mean": 0.2617403268814087,
+          "normalized_return_target_std": 0.9853606820106506,
+          "normalized_value_prediction_mean": 0.17888495326042175,
+          "normalized_value_prediction_std": 0.6931259036064148,
+          "peer_hash": "81e5bc0f4d19553ed4dc1ed8a01fef02a6aef9ef86a373ffaba99aecc80384da",
+          "post_tanh_entropy_2": [
+            0.5960159659385681,
+            0.5476451218128204
+          ],
+          "post_tanh_entropy_3": [
+            0.84141739209493,
+            0.7687401870886484
+          ],
+          "pre_post_entropy_gap_2": [
+            1.0337682127952577,
+            1.0818475902080535
+          ],
+          "pre_post_entropy_gap_3": [
+            0.845146377881368,
+            0.91799595952034
+          ],
+          "pre_tanh_entropy_2": [
+            1.6297841787338256,
+            1.629492712020874
+          ],
+          "pre_tanh_entropy_3": [
+            1.686563769976298,
+            1.6867361466089885
+          ],
+          "preupdate_ratio_errors": {
+            "2": 0.0,
+            "3": 0.0
+          },
+          "ratio_max_2": [
+            1.113921046257019,
+            1.4657179117202759
+          ],
+          "ratio_max_3": [
+            1.573824405670166,
+            1.526896595954895
+          ],
+          "ratio_mean_2": [
+            1.0011083006858825,
+            0.9959657430648804
+          ],
+          "ratio_mean_3": [
+            1.0175603330135345,
+            1.005744566520055
+          ],
+          "ratio_min_2": [
+            0.9101548790931702,
+            0.6623238325119019
+          ],
+          "ratio_min_3": [
+            0.6650927066802979,
+            0.5330317616462708
+          ],
+          "ratio_std_2": [
+            0.017128326784126104,
+            0.10756170749664307
+          ],
+          "ratio_std_3": [
+            0.08815156577467557,
+            0.12267149798572063
+          ],
+          "return_target_mean": -22.743480682373047,
+          "return_target_std": 14.705768585205078,
+          "surrogate_loss_2": [
+            0.011717119812965393,
+            0.0043218560516834256
+          ],
+          "surrogate_loss_3": [
+            0.05436050395170847,
+            -0.059180522027115025
+          ],
+          "team": "B",
+          "update": 11,
+          "value_error_abs_mean": 8.432535171508789,
+          "value_normalizer_debiasing_term": 0.00010999450751114637,
+          "value_normalizer_mean": -26.649757385253906,
+          "value_normalizer_scope": "pooled_active_blue_role_returns",
+          "value_normalizer_std": 14.924249649047852,
+          "value_normalizer_update_count": 11.0,
+          "value_normalizer_variance": 222.73321533203125,
+          "value_prediction_mean": -23.980031967163086,
+          "value_prediction_std": 10.34438419342041
+        }
+      },
+      "train_tick_budget": 24000,
+      "train_tick_overshoot": 834,
+      "training_parameter_counts": {
+        "A": {
+          "actors": 38920,
+          "critics": 27521
+        },
+        "B": {
+          "actors": 38920,
+          "critics": 27521
+        }
+      },
+      "training_window": {
+        "A": {
+          "agents": {
+            "0": {
+              "brake_mode_rate": 0.0658912037037037,
+              "mean_completion": 0.7098918730743393,
+              "mean_speed_mps": 4.425151835865922
+            },
+            "1": {
+              "brake_mode_rate": 0.09305857616625615,
+              "mean_completion": 0.6434807534715182,
+              "mean_speed_mps": 3.124451592117218
+            },
+            "2": {
+              "brake_mode_rate": 0.1761365556968893,
+              "mean_completion": 0.7170715829787496,
+              "mean_speed_mps": 4.258896048844744
+            },
+            "3": {
+              "brake_mode_rate": 0.2325927012334316,
+              "mean_completion": 0.6359349461823587,
+              "mean_speed_mps": 3.4076732198862345
+            }
+          },
+          "b": 0.3125,
+          "critical_exposure_s": 0.5054329190811504,
+          "critical_tet_s": 0.76875,
+          "critical_tit_s": 0.6038500639010504,
+          "max_abs_reward_residual": 0.0,
+          "n": 16,
+          "q": 0.0625,
+          "red_success_rate": 0.5625,
+          "reward_components_mean": {
+            "attack": -0.028206628916929426,
+            "comfort": -0.8045537224098317,
+            "completed_task_tail": -0.4029560494504615,
+            "critical": 0.7581493786217258,
+            "driving": 0.7037274464744592,
+            "normal_comfort": -3.218214889639327,
+            "normal_lane": -5.533150705829938,
+            "normal_overspeed": -1.3654140569566307,
+            "pace": -0.08291438968477001,
+            "primary_event_bonus": 1.875,
+            "risk": -0.1588190073698545,
+            "safety_event": -15.625,
+            "severe": -0.39493194584790026
+          },
+          "safe_critical_event": 0.4375,
+          "safe_efficiency_utility": -0.26007334408887833,
+          "scenario_coverage": {
+            "train_crossing_eastbound_front_left_r0l": 1,
+            "train_crossing_eastbound_front_left_r0r": 1,
+            "train_crossing_eastbound_front_right_r0l": 1,
+            "train_crossing_eastbound_front_right_r0r": 1,
+            "train_crossing_northbound_front_left_r0l": 1,
+            "train_crossing_northbound_front_left_r0r": 1,
+            "train_crossing_northbound_front_right_r0l": 1,
+            "train_crossing_northbound_front_right_r0r": 1,
+            "train_crossing_southbound_front_left_r0l": 0,
+            "train_crossing_southbound_front_left_r0r": 0,
+            "train_crossing_southbound_front_right_r0l": 0,
+            "train_crossing_southbound_front_right_r0r": 0,
+            "train_crossing_westbound_front_left_r0l": 0,
+            "train_crossing_westbound_front_left_r0r": 0,
+            "train_crossing_westbound_front_right_r0l": 0,
+            "train_crossing_westbound_front_right_r0r": 0,
+            "train_sequential_eastbound_front_both_r0l": 0,
+            "train_sequential_eastbound_front_both_r0r": 0,
+            "train_sequential_northbound_front_both_r0l": 0,
+            "train_sequential_northbound_front_both_r0r": 0,
+            "train_sequential_southbound_front_both_r0l": 2,
+            "train_sequential_southbound_front_both_r0r": 2,
+            "train_sequential_westbound_front_both_r0l": 2,
+            "train_sequential_westbound_front_both_r0r": 2
+          }
+        },
+        "B": {
+          "agents": {
+            "0": {
+              "brake_mode_rate": 0.02547348484848485,
+              "mean_completion": 0.6697685157723726,
+              "mean_speed_mps": 4.309318132754832
+            },
+            "1": {
+              "brake_mode_rate": 0.09149255049287888,
+              "mean_completion": 0.6209645538735549,
+              "mean_speed_mps": 3.264597475192231
+            },
+            "2": {
+              "brake_mode_rate": 0.13594206005943604,
+              "mean_completion": 0.6261589163063165,
+              "mean_speed_mps": 4.68974647375191
+            },
+            "3": {
+              "brake_mode_rate": 0.251978036021319,
+              "mean_completion": 0.5265750313906988,
+              "mean_speed_mps": 3.1573188551234823
+            }
+          },
+          "b": 0.375,
+          "critical_exposure_s": 0.3145805872061587,
+          "critical_tet_s": 0.61875,
+          "critical_tit_s": 0.4662562535939119,
+          "max_abs_reward_residual": 0.0,
+          "n": 16,
+          "q": 0.0,
+          "red_success_rate": 0.5625,
+          "reward_components_mean": {
+            "attack": -0.021259734002279367,
+            "comfort": -0.6272856881594367,
+            "completed_task_tail": -0.28778993767006,
+            "critical": 0.47187088080923817,
+            "driving": 0.5962693354311763,
+            "normal_comfort": -2.509142752637747,
+            "normal_lane": -3.301500260602799,
+            "normal_overspeed": -2.3391381500471513,
+            "pace": -0.07074115249607316,
+            "primary_event_bonus": 0.9375,
+            "risk": -0.26702942258444706,
+            "safety_event": -18.75,
+            "severe": -0.24300520570419093
+          },
+          "safe_critical_event": 0.3125,
+          "safe_efficiency_utility": -0.1861596767549884,
+          "scenario_coverage": {
+            "train_crossing_eastbound_front_left_r0l": 1,
+            "train_crossing_eastbound_front_left_r0r": 1,
+            "train_crossing_eastbound_front_right_r0l": 1,
+            "train_crossing_eastbound_front_right_r0r": 1,
+            "train_crossing_northbound_front_left_r0l": 1,
+            "train_crossing_northbound_front_left_r0r": 1,
+            "train_crossing_northbound_front_right_r0l": 1,
+            "train_crossing_northbound_front_right_r0r": 1,
+            "train_crossing_southbound_front_left_r0l": 0,
+            "train_crossing_southbound_front_left_r0r": 0,
+            "train_crossing_southbound_front_right_r0l": 0,
+            "train_crossing_southbound_front_right_r0r": 0,
+            "train_crossing_westbound_front_left_r0l": 0,
+            "train_crossing_westbound_front_left_r0r": 0,
+            "train_crossing_westbound_front_right_r0l": 0,
+            "train_crossing_westbound_front_right_r0r": 0,
+            "train_sequential_eastbound_front_both_r0l": 0,
+            "train_sequential_eastbound_front_both_r0r": 0,
+            "train_sequential_northbound_front_both_r0l": 0,
+            "train_sequential_northbound_front_both_r0r": 0,
+            "train_sequential_southbound_front_both_r0l": 2,
+            "train_sequential_southbound_front_both_r0r": 2,
+            "train_sequential_westbound_front_both_r0l": 2,
+            "train_sequential_westbound_front_both_r0r": 2
+          }
+        }
+      }
+    },
+    "R4": {
+      "actual_counters": {
+        "setup": 5126,
+        "total": 27968,
+        "train": 24426,
+        "train_decision": 19930,
+        "validation": 3542,
+        "validation_decision": 2912
+      },
+      "algorithm": "mappo",
+      "budget_policy": "complete_boundary_soft_cap",
+      "completed_round": 43,
+      "created_at": "2026-11-04T10:42:00.768100+00:00",
+      "gate": {
+        "config": {
+          "gate_max_bad_rate": 0.125,
+          "gate_min_cases": 8,
+          "gate_min_q_gap": 0.25,
+          "min_efficiency_gap": 0.02,
+          "quality_metric": "critical",
+          "refresh_rounds": 10,
+          "refresh_train_ticks": 20000,
+          "schedule_clock": "train_ticks",
+          "warmup_rounds": 5,
+          "warmup_train_ticks": 10000
+        },
+        "gates": {
+          "A": {
+            "blocking": 0,
+            "cut_in": 0
+          },
+          "B": {
+            "blocking": 0,
+            "cut_in": 0
+          }
+        },
+        "refresh_round": 19,
+        "statistics": {
+          "A": {
+            "blocking": {
+              "b_count": 7,
+              "case_keys": [
+                "gate_sequential_northbound_front_both_r0l",
+                "gate_sequential_northbound_front_both_r0r",
+                "gate_sequential_southbound_front_both_r0l",
+                "gate_sequential_southbound_front_both_r0r",
+                "gate_sequential_eastbound_front_both_r0l",
+                "gate_sequential_eastbound_front_both_r0r",
+                "gate_sequential_westbound_front_both_r0l",
+                "gate_sequential_westbound_front_both_r0r"
+              ],
+              "n_all": 8,
+              "q_count": 1,
+              "teacher_hash": "33f8e66a7d2d7b1b395008a872b9003c99ab9ed4b123f1c825d187ff064c5acb",
+              "version": 1
+            },
+            "cut_in": {
+              "b_count": 4,
+              "case_keys": [
+                "gate_crossing_northbound_front_left_r0l",
+                "gate_crossing_northbound_front_left_r0r",
+                "gate_crossing_northbound_front_right_r0l",
+                "gate_crossing_northbound_front_right_r0r",
+                "gate_crossing_southbound_front_left_r0l",
+                "gate_crossing_southbound_front_left_r0r",
+                "gate_crossing_southbound_front_right_r0l",
+                "gate_crossing_southbound_front_right_r0r",
+                "gate_crossing_eastbound_front_left_r0l",
+                "gate_crossing_eastbound_front_left_r0r",
+                "gate_crossing_eastbound_front_right_r0l",
+                "gate_crossing_eastbound_front_right_r0r",
+                "gate_crossing_westbound_front_left_r0l",
+                "gate_crossing_westbound_front_left_r0r",
+                "gate_crossing_westbound_front_right_r0l",
+                "gate_crossing_westbound_front_right_r0r"
+              ],
+              "n_all": 16,
+              "q_count": 6,
+              "teacher_hash": "33f8e66a7d2d7b1b395008a872b9003c99ab9ed4b123f1c825d187ff064c5acb",
+              "version": 1
+            }
+          },
+          "B": {
+            "blocking": {
+              "b_count": 4,
+              "case_keys": [
+                "gate_sequential_northbound_front_both_r0l",
+                "gate_sequential_northbound_front_both_r0r",
+                "gate_sequential_southbound_front_both_r0l",
+                "gate_sequential_southbound_front_both_r0r",
+                "gate_sequential_eastbound_front_both_r0l",
+                "gate_sequential_eastbound_front_both_r0r",
+                "gate_sequential_westbound_front_both_r0l",
+                "gate_sequential_westbound_front_both_r0r"
+              ],
+              "n_all": 8,
+              "q_count": 4,
+              "teacher_hash": "208fb21159754836dd9915f7a81709387870a030a4716a022fa19f047bbeeb6e",
+              "version": 1
+            },
+            "cut_in": {
+              "b_count": 3,
+              "case_keys": [
+                "gate_crossing_northbound_front_left_r0l",
+                "gate_crossing_northbound_front_left_r0r",
+                "gate_crossing_northbound_front_right_r0l",
+                "gate_crossing_northbound_front_right_r0r",
+                "gate_crossing_southbound_front_left_r0l",
+                "gate_crossing_southbound_front_left_r0r",
+                "gate_crossing_southbound_front_right_r0l",
+                "gate_crossing_southbound_front_right_r0r",
+                "gate_crossing_eastbound_front_left_r0l",
+                "gate_crossing_eastbound_front_left_r0r",
+                "gate_crossing_eastbound_front_right_r0l",
+                "gate_crossing_eastbound_front_right_r0r",
+                "gate_crossing_westbound_front_left_r0l",
+                "gate_crossing_westbound_front_left_r0r",
+                "gate_crossing_westbound_front_right_r0l",
+                "gate_crossing_westbound_front_right_r0r"
+              ],
+              "n_all": 16,
+              "q_count": 5,
+              "teacher_hash": "208fb21159754836dd9915f7a81709387870a030a4716a022fa19f047bbeeb6e",
+              "version": 1
+            }
+          }
+        },
+        "teacher_hashes": {
+          "A": "33f8e66a7d2d7b1b395008a872b9003c99ab9ed4b123f1c825d187ff064c5acb",
+          "B": "208fb21159754836dd9915f7a81709387870a030a4716a022fa19f047bbeeb6e"
+        },
+        "version": 1
+      },
+      "method": "off",
+      "schedule_clock": "train_ticks",
+      "segment_id": "eb63139c11564136b68a6259911760fd",
+      "source": "training_window_not_independent_evaluation",
+      "stop_rule": "train_ticks",
+      "team_count": 2,
+      "teams": {
+        "A": {
+          "actor_loss_2": [
+            -0.21566495299339294,
+            -0.0644242709968239
+          ],
+          "actor_loss_3": [
+            -0.0063332016579806805,
+            -0.006593720521777868
+          ],
+          "actor_samples_seen_2": 292,
+          "actor_samples_seen_3": 232,
+          "agent_stop_epoch": {
+            "2": 2,
+            "3": 2
+          },
+          "algorithm": "mappo",
+          "anchor_beta": 0.0,
+          "anchor_kl_2": 0.0,
+          "anchor_kl_3": 0.0,
+          "approx_kl_2": [
+            0.00042214058339595795,
+            0.0036378216464072466
+          ],
+          "approx_kl_3": [
+            -1.5414994836149276e-09,
+            7.446007657563314e-05
+          ],
+          "clip_frac_2": [
+            0.0,
+            0.06293402798473835
+          ],
+          "clip_frac_3": [
+            0.0,
+            0.0
+          ],
+          "critic_absolute_error_mean_agent_2": 7.178957318606442,
+          "critic_absolute_error_mean_agent_3": 6.660181061974887,
+          "critic_explained_variance_agent_2": 0.6855551928724332,
+          "critic_explained_variance_agent_3": 0.4715256277381531,
+          "critic_input_scope": "all_physical_observation_slots_plus_id",
+          "critic_loss": [
+            0.17913367102543512,
+            0.27417886753877
+          ],
+          "critic_prediction_target_std_ratio_agent_2": 0.5747895682543904,
+          "critic_prediction_target_std_ratio_agent_3": 0.44083176655229483,
+          "critic_samples_seen": 524,
+          "critic_signed_bias_agent_2": -1.3813751364407474,
+          "critic_signed_bias_agent_3": -1.4966404520232102,
+          "deterministic_longitudinal_mean_2": [
+            0.13775048032402992,
+            0.17326953262090683
+          ],
+          "deterministic_longitudinal_mean_3": [
+            0.46189290285110474,
+            0.4633290767669678
+          ],
+          "deterministic_longitudinal_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_longitudinal_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_mean_2": [
+            -0.04055296070873737,
+            -0.05164321046322584
+          ],
+          "deterministic_steer_mean_3": [
+            -0.06083552539348602,
+            -0.06547320634126663
+          ],
+          "deterministic_steer_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "distillation": {
+            "direction": "student_to_teacher",
+            "gate_variant": "evidence",
+            "reduction": "all_valid"
+          },
+          "entropy_2": [
+            1.0089249014854431,
+            1.0839979648590088
+          ],
+          "entropy_3": [
+            0.6333175301551819,
+            0.5463030934333801
+          ],
+          "entropy_bonus_2": [
+            0.01008924888446927,
+            0.010839979629963636
+          ],
+          "entropy_bonus_3": [
+            0.006333175115287304,
+            0.005463030654937029
+          ],
+          "evidence_gate_fraction_2": 0.0,
+          "evidence_gate_fraction_3": 0.0,
+          "explained_variance": 0.61913001537323,
+          "gate_fraction_2": 0.0,
+          "gate_fraction_3": 0.0,
+          "gate_nonzero_coverage_2": 0.0,
+          "gate_nonzero_coverage_3": 0.0,
+          "gate_weight_mean_2": 0.0,
+          "gate_weight_mean_3": 0.0,
+          "grad_norm_actor_2": [
+            1.7634174227714539,
+            2.2191951870918274
+          ],
+          "grad_norm_actor_3": [
+            1.068598985671997,
+            1.0806317329406738
+          ],
+          "grad_norm_critic": [
+            1.4476813077926636,
+            1.0481454133987427,
+            0.1346813142299652,
+            0.6020840406417847,
+            1.1843805313110352,
+            1.5118153095245361
+          ],
+          "method": "off",
+          "mutual_beta": 0.0,
+          "mutual_gated_kl_2": 0.0,
+          "mutual_gated_kl_3": 0.0,
+          "mutual_kl_2": 0.0,
+          "mutual_kl_3": 0.0,
+          "normalized_return_target_mean": -0.6842229962348938,
+          "normalized_return_target_std": 1.0533910989761353,
+          "normalized_value_prediction_mean": -0.779586672782898,
+          "normalized_value_prediction_std": 0.5714194178581238,
+          "peer_hash": "208fb21159754836dd9915f7a81709387870a030a4716a022fa19f047bbeeb6e",
+          "post_tanh_entropy_2": [
+            1.0089249014854431,
+            1.0839979648590088
+          ],
+          "post_tanh_entropy_3": [
+            0.6333175301551819,
+            0.5463030934333801
+          ],
+          "pre_post_entropy_gap_2": [
+            0.6189055442810059,
+            0.5438172221183777
+          ],
+          "pre_post_entropy_gap_3": [
+            1.0516397356987,
+            1.1386478543281555
+          ],
+          "pre_tanh_entropy_2": [
+            1.627830445766449,
+            1.6278151869773865
+          ],
+          "pre_tanh_entropy_3": [
+            1.6849572658538818,
+            1.6849509477615356
+          ],
+          "preupdate_ratio_errors": {
+            "2": 0.0,
+            "3": 0.0
+          },
+          "ratio_max_2": [
+            1.0713880062103271,
+            1.212857723236084
+          ],
+          "ratio_max_3": [
+            1.0000004768371582,
+            1.0316810607910156
+          ],
+          "ratio_mean_2": [
+            0.9977667033672333,
+            0.9823829233646393
+          ],
+          "ratio_mean_3": [
+            1.0,
+            1.0011210441589355
+          ],
+          "ratio_min_2": [
+            0.9296395182609558,
+            0.8077554106712341
+          ],
+          "ratio_min_3": [
+            0.9999995231628418,
+            0.9681959748268127
+          ],
+          "ratio_std_2": [
+            0.020348037341953784,
+            0.08110496401786804
+          ],
+          "ratio_std_3": [
+            1.916287715175713e-07,
+            0.012173322029411793
+          ],
+          "return_target_mean": -42.73532485961914,
+          "return_target_std": 15.822423934936523,
+          "surrogate_loss_2": [
+            -0.20557570457458496,
+            -0.05358428950421512
+          ],
+          "surrogate_loss_3": [
+            -2.6719323642510062e-08,
+            -0.0011306898668408394
+          ],
+          "team": "A",
+          "update": 43,
+          "value_error_abs_mean": 6.949269771575928,
+          "value_normalizer_debiasing_term": 0.00042990947258658707,
+          "value_normalizer_mean": -32.45798110961914,
+          "value_normalizer_scope": "pooled_active_blue_role_returns",
+          "value_normalizer_std": 15.020464897155762,
+          "value_normalizer_update_count": 43.0,
+          "value_normalizer_variance": 225.6143798828125,
+          "value_prediction_mean": -44.1677360534668,
+          "value_prediction_std": 8.582984924316406
+        },
+        "B": {
+          "actor_loss_2": [
+            0.04978324472904205,
+            -0.10695290006697178
+          ],
+          "actor_loss_3": [
+            0.035138119012117386,
+            0.004953480325639248
+          ],
+          "actor_samples_seen_2": 330,
+          "actor_samples_seen_3": 328,
+          "agent_stop_epoch": {
+            "2": 2,
+            "3": 2
+          },
+          "algorithm": "mappo",
+          "anchor_beta": 0.0,
+          "anchor_kl_2": 0.0,
+          "anchor_kl_3": 0.0,
+          "approx_kl_2": [
+            0.0006021942826919258,
+            0.007136822212487459
+          ],
+          "approx_kl_3": [
+            0.00020016959751956165,
+            0.0016263615107163787
+          ],
+          "clip_frac_2": [
+            0.013513513840734959,
+            0.17240287363529205
+          ],
+          "clip_frac_3": [
+            0.0,
+            0.00390625
+          ],
+          "critic_absolute_error_mean_agent_2": 5.989480301828095,
+          "critic_absolute_error_mean_agent_3": 8.938167124259763,
+          "critic_explained_variance_agent_2": 0.5598746208877934,
+          "critic_explained_variance_agent_3": 0.5649065115153697,
+          "critic_input_scope": "all_physical_observation_slots_plus_id",
+          "critic_loss": [
+            0.2601887583732605,
+            0.2642090717951457
+          ],
+          "critic_prediction_target_std_ratio_agent_2": 0.6657809713369148,
+          "critic_prediction_target_std_ratio_agent_3": 0.4744378648269491,
+          "critic_samples_seen": 658,
+          "critic_signed_bias_agent_2": 0.3888018868186257,
+          "critic_signed_bias_agent_3": -0.12898270095266948,
+          "deterministic_longitudinal_mean_2": [
+            0.18312747031450272,
+            0.15126613527536392
+          ],
+          "deterministic_longitudinal_mean_3": [
+            0.5675764679908752,
+            0.5833841860294342
+          ],
+          "deterministic_longitudinal_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_longitudinal_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_mean_2": [
+            0.05036355135962367,
+            0.0985904261469841
+          ],
+          "deterministic_steer_mean_3": [
+            0.05552678368985653,
+            0.04792117699980736
+          ],
+          "deterministic_steer_saturation_2": [
+            0.0,
+            0.0
+          ],
+          "deterministic_steer_saturation_3": [
+            0.0,
+            0.0
+          ],
+          "distillation": {
+            "direction": "student_to_teacher",
+            "gate_variant": "evidence",
+            "reduction": "all_valid"
+          },
+          "entropy_2": [
+            0.5217767357826233,
+            0.5686620771884918
+          ],
+          "entropy_3": [
+            0.5463226437568665,
+            0.673912525177002
+          ],
+          "entropy_bonus_2": [
+            0.00521776732057333,
+            0.005686620716005564
+          ],
+          "entropy_bonus_3": [
+            0.005463226232677698,
+            0.006739125121384859
+          ],
+          "evidence_gate_fraction_2": 0.0,
+          "evidence_gate_fraction_3": 0.0,
+          "explained_variance": 0.5627198219299316,
+          "gate_fraction_2": 0.0,
+          "gate_fraction_3": 0.0,
+          "gate_nonzero_coverage_2": 0.0,
+          "gate_nonzero_coverage_3": 0.0,
+          "gate_weight_mean_2": 0.0,
+          "gate_weight_mean_3": 0.0,
+          "grad_norm_actor_2": [
+            1.3439534306526184,
+            0.9386267066001892
+          ],
+          "grad_norm_actor_3": [
+            2.2688403129577637,
+            1.6010152101516724
+          ],
+          "grad_norm_critic": [
+            0.6193111538887024,
+            0.7427249550819397,
+            0.5567299723625183,
+            0.8206184506416321,
+            0.845348060131073,
+            0.8889709711074829
+          ],
+          "method": "off",
+          "mutual_beta": 0.0,
+          "mutual_gated_kl_2": 0.0,
+          "mutual_gated_kl_3": 0.0,
+          "mutual_kl_2": 0.0,
+          "mutual_kl_3": 0.0,
+          "normalized_return_target_mean": -0.5245236754417419,
+          "normalized_return_target_std": 1.0577843189239502,
+          "normalized_value_prediction_mean": -0.5158278942108154,
+          "normalized_value_prediction_std": 0.588174045085907,
+          "peer_hash": "33f8e66a7d2d7b1b395008a872b9003c99ab9ed4b123f1c825d187ff064c5acb",
+          "post_tanh_entropy_2": [
+            0.5217767357826233,
+            0.5686620771884918
+          ],
+          "post_tanh_entropy_3": [
+            0.5463226437568665,
+            0.673912525177002
+          ],
+          "pre_post_entropy_gap_2": [
+            1.1096720695495605,
+            1.0623970925807953
+          ],
+          "pre_post_entropy_gap_3": [
+            1.144351601600647,
+            1.0169320702552795
+          ],
+          "pre_tanh_entropy_2": [
+            1.6314488053321838,
+            1.631059169769287
+          ],
+          "pre_tanh_entropy_3": [
+            1.6906742453575134,
+            1.6908445954322815
+          ],
+          "preupdate_ratio_errors": {
+            "2": 0.0,
+            "3": 0.0
+          },
+          "ratio_max_2": [
+            1.1005994081497192,
+            1.2747867107391357
+          ],
+          "ratio_max_3": [
+            1.0758459568023682,
+            1.1532825231552124
+          ],
+          "ratio_mean_2": [
+            0.9975654482841492,
+            0.9982375800609589
+          ],
+          "ratio_mean_3": [
+            0.9988686144351959,
+            0.9961878657341003
+          ],
+          "ratio_min_2": [
+            0.8370442390441895,
+            0.5694324374198914
+          ],
+          "ratio_min_3": [
+            0.9259853363037109,
+            0.8866602778434753
+          ],
+          "ratio_std_2": [
+            0.023811909869792203,
+            0.11221214383840561
+          ],
+          "ratio_std_3": [
+            0.014056773327808969,
+            0.055748069658875465
+          ],
+          "return_target_mean": -37.37504577636719,
+          "return_target_std": 15.898427963256836,
+          "surrogate_loss_2": [
+            0.05500100925564766,
+            -0.1012662872672081
+          ],
+          "surrogate_loss_3": [
+            0.0406013447791338,
+            0.01169260498136282
+          ],
+          "team": "B",
+          "update": 43,
+          "value_error_abs_mean": 7.459342002868652,
+          "value_normalizer_debiasing_term": 0.00042990947258658707,
+          "value_normalizer_mean": -29.491491317749023,
+          "value_normalizer_scope": "pooled_active_blue_role_returns",
+          "value_normalizer_std": 15.02993392944336,
+          "value_normalizer_update_count": 43.0,
+          "value_normalizer_variance": 225.89892578125,
+          "value_prediction_mean": -37.244346618652344,
+          "value_prediction_std": 8.840217590332031
+        }
+      },
+      "train_tick_budget": 24000,
+      "train_tick_overshoot": 426,
+      "training_parameter_counts": {
+        "A": {
+          "actors": 38920,
+          "critics": 27521
+        },
+        "B": {
+          "actors": 38920,
+          "critics": 27521
+        }
+      },
+      "training_window": {
+        "A": {
+          "agents": {
+            "0": {
+              "brake_mode_rate": 0.09523809523809523,
+              "mean_completion": 0.4323438958564133,
+              "mean_speed_mps": 3.7574551530422755
+            },
+            "1": {
+              "brake_mode_rate": 0.20833333333333331,
+              "mean_completion": 0.3967068403211091,
+              "mean_speed_mps": 2.9894661874138477
+            },
+            "2": {
+              "brake_mode_rate": 0.3191244239631336,
+              "mean_completion": 0.2610440172650907,
+              "mean_speed_mps": 1.7102402264229122
+            },
+            "3": {
+              "brake_mode_rate": 0.213003663003663,
+              "mean_completion": 0.43917789311464217,
+              "mean_speed_mps": 3.5724228591074327
+            }
+          },
+          "b": 0.75,
+          "critical_exposure_s": 0.1316704526255474,
+          "critical_tet_s": 0.6,
+          "critical_tit_s": 0.6743979838653273,
+          "max_abs_reward_residual": 0.0,
+          "n": 4,
+          "q": 0.0,
+          "red_success_rate": 0.25,
+          "reward_components_mean": {
+            "attack": -0.010799910523355494,
+            "comfort": -0.535015586494008,
+            "completed_task_tail": -0.20213259729717992,
+            "critical": 0.19750567893832113,
+            "driving": 0.3602799648513989,
+            "normal_comfort": -2.140062345976032,
+            "normal_lane": -2.609012378070103,
+            "normal_overspeed": -1.354844064653713,
+            "pace": -0.22367762285838594,
+            "primary_event_bonus": 0.0,
+            "risk": -0.15534916075968147,
+            "safety_event": -37.5,
+            "severe": -0.7060058850607293
+          },
+          "safe_critical_event": 0.0,
+          "safe_efficiency_utility": -0.12968778703322514,
+          "scenario_coverage": {
+            "train_crossing_eastbound_front_left_r0l": 0,
+            "train_crossing_eastbound_front_left_r0r": 0,
+            "train_crossing_eastbound_front_right_r0l": 0,
+            "train_crossing_eastbound_front_right_r0r": 0,
+            "train_crossing_northbound_front_left_r0l": 1,
+            "train_crossing_northbound_front_left_r0r": 1,
+            "train_crossing_northbound_front_right_r0l": 0,
+            "train_crossing_northbound_front_right_r0r": 0,
+            "train_crossing_southbound_front_left_r0l": 0,
+            "train_crossing_southbound_front_left_r0r": 0,
+            "train_crossing_southbound_front_right_r0l": 0,
+            "train_crossing_southbound_front_right_r0r": 0,
+            "train_crossing_westbound_front_left_r0l": 0,
+            "train_crossing_westbound_front_left_r0r": 0,
+            "train_crossing_westbound_front_right_r0l": 0,
+            "train_crossing_westbound_front_right_r0r": 0,
+            "train_sequential_eastbound_front_both_r0l": 0,
+            "train_sequential_eastbound_front_both_r0r": 0,
+            "train_sequential_northbound_front_both_r0l": 0,
+            "train_sequential_northbound_front_both_r0r": 0,
+            "train_sequential_southbound_front_both_r0l": 1,
+            "train_sequential_southbound_front_both_r0r": 1,
+            "train_sequential_westbound_front_both_r0l": 0,
+            "train_sequential_westbound_front_both_r0r": 0
+          }
+        },
+        "B": {
+          "agents": {
+            "0": {
+              "brake_mode_rate": 0.03481012658227848,
+              "mean_completion": 0.6679761947483811,
+              "mean_speed_mps": 3.8190807014136015
+            },
+            "1": {
+              "brake_mode_rate": 0.16416666666666668,
+              "mean_completion": 0.5366748388225,
+              "mean_speed_mps": 2.948296058757552
+            },
+            "2": {
+              "brake_mode_rate": 0.34746972934472936,
+              "mean_completion": 0.2861062244102993,
+              "mean_speed_mps": 1.85914920655927
+            },
+            "3": {
+              "brake_mode_rate": 0.14943236714975844,
+              "mean_completion": 0.6986637850106504,
+              "mean_speed_mps": 4.553733939449954
+            }
+          },
+          "b": 0.75,
+          "critical_exposure_s": 0.46254437416135197,
+          "critical_tet_s": 0.8750000000000002,
+          "critical_tit_s": 0.7259321498138785,
+          "max_abs_reward_residual": 0.0,
+          "n": 4,
+          "q": 0.0,
+          "red_success_rate": 0.5,
+          "reward_components_mean": {
+            "attack": -0.009648298330450708,
+            "comfort": -0.7765363962026539,
+            "completed_task_tail": -0.2010277356725999,
+            "critical": 0.6938165612420278,
+            "driving": 0.5082746232663247,
+            "normal_comfort": -3.1061455848106156,
+            "normal_lane": -4.189626570237824,
+            "normal_overspeed": -1.375207412811899,
+            "pace": -0.1702376204969796,
+            "primary_event_bonus": 1.25,
+            "risk": -0.16179703985425745,
+            "safety_event": -37.5,
+            "severe": -0.45250431485296544
+          },
+          "safe_critical_event": 0.0,
+          "safe_efficiency_utility": -0.12861332832768463,
+          "scenario_coverage": {
+            "train_crossing_eastbound_front_left_r0l": 0,
+            "train_crossing_eastbound_front_left_r0r": 0,
+            "train_crossing_eastbound_front_right_r0l": 0,
+            "train_crossing_eastbound_front_right_r0r": 0,
+            "train_crossing_northbound_front_left_r0l": 1,
+            "train_crossing_northbound_front_left_r0r": 1,
+            "train_crossing_northbound_front_right_r0l": 0,
+            "train_crossing_northbound_front_right_r0r": 0,
+            "train_crossing_southbound_front_left_r0l": 0,
+            "train_crossing_southbound_front_left_r0r": 0,
+            "train_crossing_southbound_front_right_r0l": 0,
+            "train_crossing_southbound_front_right_r0r": 0,
+            "train_crossing_westbound_front_left_r0l": 0,
+            "train_crossing_westbound_front_left_r0r": 0,
+            "train_crossing_westbound_front_right_r0l": 0,
+            "train_crossing_westbound_front_right_r0r": 0,
+            "train_sequential_eastbound_front_both_r0l": 0,
+            "train_sequential_eastbound_front_both_r0r": 0,
+            "train_sequential_northbound_front_both_r0l": 0,
+            "train_sequential_northbound_front_both_r0r": 0,
+            "train_sequential_southbound_front_both_r0l": 1,
+            "train_sequential_southbound_front_both_r0r": 1,
+            "train_sequential_westbound_front_both_r0l": 0,
+            "train_sequential_westbound_front_both_r0r": 0
+          }
+        }
+      }
+    }
+  },
+  "stage": "R16_frozen_024000",
+  "stage_pid": 21204
+}

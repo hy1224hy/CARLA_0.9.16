@@ -9,7 +9,17 @@
       "Read(//d/d/study/yan2/CARLA_0.9.16/PythonAPI/examples/mappo_training/data/**)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in d if k in \\('coop_success','adv_effectiveness','blue_collision_rate','red_relative_slowdown','sigma_red_history','sigma_blue_history','avg_threat_score','blue_threat_window_pct'\\)}, indent=1, ensure_ascii=False\\)\\)\")",
       "Bash(python -c \"import json; d=json.load\\(open\\('logs/psro_runs/20260624_150245_seed42/payoff_table.json'\\)\\); print\\('keys:',list\\(d.keys\\(\\)\\)\\); print\\(json.dumps\\(d,indent=1,ensure_ascii=False\\)[:2500]\\)\")",
-      "Bash(python -c \"import json; d=json.load\\(open\\('logs/psro_runs/20260624_071208_seed42/payoff_table.json'\\)\\); print\\('keys:',list\\(d.keys\\(\\)\\)\\); print\\(json.dumps\\(d,indent=1,ensure_ascii=False\\)[:1500]\\)\")"
+      "Bash(python -c \"import json; d=json.load\\(open\\('logs/psro_runs/20260624_071208_seed42/payoff_table.json'\\)\\); print\\('keys:',list\\(d.keys\\(\\)\\)\\); print\\(json.dumps\\(d,indent=1,ensure_ascii=False\\)[:1500]\\)\")",
+      "Bash(python -)",
+      "Bash(pipenv --venv)",
+      "Bash(pipenv run *)",
+      "Bash(venv/Scripts/python.exe -c \"import highway_env, gymnasium, torch; print\\('venv:', highway_env.__version__, gymnasium.__version__, torch.__version__\\)\")",
+      "Bash(\"D:/study/yan2/CARLA_0.9.16/venv/Scripts/python.exe\" -m unittest highwaytest.tests.test_contracts highwaytest.tests.test_research_v3 -v)",
+      "Bash(\"D:/study/yan2/CARLA_0.9.16/venv/Scripts/python.exe\" -m highwaytest.research validate --config highwaytest/configs/research_v3/attack/G0_s42.json --output highwaytest/runs/my_calibration_check.json)",
+      "Bash(\"D:/study/yan2/CARLA_0.9.16/venv/Scripts/python.exe\" -m highwaytest.research validate --config configs/research_v3/attack/G0_s42.json --output runs/calibration_recheck_20261107.json)",
+      "Bash(python -c \"import json;d=json.load\\(open\\('attack/G0_s42/manifest.json'\\)\\);print\\(json.dumps\\(d,indent=1\\)[:3000]\\)\")",
+      "Bash(date; stat *)",
+      "Read(//d/study/yan2/CARLA_0.9.16/PythonAPI/examples/highwaytest/**)"
     ]
   },
   "enabledPlugins": {

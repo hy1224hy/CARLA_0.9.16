@@ -1,0 +1,36 @@
+{
+  "rule": "At48k, stop if BOTH teams have frozen mean return below initial AND24k, and event eligibility below24k. Engineering regression guard, no threshold changes.",
+  "statistics": {
+    "0": {
+      "A": {
+        "eligible": 0.5833333333333334,
+        "mean_return": -24.57876692953104
+      },
+      "B": {
+        "eligible": 0.5833333333333334,
+        "mean_return": -24.578748733692123
+      }
+    },
+    "24000": {
+      "A": {
+        "eligible": 0.5416666666666666,
+        "mean_return": -26.41501002995875
+      },
+      "B": {
+        "eligible": 0.75,
+        "mean_return": -19.38566935665695
+      }
+    },
+    "48000": {
+      "A": {
+        "eligible": 0.75,
+        "mean_return": -20.749528855120158
+      },
+      "B": {
+        "eligible": 0.625,
+        "mean_return": -21.68154150862863
+      }
+    }
+  },
+  "stop": false
+}

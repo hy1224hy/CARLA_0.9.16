@@ -1,0 +1,69 @@
+{
+  "advancement_rule": "Do not call success from return or G alone. Review the unchanged bad-rate screen, dangerous interactions, speed/lane/control and paired C1 contrasts together.",
+  "baseline_comparison": "analysis/reward_comparison_complete_v1/comparison.json",
+  "baseline_reports": {
+    "R0": {
+      "artifact_hashes": {
+        "evaluations\\R0_gate_retry2\\analysis\\critical_report.json": "9876009924e806981b9c5677a346393d6f14a931f487ed91c38650471f7f2860"
+      },
+      "attempt": "retry2",
+      "ended_at": "2026-11-01T06:25:46.120221+00:00",
+      "evaluation_root": "evaluations\\R0_gate_retry2",
+      "log": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\control\\R0_gate_retry2_516c4900c7.log",
+      "pipeline_uuid": "516c4900c7f24947888d5c72882c9966",
+      "retained_failed_evaluation_root": "evaluations\\R0_gate_retry1",
+      "retained_failed_evaluation_roots": [
+        "evaluations\\R0_gate",
+        "evaluations\\R0_gate_retry1"
+      ],
+      "returncode": 0,
+      "stage": "R0_gate",
+      "stage_pid": 728,
+      "worker_pid": 5288
+    },
+    "R1": {
+      "artifact_hashes": {
+        "evaluations\\R1_gate\\analysis\\critical_report.json": "b0afc1963a985eb2bb51be6333b3569594417e9bb94efef22cf25adbe71c423f"
+      },
+      "ended_at": "2026-11-01T03:56:21.014751+00:00",
+      "log": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\control\\R1_gate_d8e932293c.log",
+      "pipeline_uuid": "7e2676c5ee6a4521a41cefe74ea1a0a4",
+      "returncode": 0,
+      "stage": "R1_gate",
+      "stage_pid": 11572,
+      "worker_pid": 25240
+    }
+  },
+  "changed_variables": "Reward profile and its explicitly versioned credit grace only; no PPO, initial-state or threshold changes",
+  "cost_scope": "Training setup included; internal and independent evaluation, references and abandoned attempts counted separately",
+  "estimated_wall_time_note": "Prior runs suggest roughly 1-2 hours including references, blue training and frozen gate; not a deadline guarantee",
+  "failure_rule": "Preserve failed outcomes and costs; never lower acceptance thresholds or silently extend budget",
+  "frozen_gate_episodes": 144,
+  "group": "R2",
+  "independent_seed_count": 1,
+  "measurement_protocol_unchanged": true,
+  "outer_seed": 42,
+  "predecessor": "experiments\\adversarial_u1000_critical_reward_20261101_v3",
+  "profile": "normal_driving_critical_team_v2",
+  "reference_episodes": 144,
+  "reset_from": "Same frozen red Actor initialization; fresh blue optimizers, four-car Critic and ValueNorm",
+  "reward_changes": {
+    "credit_grace_s": 1.0,
+    "exposure_budget": 3.0,
+    "legally_exempted_lane_cost_scale": 10.0,
+    "normal_comfort_total_scale": 5.0,
+    "normal_overspeed_total_scale": 10.0,
+    "pace_weight": 0.1,
+    "primary_event_duration_s": 0.3,
+    "primary_event_ttc_s": [
+      0.5,
+      1.5
+    ],
+    "primary_persistent_event_bonus": 5.0
+  },
+  "source_sha256": "495f6ab3b6762bb0b3691a0dc2b9149947c38186a9bdb043656964022d05b490",
+  "status": "PREPARED_OFFLINE",
+  "team_count": 2,
+  "test_used": false,
+  "train_tick_budget": 24000
+}

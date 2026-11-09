@@ -1,0 +1,1320 @@
+{
+  "status": "BOTH_EVALUATED",
+  "scope": "Weak-red descriptive engineering pilot; one outer seed, A/B dependent; no formal algorithm claim",
+  "qualification_scope": "Event eligibility only; speed/lane/control quality reported separately",
+  "driving_statistic": "Means of per-case measurements; a mean of case P95 is not a trajectory-wide P95",
+  "groups": {
+    "R1": {
+      "teams": {
+        "A": {
+          "report": "R1_B0_s42",
+          "split": "gate",
+          "team": "A",
+          "completed_round": 42,
+          "n_measured_pairs": 24,
+          "n_excluded_groups": 0,
+          "raw_critical_rate_C1": 0.9583333333333334,
+          "raw_critical_rate_C2": 0.5,
+          "qualified_critical_rate_C1": 0.25,
+          "qualified_critical_rate_C2": 0.25,
+          "delta_raw_critical_rate": -0.4583333333333333,
+          "delta_qualified_critical_rate": 0.0,
+          "blue_eligible_rate_C1": 0.2916666666666667,
+          "blue_eligible_rate_C2": 0.5,
+          "added_critical_cases": 1,
+          "removed_critical_cases": 12,
+          "qualification_only_improvements": 6,
+          "mean_tet_C1": 1.695833333333334,
+          "mean_tet_C2": 0.6375000000000001,
+          "mean_delta_tet": -1.0583333333333336,
+          "mean_tit_C1": 1.4874808247495703,
+          "mean_tit_C2": 0.4632396868496502,
+          "mean_delta_tit": -1.02424113789992,
+          "mean_duration_C1": 5.112499999999999,
+          "mean_duration_C2": 6.283333333333335,
+          "mean_delta_duration": 1.1708333333333334,
+          "n_planned_cases": 24,
+          "n_missing_planned_cases": 0,
+          "measurement_coverage": 1.0,
+          "measured_pair_identities": [
+            [
+              "gate_crossing_eastbound_front_left_r0l",
+              75040,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_left_r0r",
+              75041,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_right_r0l",
+              75042,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_right_r0r",
+              75043,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_left_r0l",
+              75032,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_left_r0r",
+              75033,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_right_r0l",
+              75034,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_right_r0r",
+              75035,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_left_r0l",
+              75036,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_left_r0r",
+              75037,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_right_r0l",
+              75038,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_right_r0r",
+              75039,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_left_r0l",
+              75044,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_left_r0r",
+              75045,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_right_r0l",
+              75046,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_right_r0r",
+              75047,
+              0
+            ],
+            [
+              "gate_sequential_eastbound_front_both_r0l",
+              75028,
+              0
+            ],
+            [
+              "gate_sequential_eastbound_front_both_r0r",
+              75029,
+              0
+            ],
+            [
+              "gate_sequential_northbound_front_both_r0l",
+              75024,
+              0
+            ],
+            [
+              "gate_sequential_northbound_front_both_r0r",
+              75025,
+              0
+            ],
+            [
+              "gate_sequential_southbound_front_both_r0l",
+              75026,
+              0
+            ],
+            [
+              "gate_sequential_southbound_front_both_r0r",
+              75027,
+              0
+            ],
+            [
+              "gate_sequential_westbound_front_both_r0l",
+              75030,
+              0
+            ],
+            [
+              "gate_sequential_westbound_front_both_r0r",
+              75031,
+              0
+            ]
+          ],
+          "blue_violation_episode_counts_overlapping": {
+            "collision": 7,
+            "offroad": 4,
+            "road_rule": 1,
+            "task_violation": 0
+          },
+          "red_success_rates": {
+            "C0": 1,
+            "C1": 0.041666666666666664,
+            "C2": 0.7083333333333334
+          },
+          "mean_event_count_C2": 0.5833333333333334,
+          "mean_event_count_C1": 1.5416666666666667,
+          "driving": {
+            "2": {
+              "all_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.75357180026882,
+                  "n_measured": 24
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.650626659838704,
+                  "n_measured": 24
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.10981953211685211,
+                  "n_measured": 22
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.011220456603662,
+                  "n_measured": 24
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 2.9023745749533796,
+                  "n_measured": 24
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.02296535876554378,
+                  "n_measured": 22
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 5.4204512623543275,
+                  "n_measured": 24
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 36.89150438163401,
+                  "n_measured": 24
+                }
+              },
+              "event_eligible_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.625125638076613,
+                  "n_measured": 12
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.633741561056062,
+                  "n_measured": 12
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.1269310469761336,
+                  "n_measured": 12
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.2622307334612124,
+                  "n_measured": 12
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 3.7260823475662614,
+                  "n_measured": 12
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.042103157736830266,
+                  "n_measured": 12
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 4.977418961141045,
+                  "n_measured": 12
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 34.835050175809144,
+                  "n_measured": 12
+                }
+              }
+            },
+            "3": {
+              "all_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.009722193897825,
+                  "n_measured": 24
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.5058581863288056,
+                  "n_measured": 24
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.2857142857142857,
+                  "n_measured": 14
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 0.8098756315872151,
+                  "n_measured": 24
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 3.7105788392655077,
+                  "n_measured": 24
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.0,
+                  "n_measured": 14
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 4.066402818601871,
+                  "n_measured": 24
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 37.32271916359112,
+                  "n_measured": 24
+                }
+              },
+              "event_eligible_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.525474039817402,
+                  "n_measured": 12
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.6931877520930505,
+                  "n_measured": 12
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.0,
+                  "n_measured": 9
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 0.7594558935561464,
+                  "n_measured": 12
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 3.1046648071496743,
+                  "n_measured": 12
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.0,
+                  "n_measured": 9
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 3.725855722926736,
+                  "n_measured": 12
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 34.128265861087854,
+                  "n_measured": 12
+                }
+              }
+            }
+          }
+        },
+        "B": {
+          "report": "R1_B0_s42",
+          "split": "gate",
+          "team": "B",
+          "completed_round": 42,
+          "n_measured_pairs": 24,
+          "n_excluded_groups": 0,
+          "raw_critical_rate_C1": 0.9583333333333334,
+          "raw_critical_rate_C2": 0.25,
+          "qualified_critical_rate_C1": 0.25,
+          "qualified_critical_rate_C2": 0.125,
+          "delta_raw_critical_rate": -0.7083333333333334,
+          "delta_qualified_critical_rate": -0.125,
+          "blue_eligible_rate_C1": 0.2916666666666667,
+          "blue_eligible_rate_C2": 0.625,
+          "added_critical_cases": 0,
+          "removed_critical_cases": 17,
+          "qualification_only_improvements": 3,
+          "mean_tet_C1": 1.695833333333334,
+          "mean_tet_C2": 0.3708333333333334,
+          "mean_delta_tet": -1.3250000000000004,
+          "mean_tit_C1": 1.4874872029367923,
+          "mean_tit_C2": 0.30445476579991876,
+          "mean_delta_tit": -1.1830324371368732,
+          "mean_duration_C1": 5.112499999999999,
+          "mean_duration_C2": 6.970833333333334,
+          "mean_delta_duration": 1.8583333333333334,
+          "n_planned_cases": 24,
+          "n_missing_planned_cases": 0,
+          "measurement_coverage": 1.0,
+          "measured_pair_identities": [
+            [
+              "gate_crossing_eastbound_front_left_r0l",
+              75040,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_left_r0r",
+              75041,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_right_r0l",
+              75042,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_right_r0r",
+              75043,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_left_r0l",
+              75032,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_left_r0r",
+              75033,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_right_r0l",
+              75034,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_right_r0r",
+              75035,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_left_r0l",
+              75036,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_left_r0r",
+              75037,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_right_r0l",
+              75038,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_right_r0r",
+              75039,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_left_r0l",
+              75044,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_left_r0r",
+              75045,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_right_r0l",
+              75046,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_right_r0r",
+              75047,
+              0
+            ],
+            [
+              "gate_sequential_eastbound_front_both_r0l",
+              75028,
+              0
+            ],
+            [
+              "gate_sequential_eastbound_front_both_r0r",
+              75029,
+              0
+            ],
+            [
+              "gate_sequential_northbound_front_both_r0l",
+              75024,
+              0
+            ],
+            [
+              "gate_sequential_northbound_front_both_r0r",
+              75025,
+              0
+            ],
+            [
+              "gate_sequential_southbound_front_both_r0l",
+              75026,
+              0
+            ],
+            [
+              "gate_sequential_southbound_front_both_r0r",
+              75027,
+              0
+            ],
+            [
+              "gate_sequential_westbound_front_both_r0l",
+              75030,
+              0
+            ],
+            [
+              "gate_sequential_westbound_front_both_r0r",
+              75031,
+              0
+            ]
+          ],
+          "blue_violation_episode_counts_overlapping": {
+            "collision": 4,
+            "offroad": 1,
+            "road_rule": 4,
+            "task_violation": 0
+          },
+          "red_success_rates": {
+            "C0": 1,
+            "C1": 0.041666666666666664,
+            "C2": 0.6666666666666666
+          },
+          "mean_event_count_C2": 0.2916666666666667,
+          "mean_event_count_C1": 1.5416666666666667,
+          "driving": {
+            "2": {
+              "all_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.777706131606919,
+                  "n_measured": 24
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.6708308129715821,
+                  "n_measured": 24
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.12765864504484564,
+                  "n_measured": 22
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.0470140016569467,
+                  "n_measured": 24
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 2.0902476890332755,
+                  "n_measured": 24
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.011937557392102846,
+                  "n_measured": 22
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 4.921819079446283,
+                  "n_measured": 24
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 38.27299841735555,
+                  "n_measured": 24
+                }
+              },
+              "event_eligible_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.713659987694803,
+                  "n_measured": 15
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.6523632726917291,
+                  "n_measured": 15
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.18723267939910695,
+                  "n_measured": 15
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.186155766157982,
+                  "n_measured": 15
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 2.2026629871378334,
+                  "n_measured": 15
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.017508417508417508,
+                  "n_measured": 15
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 4.624516380624816,
+                  "n_measured": 15
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 36.255773131590274,
+                  "n_measured": 15
+                }
+              }
+            },
+            "3": {
+              "all_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.616063531260503,
+                  "n_measured": 24
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.5832694608692462,
+                  "n_measured": 24
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.10071789880226413,
+                  "n_measured": 22
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.3612429572562754,
+                  "n_measured": 24
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 4.437133812607497,
+                  "n_measured": 24
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.046122994652406414,
+                  "n_measured": 22
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 5.1715596133075445,
+                  "n_measured": 24
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 49.94041069149829,
+                  "n_measured": 24
+                }
+              },
+              "event_eligible_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 5.220323055029051,
+                  "n_measured": 15
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.7224910367198328,
+                  "n_measured": 15
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.04600389863547758,
+                  "n_measured": 15
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.3592869121676374,
+                  "n_measured": 15
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 3.9304278812992064,
+                  "n_measured": 15
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.0,
+                  "n_measured": 15
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 4.424968196995917,
+                  "n_measured": 15
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 38.777439797510304,
+                  "n_measured": 15
+                }
+              }
+            }
+          }
+        }
+      },
+      "costs": {
+        "train_process": {
+          "setup": 5011,
+          "total": 28110,
+          "train": 24564,
+          "train_decision": 20180,
+          "validation": 3546,
+          "validation_decision": 2919
+        },
+        "reference_explicit_ticks": {
+          "setup": 1882,
+          "decision": 6874
+        },
+        "independent_eval_ticks_all_attempts": {
+          "total": 11521,
+          "decision": 9505,
+          "setup": 2016
+        }
+      },
+      "report": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\evaluations\\R1_gate\\analysis\\critical_report.json",
+      "report_sha256": "b0afc1963a985eb2bb51be6333b3569594417e9bb94efef22cf25adbe71c423f"
+    },
+    "R0": {
+      "teams": {
+        "A": {
+          "report": "R0_B0_s42",
+          "split": "gate",
+          "team": "A",
+          "completed_round": 41,
+          "n_measured_pairs": 24,
+          "n_excluded_groups": 0,
+          "raw_critical_rate_C1": 0.9583333333333334,
+          "raw_critical_rate_C2": 0.375,
+          "qualified_critical_rate_C1": 0.2916666666666667,
+          "qualified_critical_rate_C2": 0.125,
+          "delta_raw_critical_rate": -0.5833333333333334,
+          "delta_qualified_critical_rate": -0.16666666666666666,
+          "blue_eligible_rate_C1": 0.3333333333333333,
+          "blue_eligible_rate_C2": 0.5833333333333334,
+          "added_critical_cases": 1,
+          "removed_critical_cases": 15,
+          "qualification_only_improvements": 3,
+          "mean_tet_C1": 1.6916666666666673,
+          "mean_tet_C2": 0.3958333333333333,
+          "mean_delta_tet": -1.295833333333334,
+          "mean_tit_C1": 1.4564786497383324,
+          "mean_tit_C2": 0.3910706754775303,
+          "mean_delta_tit": -1.0654079742608025,
+          "mean_duration_C1": 5.404166666666666,
+          "mean_duration_C2": 6.508333333333334,
+          "mean_delta_duration": 1.1041666666666665,
+          "n_planned_cases": 24,
+          "n_missing_planned_cases": 0,
+          "measurement_coverage": 1.0,
+          "measured_pair_identities": [
+            [
+              "gate_crossing_eastbound_front_left_r0l",
+              75040,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_left_r0r",
+              75041,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_right_r0l",
+              75042,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_right_r0r",
+              75043,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_left_r0l",
+              75032,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_left_r0r",
+              75033,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_right_r0l",
+              75034,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_right_r0r",
+              75035,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_left_r0l",
+              75036,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_left_r0r",
+              75037,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_right_r0l",
+              75038,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_right_r0r",
+              75039,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_left_r0l",
+              75044,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_left_r0r",
+              75045,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_right_r0l",
+              75046,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_right_r0r",
+              75047,
+              0
+            ],
+            [
+              "gate_sequential_eastbound_front_both_r0l",
+              75028,
+              0
+            ],
+            [
+              "gate_sequential_eastbound_front_both_r0r",
+              75029,
+              0
+            ],
+            [
+              "gate_sequential_northbound_front_both_r0l",
+              75024,
+              0
+            ],
+            [
+              "gate_sequential_northbound_front_both_r0r",
+              75025,
+              0
+            ],
+            [
+              "gate_sequential_southbound_front_both_r0l",
+              75026,
+              0
+            ],
+            [
+              "gate_sequential_southbound_front_both_r0r",
+              75027,
+              0
+            ],
+            [
+              "gate_sequential_westbound_front_both_r0l",
+              75030,
+              0
+            ],
+            [
+              "gate_sequential_westbound_front_both_r0r",
+              75031,
+              0
+            ]
+          ],
+          "blue_violation_episode_counts_overlapping": {
+            "collision": 6,
+            "offroad": 4,
+            "road_rule": 0,
+            "task_violation": 0
+          },
+          "red_success_rates": {
+            "C0": 1,
+            "C1": 0.08333333333333333,
+            "C2": 0.6666666666666666
+          },
+          "mean_event_count_C2": 0.4166666666666667,
+          "mean_event_count_C1": 1.5833333333333333,
+          "driving": {
+            "2": {
+              "all_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.838467588360864,
+                  "n_measured": 24
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.7129421136841217,
+                  "n_measured": 24
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.031842925516643146,
+                  "n_measured": 24
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 0.7005362290530008,
+                  "n_measured": 24
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 2.1847440047592186,
+                  "n_measured": 24
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.01438386524822695,
+                  "n_measured": 24
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 4.768781113769159,
+                  "n_measured": 24
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 35.45312230201134,
+                  "n_measured": 24
+                }
+              },
+              "event_eligible_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.8397498866817905,
+                  "n_measured": 14
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.6951904607481889,
+                  "n_measured": 14
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.054587872314245396,
+                  "n_measured": 14
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 0.8224069698009823,
+                  "n_measured": 14
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 2.7237280171497575,
+                  "n_measured": 14
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.0246580547112462,
+                  "n_measured": 14
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 4.680885069745859,
+                  "n_measured": 14
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 32.30657557540729,
+                  "n_measured": 14
+                }
+              }
+            },
+            "3": {
+              "all_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 5.93199632687498,
+                  "n_measured": 24
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.7191923699622975,
+                  "n_measured": 24
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.0,
+                  "n_measured": 20
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 0.860124578498153,
+                  "n_measured": 24
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 2.9448394401406404,
+                  "n_measured": 24
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.0,
+                  "n_measured": 20
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 6.486186697751477,
+                  "n_measured": 24
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 46.09614084339559,
+                  "n_measured": 24
+                }
+              },
+              "event_eligible_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 6.6563528860824555,
+                  "n_measured": 14
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.7644557823129252,
+                  "n_measured": 14
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.0,
+                  "n_measured": 14
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 0.596588376083421,
+                  "n_measured": 14
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 2.252978804837247,
+                  "n_measured": 14
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.0,
+                  "n_measured": 14
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 6.61627833494993,
+                  "n_measured": 14
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 39.392957443604395,
+                  "n_measured": 14
+                }
+              }
+            }
+          }
+        },
+        "B": {
+          "report": "R0_B0_s42",
+          "split": "gate",
+          "team": "B",
+          "completed_round": 41,
+          "n_measured_pairs": 24,
+          "n_excluded_groups": 0,
+          "raw_critical_rate_C1": 0.9583333333333334,
+          "raw_critical_rate_C2": 0.5,
+          "qualified_critical_rate_C1": 0.25,
+          "qualified_critical_rate_C2": 0.3333333333333333,
+          "delta_raw_critical_rate": -0.4583333333333333,
+          "delta_qualified_critical_rate": 0.08333333333333333,
+          "blue_eligible_rate_C1": 0.2916666666666667,
+          "blue_eligible_rate_C2": 0.7083333333333334,
+          "added_critical_cases": 0,
+          "removed_critical_cases": 11,
+          "qualification_only_improvements": 6,
+          "mean_tet_C1": 1.695833333333334,
+          "mean_tet_C2": 0.7791666666666668,
+          "mean_delta_tet": -0.9166666666666669,
+          "mean_tit_C1": 1.4874872123719787,
+          "mean_tit_C2": 0.6114394063457013,
+          "mean_delta_tit": -0.8760478060262772,
+          "mean_duration_C1": 5.112499999999999,
+          "mean_duration_C2": 6.145833333333335,
+          "mean_delta_duration": 1.0333333333333337,
+          "n_planned_cases": 24,
+          "n_missing_planned_cases": 0,
+          "measurement_coverage": 1.0,
+          "measured_pair_identities": [
+            [
+              "gate_crossing_eastbound_front_left_r0l",
+              75040,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_left_r0r",
+              75041,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_right_r0l",
+              75042,
+              0
+            ],
+            [
+              "gate_crossing_eastbound_front_right_r0r",
+              75043,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_left_r0l",
+              75032,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_left_r0r",
+              75033,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_right_r0l",
+              75034,
+              0
+            ],
+            [
+              "gate_crossing_northbound_front_right_r0r",
+              75035,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_left_r0l",
+              75036,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_left_r0r",
+              75037,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_right_r0l",
+              75038,
+              0
+            ],
+            [
+              "gate_crossing_southbound_front_right_r0r",
+              75039,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_left_r0l",
+              75044,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_left_r0r",
+              75045,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_right_r0l",
+              75046,
+              0
+            ],
+            [
+              "gate_crossing_westbound_front_right_r0r",
+              75047,
+              0
+            ],
+            [
+              "gate_sequential_eastbound_front_both_r0l",
+              75028,
+              0
+            ],
+            [
+              "gate_sequential_eastbound_front_both_r0r",
+              75029,
+              0
+            ],
+            [
+              "gate_sequential_northbound_front_both_r0l",
+              75024,
+              0
+            ],
+            [
+              "gate_sequential_northbound_front_both_r0r",
+              75025,
+              0
+            ],
+            [
+              "gate_sequential_southbound_front_both_r0l",
+              75026,
+              0
+            ],
+            [
+              "gate_sequential_southbound_front_both_r0r",
+              75027,
+              0
+            ],
+            [
+              "gate_sequential_westbound_front_both_r0l",
+              75030,
+              0
+            ],
+            [
+              "gate_sequential_westbound_front_both_r0r",
+              75031,
+              0
+            ]
+          ],
+          "blue_violation_episode_counts_overlapping": {
+            "collision": 3,
+            "offroad": 0,
+            "road_rule": 4,
+            "task_violation": 0
+          },
+          "red_success_rates": {
+            "C0": 1,
+            "C1": 0.041666666666666664,
+            "C2": 0.625
+          },
+          "mean_event_count_C2": 0.8333333333333334,
+          "mean_event_count_C1": 1.5416666666666667,
+          "driving": {
+            "2": {
+              "all_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 7.066238862927412,
+                  "n_measured": 24
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.7618829967471978,
+                  "n_measured": 24
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.002484472049689441,
+                  "n_measured": 23
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.2966753210408661,
+                  "n_measured": 24
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 5.836240251044121,
+                  "n_measured": 24
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.03697478991596639,
+                  "n_measured": 23
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 6.729849115706449,
+                  "n_measured": 24
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 51.553446320421514,
+                  "n_measured": 24
+                }
+              },
+              "event_eligible_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 7.095859083957363,
+                  "n_measured": 17
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.750659677085608,
+                  "n_measured": 17
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.003361344537815126,
+                  "n_measured": 17
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.102892129114935,
+                  "n_measured": 17
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 5.554912902579149,
+                  "n_measured": 17
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.050024715768660404,
+                  "n_measured": 17
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 6.916301534245597,
+                  "n_measured": 17
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 51.38224881179297,
+                  "n_measured": 17
+                }
+              }
+            },
+            "3": {
+              "all_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.162892963173104,
+                  "n_measured": 24
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.48622700571717725,
+                  "n_measured": 24
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.3171734817115252,
+                  "n_measured": 24
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.1913126671220329,
+                  "n_measured": 24
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 3.470967556932009,
+                  "n_measured": 24
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.023412698412698413,
+                  "n_measured": 24
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 4.220733118455601,
+                  "n_measured": 24
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 40.99679466049844,
+                  "n_measured": 24
+                }
+              },
+              "event_eligible_C2": {
+                "mean_speed_mps": {
+                  "case_mean": 4.078879455675423,
+                  "n_measured": 17
+                },
+                "above_preferred_speed_fraction": {
+                  "case_mean": 0.45797929427978495,
+                  "n_measured": 17
+                },
+                "preferred_speed_fraction": {
+                  "case_mean": 0.31297040555352573,
+                  "n_measured": 17
+                },
+                "reference_lateral_p95_m": {
+                  "case_mean": 1.1519846307781252,
+                  "n_measured": 17
+                },
+                "actual_steer_rate_p95_per_second": {
+                  "case_mean": 3.8443153399207124,
+                  "n_measured": 17
+                },
+                "unblocked_low_speed_fraction": {
+                  "case_mean": 0.013445378151260503,
+                  "n_measured": 17
+                },
+                "abs_acceleration_p95_mps2": {
+                  "case_mean": 4.171816731414019,
+                  "n_measured": 17
+                },
+                "abs_jerk_p95_mps3": {
+                  "case_mean": 39.361960861144624,
+                  "n_measured": 17
+                }
+              }
+            }
+          }
+        }
+      },
+      "costs": {
+        "train_process": {
+          "setup": 4919,
+          "total": 27680,
+          "train": 24335,
+          "train_decision": 20046,
+          "validation": 3345,
+          "validation_decision": 2715
+        },
+        "reference_explicit_ticks": {
+          "setup": 1882,
+          "decision": 6887
+        },
+        "independent_eval_ticks_all_attempts": {
+          "total": 11466,
+          "decision": 9429,
+          "setup": 2037
+        },
+        "retained_failed_eval_committed_tick_lower_bound": {
+          "total": 2381,
+          "decision": 1972,
+          "setup": 409
+        },
+        "failed_eval_cost_limitation": "Native interruption may leave constructor/cleanup ticks unrecorded"
+      },
+      "report": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\evaluations\\R0_gate_retry2\\analysis\\critical_report.json",
+      "report_sha256": "9876009924e806981b9c5677a346393d6f14a931f487ed91c38650471f7f2860"
+    }
+  },
+  "comparisons": {
+    "A": {
+      "R1_minus_R0_qualified_critical_rate_C2": 0.125,
+      "R1_minus_R0_raw_critical_rate_C2": 0.125,
+      "R1_minus_R0_delta_qualified_critical_rate": 0.16666666666666666,
+      "R1_minus_R0_delta_raw_critical_rate": 0.12500000000000006,
+      "R1_minus_R0_blue_eligible_rate_C2": -0.08333333333333337,
+      "R1_minus_R0_mean_tet_C2": 0.24166666666666675,
+      "R1_minus_R0_mean_tit_C2": 0.0721690113721199,
+      "C1_qualified_rate_drift": -0.041666666666666685,
+      "C1_raw_rate_drift": 0.0
+    },
+    "B": {
+      "R1_minus_R0_qualified_critical_rate_C2": -0.20833333333333331,
+      "R1_minus_R0_raw_critical_rate_C2": -0.25,
+      "R1_minus_R0_delta_qualified_critical_rate": -0.20833333333333331,
+      "R1_minus_R0_delta_raw_critical_rate": -0.25000000000000006,
+      "R1_minus_R0_blue_eligible_rate_C2": -0.08333333333333337,
+      "R1_minus_R0_mean_tet_C2": -0.4083333333333334,
+      "R1_minus_R0_mean_tit_C2": -0.3069846405457825,
+      "C1_qualified_rate_drift": 0.0,
+      "C1_raw_rate_drift": 0.0
+    }
+  }
+}

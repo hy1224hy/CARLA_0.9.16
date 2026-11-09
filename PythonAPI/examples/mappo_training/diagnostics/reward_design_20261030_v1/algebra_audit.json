@@ -1,0 +1,26 @@
+{
+  "status": "ANALYTICAL_PROPOSAL_NOT_IMPLEMENTED_NOT_RUN",
+  "scope": "Analytical scale and budget arithmetic only; no CARLA or training",
+  "source_head": "a0214c9",
+  "red_checkpoint_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+  "current_attack_both_red_progress_lag_0_1_per_tick": 0.002,
+  "current_attack_same_progress_per_tick": 0.0,
+  "candidate_critical_plateau_per_tick": 0.25,
+  "candidate_critical_episode_cap": 5.0,
+  "candidate_max_positive_discounted_return_bound": 8.0,
+  "discounted_task_event_cost_at_step_500": 12.139718615839534,
+  "discounted_collision_event_cost_at_step_500": 30.349296539598836,
+  "planned_gate_screen_episodes": 96,
+  "planned_reference_episodes": 144,
+  "planned_internal_gate_episodes_two_rewards_one_refresh_each": 96,
+  "planned_independent_eval_episodes_two_rewards": 288,
+  "planned_train_world_ticks_two_rewards_target_including_train_setup": 48000,
+  "nontraining_decision_tick_ceiling_before_retries": 312000,
+  "nontraining_episode_count": 624,
+  "budget_limitations": [
+    "Nontraining setup and discarded or retried sampling are additional",
+    "Training stops at a complete A/B boundary and can exceed the nominal budget",
+    "Extra internal gate refreshes caused by boundary overshoot are additional",
+    "No measured wall-clock performance or learned behavior is implied"
+  ]
+}

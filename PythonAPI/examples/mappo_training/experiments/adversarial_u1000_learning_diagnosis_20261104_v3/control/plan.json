@@ -1,0 +1,41 @@
+{
+  "configs": {
+    "N4": {
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_learning_diagnosis_20261104_v3\\configs\\N4.json",
+      "sha256": "bd393d378f92ee9d2d104355524295fdd125178998c59c9383f53401851b5a53"
+    },
+    "R16": {
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_learning_diagnosis_20261104_v3\\configs\\R16.json",
+      "sha256": "12025615f0da57811e7a04ef87edbaf978da3342c9cf62cfaa1bc21533684b59"
+    },
+    "R4": {
+      "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_learning_diagnosis_20261104_v3\\configs\\R4.json",
+      "sha256": "2c3533ec523dec7f3752cbe0a8653d6ee8822ce93770530877e9025b295a6ea1"
+    }
+  },
+  "environment": {
+    "MKL_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "formal_scope": "weak-red engineering single outer seed42; A/B not independent seeds",
+  "frozen_episodes_per_node": 144,
+  "groups": [
+    "N4",
+    "R4",
+    "R16"
+  ],
+  "lr_tick_horizon": 72000,
+  "maximum_frozen_episodes": 1296,
+  "milestones": [
+    0,
+    12000,
+    24000
+  ],
+  "no_guarantee": "a 24-case diagnostic is insufficient for formal algorithm superiority",
+  "reward_ablation": "N4 zeros attack/critical/primary/severe components; all existing normal driving costs unchanged",
+  "soft_cap": "finish current complete A+B update; record overshoot, never discard samples",
+  "success": "optimization diagnostics plus fixed-case reward/driving improvement; adversarial success also needs precontact conflict, local resolution and full-driving joint improvement over initial/C1",
+  "total_train_ticks": 72000,
+  "train_ticks_per_group": 24000,
+  "validation": "same gate24 cases, paired C0/C1/C2; each team24 cases; selection/test untouched"
+}

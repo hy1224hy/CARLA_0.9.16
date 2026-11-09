@@ -1,0 +1,25 @@
+{
+  "config": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R2_budget_20261104_v1\\configs\\R2_B0_s42.json",
+  "config_sha256": "9c57ea6a54204e34685fb7803f7f09da4862a7ea9a4038aac796b90c4beab9bb",
+  "environment": {
+    "MKL_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "evaluation_split": "gate",
+  "frozen_episode_budget": 576,
+  "frozen_episodes_per_node": 144,
+  "inherited_references": "SHA-verified copy; no new CARLA sampling",
+  "initialization": "same u1000 Actors; fresh four-car Critic/optimizer/ValueNorm",
+  "internal_gate_schedule": "10k warmup then20k train ticks; separate validation costs",
+  "milestone_ticks": [
+    0,
+    24000,
+    48000,
+    72000
+  ],
+  "schema": "r2_budget_experiment_v1",
+  "scope": "one outer seed42, weak-red engineering only; A/B are not independent seeds",
+  "status": "PREPARED",
+  "success_rule": "joint observed contact-free resolved conflicts and full blue driving quality; paired C1 diagnostics; no return-only or formal superiority claim",
+  "train_tick_budget": 72000
+}

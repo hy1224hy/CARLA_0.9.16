@@ -1,0 +1,41 @@
+{
+  "derived_from_logs": true,
+  "native_training_events": false,
+  "source_hashes": {
+    "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\runs\\R2\\metrics.jsonl": "384c33a15aca52264fa86b3f2c9217545a9a3da154f9ccbe2ea9fe3689371ecb",
+    "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\runs\\R2\\episodes.jsonl": "153967f773b341a14da64820f3792d2f06e21a805c1673550d9cd2845ce9890f",
+    "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\analysis\\final_review_v2\\summary.json": "060711a0068ac412d9cf35b9ddccc230cfb608720411cfdcb598c413a0f2f2ab",
+    "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_R16_long_20261105_v1\\analysis\\final_review_v2\\frozen_return_and_completion.json": "298e964b1a450a87cc70181f787c3cef288498ac73c60eca13387a88618c88c2"
+  },
+  "code_sha256": "6bc577ff1cd38b7ec3690a403a5e1d458b1058ed8b4a9394309e404af30af011",
+  "validation": {
+    "training/A": {
+      "points": 31,
+      "first_step": 2226,
+      "last_step": 72585
+    },
+    "training/B": {
+      "points": 31,
+      "first_step": 2226,
+      "last_step": 72585
+    },
+    "frozen/A": {
+      "points": 4,
+      "first_step": 0,
+      "last_step": 72585
+    },
+    "frozen/B": {
+      "points": 4,
+      "first_step": 0,
+      "last_step": 72585
+    }
+  },
+  "x_axis": "combined A+B actual train world ticks, not gradient steps or simulator frames",
+  "limitations": [
+    "A/B not independent experiment seeds",
+    "reward components are undiscounted episode totals; return is discounted",
+    "frozen wall_time is export time; training wall_time comes from original log",
+    "PPO scalar lists are logged epoch/minibatch aggregates, not full-rollout post-update KL",
+    "driving scalar means are descriptive; per-case check failure rates determine quality"
+  ]
+}

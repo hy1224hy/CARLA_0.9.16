@@ -1,0 +1,37 @@
+{
+  "at": "2026-11-03T02:46:48.510017+00:00",
+  "completed_stages": [
+    "R2_references",
+    "R2_train",
+    "R2_gate"
+  ],
+  "ended_at": "2026-11-03T02:58:55.626936+00:00",
+  "pipeline_uuid": "ed6a128dadb040a29da66a2a9c29c8cd",
+  "scope": "EXPLICIT_WEAK_RED_ENGINEERING_ONLY_FAILED_C1_SCREEN_DISCLOSED",
+  "stage": "R2_gate_retry1",
+  "stage_command": [
+    "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+    "-X",
+    "utf8",
+    "-u",
+    "-m",
+    "utils.evaluate_mut_mappo_critical",
+    "live",
+    "--config",
+    "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\configs\\R2_B0_s42.json",
+    "--checkpoint",
+    "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\runs\\R2\\latest.pt",
+    "--split",
+    "gate",
+    "--output-dir",
+    "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\evaluations\\R2_gate_retry1",
+    "--monitor-mode",
+    "off",
+    "--reuse-idle-world"
+  ],
+  "stage_log": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\control\\R2_gate_retry1_ed6a128dad.log",
+  "stage_pid": null,
+  "started_at": "2026-11-01T10:09:43.012772+00:00",
+  "status": "COMPLETED_FOR_ANALYSIS",
+  "worker_pid": 12508
+}

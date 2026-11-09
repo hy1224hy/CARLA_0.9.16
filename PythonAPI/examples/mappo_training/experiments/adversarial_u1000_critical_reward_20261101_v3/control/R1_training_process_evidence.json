@@ -1,0 +1,53 @@
+{
+  "scope": "Read-only observed process tree while R1 blue training is active",
+  "processes": [
+    {
+      "ProcessId": 23548,
+      "ParentProcessId": 7344,
+      "Name": "CarlaUE4.exe",
+      "CommandLine": "\"D:\\study\\yan2\\CARLA_0.9.16\\CarlaUE4.exe\" "
+    },
+    {
+      "ProcessId": 6352,
+      "ParentProcessId": 23548,
+      "Name": "CarlaUE4-Win64-Shipping.exe",
+      "CommandLine": "\"D:\\study\\yan2\\CARLA_0.9.16\\CarlaUE4\\Binaries\\Win64\\CarlaUE4-Win64-Shipping.exe\" CarlaUE4 "
+    },
+    {
+      "ProcessId": 18100,
+      "ParentProcessId": 25412,
+      "Name": "python.exe",
+      "CommandLine": "\"D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe\" -X utf8 -u -m utils.critical_reward_pipeline --root experiments/adversarial_u1000_critical_reward_20261101_v3"
+    },
+    {
+      "ProcessId": 25240,
+      "ParentProcessId": 18100,
+      "Name": "python.exe",
+      "CommandLine": "\"D:\\Python\\python.exe\" -X utf8 -u -m utils.critical_reward_pipeline --root experiments/adversarial_u1000_critical_reward_20261101_v3"
+    },
+    {
+      "ProcessId": 2436,
+      "ParentProcessId": 25240,
+      "Name": "python.exe",
+      "CommandLine": "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe -X utf8 -u -m utils.mut_mappo_session supervise --config D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\configs\\R1_B0_s42.json --run-dir D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\runs\\R1"
+    },
+    {
+      "ProcessId": 2844,
+      "ParentProcessId": 2436,
+      "Name": "python.exe",
+      "CommandLine": "\"D:\\Python\\python.exe\" -X utf8 -u -m utils.mut_mappo_session supervise --config D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\configs\\R1_B0_s42.json --run-dir D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\runs\\R1"
+    },
+    {
+      "ProcessId": 22184,
+      "ParentProcessId": 2844,
+      "Name": "python.exe",
+      "CommandLine": "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe -u -m training.train_mut_mappo --config D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\configs\\R1_B0_s42.json --run-dir D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\runs\\R1 --allow-candidate"
+    },
+    {
+      "ProcessId": 3204,
+      "ParentProcessId": 22184,
+      "Name": "python.exe",
+      "CommandLine": "\"D:\\Python\\python.exe\" -u -m training.train_mut_mappo --config D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\configs\\R1_B0_s42.json --run-dir D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v3\\runs\\R1 --allow-candidate"
+    }
+  ]
+}

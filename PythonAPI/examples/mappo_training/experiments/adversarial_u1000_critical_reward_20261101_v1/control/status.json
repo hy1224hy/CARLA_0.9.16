@@ -1,0 +1,53 @@
+{
+  "schema": "critical_reward_pilot_control_v1",
+  "status": "R2_COMPLETE_B2_GATE_REVIEW_COMPLETE",
+  "authorization": {
+    "code_changes": true,
+    "live_execution": true,
+    "weak_red_diagnostic_only": true,
+    "allow_failed_C1_engineering_training": true,
+    "allow_weak_red_reference": true,
+    "clarification": "2026-11-01 user clarified that the intended task is to train blue against the fixed weak red; failed C1 screen remains disclosed and does not block engineering training."
+  },
+  "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+  "phase": "OFFLINE_B2_GATE_REVIEW_20261103",
+  "completed_live_episodes": 144,
+  "training_started": true,
+  "next": "Prepare a new R2-specific equal-budget B0/B1/B2 comparison; do not use the legacy default prepare profile. No new live run started by gate review.",
+  "success_claim": "NONE",
+  "resume_instructions": "Read v4/control/RESUME.md latest section first. Follow the current UUID/worker; never start another CARLA controller while evaluation is alive.",
+  "active_run": "experiments\\adversarial_u1000_critical_reward_20261101_v4\\control\\pipeline_status.json",
+  "offline_tests": {
+    "passed": 76,
+    "failed": 0
+  },
+  "prior_screen": "experiments\\adversarial_u1000_critical_reward_20261101_v1\\screen_12\\summary.json",
+  "completed_screens": [
+    {
+      "version": "v1",
+      "cases": 48,
+      "C0_red_success": "18/24",
+      "C1_red_success": "8/24",
+      "C1_blue_eligible": "12/24",
+      "decision_ticks": 7655
+    },
+    {
+      "version": "v2",
+      "cases": 48,
+      "C0_red_success": "24/24",
+      "C1_red_success": "8/24",
+      "C1_blue_eligible": "12/24",
+      "decision_ticks": 3233,
+      "online_offline_critical_mismatches": 0
+    }
+  ],
+  "preliminary_cost_limit": "v1/v2 decision and per-case reset ticks measured; constructor/cleanup totals were not separately audited. Subsequent probes use a full explicit-tick ledger.",
+  "latest_gate_review": "docs/B2门控实现审查_20261103.md",
+  "latest_gate_audit": "diagnostics/b2_gate_review_20261103_v1/audit.json",
+  "gate_review_tests": {
+    "live_world_ticks": 0,
+    "passed": 41,
+    "failed": 0
+  },
+  "updated_at": "2026-11-03T12:55:14.6010531Z"
+}

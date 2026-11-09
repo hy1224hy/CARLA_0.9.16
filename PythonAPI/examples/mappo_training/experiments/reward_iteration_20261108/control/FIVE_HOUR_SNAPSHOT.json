@@ -1,0 +1,1921 @@
+{
+  "at": "2026-11-08T14:53:38.758001+08:00",
+  "plan": "# 2026-11-08 R5简洁奖励迭代计划\n\n用户授权：现有本地分支，先现有R5；每版100 updates后独立评估，分析后修改已有权重再训练；CARLA由用户保持开启。每20分钟聊天指标报告、每5小时保存交接并聊天报告。不得用碰撞/回报上升宣称成功。\n\n- [ ] 核对无并发客户端；加载Town05，保留渲染设置，CPU训练，记录显存。\n- [ ] 运行R5/R4/训练链路离线回归及配置验证；快照代码和哈希。\n- [ ] 用冻结基础蓝车、冻结红车，为train/gate/selection生成至少3次参考；test参考单独保留到最终冻结候选验证。\n- [ ] 原版R5直接训练100 updates，保留不可变u0边界；训练结束后核验基础actor权重，再评估base_u0和u100。不增加测试步骤。\n- [ ] u100候选selection评估；A/B均做四模式配对策略替换，报告有效及被接触排除的场景。\n- [ ] 分析逐车影响/持续时长/覆盖、基础收益与对抗收益量级、安全、EV/KL/熵。按证据一次仅调整一个已有参数，不增加奖励分量，不改运行中源码。\n- [ ] 候选筛选通过后冻结，准备test参考并运行test；不能用test调参。\n\n核心成功证据：与未对抗训练base_u0相比，同场景同seed替换蓝车策略后红车行驶进度受阻或驾驶响应负担增加；两蓝车有各自贡献、有未接触持续影响，报告全部接触/失败及排除率。仅selection单seed结果是工程候选，不称论文级结论。初步筛选：24配对selection中至少12组全四模式有效无接触；逐蓝车进度债边际均值95%场景bootstrap下界>0，联合影响下界>0，有持续>=1s代理效应，参考覆盖>=90%。这些是筛选标准而非理论阈值，允许更高不良率但不能只剩碰撞。\n\n后续参数：若无覆盖或无交互，先诊断参考/场景，不加大奖励；若碰撞前有效信号存在但碰撞主导，降低驾驶/对抗权重或保留成本；若基础软收益淹没outcome，减小现有progress/control权重；若信号充分但幅度太小，增大现有outcome_weight，同时保留8分正预算。每次只变一项，保留理由和脚本。无可信梯度或样本不足时记录待诊断，不盲目穷举。\n\n所有CARLA操作串行并使用全机锁；控制器仅执行本版训练与评估，完成后等待当前聊天的智能体分析，不自动决定或修改奖励。每次由智能体根据完整反馈确定下一版，周期任务只读。失败不自动重启；先保留证据诊断。版本从相同基础actor重新训练便于对比，不把A/B当独立seed。冻结旧R4与旧R5实现，新增运行目录不覆盖历史结果。总结不重置额度。\n\n用户最新澄清：奖励调整由当前聊天智能体在每版完整结果后分析决定，不以固定阈值自动扫描参数；不再追加离线测试。保留现有渲染。\n",
+  "state": {
+    "at": "2026-11-08T11:04:33.579382+08:00",
+    "command": [
+      "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+      "-X",
+      "utf8",
+      "-u",
+      "-m",
+      "training.train_mut_mappo",
+      "--config",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\config.json",
+      "--run-dir",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\run",
+      "--allow-candidate",
+      "--resume"
+    ],
+    "controller_pid": 16732,
+    "log": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\training_resume_u26_to100_console.log",
+    "phase": "training_resume_u26_to100",
+    "status": "RUNNING",
+    "target_updates": 100,
+    "version": "R5a_outcome10_u100"
+  },
+  "worker": {
+    "active": true,
+    "at": "2026-11-08T11:04:33.579382+08:00",
+    "command": [
+      "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+      "-X",
+      "utf8",
+      "-u",
+      "-m",
+      "training.train_mut_mappo",
+      "--config",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\config.json",
+      "--run-dir",
+      "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\run",
+      "--allow-candidate",
+      "--resume"
+    ],
+    "controller_pid": 16732,
+    "log": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\training_resume_u26_to100_console.log",
+    "phase": "training_resume_u26_to100",
+    "pid": 26456,
+    "status": "RUNNING",
+    "target_updates": 100,
+    "version": "R5a_outcome10_u100"
+  },
+  "versions": {
+    "R5_original_u100": {
+      "completed_round": 100,
+      "asof": "2026-11-07T20:45:55.827000+00:00",
+      "committed_episodes": 3200,
+      "excluded_or_uncommitted": 0,
+      "session": {
+        "actual_counters": {
+          "setup": 49520,
+          "total": 296792,
+          "train": 252986,
+          "train_decision": 211002,
+          "validation": 43806,
+          "validation_decision": 36270
+        },
+        "at": "2026-11-07T20:45:55.934812+00:00",
+        "budget_policy": "complete_boundary_soft_cap",
+        "collecting_team": "A",
+        "completed_round": 100,
+        "ended_at": "2026-11-07T20:45:55.937865+00:00",
+        "in_progress_round": 100,
+        "method": "off",
+        "segment_id": "820c37165dd84b3ba7e23aa47c5ce727",
+        "segment_tick_cap_reached": false,
+        "segment_train_tick_cap": 100000000,
+        "started_at": "2026-11-07T16:31:07.453597+00:00",
+        "status": "SEGMENT_COMPLETED",
+        "stop_rule": "rounds",
+        "train_tick_budget": 100000000,
+        "train_tick_overshoot": 0,
+        "training_budget_reached": false
+      },
+      "checkpoint": {
+        "checkpoint": "boundaries/round_00000100_c92a06bf3a4d.pt",
+        "completed_round": 100,
+        "identity": {
+          "algorithm": "mappo",
+          "case_manifest_sha256": "64898e3f1c9e3a3edd213c2a4769a70154b7ca47c33f3d823dd6e3a4ccde185b",
+          "config_sha256": "1d0d6e4c6a472cf9dd51a527b4ec5a965e6df7f69a2dd6240d066a1cf34a4759",
+          "model_spec": {
+            "action_dim": 2,
+            "critic_num_agents": 4,
+            "learner_ids": [
+              2,
+              3
+            ],
+            "obs_dim": 20,
+            "physical_ids": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "state_dim": 80
+          },
+          "protocol": "mut_mappo_four_car_20_2_v1",
+          "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+          "scenario_hashes": {
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0l.json": "8f5bc26f863190584f3f3ee5ef9eeabe03464117cfdc8476b750a7b630900332",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0r.json": "f42474dc6904b6bfc59d6b3563a56de6baca83fcd487cdecc3b960ecca44e5d2",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0l.json": "3194485a62479a7ec9eb7fb8edd5bbb7bea319db359a7ea6dc73c77faa255a36",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0r.json": "ec5f9b52b2bf166d0896d6abb81114630239ef440e7e5bd8d0076cd3eb9833e8",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0l.json": "2d530107ade6d51d39e761681aed8e31b0450f9252de003e8ecfbae9cd43800b",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0r.json": "78c88f13ddda9c2922bca2dbc98247596bdd9b5baef95581931e0bac4ab6f21e",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0l.json": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0r.json": "072e339165429689e764872e0f69acd60c5aa0dc6b8802bcc82d1f2b968a612f"
+          },
+          "source_hashes": {
+            "@carla/agents/navigation/controller.py": "35dbabac3b7bf69fd7f1272fcd8af97aa7797a537af2e58a31d9d6b67c1f3a0e",
+            "@carla/agents/tools/misc.py": "8b3ecbd8e07116dc1617114fc2fe03f84fbac2ad323a652c438db8e12b1b49f5",
+            "environment/base_reward_v4.py": "57ddbf702ced7b98fb33d6175143644936744859964c2def4a26a717b631850e",
+            "environment/base_reward_v5.py": "3e3032bfca75fdb8acfa6b59878e57b8dbd3665d4826a3c7a1733e140627665f",
+            "environment/base_reward_v6.py": "f39af641933a12f3cfac92589dcad402c07390bf1fbc2ad29afd109a088f8bbf",
+            "environment/carla_multi_agent_env.py": "af03ff79e8f89230faddaf4bfefb71e9a97cf1df3158b067f30c8e0ff0c7b203",
+            "environment/frozen_lane_traffic.py": "4b133dbaea4aa22366f296fd88058e69b15b18495b530922f4857a98215c891b",
+            "environment/mut_mappo_critical_reward.py": "cbea0d8e2cfbb0975b716262177c0266b0695252ec8ef8dee86a0094fb1f491e",
+            "environment/mut_mappo_critical_reward_v2.py": "495f6ab3b6762bb0b3691a0dc2b9149947c38186a9bdb043656964022d05b490",
+            "environment/mut_mappo_critical_reward_v3.py": "b7b4ad1a56da351382a58b7972abc22e7b0ede73278b06bb51badd06e75b7c01",
+            "environment/mut_mappo_critical_reward_v4.py": "8fba81e66d2b2d52301c2e2457a7f90bf5d295ced7cd212ba9d70d0c38cc456f",
+            "environment/mut_mappo_efficiency_reward.py": "c5643e40d3169f604358d0238e7c0dc7cde2ac64e5ce34cbb2e8b6159e714d03",
+            "environment/mut_mappo_env.py": "a98e3dc977ffd8aefa216a6e305e7e7e3249f886a0336e08e18eccf5dcb893f6",
+            "environment/mut_mappo_events.py": "6f44ff9c3ce0c2b33e1db3881abd6db2a36cff5f8a388a1a6a2f347b54160ba9",
+            "environment/mut_mappo_outcome_reward_v5.py": "80456cdcd237905fab0095f5b42879722b8589246a321c44f04cad1da3964c2c",
+            "environment/route_pace_reward.py": "a9b9a14b107013b010c730c520d90027046dfd5f662a27bbf8b2837a426a2fe5",
+            "evaluation/critical_interaction_metrics.py": "184f3760647ebafa294af0ef4cc2a63d7dbfebcb22296bfcdd575db7bd840384",
+            "evaluation/driving_policy_metrics.py": "ba8971d09e48ac22a6f2b01fc3d48e78d5f3c62c5e0ff59a88b43656ceec4bb4",
+            "evaluation/evaluate_mut_mappo.py": "792bc1252efebb7098f1ea321fca40fbb40d5f84796dc91d66837141711b370a",
+            "evaluation/evaluate_r5_counterfactual.py": "ede0670b75c8d72902a4d7652ed520f80fcf2c5aea5bf9c75367bac2385514ea",
+            "evaluation/mut_mappo_metrics.py": "e643dd30227961e5535e4ca45f935af6370eafb9abaf9431a214c73353ca2085",
+            "evaluation/mut_mappo_selection.py": "350cc698f9fc95ab8cf9bccf415fff459ea8f1cffd1e316cff4b8468d7022f94",
+            "evaluation/r4_risk_metrics.py": "81114b25bb5a31938262ad293b02f7e0d411e0804ce26325fba720ddebbe7cc1",
+            "evaluation/r5_outcome_metrics.py": "1353199d6720d1a4530675e5d667bd2ded53c53f6eaa0c3aa7235b9d0993e08d",
+            "models/actor_critic.py": "f37b7358a77d682b010b3e75c267390b22a7cee6b5106bb01559295386bfaf80",
+            "models/mut_mappo_critics.py": "12bcb4f05920a0b86128b6e48411f1df72a01d138a23ec1b1b1ae699bc2a55d7",
+            "training/action_protocol.py": "7135ebfd5960ce3826beba63f9ae62d66bc89eb6b41fc2992c10f721562472f5",
+            "training/checkpoint_protocol.py": "e1bd19f6723442d22b44e8cfad7c1b1731147ae8f52523e31ceaeaf1884f0d63",
+            "training/first_point_scenarios.py": "4739e67584c4bc5bedf5a2a88be9c05ff5d916a52a8622a6be1389a8a2d4b15b",
+            "training/mut_mappo_checkpoint.py": "292db9bcc0ca1ce10acc9c136386ab2939e7a2327d279ec9bcc353f954d84043",
+            "training/mut_mappo_config.py": "570c75b140c917ec827f6bb742fbce4a21d16e1379ead9250f3adc062d6e1d2f",
+            "training/mut_mappo_learning.py": "55c302119a8c30a9b0e74b71caa4a6a93a377444e5e2f23d38e8acd06d0c6293",
+            "training/mutual_distillation.py": "61d93718d7748cefc7b9afb4b776a33b0f95f3d507540d9eb9853d713e40558a",
+            "training/train_mut_mappo.py": "fa05ba7630f91be22093f8578b9c69bb7adb88551ad670bb2266b391c22f0bc6",
+            "training/train_no_rllib_mappo_robust_v2.py": "5c077ac4f2c91b6573fdc4acb4e70e1a9756ce8a9624cffd3814fb7b3811cd32",
+            "training/value_normalization.py": "46f16d1b937eedcafb8489d90f061b709b86ac76ab71200a50c4a463640e5aa1",
+            "utils/adversarial_metrics.py": "e8cbf2fe88d77592c211b6c14865930a0128eaa1952fb68bfded1623671b5f64",
+            "utils/mut_mappo_session.py": "4b2137758b5bb8a805ebd32f7f078227d1bf604a0be474581b50639a16a0667b",
+            "utils/prepare_r5_reference.py": "a907eb4f077bb05c9532a739214337c6fa3cbd3de136dd335284b2ffbcdef0ea"
+          },
+          "task_contract_sha256": "a4be0ad9db53205b8a531725dbd5c48f85ab504421c0f2d9e574e801f1ca51ac",
+          "team_count": 2,
+          "training_reference_hashes": {
+            "gate_crossing_eastbound_front_left_r0l": "832e0c78f6ca3ef93b91166474a2cc8b35e5d03df34a25e77137c69ee8fbf3f9",
+            "gate_crossing_eastbound_front_left_r0r": "eb8665d51d0db3e04499b04f18994dc781b1411fd9899f9509acdf5e8a7b518e",
+            "gate_crossing_eastbound_front_right_r0l": "2aaa79f230ae59f4b028ba73120db6908b52eaa4ce931c8283297717a3cd01f3",
+            "gate_crossing_eastbound_front_right_r0r": "4f7256827f1eb3f71bccdf09e26ed5119d43b6007bd3b70ad8734a599666a21b",
+            "gate_crossing_northbound_front_left_r0l": "5750df180ad38d5762b9e0a8512348273d36689faf2b8be49e48ad656631ee42",
+            "gate_crossing_northbound_front_left_r0r": "d2b7dc467d97277aa7d4434f645111c959cebfb480cc586fb511b39272f760a4",
+            "gate_crossing_northbound_front_right_r0l": "66ba14eef7eea8bb2d3ef463096a19ed26fbbf2557f5b2fd23e1d75f82442c6f",
+            "gate_crossing_northbound_front_right_r0r": "279de1f7ce2d672da980ff152bd2b577d5d3f3e4e65d6467a6e7012f2ea8c4ba",
+            "gate_crossing_southbound_front_left_r0l": "dbb6c985bf8d0a03777bd19b215eab5a0296ce826f41098094c2bfef654a54a7",
+            "gate_crossing_southbound_front_left_r0r": "2e877aa0a32d659de6aef4ab0176f9a1d649a3933ce489a554a7790943375210",
+            "gate_crossing_southbound_front_right_r0l": "bbad2e2f13f64403f73d8d3e1c5c9abf30ad9ded606299ecb68130eb4c4be7dc",
+            "gate_crossing_southbound_front_right_r0r": "dea70f27191f3af5e13c96e2730de3884d62f5767f2a4ce7fb4151f29e3572ba",
+            "gate_crossing_westbound_front_left_r0l": "2d8d681bc6bac4f9522fc45c021463c0c23310ab37e6f5175cdb73a35e65a4d7",
+            "gate_crossing_westbound_front_left_r0r": "ceeef341c9f6d847fe861730e8e5a6096a627e56b2c8ef1d4e502e6300e22440",
+            "gate_crossing_westbound_front_right_r0l": "1d3d509a6c8c44ba9da814e8d82f222bd94daecd75fa8b6c5f271891a8625e9c",
+            "gate_crossing_westbound_front_right_r0r": "bb82ff6aba6ed3d9e9f99088440ce01eb10be4fd6d2f42bfada83a60e5da3eaf",
+            "gate_sequential_eastbound_front_both_r0l": "337e54e2d67666a99e015ed8902d3571f7afc363aa0f0e2e6e8f9f4c53b18d41",
+            "gate_sequential_eastbound_front_both_r0r": "720a72e25cceb3260d20b90a08184d3646b5d274459005d4e5d69f57d90f5377",
+            "gate_sequential_northbound_front_both_r0l": "f32e945f05f2aa5c6f946af641192e090b5a6ec431549068f3745effed2551f9",
+            "gate_sequential_northbound_front_both_r0r": "d064b2cb690b95c891c142ea4266f58e66a5ff30cf132087976d21da94e4cea1",
+            "gate_sequential_southbound_front_both_r0l": "291a373db14bcb53943496d88c2bf08b5ea66c2025904dbce8615ed59691419a",
+            "gate_sequential_southbound_front_both_r0r": "86eb4a3ad9cc93b1374f55cff0c60385353a3a1ccd5ee8276d3bd1ae1864af45",
+            "gate_sequential_westbound_front_both_r0l": "85852c991f896714875ad60190450ecf17a62ef177f016cac2e9ae3cbdd18d24",
+            "gate_sequential_westbound_front_both_r0r": "6ec7653f55931b72289af2db039202475578c4f16c14e7298474b60cde646231",
+            "train_crossing_eastbound_front_left_r0l": "9d1004378f70396af6310f18df4f4248b0e0127df72cf66dd3bb1c6fde5828df",
+            "train_crossing_eastbound_front_left_r0r": "84eda546591b63223325ba2e7796072c5f6d98ad93503473fbbfdb21c8db8e0d",
+            "train_crossing_eastbound_front_right_r0l": "68988b0e2ec091dc56f3a7b5b6bf998d6ec65bb645a40a8164632274e3e48472",
+            "train_crossing_eastbound_front_right_r0r": "920b8662ee892be88cced7d5ac325212ab42e26864982ffc5b3c3fb263873e7e",
+            "train_crossing_northbound_front_left_r0l": "16141057018c005b8d8f7e1cfa61274f73fbe34f489c7d9482ec8e2e6f9434cb",
+            "train_crossing_northbound_front_left_r0r": "9a537229bc4fdc291d56075a4229f561d8d4d7f9e9eef9bbf583a2a9448c86c7",
+            "train_crossing_northbound_front_right_r0l": "9a4bf7ab82f2ff349427e87e2e0854b188ce515e30e51969de5747880cd3a915",
+            "train_crossing_northbound_front_right_r0r": "83c817a106e22f1ce6f454e513933aca12613a2ad9d4e4dbe44bf8aa51ef2042",
+            "train_crossing_southbound_front_left_r0l": "8cf94c893064bb241822eada9e74175f3a475a24bc1908141afbb9a1e2d6b8ec",
+            "train_crossing_southbound_front_left_r0r": "471663d6a93aa6fbe881259c86d54978d67d6a680ce55c76b9ef7db8f87c1af8",
+            "train_crossing_southbound_front_right_r0l": "47a8f1f3f46014b5c406d7c137a3582511d59e507cd76435daf945e5e00195ab",
+            "train_crossing_southbound_front_right_r0r": "cf61965c458c722c5dd2b91042b8ae7a35fd91bd640568e08366e1b1b6c82be4",
+            "train_crossing_westbound_front_left_r0l": "97a68f72fd4b36565fc03c95ff47b02daa5f8c07dbbb30cca7788b687aa099e5",
+            "train_crossing_westbound_front_left_r0r": "6e57f173bfa09ee7d15da2909ec9c58c74c3f08c2654edc043619c7932c7e2c1",
+            "train_crossing_westbound_front_right_r0l": "d94190ae7598aba4440dc2978996fc718cce51d2434764f12c91f1b036f8d4a7",
+            "train_crossing_westbound_front_right_r0r": "c61ecf74e0e80823444d5bbe384735107a27cc1c27f251227006f14b914e57c7",
+            "train_sequential_eastbound_front_both_r0l": "10860471b7f27cbac6164a30e5665bde2349bdf50d8750fd6154a1c3acc95f0e",
+            "train_sequential_eastbound_front_both_r0r": "29d79f9e3c58053a3959fca3427fc417d3e09f6ad730d3cfb5cb3f1c67a8f048",
+            "train_sequential_northbound_front_both_r0l": "8720349cd08a3ca261f9cee4b84c2e69b07b48509d4ac906dc8a10328a6315d8",
+            "train_sequential_northbound_front_both_r0r": "40928b8970c49c4af0bdf6e11006d0263464a6f200c5fc9cb39031bbc579b31b",
+            "train_sequential_southbound_front_both_r0l": "0a2fd954bcc37866c9789b3c9dce6d8275d433372bcb9452793b22492ddbb5b4",
+            "train_sequential_southbound_front_both_r0r": "b5db830ee39b84d1573fb778dfb906997ab6cd02b501d0671a6b4a1a2a96a3b2",
+            "train_sequential_westbound_front_both_r0l": "e796e6f5f4654726dce8f9455094aae84c4502de4312fa233b36b3aebda674d4",
+            "train_sequential_westbound_front_both_r0r": "aba9262514d3de423a8c63701a55d4b74d724883013f6761cc539b9e2e06864b"
+          }
+        },
+        "saved_at": "2026-11-07T20:45:55.874649+00:00",
+        "schema_version": "mut_mappo_complete_team_boundary_v2",
+        "sha256": "4818243f823e3755213fe56611e2e97a8df3b74eb3a0a77437e065a5b19bac03"
+      },
+      "config": {
+        "algorithm": "mappo",
+        "case_manifest": "data/mut_mappo/interaction_small_v4/cases.json",
+        "communication": {
+          "enabled": false,
+          "message_dim": 8,
+          "status": "planned_not_implemented"
+        },
+        "device": "cpu",
+        "diagnostic_authorization": {
+          "formal_red_qualification": false,
+          "live_execution": true,
+          "source": "User authorized overnight R5-first reward iteration, 100 updates per version and serial evaluation on 2026-11-08",
+          "weak_red_diagnostic_only": true
+        },
+        "evaluation": {
+          "max_invalid_retries": 1,
+          "mode": "deterministic",
+          "selection_metric": "r5_outcome_descriptive_only"
+        },
+        "host": "127.0.0.1",
+        "learning": {
+          "anchor_beta": 0.0,
+          "beta": 0.0,
+          "clip_eps": 0.15,
+          "distillation": {
+            "direction": "student_to_teacher",
+            "gate_variant": "evidence",
+            "reduction": "all_valid"
+          },
+          "ent_coef": 0.01,
+          "gae_lambda": 0.95,
+          "gamma": 0.999,
+          "hidden_dim": 128,
+          "init_log_std": -0.5,
+          "lr_actor": 0.0003,
+          "lr_critic": 0.0003,
+          "max_grad_norm": 0.5,
+          "max_log_std": 0.0,
+          "min_log_std": -2.0,
+          "minibatch_size": 128,
+          "ppo_epochs": 2,
+          "target_kl": 0.02
+        },
+        "method": "off",
+        "model_spec": {
+          "action_dim": 2,
+          "critic_num_agents": 4,
+          "learner_ids": [
+            2,
+            3
+          ],
+          "obs_dim": 20,
+          "physical_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "state_dim": 80
+        },
+        "mutual": {
+          "gate_max_bad_rate": 0.125,
+          "gate_min_cases": 8,
+          "gate_min_q_gap": 0.25,
+          "min_efficiency_gap": 0.02,
+          "quality_metric": "critical",
+          "refresh_rounds": 10,
+          "refresh_train_ticks": 20000,
+          "schedule_clock": "train_ticks",
+          "warmup_rounds": 5,
+          "warmup_train_ticks": 10000
+        },
+        "port": 2000,
+        "protocol": "mut_mappo_four_car_20_2_v1",
+        "red_checkpoint": {
+          "capability_status": "NOT_QUALIFIED_diagnostic_candidate_only",
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u001000.pt",
+          "sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a"
+        },
+        "research_status": "candidate",
+        "run": {
+          "cost_down": 0.95,
+          "cost_max": 10.0,
+          "cost_min": 1.0,
+          "cost_target": 0.05,
+          "cost_up": 1.2,
+          "episodes_per_team_update": 16,
+          "lr_horizon_rounds": 100,
+          "rounds": 100,
+          "schedule_clock": "rounds",
+          "stop_rule": "rounds",
+          "train_tick_budget": 100000000,
+          "lr_schedule": "linear",
+          "lr_min_factor": 0.1
+        },
+        "schema_version": "mut_mappo_config_v1",
+        "seed": 42,
+        "task": {
+          "c1_controller": "lane_pid_v1",
+          "cameras_enabled": false,
+          "follow_spectator": true,
+          "max_steps": 500,
+          "reward": {
+            "base_driving_weight": 0.3,
+            "birth_protect_secs": 3.0,
+            "cap_slowdown": 3,
+            "free_flow_target_mps": 2.5,
+            "overspeed_start_mps": 4.1666666667,
+            "reward_slowdown": 5.0,
+            "reward_timeout": 15.0,
+            "safety_lambda": 1.0,
+            "slowdown_drop_thresh": 2.0,
+            "slowdown_persistence_secs": 0.5,
+            "slowdown_window_secs": 2.0,
+            "threat_cap_per_episode": 20.0
+          },
+          "reward_profile": "individual_red_outcome_v5",
+          "stall": {
+            "enabled": true,
+            "seconds": 3.0,
+            "speed_mps": 0.2
+          },
+          "team_reward": {
+            "reference_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\references",
+            "gamma": 0.999,
+            "progress_weight": 0.03,
+            "control_weight": 0.3,
+            "collision_scale": 1.0,
+            "outcome_weight": 1.0,
+            "outcome_budget": 8.0,
+            "delay_fraction": 0.7,
+            "progress_scale": 0.1,
+            "progress_deadband": 0.01,
+            "burden_scale": 0.2,
+            "burden_deadband": 0.02,
+            "noise_sigma": 2.0,
+            "filter_tau_s": 0.3,
+            "interaction_front_m": 30.0,
+            "interaction_side_m": 2.0,
+            "lag_s": 1.0,
+            "warmup_s": 1.0,
+            "min_reference_samples": 3
+          },
+          "timestep": 0.1
+        },
+        "team_count": 2,
+        "town": "Town05"
+      },
+      "reason": "首轮直接验证尚未训练的R5，保持所有奖励权重不变。仅updates和LR horizon从66改100；CPU、无相机、Town05，保留渲染设置。蓝车从未对抗训练基础actor初始化，B0 seed42。重复参考轨迹为训练代理，最终以策略替换评估验证红车受影响。\n",
+      "source_count": 264,
+      "snapshot_mismatch": [],
+      "analysis": {
+        "at": "2026-11-08T09:41:03.525215+08:00",
+        "baseline": {
+          "n": 48,
+          "teams": {
+            "A": {
+              "n": 24,
+              "roles": {
+                "2": {
+                  "outcome": {
+                    "burden_excess_integral_s": 0.008316288585712909,
+                    "delay_excess_integral_s": 2.902631676329448e-05,
+                    "effective_outcome_duration_s": 0.05833333333333334,
+                    "effective_outcome_longest_s": 0.03333333333333333,
+                    "interaction_s": 2.741666666666667,
+                    "outcome_signed_integral_s": 0.002515204997448179,
+                    "reference_coverage": 0.9624270584566381
+                  },
+                  "rewards": {
+                    "base_soft": 0.8314244049006405,
+                    "collision": -2.0833333333333335,
+                    "control_cost": -2.2195012107265306,
+                    "offroad": 0.0,
+                    "outcome_reward": 0.002515204997448179,
+                    "road_rule": 0.0,
+                    "severe": -0.2916666666666668,
+                    "task_violation": 0.0
+                  }
+                },
+                "3": {
+                  "outcome": {
+                    "burden_excess_integral_s": 0.0,
+                    "delay_excess_integral_s": 0.0,
+                    "effective_outcome_duration_s": 0.0,
+                    "effective_outcome_longest_s": 0.0,
+                    "interaction_s": 2.8375000000000004,
+                    "outcome_signed_integral_s": 0.0,
+                    "reference_coverage": 0.9575074744884562
+                  },
+                  "rewards": {
+                    "base_soft": 0.6151285885464389,
+                    "collision": -6.25,
+                    "control_cost": -1.2000422141518428,
+                    "offroad": -4.166666666666667,
+                    "outcome_reward": 0.0,
+                    "road_rule": 0.0,
+                    "severe": -0.65,
+                    "task_violation": -1.6666666666666667
+                  }
+                }
+              },
+              "safety": {
+                "collision": 0.16666666666666666,
+                "offroad": 0.08333333333333333,
+                "road_rule": 0.0
+              }
+            },
+            "B": {
+              "n": 24,
+              "roles": {
+                "2": {
+                  "outcome": {
+                    "burden_excess_integral_s": -4.6821565819538004e-05,
+                    "delay_excess_integral_s": 0.0,
+                    "effective_outcome_duration_s": 0.004166666666666667,
+                    "effective_outcome_longest_s": 0.004166666666666667,
+                    "interaction_s": 2.7375000000000007,
+                    "outcome_signed_integral_s": -1.4046469745861403e-05,
+                    "reference_coverage": 0.9640116651346234
+                  },
+                  "rewards": {
+                    "base_soft": 0.8254291699174482,
+                    "collision": -2.0833333333333335,
+                    "control_cost": -2.1488004986493503,
+                    "offroad": 0.0,
+                    "outcome_reward": -1.4046469745861403e-05,
+                    "road_rule": 0.0,
+                    "severe": -0.2916666666666668,
+                    "task_violation": 0.0
+                  }
+                },
+                "3": {
+                  "outcome": {
+                    "burden_excess_integral_s": -0.0012918625157531192,
+                    "delay_excess_integral_s": -0.001552790740870097,
+                    "effective_outcome_duration_s": 0.041666666666666664,
+                    "effective_outcome_longest_s": 0.020833333333333336,
+                    "interaction_s": 2.8208333333333337,
+                    "outcome_signed_integral_s": -0.0014745122733350036,
+                    "reference_coverage": 0.9573253582983269
+                  },
+                  "rewards": {
+                    "base_soft": 0.5868992766886376,
+                    "collision": -8.333333333333334,
+                    "control_cost": -1.1951723060758728,
+                    "offroad": -4.166666666666667,
+                    "outcome_reward": -0.0014745122733350036,
+                    "road_rule": 0.0,
+                    "severe": -0.7333333333333333,
+                    "task_violation": -1.6666666666666667
+                  }
+                }
+              },
+              "safety": {
+                "collision": 0.20833333333333334,
+                "offroad": 0.08333333333333333,
+                "road_rule": 0.0
+              }
+            }
+          },
+          "valid": 48
+        },
+        "candidate": {
+          "n": 48,
+          "teams": {
+            "A": {
+              "n": 24,
+              "roles": {
+                "2": {
+                  "outcome": {
+                    "burden_excess_integral_s": -0.0430158942494666,
+                    "delay_excess_integral_s": -0.0465426060112064,
+                    "effective_outcome_duration_s": 0.5583333333333333,
+                    "effective_outcome_longest_s": 0.4291666666666667,
+                    "interaction_s": 2.5916666666666677,
+                    "outcome_signed_integral_s": -0.04548459248268445,
+                    "reference_coverage": 0.9527587926578168
+                  },
+                  "rewards": {
+                    "base_soft": 0.8072320604733114,
+                    "collision": 0.0,
+                    "control_cost": -1.5104363450068419,
+                    "offroad": 0.0,
+                    "outcome_reward": -0.04651638458605829,
+                    "road_rule": -2.0833333333333335,
+                    "severe": 0.0,
+                    "task_violation": 0.0
+                  }
+                },
+                "3": {
+                  "outcome": {
+                    "burden_excess_integral_s": -0.09202348813873946,
+                    "delay_excess_integral_s": -0.015617427698012954,
+                    "effective_outcome_duration_s": 0.43333333333333335,
+                    "effective_outcome_longest_s": 0.33333333333333337,
+                    "interaction_s": 2.012500000000001,
+                    "outcome_signed_integral_s": -0.03853924583023091,
+                    "reference_coverage": 0.966599411166291
+                  },
+                  "rewards": {
+                    "base_soft": 0.7720858827951705,
+                    "collision": 0.0,
+                    "control_cost": -1.7015308719662172,
+                    "offroad": 0.0,
+                    "outcome_reward": -0.03567714979129588,
+                    "road_rule": 0.0,
+                    "severe": 0.0,
+                    "task_violation": -0.8333333333333334
+                  }
+                }
+              },
+              "safety": {
+                "collision": 0.0,
+                "offroad": 0.0,
+                "road_rule": 0.041666666666666664
+              }
+            },
+            "B": {
+              "n": 24,
+              "roles": {
+                "2": {
+                  "outcome": {
+                    "burden_excess_integral_s": 0.03659626408926295,
+                    "delay_excess_integral_s": 0.06121792202772504,
+                    "effective_outcome_duration_s": 0.7333333333333335,
+                    "effective_outcome_longest_s": 0.5625,
+                    "interaction_s": 2.4958333333333345,
+                    "outcome_signed_integral_s": 0.05383142464618639,
+                    "reference_coverage": 0.9435639379987877
+                  },
+                  "rewards": {
+                    "base_soft": 0.7424768586134034,
+                    "collision": 0.0,
+                    "control_cost": -1.4082912955993843,
+                    "offroad": 0.0,
+                    "outcome_reward": 0.05287746269071169,
+                    "road_rule": 0.0,
+                    "severe": 0.0,
+                    "task_violation": 0.0
+                  }
+                },
+                "3": {
+                  "outcome": {
+                    "burden_excess_integral_s": -0.13131301902219292,
+                    "delay_excess_integral_s": -0.00917796619824737,
+                    "effective_outcome_duration_s": 0.4666666666666667,
+                    "effective_outcome_longest_s": 0.3666666666666667,
+                    "interaction_s": 2.420833333333334,
+                    "outcome_signed_integral_s": -0.04581848204543104,
+                    "reference_coverage": 0.8992442524008416
+                  },
+                  "rewards": {
+                    "base_soft": 0.7643775513553847,
+                    "collision": -6.25,
+                    "control_cost": -1.8630788305563704,
+                    "offroad": 0.0,
+                    "outcome_reward": -0.0453722177891156,
+                    "road_rule": 0.0,
+                    "severe": -0.32499999999999996,
+                    "task_violation": 0.0
+                  }
+                }
+              },
+              "safety": {
+                "collision": 0.125,
+                "offroad": 0.0,
+                "road_rule": 0.0
+              }
+            }
+          },
+          "valid": 48
+        },
+        "counterfactual": {
+          "A": {
+            "complete": true,
+            "contact_rate": 0.125,
+            "contrasts": {
+              "red_burden_integral_s": {
+                "blue2_marginal": {
+                  "case_mean": -0.0293201150257672,
+                  "lower": -0.17299321185542665,
+                  "mean": -0.05260571569496498,
+                  "n": 11,
+                  "upper": 0.060755074822124285
+                },
+                "blue3_marginal": {
+                  "case_mean": -0.1898126884731006,
+                  "lower": -0.4540766397629171,
+                  "mean": -0.20412437318359086,
+                  "n": 11,
+                  "upper": 0.07533830198313492
+                },
+                "interaction": {
+                  "case_mean": -0.04937532573025321,
+                  "lower": -0.24812125013008987,
+                  "mean": -0.07117608377604712,
+                  "n": 11,
+                  "upper": 0.07229614295970249
+                },
+                "joint_effect": {
+                  "case_mean": -0.16975747776861455,
+                  "lower": -0.3891307184793911,
+                  "mean": -0.18555400510250872,
+                  "n": 11,
+                  "upper": 0.07043479772452838
+                }
+              },
+              "red_progress_debt_s": {
+                "blue2_marginal": {
+                  "case_mean": 0.6178501035301559,
+                  "lower": -0.34511193225385817,
+                  "mean": 0.7842245380709236,
+                  "n": 11,
+                  "upper": 2.802646800429214
+                },
+                "blue3_marginal": {
+                  "case_mean": -0.34458635024976336,
+                  "lower": -3.3008218376918363,
+                  "mean": -0.3445925837198552,
+                  "n": 11,
+                  "upper": 2.5508625514937386
+                },
+                "interaction": {
+                  "case_mean": 0.6502605475130597,
+                  "lower": -0.2395745098543297,
+                  "mean": 0.8229112113449694,
+                  "n": 11,
+                  "upper": 2.7445981923216016
+                },
+                "joint_effect": {
+                  "case_mean": -0.3769967942326676,
+                  "lower": -3.3633741423075,
+                  "mean": -0.3832792569939013,
+                  "n": 11,
+                  "upper": 2.5849063671084407
+                }
+              }
+            },
+            "coverage": {
+              "2": 0.9468599033816425,
+              "3": 0.9669421487603306
+            },
+            "eligible": 14,
+            "engineering_screen_passed": false,
+            "excluded": 10,
+            "n_groups": 24,
+            "note": "Excludes any-contact matched sets; report rejection rate. Cluster CIs reflect scenarios only, not training seeds. Slowdown is interaction burden, not automatically red failure.",
+            "persistent_cases": {
+              "2": 1,
+              "3": 2
+            }
+          },
+          "B": {
+            "complete": true,
+            "contact_rate": 0.25,
+            "contrasts": {
+              "red_burden_integral_s": {
+                "blue2_marginal": {
+                  "case_mean": -0.09358017318722868,
+                  "lower": -0.304543113546528,
+                  "mean": -0.11196578156095478,
+                  "n": 11,
+                  "upper": 0.038207423869953266
+                },
+                "blue3_marginal": {
+                  "case_mean": -0.19675881018540614,
+                  "lower": -0.35532210812103787,
+                  "mean": -0.22642144436687045,
+                  "n": 11,
+                  "upper": -0.09336322518405792
+                },
+                "interaction": {
+                  "case_mean": -0.046865243408089875,
+                  "lower": -0.17390674763012434,
+                  "mean": -0.049038886810959276,
+                  "n": 11,
+                  "upper": 0.062736203791107
+                },
+                "joint_effect": {
+                  "case_mean": -0.24347373996454497,
+                  "lower": -0.48916750273283083,
+                  "mean": -0.28934833911686597,
+                  "n": 11,
+                  "upper": -0.08619544254209331
+                }
+              },
+              "red_progress_debt_s": {
+                "blue2_marginal": {
+                  "case_mean": -0.09258915984246102,
+                  "lower": -0.43239846546677035,
+                  "mean": -0.11780542887364658,
+                  "n": 11,
+                  "upper": 0.14166293452964585
+                },
+                "blue3_marginal": {
+                  "case_mean": -1.1503498647769657,
+                  "lower": -2.148230146648599,
+                  "mean": -0.6870877359968878,
+                  "n": 11,
+                  "upper": 0.2733871729159491
+                },
+                "interaction": {
+                  "case_mean": 0.13407568331115657,
+                  "lower": -0.06755127246106624,
+                  "mean": 0.15437918363681466,
+                  "n": 11,
+                  "upper": 0.45830281208584195
+                },
+                "joint_effect": {
+                  "case_mean": -1.3770147079305832,
+                  "lower": -2.3135562491537387,
+                  "mean": -0.959272348507349,
+                  "n": 11,
+                  "upper": -0.1152573668447069
+                }
+              }
+            },
+            "coverage": {
+              "2": 0.9414715719063546,
+              "3": 0.9244288224956063
+            },
+            "eligible": 13,
+            "engineering_screen_passed": false,
+            "excluded": 11,
+            "n_groups": 24,
+            "note": "Excludes any-contact matched sets; report rejection rate. Cluster CIs reflect scenarios only, not training seeds. Slowdown is interaction burden, not automatically red failure.",
+            "persistent_cases": {
+              "2": 2,
+              "3": 3
+            }
+          }
+        },
+        "purpose": "Evidence for agent review. No automatic reward changes or final scientific success claim.",
+        "selection_screen": false
+      },
+      "windows": {
+        "81-90": {
+          "A": {
+            "roles": {
+              "2": {
+                "n": 160,
+                "reward": 0.050051319832456774,
+                "delay": 0.07773106584603076,
+                "burden": -0.015351425755029444,
+                "positive_integral": 0.10445953182896776,
+                "negative_integral": 0.054653213463255086,
+                "signed_integral": 0.04980631836571268,
+                "warmup_and_cap_gap": -0.44801186382467,
+                "positive_upper_bound_over_budget": 3,
+                "interaction": 3.0656250000000003,
+                "coverage": 0.909480122324159,
+                "usable_seconds": 2.788125,
+                "score_per_usable_second": 0.017863732209177374,
+                "duration": 1.0450000000000002,
+                "longest": 0.841875,
+                "base": 0.7320884971274944,
+                "controls": -2.2973987908728275,
+                "hard_cost": -8.4375,
+                "total_return": -10.100258973912876,
+                "blue_collision": 0.1125,
+                "blue_offroad": 0.0125,
+                "blue_rule": 0.04375,
+                "team_contact": 0.30625,
+                "red_success": 0.725,
+                "red_speed": 4.105238958963491,
+                "blue_speed": 4.357224660311108,
+                "blue_completion": 0.70819697943707,
+                "red_arrival": 7.1220338983050855,
+                "steps": 69.28125
+              },
+              "3": {
+                "n": 160,
+                "reward": 0.032833518112228774,
+                "delay": 0.05775209296664343,
+                "burden": -0.03141145698533494,
+                "positive_integral": 0.09314602459593022,
+                "negative_integral": 0.0621429966148803,
+                "signed_integral": 0.031003027981049917,
+                "warmup_and_cap_gap": -0.2771967616982704,
+                "positive_upper_bound_over_budget": 2,
+                "interaction": 3.0725,
+                "coverage": 0.8812042310821806,
+                "usable_seconds": 2.7075000000000005,
+                "score_per_usable_second": 0.01145079519152352,
+                "duration": 0.9862500000000003,
+                "longest": 0.7306250000000001,
+                "base": 0.6511942422294879,
+                "controls": -2.1231889561262,
+                "hard_cost": -11.5625,
+                "total_return": -13.335411195784483,
+                "blue_collision": 0.18125,
+                "blue_offroad": 0.03125,
+                "blue_rule": 0.01875,
+                "team_contact": 0.30625,
+                "red_success": 0.725,
+                "red_speed": 4.105238958963491,
+                "blue_speed": 3.708228986086655,
+                "blue_completion": 0.6386347094513919,
+                "red_arrival": 7.1220338983050855,
+                "steps": 69.28125
+              }
+            },
+            "safety": {
+              "collision": 0.2125,
+              "offroad": 0.04375,
+              "road_rule": 0.0625
+            }
+          },
+          "B": {
+            "roles": {
+              "2": {
+                "n": 160,
+                "reward": 0.059997755873650534,
+                "delay": 0.07344833696850377,
+                "burden": 0.028912119480782584,
+                "positive_integral": 0.10208599699276716,
+                "negative_integral": 0.04199852527057974,
+                "signed_integral": 0.06008747172218742,
+                "warmup_and_cap_gap": -0.5408769613482236,
+                "positive_upper_bound_over_budget": 1,
+                "interaction": 3.0243750000000005,
+                "coverage": 0.8970861748295103,
+                "usable_seconds": 2.7131250000000002,
+                "score_per_usable_second": 0.02214696032146967,
+                "duration": 1.1162500000000002,
+                "longest": 0.9125000000000001,
+                "base": 0.6885005724231427,
+                "controls": -2.087070835480443,
+                "hard_cost": -3.125,
+                "total_return": -4.507322507183649,
+                "blue_collision": 0.05,
+                "blue_offroad": 0.00625,
+                "blue_rule": 0.00625,
+                "team_contact": 0.38125,
+                "red_success": 0.625,
+                "red_speed": 3.836320544909794,
+                "blue_speed": 4.022937235912968,
+                "blue_completion": 0.6661579973237118,
+                "red_arrival": 7.4885,
+                "steps": 65.73125
+              },
+              "3": {
+                "n": 160,
+                "reward": 0.08593030928192943,
+                "delay": 0.11663669985084715,
+                "burden": 0.014695895944332679,
+                "positive_integral": 0.13234001648636215,
+                "negative_integral": 0.046285557807469346,
+                "signed_integral": 0.0860544586788928,
+                "warmup_and_cap_gap": -0.7746142775069986,
+                "positive_upper_bound_over_budget": 4,
+                "interaction": 3.1499999999999995,
+                "coverage": 0.8773809523809524,
+                "usable_seconds": 2.7637500000000004,
+                "score_per_usable_second": 0.03113684619769978,
+                "duration": 1.1968750000000004,
+                "longest": 0.935,
+                "base": 0.5857214242041139,
+                "controls": -2.231895879956478,
+                "hard_cost": -14.0625,
+                "total_return": -16.286494146470435,
+                "blue_collision": 0.26875,
+                "blue_offroad": 0.0125,
+                "blue_rule": 0.0,
+                "team_contact": 0.38125,
+                "red_success": 0.625,
+                "red_speed": 3.836320544909794,
+                "blue_speed": 3.0430147786376125,
+                "blue_completion": 0.5699219746195117,
+                "red_arrival": 7.4885,
+                "steps": 65.73125
+              }
+            },
+            "safety": {
+              "collision": 0.275,
+              "offroad": 0.01875,
+              "road_rule": 0.00625
+            }
+          }
+        },
+        "91-100": {
+          "A": {
+            "roles": {
+              "2": {
+                "n": 160,
+                "reward": 0.07624573994082992,
+                "delay": 0.10559500495296263,
+                "burden": 0.007150167446002696,
+                "positive_integral": 0.12327389014442657,
+                "negative_integral": 0.04721233644355191,
+                "signed_integral": 0.07606155370087465,
+                "warmup_and_cap_gap": -0.6843697970679166,
+                "positive_upper_bound_over_budget": 3,
+                "interaction": 3.1218750000000006,
+                "coverage": 0.8950950950950951,
+                "usable_seconds": 2.794375,
+                "score_per_usable_second": 0.02721952268427632,
+                "duration": 1.0800000000000003,
+                "longest": 0.846875,
+                "base": 0.6983325669101872,
+                "controls": -2.2586907408609025,
+                "hard_cost": -9.375,
+                "total_return": -10.962862434009885,
+                "blue_collision": 0.125,
+                "blue_offroad": 0.0125,
+                "blue_rule": 0.05,
+                "team_contact": 0.3625,
+                "red_success": 0.6875,
+                "red_speed": 3.9831055730226024,
+                "blue_speed": 4.253763561661887,
+                "blue_completion": 0.7006125329050645,
+                "red_arrival": 7.400452488687783,
+                "steps": 69.40625
+              },
+              "3": {
+                "n": 160,
+                "reward": 0.047430295536535313,
+                "delay": 0.08167673903670691,
+                "burden": -0.03221920739838237,
+                "positive_integral": 0.1010325488603855,
+                "negative_integral": 0.05352459375420538,
+                "signed_integral": 0.04750795510618012,
+                "warmup_and_cap_gap": -0.42764925552526584,
+                "positive_upper_bound_over_budget": 3,
+                "interaction": 2.9918750000000003,
+                "coverage": 0.8840609985377063,
+                "usable_seconds": 2.6450000000000005,
+                "score_per_usable_second": 0.01796141969987906,
+                "duration": 0.9887500000000002,
+                "longest": 0.775625,
+                "base": 0.6328755586572136,
+                "controls": -2.310813500764199,
+                "hard_cost": -13.125,
+                "total_return": -15.02675764657045,
+                "blue_collision": 0.20625,
+                "blue_offroad": 0.01875,
+                "blue_rule": 0.0375,
+                "team_contact": 0.3625,
+                "red_success": 0.6875,
+                "red_speed": 3.9831055730226024,
+                "blue_speed": 3.6949678082538893,
+                "blue_completion": 0.6173872901268105,
+                "red_arrival": 7.400452488687783,
+                "steps": 69.40625
+              }
+            },
+            "safety": {
+              "collision": 0.24375,
+              "offroad": 0.03125,
+              "road_rule": 0.0875
+            }
+          },
+          "B": {
+            "roles": {
+              "2": {
+                "n": 160,
+                "reward": 0.007352434918431132,
+                "delay": 0.021283526781416907,
+                "burden": -0.025176366144286838,
+                "positive_integral": 0.07352170870127166,
+                "negative_integral": 0.06617614979756588,
+                "signed_integral": 0.007345558903705784,
+                "warmup_and_cap_gap": -0.06610315411862672,
+                "positive_upper_bound_over_budget": 1,
+                "interaction": 3.14875,
+                "coverage": 0.9029376736800317,
+                "usable_seconds": 2.843125,
+                "score_per_usable_second": 0.0025836215093271602,
+                "duration": 0.9425000000000001,
+                "longest": 0.726875,
+                "base": 0.6678422801637144,
+                "controls": -1.9861110048358532,
+                "hard_cost": -5.75,
+                "total_return": -7.140916289753708,
+                "blue_collision": 0.08125,
+                "blue_offroad": 0.03125,
+                "blue_rule": 0.0,
+                "team_contact": 0.325,
+                "red_success": 0.7,
+                "red_speed": 3.9488484651270532,
+                "blue_speed": 3.738267116308583,
+                "blue_completion": 0.6619505780276743,
+                "red_arrival": 7.261061946902656,
+                "steps": 68.34375
+              },
+              "3": {
+                "n": 160,
+                "reward": 0.058471864748388454,
+                "delay": 0.11817850727444157,
+                "burden": -0.07994029604068945,
+                "positive_integral": 0.11126471548457474,
+                "negative_integral": 0.05252184920467248,
+                "signed_integral": 0.05874286627990226,
+                "warmup_and_cap_gap": -0.5289567980506341,
+                "positive_upper_bound_over_budget": 4,
+                "interaction": 3.1343750000000004,
+                "coverage": 0.8634097706879362,
+                "usable_seconds": 2.70625,
+                "score_per_usable_second": 0.02170637091174217,
+                "duration": 1.0818750000000001,
+                "longest": 0.8393750000000001,
+                "base": 0.7244959681173329,
+                "controls": -2.47386780698378,
+                "hard_cost": -10.625,
+                "total_return": -12.63214997411806,
+                "blue_collision": 0.1875,
+                "blue_offroad": 0.01875,
+                "blue_rule": 0.00625,
+                "team_contact": 0.325,
+                "red_success": 0.7,
+                "red_speed": 3.9488484651270532,
+                "blue_speed": 3.9538239785427884,
+                "blue_completion": 0.6711611942135598,
+                "red_arrival": 7.261061946902656,
+                "steps": 68.34375
+              }
+            },
+            "safety": {
+              "collision": 0.2125,
+              "offroad": 0.05,
+              "road_rule": 0.00625
+            }
+          }
+        }
+      }
+    },
+    "R5a_outcome10_u100": {
+      "completed_round": 95,
+      "asof": "2026-11-08T06:51:56.316962+00:00",
+      "committed_episodes": 3040,
+      "excluded_or_uncommitted": 22,
+      "session": {
+        "actual_counters": {
+          "setup": 46893,
+          "total": 283731,
+          "train": 242651,
+          "train_decision": 202685,
+          "validation": 41080,
+          "validation_decision": 34153
+        },
+        "at": "2026-11-08T06:51:56.517562+00:00",
+        "collecting_team": "B",
+        "completed_round": 95,
+        "in_progress_round": 95,
+        "method": "off",
+        "segment_id": "8b1ef0cf5c754c7795028938fd0a0583",
+        "started_at": "2026-11-08T03:05:03.506923+00:00",
+        "status": "SAFE_AB_BOUNDARY"
+      },
+      "checkpoint": {
+        "checkpoint": "boundaries/round_00000095_68f1b901ee0f.pt",
+        "completed_round": 95,
+        "identity": {
+          "algorithm": "mappo",
+          "case_manifest_sha256": "64898e3f1c9e3a3edd213c2a4769a70154b7ca47c33f3d823dd6e3a4ccde185b",
+          "config_sha256": "2c9a7d07e0055a398b70af9ffb95afcc2ff05a20166d11aae8e13ba9613eba79",
+          "model_spec": {
+            "action_dim": 2,
+            "critic_num_agents": 4,
+            "learner_ids": [
+              2,
+              3
+            ],
+            "obs_dim": 20,
+            "physical_ids": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "state_dim": 80
+          },
+          "protocol": "mut_mappo_four_car_20_2_v1",
+          "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+          "scenario_hashes": {
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0l.json": "8f5bc26f863190584f3f3ee5ef9eeabe03464117cfdc8476b750a7b630900332",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0r.json": "f42474dc6904b6bfc59d6b3563a56de6baca83fcd487cdecc3b960ecca44e5d2",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0l.json": "3194485a62479a7ec9eb7fb8edd5bbb7bea319db359a7ea6dc73c77faa255a36",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0r.json": "ec5f9b52b2bf166d0896d6abb81114630239ef440e7e5bd8d0076cd3eb9833e8",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0l.json": "2d530107ade6d51d39e761681aed8e31b0450f9252de003e8ecfbae9cd43800b",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0r.json": "78c88f13ddda9c2922bca2dbc98247596bdd9b5baef95581931e0bac4ab6f21e",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0l.json": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+            "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0r.json": "072e339165429689e764872e0f69acd60c5aa0dc6b8802bcc82d1f2b968a612f"
+          },
+          "source_hashes": {
+            "@carla/agents/navigation/controller.py": "35dbabac3b7bf69fd7f1272fcd8af97aa7797a537af2e58a31d9d6b67c1f3a0e",
+            "@carla/agents/tools/misc.py": "8b3ecbd8e07116dc1617114fc2fe03f84fbac2ad323a652c438db8e12b1b49f5",
+            "environment/base_reward_v4.py": "57ddbf702ced7b98fb33d6175143644936744859964c2def4a26a717b631850e",
+            "environment/base_reward_v5.py": "3e3032bfca75fdb8acfa6b59878e57b8dbd3665d4826a3c7a1733e140627665f",
+            "environment/base_reward_v6.py": "f39af641933a12f3cfac92589dcad402c07390bf1fbc2ad29afd109a088f8bbf",
+            "environment/carla_multi_agent_env.py": "af03ff79e8f89230faddaf4bfefb71e9a97cf1df3158b067f30c8e0ff0c7b203",
+            "environment/frozen_lane_traffic.py": "4b133dbaea4aa22366f296fd88058e69b15b18495b530922f4857a98215c891b",
+            "environment/mut_mappo_critical_reward.py": "cbea0d8e2cfbb0975b716262177c0266b0695252ec8ef8dee86a0094fb1f491e",
+            "environment/mut_mappo_critical_reward_v2.py": "495f6ab3b6762bb0b3691a0dc2b9149947c38186a9bdb043656964022d05b490",
+            "environment/mut_mappo_critical_reward_v3.py": "b7b4ad1a56da351382a58b7972abc22e7b0ede73278b06bb51badd06e75b7c01",
+            "environment/mut_mappo_critical_reward_v4.py": "8fba81e66d2b2d52301c2e2457a7f90bf5d295ced7cd212ba9d70d0c38cc456f",
+            "environment/mut_mappo_efficiency_reward.py": "c5643e40d3169f604358d0238e7c0dc7cde2ac64e5ce34cbb2e8b6159e714d03",
+            "environment/mut_mappo_env.py": "a98e3dc977ffd8aefa216a6e305e7e7e3249f886a0336e08e18eccf5dcb893f6",
+            "environment/mut_mappo_events.py": "6f44ff9c3ce0c2b33e1db3881abd6db2a36cff5f8a388a1a6a2f347b54160ba9",
+            "environment/mut_mappo_outcome_reward_v5.py": "80456cdcd237905fab0095f5b42879722b8589246a321c44f04cad1da3964c2c",
+            "environment/route_pace_reward.py": "a9b9a14b107013b010c730c520d90027046dfd5f662a27bbf8b2837a426a2fe5",
+            "evaluation/critical_interaction_metrics.py": "184f3760647ebafa294af0ef4cc2a63d7dbfebcb22296bfcdd575db7bd840384",
+            "evaluation/driving_policy_metrics.py": "ba8971d09e48ac22a6f2b01fc3d48e78d5f3c62c5e0ff59a88b43656ceec4bb4",
+            "evaluation/evaluate_mut_mappo.py": "792bc1252efebb7098f1ea321fca40fbb40d5f84796dc91d66837141711b370a",
+            "evaluation/evaluate_r5_counterfactual.py": "ede0670b75c8d72902a4d7652ed520f80fcf2c5aea5bf9c75367bac2385514ea",
+            "evaluation/mut_mappo_metrics.py": "e643dd30227961e5535e4ca45f935af6370eafb9abaf9431a214c73353ca2085",
+            "evaluation/mut_mappo_selection.py": "350cc698f9fc95ab8cf9bccf415fff459ea8f1cffd1e316cff4b8468d7022f94",
+            "evaluation/r4_risk_metrics.py": "81114b25bb5a31938262ad293b02f7e0d411e0804ce26325fba720ddebbe7cc1",
+            "evaluation/r5_outcome_metrics.py": "1353199d6720d1a4530675e5d667bd2ded53c53f6eaa0c3aa7235b9d0993e08d",
+            "models/actor_critic.py": "f37b7358a77d682b010b3e75c267390b22a7cee6b5106bb01559295386bfaf80",
+            "models/mut_mappo_critics.py": "12bcb4f05920a0b86128b6e48411f1df72a01d138a23ec1b1b1ae699bc2a55d7",
+            "training/action_protocol.py": "7135ebfd5960ce3826beba63f9ae62d66bc89eb6b41fc2992c10f721562472f5",
+            "training/checkpoint_protocol.py": "e1bd19f6723442d22b44e8cfad7c1b1731147ae8f52523e31ceaeaf1884f0d63",
+            "training/first_point_scenarios.py": "4739e67584c4bc5bedf5a2a88be9c05ff5d916a52a8622a6be1389a8a2d4b15b",
+            "training/mut_mappo_checkpoint.py": "292db9bcc0ca1ce10acc9c136386ab2939e7a2327d279ec9bcc353f954d84043",
+            "training/mut_mappo_config.py": "570c75b140c917ec827f6bb742fbce4a21d16e1379ead9250f3adc062d6e1d2f",
+            "training/mut_mappo_learning.py": "55c302119a8c30a9b0e74b71caa4a6a93a377444e5e2f23d38e8acd06d0c6293",
+            "training/mutual_distillation.py": "61d93718d7748cefc7b9afb4b776a33b0f95f3d507540d9eb9853d713e40558a",
+            "training/train_mut_mappo.py": "fa05ba7630f91be22093f8578b9c69bb7adb88551ad670bb2266b391c22f0bc6",
+            "training/train_no_rllib_mappo_robust_v2.py": "5c077ac4f2c91b6573fdc4acb4e70e1a9756ce8a9624cffd3814fb7b3811cd32",
+            "training/value_normalization.py": "46f16d1b937eedcafb8489d90f061b709b86ac76ab71200a50c4a463640e5aa1",
+            "utils/adversarial_metrics.py": "e8cbf2fe88d77592c211b6c14865930a0128eaa1952fb68bfded1623671b5f64",
+            "utils/mut_mappo_session.py": "4b2137758b5bb8a805ebd32f7f078227d1bf604a0be474581b50639a16a0667b",
+            "utils/prepare_r5_reference.py": "a907eb4f077bb05c9532a739214337c6fa3cbd3de136dd335284b2ffbcdef0ea"
+          },
+          "task_contract_sha256": "c103a0c96c1f78a223a9fdfb5efc70b5815063437fb64dde6a841b45e81c4820",
+          "team_count": 2,
+          "training_reference_hashes": {
+            "gate_crossing_eastbound_front_left_r0l": "832e0c78f6ca3ef93b91166474a2cc8b35e5d03df34a25e77137c69ee8fbf3f9",
+            "gate_crossing_eastbound_front_left_r0r": "eb8665d51d0db3e04499b04f18994dc781b1411fd9899f9509acdf5e8a7b518e",
+            "gate_crossing_eastbound_front_right_r0l": "2aaa79f230ae59f4b028ba73120db6908b52eaa4ce931c8283297717a3cd01f3",
+            "gate_crossing_eastbound_front_right_r0r": "4f7256827f1eb3f71bccdf09e26ed5119d43b6007bd3b70ad8734a599666a21b",
+            "gate_crossing_northbound_front_left_r0l": "5750df180ad38d5762b9e0a8512348273d36689faf2b8be49e48ad656631ee42",
+            "gate_crossing_northbound_front_left_r0r": "d2b7dc467d97277aa7d4434f645111c959cebfb480cc586fb511b39272f760a4",
+            "gate_crossing_northbound_front_right_r0l": "66ba14eef7eea8bb2d3ef463096a19ed26fbbf2557f5b2fd23e1d75f82442c6f",
+            "gate_crossing_northbound_front_right_r0r": "279de1f7ce2d672da980ff152bd2b577d5d3f3e4e65d6467a6e7012f2ea8c4ba",
+            "gate_crossing_southbound_front_left_r0l": "dbb6c985bf8d0a03777bd19b215eab5a0296ce826f41098094c2bfef654a54a7",
+            "gate_crossing_southbound_front_left_r0r": "2e877aa0a32d659de6aef4ab0176f9a1d649a3933ce489a554a7790943375210",
+            "gate_crossing_southbound_front_right_r0l": "bbad2e2f13f64403f73d8d3e1c5c9abf30ad9ded606299ecb68130eb4c4be7dc",
+            "gate_crossing_southbound_front_right_r0r": "dea70f27191f3af5e13c96e2730de3884d62f5767f2a4ce7fb4151f29e3572ba",
+            "gate_crossing_westbound_front_left_r0l": "2d8d681bc6bac4f9522fc45c021463c0c23310ab37e6f5175cdb73a35e65a4d7",
+            "gate_crossing_westbound_front_left_r0r": "ceeef341c9f6d847fe861730e8e5a6096a627e56b2c8ef1d4e502e6300e22440",
+            "gate_crossing_westbound_front_right_r0l": "1d3d509a6c8c44ba9da814e8d82f222bd94daecd75fa8b6c5f271891a8625e9c",
+            "gate_crossing_westbound_front_right_r0r": "bb82ff6aba6ed3d9e9f99088440ce01eb10be4fd6d2f42bfada83a60e5da3eaf",
+            "gate_sequential_eastbound_front_both_r0l": "337e54e2d67666a99e015ed8902d3571f7afc363aa0f0e2e6e8f9f4c53b18d41",
+            "gate_sequential_eastbound_front_both_r0r": "720a72e25cceb3260d20b90a08184d3646b5d274459005d4e5d69f57d90f5377",
+            "gate_sequential_northbound_front_both_r0l": "f32e945f05f2aa5c6f946af641192e090b5a6ec431549068f3745effed2551f9",
+            "gate_sequential_northbound_front_both_r0r": "d064b2cb690b95c891c142ea4266f58e66a5ff30cf132087976d21da94e4cea1",
+            "gate_sequential_southbound_front_both_r0l": "291a373db14bcb53943496d88c2bf08b5ea66c2025904dbce8615ed59691419a",
+            "gate_sequential_southbound_front_both_r0r": "86eb4a3ad9cc93b1374f55cff0c60385353a3a1ccd5ee8276d3bd1ae1864af45",
+            "gate_sequential_westbound_front_both_r0l": "85852c991f896714875ad60190450ecf17a62ef177f016cac2e9ae3cbdd18d24",
+            "gate_sequential_westbound_front_both_r0r": "6ec7653f55931b72289af2db039202475578c4f16c14e7298474b60cde646231",
+            "train_crossing_eastbound_front_left_r0l": "9d1004378f70396af6310f18df4f4248b0e0127df72cf66dd3bb1c6fde5828df",
+            "train_crossing_eastbound_front_left_r0r": "84eda546591b63223325ba2e7796072c5f6d98ad93503473fbbfdb21c8db8e0d",
+            "train_crossing_eastbound_front_right_r0l": "68988b0e2ec091dc56f3a7b5b6bf998d6ec65bb645a40a8164632274e3e48472",
+            "train_crossing_eastbound_front_right_r0r": "920b8662ee892be88cced7d5ac325212ab42e26864982ffc5b3c3fb263873e7e",
+            "train_crossing_northbound_front_left_r0l": "16141057018c005b8d8f7e1cfa61274f73fbe34f489c7d9482ec8e2e6f9434cb",
+            "train_crossing_northbound_front_left_r0r": "9a537229bc4fdc291d56075a4229f561d8d4d7f9e9eef9bbf583a2a9448c86c7",
+            "train_crossing_northbound_front_right_r0l": "9a4bf7ab82f2ff349427e87e2e0854b188ce515e30e51969de5747880cd3a915",
+            "train_crossing_northbound_front_right_r0r": "83c817a106e22f1ce6f454e513933aca12613a2ad9d4e4dbe44bf8aa51ef2042",
+            "train_crossing_southbound_front_left_r0l": "8cf94c893064bb241822eada9e74175f3a475a24bc1908141afbb9a1e2d6b8ec",
+            "train_crossing_southbound_front_left_r0r": "471663d6a93aa6fbe881259c86d54978d67d6a680ce55c76b9ef7db8f87c1af8",
+            "train_crossing_southbound_front_right_r0l": "47a8f1f3f46014b5c406d7c137a3582511d59e507cd76435daf945e5e00195ab",
+            "train_crossing_southbound_front_right_r0r": "cf61965c458c722c5dd2b91042b8ae7a35fd91bd640568e08366e1b1b6c82be4",
+            "train_crossing_westbound_front_left_r0l": "97a68f72fd4b36565fc03c95ff47b02daa5f8c07dbbb30cca7788b687aa099e5",
+            "train_crossing_westbound_front_left_r0r": "6e57f173bfa09ee7d15da2909ec9c58c74c3f08c2654edc043619c7932c7e2c1",
+            "train_crossing_westbound_front_right_r0l": "d94190ae7598aba4440dc2978996fc718cce51d2434764f12c91f1b036f8d4a7",
+            "train_crossing_westbound_front_right_r0r": "c61ecf74e0e80823444d5bbe384735107a27cc1c27f251227006f14b914e57c7",
+            "train_sequential_eastbound_front_both_r0l": "10860471b7f27cbac6164a30e5665bde2349bdf50d8750fd6154a1c3acc95f0e",
+            "train_sequential_eastbound_front_both_r0r": "29d79f9e3c58053a3959fca3427fc417d3e09f6ad730d3cfb5cb3f1c67a8f048",
+            "train_sequential_northbound_front_both_r0l": "8720349cd08a3ca261f9cee4b84c2e69b07b48509d4ac906dc8a10328a6315d8",
+            "train_sequential_northbound_front_both_r0r": "40928b8970c49c4af0bdf6e11006d0263464a6f200c5fc9cb39031bbc579b31b",
+            "train_sequential_southbound_front_both_r0l": "0a2fd954bcc37866c9789b3c9dce6d8275d433372bcb9452793b22492ddbb5b4",
+            "train_sequential_southbound_front_both_r0r": "b5db830ee39b84d1573fb778dfb906997ab6cd02b501d0671a6b4a1a2a96a3b2",
+            "train_sequential_westbound_front_both_r0l": "e796e6f5f4654726dce8f9455094aae84c4502de4312fa233b36b3aebda674d4",
+            "train_sequential_westbound_front_both_r0r": "aba9262514d3de423a8c63701a55d4b74d724883013f6761cc539b9e2e06864b"
+          }
+        },
+        "saved_at": "2026-11-08T06:51:56.421037+00:00",
+        "schema_version": "mut_mappo_complete_team_boundary_v2",
+        "sha256": "448d6f1b4e20c760909dc7fa1e448bf71f61893966e2359ea3fea0dc4a966364"
+      },
+      "config": {
+        "algorithm": "mappo",
+        "case_manifest": "data/mut_mappo/interaction_small_v4/cases.json",
+        "communication": {
+          "enabled": false,
+          "message_dim": 8,
+          "status": "planned_not_implemented"
+        },
+        "device": "cpu",
+        "diagnostic_authorization": {
+          "formal_red_qualification": false,
+          "live_execution": true,
+          "source": "User authorized overnight R5-first reward iteration, 100 updates per version and serial evaluation on 2026-11-08",
+          "weak_red_diagnostic_only": true
+        },
+        "evaluation": {
+          "max_invalid_retries": 1,
+          "mode": "deterministic",
+          "selection_metric": "r5_outcome_descriptive_only"
+        },
+        "host": "127.0.0.1",
+        "learning": {
+          "anchor_beta": 0.0,
+          "beta": 0.0,
+          "clip_eps": 0.15,
+          "distillation": {
+            "direction": "student_to_teacher",
+            "gate_variant": "evidence",
+            "reduction": "all_valid"
+          },
+          "ent_coef": 0.01,
+          "gae_lambda": 0.95,
+          "gamma": 0.999,
+          "hidden_dim": 128,
+          "init_log_std": -0.5,
+          "lr_actor": 0.0003,
+          "lr_critic": 0.0003,
+          "max_grad_norm": 0.5,
+          "max_log_std": 0.0,
+          "min_log_std": -2.0,
+          "minibatch_size": 128,
+          "ppo_epochs": 2,
+          "target_kl": 0.02
+        },
+        "method": "off",
+        "model_spec": {
+          "action_dim": 2,
+          "critic_num_agents": 4,
+          "learner_ids": [
+            2,
+            3
+          ],
+          "obs_dim": 20,
+          "physical_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "state_dim": 80
+        },
+        "mutual": {
+          "gate_max_bad_rate": 0.125,
+          "gate_min_cases": 8,
+          "gate_min_q_gap": 0.25,
+          "min_efficiency_gap": 0.02,
+          "quality_metric": "critical",
+          "refresh_rounds": 10,
+          "refresh_train_ticks": 20000,
+          "schedule_clock": "train_ticks",
+          "warmup_rounds": 5,
+          "warmup_train_ticks": 10000
+        },
+        "port": 2000,
+        "protocol": "mut_mappo_four_car_20_2_v1",
+        "red_checkpoint": {
+          "capability_status": "NOT_QUALIFIED_diagnostic_candidate_only",
+          "path": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\diagnostics\\base_driving_vnext_20261020\\long_s42_u600_v1\\u001000.pt",
+          "sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a"
+        },
+        "research_status": "candidate",
+        "run": {
+          "cost_down": 0.95,
+          "cost_max": 10.0,
+          "cost_min": 1.0,
+          "cost_target": 0.05,
+          "cost_up": 1.2,
+          "episodes_per_team_update": 16,
+          "lr_horizon_rounds": 100,
+          "lr_min_factor": 0.1,
+          "lr_schedule": "linear",
+          "rounds": 100,
+          "schedule_clock": "rounds",
+          "stop_rule": "rounds",
+          "train_tick_budget": 100000000
+        },
+        "schema_version": "mut_mappo_config_v1",
+        "seed": 42,
+        "task": {
+          "c1_controller": "lane_pid_v1",
+          "cameras_enabled": false,
+          "follow_spectator": true,
+          "max_steps": 500,
+          "reward": {
+            "base_driving_weight": 0.3,
+            "birth_protect_secs": 3.0,
+            "cap_slowdown": 3,
+            "free_flow_target_mps": 2.5,
+            "overspeed_start_mps": 4.1666666667,
+            "reward_slowdown": 5.0,
+            "reward_timeout": 15.0,
+            "safety_lambda": 1.0,
+            "slowdown_drop_thresh": 2.0,
+            "slowdown_persistence_secs": 0.5,
+            "slowdown_window_secs": 2.0,
+            "threat_cap_per_episode": 20.0
+          },
+          "reward_profile": "individual_red_outcome_v5",
+          "stall": {
+            "enabled": true,
+            "seconds": 3.0,
+            "speed_mps": 0.2
+          },
+          "team_reward": {
+            "burden_deadband": 0.02,
+            "burden_scale": 0.2,
+            "collision_scale": 1.0,
+            "control_weight": 0.3,
+            "delay_fraction": 0.7,
+            "filter_tau_s": 0.3,
+            "gamma": 0.999,
+            "interaction_front_m": 30.0,
+            "interaction_side_m": 2.0,
+            "lag_s": 1.0,
+            "min_reference_samples": 3,
+            "noise_sigma": 2.0,
+            "outcome_budget": 8.0,
+            "outcome_weight": 10.0,
+            "progress_deadband": 0.01,
+            "progress_scale": 0.1,
+            "progress_weight": 0.03,
+            "reference_dir": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\references",
+            "warmup_s": 1.0
+          },
+          "timestep": 0.1
+        },
+        "team_count": 2,
+        "town": "Town05"
+      },
+      "reason": "# R5 首轮完整反馈与 R5a 单变量修改理由\n\n分析时间：2026-11-08，依据 R5_original_u100/analysis.json、training_u100_analysis.json 及原始评估回合。\n\n## 实际结果\nR5 首次完整训练100 updates、3200训练回合。主基线是核验与原始基础actor一致的base_u0，固定红车；A/B是同seed42下两条优化器流，不是独立训练种子。基础与候选selection均48/48有效，另外A/B各24场景×4替换模式=96回合，合计192策略替换回合；未接触完整四元组A14/24、B13/24，排除A10/B11组，必须报告排除带来的场景选择偏差。\n\n确定性selection中红车成功率A从54.2%升66.7%、B从50%升58.3%。团队碰撞率A16.7%降0%、B20.8%降12.5%，离路均从8.3%降0%。A仍有1/24规则违规。不同回放碰撞存在变化，替换评估none模式碰撞A12.5%、B25%，不能把一次零碰撞当可靠结论。\n\n无接触策略替换中，红车进度债联合变化的case均值A=-0.377秒，B=-1.377秒；按pair_id聚类后的均值A=-0.383、B=-0.959秒，95% bootstrap区间A[-3.363,2.585]、B[-2.314,-0.115]。B的驾驶负担联合变化case均值=-0.243、聚类均值=-0.289，95%区间[-0.489,-0.086]。负值表示红车受阻/负担更少。逐车边际未形成稳定正向作用。未接触且持续>=1秒的代理影响场景A2=1/A3=2/B2=2/B3=3。替换none模式样本参考覆盖A2=.947/A3=.967/B2=.941/B3=.924，说明本次评估不是完全没有可用参考，但代理不等同真实因果。\n\n训练末10轮每车平均outcome奖励A2=.0762/A3=.0474/B2=.00735/B3=.0585；基础行驶项约.63-.72、控制及软安全项约-1.99至-2.47、碰撞等硬成本更大。约74%-82%回合有非零对抗信号，正负抵消明显。训练信号不是完全缺失，而是小且不稳定，且没有转化成确定性策略的可靠干扰。前10轮到末10轮红车成功率上升，碰撞下降；后期KL变小同时存在LR线性衰减，不能据此断言数学收敛。EV仍约.09-.45。\n\n## 诊断和本次改动\nR5未达到对抗目的；更像形成安全行驶/减轻红车负担的局部策略。分量均值本身不能证明策略梯度由哪项主导，但与独立评估相结合，有理由先检验既有对抗信号量级不足的假设。\n\n本次只将既有outcome_weight由1提高为10。按旧轨迹净奖励0.05量级作粗略估计，10倍约0.5，可接近基础行驶项量级；这只是干预幅度依据，不是对新训练回报的预测，真实结果还受正预算截断及策略变化影响。保留outcome_budget=8、delay_fraction=.7、progress/control权重.03/.3、碰撞-50及其他成本；不新增事件奖金、距离奖金或奖励分量。训练和评估结构保持相同。\n\n目的：以单变量对照判断提高对抗收益相对权重能否让蓝车持续影响红车，而非只优化自身行驶。若仅碰撞增加、仍无非接触配对效应，则本次改动不成功；若交互消失、参考覆盖不足或奖励预算频繁封顶，需据实际轨迹再诊断，不机械继续加倍。每版从同一基础策略重新训练100 updates，避免混入旧奖励训练历史。\n\n## 判断方式与限制\n维持同一selection协议、逐车与联合策略替换、非接触持续影响与完整安全报告。测试集尚未使用，不根据测试集调参。只有出现可信影响候选后才冻结并做heldout验证；单seed工程结果不代表论文级泛化证明。红车仍为未正式资格核验的诊断候选，当前结果只支持相应实验范围。\n\n当前聊天智能体在审阅本版全部反馈后指定这次改动；执行脚本只跑本次指定实验，下一版仍需再次分析，不预排扫描。\n\n\n唯一参数变更：outcome_weight: 1.0 -> 10.0。从相同未对抗训练基础策略重新初始化，B0 seed42、100updates、LR horizon100。该参数由智能体审阅前版结果后指定，脚本不决定下一组参数。\n",
+      "source_count": 265,
+      "snapshot_mismatch": [],
+      "analysis": null,
+      "windows": {
+        "76-85": {
+          "A": {
+            "roles": {
+              "2": {
+                "n": 160,
+                "reward": 0.36737877480052,
+                "delay": 0.032241748714867076,
+                "burden": 0.053200432757015394,
+                "positive_integral": 0.08005822747797531,
+                "negative_integral": 0.04152887355046373,
+                "signed_integral": 0.03852935392751158,
+                "warmup_and_cap_gap": -0.01791476447459578,
+                "positive_upper_bound_over_budget": 0,
+                "interaction": 2.818750000000001,
+                "coverage": 0.9090909090909091,
+                "usable_seconds": 2.5625,
+                "score_per_usable_second": 0.015035845435126465,
+                "duration": 0.9212500000000001,
+                "longest": 0.7275,
+                "base": 0.8022334117702095,
+                "controls": -2.6014497982140554,
+                "hard_cost": -5.0,
+                "total_return": -6.501837611643326,
+                "blue_collision": 0.06875,
+                "blue_offroad": 0.00625,
+                "blue_rule": 0.025,
+                "team_contact": 0.3,
+                "red_success": 0.6625,
+                "red_speed": 4.016761066194891,
+                "blue_speed": 4.939494203695554,
+                "blue_completion": 0.7269417877808517,
+                "red_arrival": 7.344651162790698,
+                "steps": 69.7
+              },
+              "3": {
+                "n": 160,
+                "reward": 0.4620648176797696,
+                "delay": 0.05082218713399342,
+                "burden": 0.036955600260381846,
+                "positive_integral": 0.11535122585284328,
+                "negative_integral": 0.06868901478093334,
+                "signed_integral": 0.04666221107190995,
+                "warmup_and_cap_gap": -0.004557293039329946,
+                "positive_upper_bound_over_budget": 2,
+                "interaction": 3.4099999999999993,
+                "coverage": 0.8198313782991202,
+                "usable_seconds": 2.7956250000000002,
+                "score_per_usable_second": 0.016691155313001544,
+                "duration": 1.0562500000000004,
+                "longest": 0.806875,
+                "base": 0.6975771106009845,
+                "controls": -2.927630880037264,
+                "hard_cost": -13.125,
+                "total_return": -15.29048895175651,
+                "blue_collision": 0.175,
+                "blue_offroad": 0.0375,
+                "blue_rule": 0.05,
+                "team_contact": 0.3,
+                "red_success": 0.6625,
+                "red_speed": 4.016761066194891,
+                "blue_speed": 3.7674715078865844,
+                "blue_completion": 0.6599066928744071,
+                "red_arrival": 7.344651162790698,
+                "steps": 69.7
+              }
+            },
+            "safety": {
+              "collision": 0.2,
+              "offroad": 0.04375,
+              "road_rule": 0.075
+            }
+          },
+          "B": {
+            "roles": {
+              "2": {
+                "n": 160,
+                "reward": 0.08944677456665343,
+                "delay": 0.02231643646596674,
+                "burden": -0.017857057361288255,
+                "positive_integral": 0.08087206418255044,
+                "negative_integral": 0.07060767586476022,
+                "signed_integral": 0.010264388317790224,
+                "warmup_and_cap_gap": -0.013197108611248815,
+                "positive_upper_bound_over_budget": 1,
+                "interaction": 3.151875,
+                "coverage": 0.8903430497719611,
+                "usable_seconds": 2.80625,
+                "score_per_usable_second": 0.003657688487408545,
+                "duration": 0.8975000000000002,
+                "longest": 0.7075,
+                "base": 0.6577051164302906,
+                "controls": -2.0479512684805723,
+                "hard_cost": -7.1875,
+                "total_return": -8.67829937748363,
+                "blue_collision": 0.1375,
+                "blue_offroad": 0.00625,
+                "blue_rule": 0.0,
+                "team_contact": 0.3625,
+                "red_success": 0.65,
+                "red_speed": 3.97812548859488,
+                "blue_speed": 3.836152563948141,
+                "blue_completion": 0.6627707016364383,
+                "red_arrival": 7.267942583732058,
+                "steps": 66.2625
+              },
+              "3": {
+                "n": 160,
+                "reward": 0.3407750922103381,
+                "delay": 0.06633221559423905,
+                "burden": -0.043350163701458576,
+                "positive_integral": 0.08965172665848066,
+                "negative_integral": 0.05622422485295091,
+                "signed_integral": 0.03342750180552975,
+                "warmup_and_cap_gap": 0.006500074155040558,
+                "positive_upper_bound_over_budget": 1,
+                "interaction": 3.0431250000000003,
+                "coverage": 0.8490449784349969,
+                "usable_seconds": 2.58375,
+                "score_per_usable_second": 0.012937591409977646,
+                "duration": 0.9556250000000002,
+                "longest": 0.706875,
+                "base": 0.6286360889343524,
+                "controls": -2.407412809399494,
+                "hard_cost": -11.25,
+                "total_return": -12.863001628254803,
+                "blue_collision": 0.1375,
+                "blue_offroad": 0.0375,
+                "blue_rule": 0.05,
+                "team_contact": 0.3625,
+                "red_success": 0.65,
+                "red_speed": 3.97812548859488,
+                "blue_speed": 3.9206841441315152,
+                "blue_completion": 0.6291258432858802,
+                "red_arrival": 7.267942583732058,
+                "steps": 66.2625
+              }
+            },
+            "safety": {
+              "collision": 0.21875,
+              "offroad": 0.04375,
+              "road_rule": 0.05
+            }
+          }
+        },
+        "86-95": {
+          "A": {
+            "roles": {
+              "2": {
+                "n": 160,
+                "reward": 0.3790972356592437,
+                "delay": 0.03307955988359099,
+                "burden": 0.056231532733724485,
+                "positive_integral": 0.07518398829085646,
+                "negative_integral": 0.03515883655222542,
+                "signed_integral": 0.04002515173863104,
+                "warmup_and_cap_gap": -0.02115428172706668,
+                "positive_upper_bound_over_budget": 2,
+                "interaction": 2.8068750000000007,
+                "coverage": 0.9049209530171454,
+                "usable_seconds": 2.54,
+                "score_per_usable_second": 0.01575793375536655,
+                "duration": 0.9187500000000002,
+                "longest": 0.7243750000000001,
+                "base": 0.7491590226041132,
+                "controls": -2.714892507880867,
+                "hard_cost": -6.5625,
+                "total_return": -8.20663624961751,
+                "blue_collision": 0.09375,
+                "blue_offroad": 0.01875,
+                "blue_rule": 0.01875,
+                "team_contact": 0.3375,
+                "red_success": 0.66875,
+                "red_speed": 4.014650419466879,
+                "blue_speed": 4.8416523516030985,
+                "blue_completion": 0.7078449912335015,
+                "red_arrival": 7.419069767441861,
+                "steps": 69.1125
+              },
+              "3": {
+                "n": 160,
+                "reward": 0.7749084234020965,
+                "delay": 0.10787101014212837,
+                "burden": 0.01647532610035718,
+                "positive_integral": 0.12725140819360564,
+                "negative_integral": 0.04679910326400864,
+                "signed_integral": 0.080452304929597,
+                "warmup_and_cap_gap": -0.029614625893873425,
+                "positive_upper_bound_over_budget": 4,
+                "interaction": 3.100625,
+                "coverage": 0.8726063293690788,
+                "usable_seconds": 2.7056250000000004,
+                "score_per_usable_second": 0.029735201637180676,
+                "duration": 1.1412500000000003,
+                "longest": 0.8525,
+                "base": 0.6691010355786724,
+                "controls": -2.5700285468178343,
+                "hard_cost": -14.0625,
+                "total_return": -15.653519087837065,
+                "blue_collision": 0.2,
+                "blue_offroad": 0.0625,
+                "blue_rule": 0.01875,
+                "team_contact": 0.3375,
+                "red_success": 0.66875,
+                "red_speed": 4.014650419466879,
+                "blue_speed": 3.7278813279894343,
+                "blue_completion": 0.6274537436344757,
+                "red_arrival": 7.419069767441861,
+                "steps": 69.1125
+              }
+            },
+            "safety": {
+              "collision": 0.21875,
+              "offroad": 0.08125,
+              "road_rule": 0.0375
+            }
+          },
+          "B": {
+            "roles": {
+              "2": {
+                "n": 160,
+                "reward": -0.10351028566796174,
+                "delay": 0.00048675145016761136,
+                "burden": -0.031271230318090266,
+                "positive_integral": 0.05847831463818236,
+                "negative_integral": 0.0675189577184921,
+                "signed_integral": -0.00904064308030975,
+                "warmup_and_cap_gap": -0.013103854864864248,
+                "positive_upper_bound_over_budget": 1,
+                "interaction": 3.0125000000000006,
+                "coverage": 0.895850622406639,
+                "usable_seconds": 2.69875,
+                "score_per_usable_second": -0.0033499372229031034,
+                "duration": 0.8400000000000001,
+                "longest": 0.639375,
+                "base": 0.717020464920029,
+                "controls": -2.3389148555266366,
+                "hard_cost": -9.6875,
+                "total_return": -11.497904676274569,
+                "blue_collision": 0.125,
+                "blue_offroad": 0.01875,
+                "blue_rule": 0.05,
+                "team_contact": 0.29375,
+                "red_success": 0.725,
+                "red_speed": 4.132832482543906,
+                "blue_speed": 4.311841844352549,
+                "blue_completion": 0.6957548287473131,
+                "red_arrival": 7.172103004291846,
+                "steps": 69.4125
+              },
+              "3": {
+                "n": 160,
+                "reward": 0.20843181804568506,
+                "delay": 0.05415295324666952,
+                "burden": -0.056972001800800955,
+                "positive_integral": 0.08297325061283954,
+                "negative_integral": 0.06215778388041117,
+                "signed_integral": 0.020815466732428376,
+                "warmup_and_cap_gap": 0.0002771507214013036,
+                "positive_upper_bound_over_budget": 2,
+                "interaction": 2.948125,
+                "coverage": 0.8683485266058936,
+                "usable_seconds": 2.56,
+                "score_per_usable_second": 0.008131041692354837,
+                "duration": 0.9337500000000002,
+                "longest": 0.696875,
+                "base": 0.6768293700066924,
+                "controls": -2.5983571790845477,
+                "hard_cost": -10.3125,
+                "total_return": -12.20559599103217,
+                "blue_collision": 0.11875,
+                "blue_offroad": 0.05,
+                "blue_rule": 0.0375,
+                "team_contact": 0.29375,
+                "red_success": 0.725,
+                "red_speed": 4.132832482543906,
+                "blue_speed": 4.066595865056624,
+                "blue_completion": 0.66056612671485,
+                "red_arrival": 7.172103004291846,
+                "steps": 69.4125
+              }
+            },
+            "safety": {
+              "collision": 0.1625,
+              "offroad": 0.06875,
+              "road_rule": 0.0875
+            }
+          }
+        }
+      }
+    }
+  },
+  "resume": {
+    "actor_critic_optimizer_rng_restored_by_common_trainer": true,
+    "at": "2026-11-08T11:04:33.546597+08:00",
+    "caveat": "event strongly supports system commit exhaustion; no fresh engine crash stack recovered",
+    "checkpoint": "boundaries/round_00000026_e9ef3b02b199.pt",
+    "completed_round": 26,
+    "controller_pid": 16732,
+    "identity_verified": true,
+    "interruption": "CARLA disappeared; Windows event 2004 at 10:55:30 reported virtual memory shortage, CARLA commit 50929131520 bytes",
+    "lr_horizon": 100,
+    "reward_changed": false,
+    "sha256": "c4f173eb3be678307976d1f4084a579defedd901d229c473322ad1bb3ed8475c",
+    "target_updates": 100,
+    "version": "R5a_outcome10_u100"
+  },
+  "memory": {
+    "at": "2026-11-08T14:53:15.069506+08:00",
+    "carla": [
+      {
+        "Id": 25468,
+        "ProcessName": "CarlaUE4-Win64-Shipping",
+        "PrivateMemorySize64": 5790404608,
+        "WorkingSet64": 795414528
+      }
+    ],
+    "system_memory_load_percent": 91,
+    "physical_total_bytes": 16788729856,
+    "physical_available_bytes": 1473490944,
+    "windows_total_pagefile_capacity_bytes": 61898608640,
+    "windows_available_pagefile_capacity_bytes": 35799552000
+  },
+  "interruption": {
+    "checkpoint_manifest.json": {
+      "checkpoint": "boundaries/round_00000026_e9ef3b02b199.pt",
+      "completed_round": 26,
+      "identity": {
+        "algorithm": "mappo",
+        "case_manifest_sha256": "64898e3f1c9e3a3edd213c2a4769a70154b7ca47c33f3d823dd6e3a4ccde185b",
+        "config_sha256": "2c9a7d07e0055a398b70af9ffb95afcc2ff05a20166d11aae8e13ba9613eba79",
+        "model_spec": {
+          "action_dim": 2,
+          "critic_num_agents": 4,
+          "learner_ids": [
+            2,
+            3
+          ],
+          "obs_dim": 20,
+          "physical_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "state_dim": 80
+        },
+        "protocol": "mut_mappo_four_car_20_2_v1",
+        "red_sha256": "0ac714a5172621cb1b716604bd69dd3a32dfaa57d5e44678eae7815195d6981a",
+        "scenario_hashes": {
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0l.json": "8f5bc26f863190584f3f3ee5ef9eeabe03464117cfdc8476b750a7b630900332",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_eastbound_rolling_z00_a0r.json": "f42474dc6904b6bfc59d6b3563a56de6baca83fcd487cdecc3b960ecca44e5d2",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0l.json": "3194485a62479a7ec9eb7fb8edd5bbb7bea319db359a7ea6dc73c77faa255a36",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_northbound_rolling_z00_a0r.json": "ec5f9b52b2bf166d0896d6abb81114630239ef440e7e5bd8d0076cd3eb9833e8",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0l.json": "2d530107ade6d51d39e761681aed8e31b0450f9252de003e8ecfbae9cd43800b",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_southbound_rolling_z00_a0r.json": "78c88f13ddda9c2922bca2dbc98247596bdd9b5baef95581931e0bac4ab6f21e",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0l.json": "7db31a35b3dd50938bee9f46fb6fa69623cc624c5985e70e86e9799d8711016f",
+          "data/training_scenarios_town05_base_vnext_v1/scenario_bd1_westbound_rolling_z00_a0r.json": "072e339165429689e764872e0f69acd60c5aa0dc6b8802bcc82d1f2b968a612f"
+        },
+        "source_hashes": {
+          "@carla/agents/navigation/controller.py": "35dbabac3b7bf69fd7f1272fcd8af97aa7797a537af2e58a31d9d6b67c1f3a0e",
+          "@carla/agents/tools/misc.py": "8b3ecbd8e07116dc1617114fc2fe03f84fbac2ad323a652c438db8e12b1b49f5",
+          "environment/base_reward_v4.py": "57ddbf702ced7b98fb33d6175143644936744859964c2def4a26a717b631850e",
+          "environment/base_reward_v5.py": "3e3032bfca75fdb8acfa6b59878e57b8dbd3665d4826a3c7a1733e140627665f",
+          "environment/base_reward_v6.py": "f39af641933a12f3cfac92589dcad402c07390bf1fbc2ad29afd109a088f8bbf",
+          "environment/carla_multi_agent_env.py": "af03ff79e8f89230faddaf4bfefb71e9a97cf1df3158b067f30c8e0ff0c7b203",
+          "environment/frozen_lane_traffic.py": "4b133dbaea4aa22366f296fd88058e69b15b18495b530922f4857a98215c891b",
+          "environment/mut_mappo_critical_reward.py": "cbea0d8e2cfbb0975b716262177c0266b0695252ec8ef8dee86a0094fb1f491e",
+          "environment/mut_mappo_critical_reward_v2.py": "495f6ab3b6762bb0b3691a0dc2b9149947c38186a9bdb043656964022d05b490",
+          "environment/mut_mappo_critical_reward_v3.py": "b7b4ad1a56da351382a58b7972abc22e7b0ede73278b06bb51badd06e75b7c01",
+          "environment/mut_mappo_critical_reward_v4.py": "8fba81e66d2b2d52301c2e2457a7f90bf5d295ced7cd212ba9d70d0c38cc456f",
+          "environment/mut_mappo_efficiency_reward.py": "c5643e40d3169f604358d0238e7c0dc7cde2ac64e5ce34cbb2e8b6159e714d03",
+          "environment/mut_mappo_env.py": "a98e3dc977ffd8aefa216a6e305e7e7e3249f886a0336e08e18eccf5dcb893f6",
+          "environment/mut_mappo_events.py": "6f44ff9c3ce0c2b33e1db3881abd6db2a36cff5f8a388a1a6a2f347b54160ba9",
+          "environment/mut_mappo_outcome_reward_v5.py": "80456cdcd237905fab0095f5b42879722b8589246a321c44f04cad1da3964c2c",
+          "environment/route_pace_reward.py": "a9b9a14b107013b010c730c520d90027046dfd5f662a27bbf8b2837a426a2fe5",
+          "evaluation/critical_interaction_metrics.py": "184f3760647ebafa294af0ef4cc2a63d7dbfebcb22296bfcdd575db7bd840384",
+          "evaluation/driving_policy_metrics.py": "ba8971d09e48ac22a6f2b01fc3d48e78d5f3c62c5e0ff59a88b43656ceec4bb4",
+          "evaluation/evaluate_mut_mappo.py": "792bc1252efebb7098f1ea321fca40fbb40d5f84796dc91d66837141711b370a",
+          "evaluation/evaluate_r5_counterfactual.py": "ede0670b75c8d72902a4d7652ed520f80fcf2c5aea5bf9c75367bac2385514ea",
+          "evaluation/mut_mappo_metrics.py": "e643dd30227961e5535e4ca45f935af6370eafb9abaf9431a214c73353ca2085",
+          "evaluation/mut_mappo_selection.py": "350cc698f9fc95ab8cf9bccf415fff459ea8f1cffd1e316cff4b8468d7022f94",
+          "evaluation/r4_risk_metrics.py": "81114b25bb5a31938262ad293b02f7e0d411e0804ce26325fba720ddebbe7cc1",
+          "evaluation/r5_outcome_metrics.py": "1353199d6720d1a4530675e5d667bd2ded53c53f6eaa0c3aa7235b9d0993e08d",
+          "models/actor_critic.py": "f37b7358a77d682b010b3e75c267390b22a7cee6b5106bb01559295386bfaf80",
+          "models/mut_mappo_critics.py": "12bcb4f05920a0b86128b6e48411f1df72a01d138a23ec1b1b1ae699bc2a55d7",
+          "training/action_protocol.py": "7135ebfd5960ce3826beba63f9ae62d66bc89eb6b41fc2992c10f721562472f5",
+          "training/checkpoint_protocol.py": "e1bd19f6723442d22b44e8cfad7c1b1731147ae8f52523e31ceaeaf1884f0d63",
+          "training/first_point_scenarios.py": "4739e67584c4bc5bedf5a2a88be9c05ff5d916a52a8622a6be1389a8a2d4b15b",
+          "training/mut_mappo_checkpoint.py": "292db9bcc0ca1ce10acc9c136386ab2939e7a2327d279ec9bcc353f954d84043",
+          "training/mut_mappo_config.py": "570c75b140c917ec827f6bb742fbce4a21d16e1379ead9250f3adc062d6e1d2f",
+          "training/mut_mappo_learning.py": "55c302119a8c30a9b0e74b71caa4a6a93a377444e5e2f23d38e8acd06d0c6293",
+          "training/mutual_distillation.py": "61d93718d7748cefc7b9afb4b776a33b0f95f3d507540d9eb9853d713e40558a",
+          "training/train_mut_mappo.py": "fa05ba7630f91be22093f8578b9c69bb7adb88551ad670bb2266b391c22f0bc6",
+          "training/train_no_rllib_mappo_robust_v2.py": "5c077ac4f2c91b6573fdc4acb4e70e1a9756ce8a9624cffd3814fb7b3811cd32",
+          "training/value_normalization.py": "46f16d1b937eedcafb8489d90f061b709b86ac76ab71200a50c4a463640e5aa1",
+          "utils/adversarial_metrics.py": "e8cbf2fe88d77592c211b6c14865930a0128eaa1952fb68bfded1623671b5f64",
+          "utils/mut_mappo_session.py": "4b2137758b5bb8a805ebd32f7f078227d1bf604a0be474581b50639a16a0667b",
+          "utils/prepare_r5_reference.py": "a907eb4f077bb05c9532a739214337c6fa3cbd3de136dd335284b2ffbcdef0ea"
+        },
+        "task_contract_sha256": "c103a0c96c1f78a223a9fdfb5efc70b5815063437fb64dde6a841b45e81c4820",
+        "team_count": 2,
+        "training_reference_hashes": {
+          "gate_crossing_eastbound_front_left_r0l": "832e0c78f6ca3ef93b91166474a2cc8b35e5d03df34a25e77137c69ee8fbf3f9",
+          "gate_crossing_eastbound_front_left_r0r": "eb8665d51d0db3e04499b04f18994dc781b1411fd9899f9509acdf5e8a7b518e",
+          "gate_crossing_eastbound_front_right_r0l": "2aaa79f230ae59f4b028ba73120db6908b52eaa4ce931c8283297717a3cd01f3",
+          "gate_crossing_eastbound_front_right_r0r": "4f7256827f1eb3f71bccdf09e26ed5119d43b6007bd3b70ad8734a599666a21b",
+          "gate_crossing_northbound_front_left_r0l": "5750df180ad38d5762b9e0a8512348273d36689faf2b8be49e48ad656631ee42",
+          "gate_crossing_northbound_front_left_r0r": "d2b7dc467d97277aa7d4434f645111c959cebfb480cc586fb511b39272f760a4",
+          "gate_crossing_northbound_front_right_r0l": "66ba14eef7eea8bb2d3ef463096a19ed26fbbf2557f5b2fd23e1d75f82442c6f",
+          "gate_crossing_northbound_front_right_r0r": "279de1f7ce2d672da980ff152bd2b577d5d3f3e4e65d6467a6e7012f2ea8c4ba",
+          "gate_crossing_southbound_front_left_r0l": "dbb6c985bf8d0a03777bd19b215eab5a0296ce826f41098094c2bfef654a54a7",
+          "gate_crossing_southbound_front_left_r0r": "2e877aa0a32d659de6aef4ab0176f9a1d649a3933ce489a554a7790943375210",
+          "gate_crossing_southbound_front_right_r0l": "bbad2e2f13f64403f73d8d3e1c5c9abf30ad9ded606299ecb68130eb4c4be7dc",
+          "gate_crossing_southbound_front_right_r0r": "dea70f27191f3af5e13c96e2730de3884d62f5767f2a4ce7fb4151f29e3572ba",
+          "gate_crossing_westbound_front_left_r0l": "2d8d681bc6bac4f9522fc45c021463c0c23310ab37e6f5175cdb73a35e65a4d7",
+          "gate_crossing_westbound_front_left_r0r": "ceeef341c9f6d847fe861730e8e5a6096a627e56b2c8ef1d4e502e6300e22440",
+          "gate_crossing_westbound_front_right_r0l": "1d3d509a6c8c44ba9da814e8d82f222bd94daecd75fa8b6c5f271891a8625e9c",
+          "gate_crossing_westbound_front_right_r0r": "bb82ff6aba6ed3d9e9f99088440ce01eb10be4fd6d2f42bfada83a60e5da3eaf",
+          "gate_sequential_eastbound_front_both_r0l": "337e54e2d67666a99e015ed8902d3571f7afc363aa0f0e2e6e8f9f4c53b18d41",
+          "gate_sequential_eastbound_front_both_r0r": "720a72e25cceb3260d20b90a08184d3646b5d274459005d4e5d69f57d90f5377",
+          "gate_sequential_northbound_front_both_r0l": "f32e945f05f2aa5c6f946af641192e090b5a6ec431549068f3745effed2551f9",
+          "gate_sequential_northbound_front_both_r0r": "d064b2cb690b95c891c142ea4266f58e66a5ff30cf132087976d21da94e4cea1",
+          "gate_sequential_southbound_front_both_r0l": "291a373db14bcb53943496d88c2bf08b5ea66c2025904dbce8615ed59691419a",
+          "gate_sequential_southbound_front_both_r0r": "86eb4a3ad9cc93b1374f55cff0c60385353a3a1ccd5ee8276d3bd1ae1864af45",
+          "gate_sequential_westbound_front_both_r0l": "85852c991f896714875ad60190450ecf17a62ef177f016cac2e9ae3cbdd18d24",
+          "gate_sequential_westbound_front_both_r0r": "6ec7653f55931b72289af2db039202475578c4f16c14e7298474b60cde646231",
+          "train_crossing_eastbound_front_left_r0l": "9d1004378f70396af6310f18df4f4248b0e0127df72cf66dd3bb1c6fde5828df",
+          "train_crossing_eastbound_front_left_r0r": "84eda546591b63223325ba2e7796072c5f6d98ad93503473fbbfdb21c8db8e0d",
+          "train_crossing_eastbound_front_right_r0l": "68988b0e2ec091dc56f3a7b5b6bf998d6ec65bb645a40a8164632274e3e48472",
+          "train_crossing_eastbound_front_right_r0r": "920b8662ee892be88cced7d5ac325212ab42e26864982ffc5b3c3fb263873e7e",
+          "train_crossing_northbound_front_left_r0l": "16141057018c005b8d8f7e1cfa61274f73fbe34f489c7d9482ec8e2e6f9434cb",
+          "train_crossing_northbound_front_left_r0r": "9a537229bc4fdc291d56075a4229f561d8d4d7f9e9eef9bbf583a2a9448c86c7",
+          "train_crossing_northbound_front_right_r0l": "9a4bf7ab82f2ff349427e87e2e0854b188ce515e30e51969de5747880cd3a915",
+          "train_crossing_northbound_front_right_r0r": "83c817a106e22f1ce6f454e513933aca12613a2ad9d4e4dbe44bf8aa51ef2042",
+          "train_crossing_southbound_front_left_r0l": "8cf94c893064bb241822eada9e74175f3a475a24bc1908141afbb9a1e2d6b8ec",
+          "train_crossing_southbound_front_left_r0r": "471663d6a93aa6fbe881259c86d54978d67d6a680ce55c76b9ef7db8f87c1af8",
+          "train_crossing_southbound_front_right_r0l": "47a8f1f3f46014b5c406d7c137a3582511d59e507cd76435daf945e5e00195ab",
+          "train_crossing_southbound_front_right_r0r": "cf61965c458c722c5dd2b91042b8ae7a35fd91bd640568e08366e1b1b6c82be4",
+          "train_crossing_westbound_front_left_r0l": "97a68f72fd4b36565fc03c95ff47b02daa5f8c07dbbb30cca7788b687aa099e5",
+          "train_crossing_westbound_front_left_r0r": "6e57f173bfa09ee7d15da2909ec9c58c74c3f08c2654edc043619c7932c7e2c1",
+          "train_crossing_westbound_front_right_r0l": "d94190ae7598aba4440dc2978996fc718cce51d2434764f12c91f1b036f8d4a7",
+          "train_crossing_westbound_front_right_r0r": "c61ecf74e0e80823444d5bbe384735107a27cc1c27f251227006f14b914e57c7",
+          "train_sequential_eastbound_front_both_r0l": "10860471b7f27cbac6164a30e5665bde2349bdf50d8750fd6154a1c3acc95f0e",
+          "train_sequential_eastbound_front_both_r0r": "29d79f9e3c58053a3959fca3427fc417d3e09f6ad730d3cfb5cb3f1c67a8f048",
+          "train_sequential_northbound_front_both_r0l": "8720349cd08a3ca261f9cee4b84c2e69b07b48509d4ac906dc8a10328a6315d8",
+          "train_sequential_northbound_front_both_r0r": "40928b8970c49c4af0bdf6e11006d0263464a6f200c5fc9cb39031bbc579b31b",
+          "train_sequential_southbound_front_both_r0l": "0a2fd954bcc37866c9789b3c9dce6d8275d433372bcb9452793b22492ddbb5b4",
+          "train_sequential_southbound_front_both_r0r": "b5db830ee39b84d1573fb778dfb906997ab6cd02b501d0671a6b4a1a2a96a3b2",
+          "train_sequential_westbound_front_both_r0l": "e796e6f5f4654726dce8f9455094aae84c4502de4312fa233b36b3aebda674d4",
+          "train_sequential_westbound_front_both_r0r": "aba9262514d3de423a8c63701a55d4b74d724883013f6761cc539b9e2e06864b"
+        }
+      },
+      "saved_at": "2026-11-08T02:55:31.046788+00:00",
+      "schema_version": "mut_mappo_complete_team_boundary_v2",
+      "sha256": "c4f173eb3be678307976d1f4084a579defedd901d229c473322ad1bb3ed8475c"
+    },
+    "cleanup_completed.json": {
+      "at": "2026-11-08T11:04:10.3652963+08:00",
+      "supervisor_stopped_previously": 19000,
+      "remaining_old_processes": 0,
+      "carla_not_stopped": true,
+      "stopped_actual_trainer": 12488
+    },
+    "processes_before.json": [
+      {
+        "ProcessId": 5848,
+        "ParentProcessId": 2612,
+        "Name": "python.exe",
+        "CommandLine": "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe -X utf8 -u C:\\Users\\hy\\.codex\\visualizations\\2026\\11\\06\\01a1afcf-4c08-7f03-9728-4fa614322c45\\run_r5_followup.py --version R5a_outcome10_u100 --from-version R5_original_u100 --parameter outcome_weight --value 10 --reason-file C:\\Users\\hy\\.codex\\visualizations\\2026\\11\\06\\01a1afcf-4c08-7f03-9728-4fa614322c45\\R5a_outcome10_REASON.md"
+      },
+      {
+        "ProcessId": 19000,
+        "ParentProcessId": 5848,
+        "Name": "python.exe",
+        "CommandLine": "\"D:\\Python\\python.exe\" -X utf8 -u C:\\Users\\hy\\.codex\\visualizations\\2026\\11\\06\\01a1afcf-4c08-7f03-9728-4fa614322c45\\run_r5_followup.py --version R5a_outcome10_u100 --from-version R5_original_u100 --parameter outcome_weight --value 10 --reason-file C:\\Users\\hy\\.codex\\visualizations\\2026\\11\\06\\01a1afcf-4c08-7f03-9728-4fa614322c45\\R5a_outcome10_REASON.md"
+      },
+      {
+        "ProcessId": 9804,
+        "ParentProcessId": 19000,
+        "Name": "python.exe",
+        "CommandLine": "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe -X utf8 -u -m training.train_mut_mappo --config D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\config.json --run-dir D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\run --allow-candidate"
+      },
+      {
+        "ProcessId": 12488,
+        "ParentProcessId": 9804,
+        "Name": "python.exe",
+        "CommandLine": "\"D:\\Python\\python.exe\" -X utf8 -u -m training.train_mut_mappo --config D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\config.json --run-dir D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\run --allow-candidate"
+      }
+    ],
+    "resource_exhaustion_events.json": {
+      "TimeCreated": "2026-11-08T10:55:30.9922182+08:00",
+      "Id": 2004,
+      "Message": "Windows 成功诊断出虚拟内存不足的情况。以下程序使用了大部分虚拟内存: CarlaUE4-Win64-Shipping.exe (18368) 使用了 50929131520 字节；python.exe (12488) 使用了 994967552 字节；python.exe (19000) 使用了 758128640 字节。"
+    },
+    "session_status.json": {
+      "actual_counters": {
+        "setup": 12924,
+        "total": 73929,
+        "train": 63228,
+        "train_decision": 52212,
+        "validation": 10701,
+        "validation_decision": 8793
+      },
+      "at": "2026-11-08T02:57:20.974120+00:00",
+      "collecting_team": "A",
+      "completed_round": 26,
+      "error": "RuntimeError: time-out of 60000ms while waiting for the simulator, make sure the simulator is ready and connected to 127.0.0.1:2000",
+      "in_progress_round": 26,
+      "method": "off",
+      "segment_id": "3d1b71ff5f4a4797989ba68c982dfe0e",
+      "started_at": "2026-11-08T01:43:54.778347+00:00",
+      "status": "INTERRUPTED_SAFE_BOUNDARY_RETAINED"
+    },
+    "state.json": {
+      "at": "2026-11-08T09:43:44.745706+08:00",
+      "command": [
+        "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+        "-X",
+        "utf8",
+        "-u",
+        "-m",
+        "training.train_mut_mappo",
+        "--config",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\config.json",
+        "--run-dir",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\run",
+        "--allow-candidate"
+      ],
+      "controller_pid": 19000,
+      "log": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\training_u100_console.log",
+      "phase": "training_u100",
+      "status": "RUNNING",
+      "target_updates": 100,
+      "version": "R5a_outcome10_u100"
+    },
+    "system_memory_before_resume.json": {
+      "TotalVisibleMemorySize": 16395244,
+      "FreePhysicalMemory": 4208420,
+      "TotalVirtualMemorySize": 60578108,
+      "FreeVirtualMemory": 43641016
+    },
+    "worker.json": {
+      "active": true,
+      "at": "2026-11-08T09:43:44.745706+08:00",
+      "command": [
+        "D:\\study\\yan2\\CARLA_0.9.16\\venv\\Scripts\\python.exe",
+        "-X",
+        "utf8",
+        "-u",
+        "-m",
+        "training.train_mut_mappo",
+        "--config",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\config.json",
+        "--run-dir",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\run",
+        "--allow-candidate"
+      ],
+      "controller_pid": 19000,
+      "log": "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\reward_iteration_20261108\\R5a_outcome10_u100\\training_u100_console.log",
+      "phase": "training_u100",
+      "pid": 9804,
+      "status": "RUNNING",
+      "target_updates": 100,
+      "version": "R5a_outcome10_u100"
+    }
+  }
+}

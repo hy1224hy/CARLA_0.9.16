@@ -1,0 +1,63 @@
+{
+  "frozen_evaluation_episodes_per_group": 144,
+  "outer_seed": 42,
+  "reference_episode_budget": 144,
+  "reference_identity_note": "Reward profiles bind different reference identities; actual C1 runs are separately budgeted",
+  "reference_repeats": 2,
+  "schema": "critical_reward_serial_pipeline_v1",
+  "scope": "EXPLICIT_WEAK_RED_ENGINEERING_ONLY_FAILED_C1_SCREEN_DISCLOSED",
+  "stages": [
+    {
+      "command": [
+        "evaluation.mut_mappo_reference",
+        "--config",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\configs\\R2_B0_s42.json",
+        "--splits",
+        "train",
+        "gate",
+        "selection",
+        "--repeats",
+        "2",
+        "--allow-weak-red"
+      ],
+      "group": "R2",
+      "id": "R2_references",
+      "kind": "references"
+    },
+    {
+      "command": [
+        "utils.mut_mappo_session",
+        "supervise",
+        "--config",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\configs\\R2_B0_s42.json",
+        "--run-dir",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\runs\\R2"
+      ],
+      "group": "R2",
+      "id": "R2_train",
+      "kind": "train"
+    },
+    {
+      "command": [
+        "utils.evaluate_mut_mappo_critical",
+        "live",
+        "--config",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\configs\\R2_B0_s42.json",
+        "--checkpoint",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\runs\\R2\\latest.pt",
+        "--split",
+        "gate",
+        "--output-dir",
+        "D:\\study\\yan2\\CARLA_0.9.16\\PythonAPI\\examples\\mappo_training\\experiments\\adversarial_u1000_critical_reward_20261101_v4\\evaluations\\R2_gate",
+        "--monitor-mode",
+        "off"
+      ],
+      "group": "R2",
+      "id": "R2_gate",
+      "kind": "evaluation"
+    }
+  ],
+  "teams_are_independent_seeds": false,
+  "test_used": false,
+  "training_budget_per_group": 24000
+}

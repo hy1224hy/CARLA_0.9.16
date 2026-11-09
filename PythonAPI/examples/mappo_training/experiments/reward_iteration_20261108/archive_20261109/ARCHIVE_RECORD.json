@@ -1,0 +1,48 @@
+{
+  "at": "2026-11-09T20:15:44.823554+08:00",
+  "reason": "User ended the CARLA experiment and requested a local branch commit and tag.",
+  "branch": "codex/mappo-experiment-baseline",
+  "tag": "carla-reward-r6-u90-archive-20261109",
+  "completed_updates": 90,
+  "target_updates": 100,
+  "session_status_is_stale": true,
+  "process_observation": "No Python or CARLA processes found at archival inspection; exit cause unconfirmed.",
+  "independent_evaluation": "Cancelled by user; no new evaluation launched.",
+  "automations": "carla-20 and carla-5 previously deleted; none recreated.",
+  "raw_logs_include_partial_round": true,
+  "analysis_rule": "Only committed round+segment records up to complete checkpoint u90 count as training results.",
+  "evidence": [
+    {
+      "source": "PythonAPI/examples/mappo_training/experiments/reward_iteration_20261108/R6_counterfactual_u100/run/metrics.jsonl",
+      "archive": "metrics.jsonl.gz",
+      "bytes": 1647414,
+      "source_sha256": "38a80bab1988baae6d799dec250eeabd55f30ea89e45abf79d6bde872410032f",
+      "archive_sha256": "2bb0879f39398a208624675161353d063f5ae0b10be7acf9996486e7c1dc690d"
+    },
+    {
+      "source": "PythonAPI/examples/mappo_training/experiments/reward_iteration_20261108/R6_counterfactual_u100/run/episodes.jsonl",
+      "archive": "episodes.jsonl.gz",
+      "bytes": 58476222,
+      "source_sha256": "9f5aa9dc374c2f57c33738cbf37e8b3186f957dde7cf8124e169f779fd03cd8d",
+      "archive_sha256": "af2333eb06553a089bfa122e141eb4f235e712acae83056f8dc89739f59fbbdc"
+    },
+    {
+      "source": "PythonAPI/examples/mappo_training/experiments/reward_iteration_20261108/R6_counterfactual_u100/run/counterfactual_episodes.jsonl",
+      "archive": "counterfactual_episodes.jsonl.gz",
+      "bytes": 111043823,
+      "source_sha256": "3499faad66a1031b4533abc4c57d644cf07e01c4aa610c06b7f7326af6999898",
+      "archive_sha256": "72cd9cfe620ae7ca72cff4f4199a37b23b98cca603401969037984c45864fa57"
+    },
+    {
+      "source": "PythonAPI/examples/mappo_training/experiments/reward_iteration_20261108/R6_counterfactual_u100/run/actual_cost_audit.jsonl",
+      "archive": "actual_cost_audit.jsonl.gz",
+      "bytes": 170032010,
+      "source_sha256": "e1a825c87c29353333c1cfbcbeb677ceeb77f6f80ef9f2b3faa8f8d885f1a058",
+      "archive_sha256": "054d47003c36c79ac0489ce100aa269ce269dd2a35885bdd7af9a7efa718e236"
+    },
+    {
+      "archive": "r6_u90.pt",
+      "sha256": "bc55d71225bd03fa7caeab3a6bb39b81e02e1b0f2cf6c0397ca7f5b8c970ad8e"
+    }
+  ]
+}
