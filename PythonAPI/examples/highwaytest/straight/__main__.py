@@ -86,7 +86,6 @@ def parser():
     b.add_argument('--seed',type=int,default=42)
     b.add_argument('--episodes',type=int,default=128); b.add_argument('--epochs',type=int,default=40)
     b.add_argument('--attack-level',type=int,choices=(1,2,3),help='second-stage scripted attack BC: attack_L<level>.pt in the same output dir')
-    b.add_argument('--repertoire',action='store_true',help='shared multi-behavior repertoire BC: repertoire.pt in the same output dir')
     t=sub.add_parser('train')
     t.add_argument('--config',required=True); t.add_argument('--output',required=True)
     t.add_argument('--initialize-from'); t.add_argument('--resume'); t.add_argument('--max-rounds',type=int)
@@ -197,7 +196,7 @@ def main(argv=None):
         elif args.command=='bootstrap':
             from .config import StraightConfig
             cfg=replace(load_config(args.config),level=0,seed=args.seed) if args.config else StraightConfig(level=0,seed=args.seed)
-            result=runner.bootstrap(cfg,args.output,episodes=args.episodes,epochs=args.epochs,attack_level=args.attack_level,repertoire=args.repertoire)
+            result=runner.bootstrap(cfg,args.output,episodes=args.episodes,epochs=args.epochs,attack_level=args.attack_level)
         elif args.command=='evaluate':
             result=runner.evaluate(args.checkpoint,split=args.split,cases=args.cases,output=args.output,gif=args.gif)
         else: result=runner.report(args.runs,args.output)

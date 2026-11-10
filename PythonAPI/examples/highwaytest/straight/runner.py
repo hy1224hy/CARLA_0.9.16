@@ -186,10 +186,9 @@ def _train(config,output,initialize_from=None,resume=None,max_rounds=None):
         output.mkdir(parents=True,exist_ok=False)
         if initialize_from:
             initial=load_state(initialize_from)
-            compatible=(initial.get('repertoire',False)
-                        or (initial['config']['level']==0 and initial.get('attack_level') is None)
+            compatible=((initial['config']['level']==0 and initial.get('attack_level') is None)
                         or initial.get('attack_level')==cfg.level)
-            if not compatible or initial['config']['hidden']!=cfg.hidden:raise ValueError('Initialization must be a compatible normal/repertoire driver or matching-level attack driver')
+            if not compatible or initial['config']['hidden']!=cfg.hidden:raise ValueError('Initialization must be a compatible normal driver or matching-level attack driver')
             if not initial.get('qualified') or initial['source_sha256']!=identity or initial['packages']!=versions:raise ValueError('Driver qualification/source/runtime mismatch')
             for key in ('duration','policy_frequency','simulation_frequency','target_speed','target_time_gap'):
                 if initial['config'][key]!=cfg.to_dict()[key]:raise ValueError('Driver physical contract mismatch: '+key)
@@ -272,7 +271,7 @@ def _train(config,output,initialize_from=None,resume=None,max_rounds=None):
     return summary
 
 
-def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episodes=16,attack_level=None,repertoire=False):
+def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episodes=16,attack_level=None):
     from .environment import StraightEnv
     if episodes<1 or epochs<1:raise ValueError('Positive BC budgets required')
     cfg=replace(config,level=0).validate();torch.set_num_threads(cfg.threads);torch.manual_seed(cfg.seed)
@@ -338,79 +337,8 @@ def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episod
     state=dict(protocol=PROTOCOL,config=cfg.to_dict(),source_sha256=source_digest(),packages=runtime_versions(),model=model.state_dict(),actor=model.actor.state_dict(),qualified=qualified,demonstration_steps=len(x),demonstration_lane_changes=lane_changes,qualification=qualification)
     save(output/('driver.pt' if qualified else 'diagnostic_driver.pt'),state)
     (output/'qualification.json').write_text(json.dumps(qualification,indent=2),encoding='utf-8')
-    if attack_level is not None and repertoire:raise ValueError('attack_level and repertoire are mutually exclusive')
-    if attack_level is None and not repertoire:
+    if attack_level is None:
         return dict(qualified=qualified,demonstration_steps=len(x),demonstration_lane_changes=lane_changes,checkpoint=str(output/('driver.pt' if qualified else 'diagnostic_driver.pt')))
-    # Shared multi-behavior repertoire: one initializer per seed for ALL levels and
-    # algorithms, mixing normal-driving demos with clean block/cut/collision script
-    # demonstrations (plus DAgger). The graded reward is then the only difference
-    # between training configurations (user-frozen design decision, 2026-11-11).
-    if repertoire:
-        from .environment import scripted_action
-        if not qualified:raise ValueError('Repertoire initialization requires a qualified driver.pt first')
-        scripts=('block','cut','collision')
-        env=StraightEnv(cfg)
-        script_obs=[];script_act=[];kept=0
-        try:
-            rng=np.random.default_rng(cfg.seed+23)
-            for i in range(max(48,episodes)):
-                script=scripts[i%3]
-                family='adjacent' if script=='cut' else ('follow','adjacent')[i%2]
-                obs,_=env.reset(seed=int(rng.integers(900000)),options={'family':family})
-                buffer_obs=[];buffer_act=[];clean=True
-                while True:
-                    action=scripted_action(env,script)
-                    buffer_obs.append(obs);buffer_act.append(action)
-                    obs,_,term,trunc,info=env.step(action)
-                    if info.get('invalid'):clean=False
-                    if script!='collision' and info.get('collision'):clean=False
-                    if term or trunc:break
-                if clean:
-                    script_obs.extend(buffer_obs);script_act.extend(buffer_act);kept+=1
-        finally:env.close()
-        if not script_obs:raise ValueError('no clean repertoire demonstrations collected')
-        sx=torch.as_tensor(np.asarray(script_obs),dtype=torch.float32);sy=torch.as_tensor(np.asarray(script_act),dtype=torch.float32)
-        rep=ActorCritic(cfg.hidden,cfg.obs_dim);rep.actor.load_state_dict(model.actor.state_dict())
-        fit(rep,torch.cat([x,sx]),torch.cat([y,sy]),max(12,epochs//2))
-        if dagger_rounds:
-            env2=StraightEnv(cfg)
-            try:
-                rng=np.random.default_rng(cfg.seed+29)
-                for round_ in range(dagger_rounds):
-                    new_obs=[];new_act=[]
-                    for i in range(16):
-                        script=scripts[i%3]
-                        family='adjacent' if script=='cut' else ('follow','adjacent')[i%2]
-                        obs,_=env2.reset(seed=int(rng.integers(900000)),options={'family':family})
-                        buffer_obs=[];buffer_act=[];clean=True
-                        while True:
-                            with torch.no_grad():
-                                action=rep.distribution(torch.as_tensor(obs,dtype=torch.float32)).loc.tanh().numpy()
-                            buffer_obs.append(obs);buffer_act.append(scripted_action(env2,script))
-                            obs,_,term,trunc,info=env2.step(action)
-                            if info.get('invalid'):clean=False
-                            if script!='collision' and info.get('collision'):clean=False
-                            if term or trunc:break
-                        if clean:
-                            new_obs.extend(buffer_obs);new_act.extend(buffer_act)
-                    if not new_obs:break
-                    sx=torch.cat([sx,torch.as_tensor(np.asarray(new_obs),dtype=torch.float32)])
-                    sy=torch.cat([sy,torch.as_tensor(np.asarray(new_act),dtype=torch.float32)])
-                    fit(rep,torch.cat([x,sx]),torch.cat([y,sy]),max(6,epochs//6))
-            finally:env2.close()
-        repertoire_qualification={}
-        for level in (1,2,3):
-            repertoire_qualification[f'L{level}']=evaluate_model(rep,replace(config,level=level),'selection',cfg.eval_cases)
-        o1=repertoire_qualification['L1']['overall']
-        o2=repertoire_qualification['L2']['overall']
-        o3=repertoire_qualification['L3']['overall']
-        rep_qualified=(o1.get('blocking_time',0.)>=.3 and o1.get('collision_rate',1.)<=.4
-                       and o2.get('collision_rate',1.)<=.5
-                       and o3.get('collision_rate',0.)>=.2)
-        state=dict(protocol=PROTOCOL,config=cfg.to_dict(),repertoire=True,source_sha256=source_digest(),packages=runtime_versions(),model=rep.state_dict(),actor=rep.actor.state_dict(),qualified=rep_qualified,demonstration_steps=len(x)+len(sx),script_episodes_kept=kept,qualification=repertoire_qualification)
-        save(output/'repertoire.pt',state)
-        return dict(qualified=rep_qualified,repertoire=True,checkpoint=str(output/'repertoire.pt'),
-                    script_episodes_kept=kept,qualification={k:v['overall'] for k,v in repertoire_qualification.items()})
     # Second stage: fine-tune the qualified driver on scripted attack demonstrations
     # (doc-sanctioned co-driving initialization; level-0 termination semantics so
     # script demos run their full course; L1/L2 discard colliding/invalid demos).

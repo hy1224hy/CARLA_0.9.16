@@ -3,6 +3,7 @@ import numpy as np
 from highwaytest.straight.config import StraightConfig
 from highwaytest.straight.environment import StraightEnv,scripted_action
 from highwaytest.straight.rewards import RewardState
+from highwaytest.straight.environment import GRID
 
 
 class RewardTests(unittest.TestCase):

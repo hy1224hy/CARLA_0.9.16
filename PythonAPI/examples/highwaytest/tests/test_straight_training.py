@@ -145,26 +145,6 @@ class TrainingTests(unittest.TestCase):
             train(replace(cfg,level=1),Path(folder)/'run',initialize_from=base/'attack_L1.pt')
             self.assertTrue((Path(folder)/'run'/'summary.json').is_file())
 
-    def test_repertoire_bootstrap_produces_shared_attack_repertoire(self):
-        from highwaytest.straight.config import StraightConfig
-        from highwaytest.straight.runner import bootstrap,train
-        with tempfile.TemporaryDirectory() as folder:
-            base=Path(folder)/'base'
-            bootstrap(StraightConfig(level=0,seed=42),base,episodes=128,epochs=40,repertoire=True)
-            path=base/'repertoire.pt'
-            self.assertTrue(path.is_file())
-            state=torch.load(path,map_location='cpu',weights_only=False)
-            self.assertTrue(state.get('repertoire'))
-            self.assertIn('actor',state)
-            qual=state['qualification']
-            self.assertGreater(qual['L1']['overall']['blocking_time'],0.,qual)
-            self.assertGreaterEqual(qual['L3']['overall']['collision_rate'],.2,qual)
-            self.assertTrue(state['qualified'],qual)
-            with patch('highwaytest.straight.runner.source_digest',return_value=state['source_sha256']):
-                cfg=replace(StraightConfig(total_steps=16,rollout_steps=4,epochs=1,minibatch=4,
-                    duration=20.,eval_cases=8,eval_interval=8,warmup_steps=0,ramp_steps=0),level=3)
-                train(cfg,Path(folder)/'run',initialize_from=path)
-            self.assertTrue((Path(folder)/'run'/'summary.json').is_file())
 
     def test_bootstrap_produces_qualified_driver(self):
         import numpy as np
