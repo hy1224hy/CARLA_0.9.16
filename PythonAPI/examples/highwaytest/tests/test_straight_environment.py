@@ -43,9 +43,18 @@ class RewardTests(unittest.TestCase):
         self.assertGreater(state.blocking_time,1.5)
         state=RewardState(StraightConfig(level=1))
         for _ in range(8):
-            result=state.observe(dict(acceleration=-4),1/15)
+            result=state.observe(dict(acceleration=-4,ell=.5),1/15)
             if result['done']:break
         self.assertTrue(result['grade_violation'])
+
+    def test_hard_brake_alone_is_not_a_grade_violation(self):
+        # IDM jerk can brake below -3 briefly without any real speed loss;
+        # the violation must co-occur with an actual strong loss (ell above band).
+        state=RewardState(StraightConfig(level=1))
+        for _ in range(10):
+            result=state.observe(dict(acceleration=-4,ell=.05),1/15)
+        self.assertFalse(result['grade_violation'])
+        self.assertFalse(result['done'])
 
     def test_mild_cannot_bank_bonus_then_pursue_severe_delay(self):
         state=RewardState(StraightConfig(level=1))
@@ -203,6 +212,26 @@ class EnvironmentTests(unittest.TestCase):
         env3.attacker.position[:] = [103., 0.]
         env3.attacker.speed = 18.
         self.assertGreater(env3._phi(), 0., 'L3 potential must guide in-lane proximity')
+
+    def test_potentials_have_lateral_progress_gradient_from_adjacent_spawn(self):
+        # From the adjacent-lane spawn the potential must grow as the attacker
+        # moves toward the target lane, giving the cut/block approach a gradient
+        # while staying exactly zero at the spawn itself.
+        for level in (1, 2, 3):
+            env = StraightEnv(StraightConfig(level=level))
+            env.reset(seed=0, options={'family': 'follow'})
+            env.target.position[:] = [100., 0.]
+            env.target.speed = 18.
+            env.attacker.speed = 14.
+            env.attacker.position[:] = [112., 4.]  # adjacent lane, at spawn-like dy
+            at_spawn = env._phi()
+            env.attacker.position[:] = [112., 2.]  # halfway across
+            midway = env._phi()
+            env.attacker.position[:] = [112., 0.]  # fully in the target lane
+            in_lane = env._phi()
+            self.assertEqual(at_spawn, 0., (level, 'spawn lateral must be zero'))
+            self.assertGreaterEqual(midway, 0., (level, 'midway'))
+            self.assertGreater(in_lane, midway, (level, 'lateral progress must increase the potential'))
 
     def test_geometry_potential_enters_reward_components(self):
         env=StraightEnv(StraightConfig(level=1,duration=.6,geometry_weight=.5))

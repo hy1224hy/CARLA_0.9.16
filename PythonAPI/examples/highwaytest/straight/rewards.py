@@ -58,7 +58,11 @@ class RewardState:
         if not self.cut_in and self.candidate_time is not None and self.time-self.candidate_time<=1.0+1e-8:
             if self.brake_time>=.2-1e-8 or frame.get('reference_speed',18)-frame.get('target_speed',18)>=3:
                 self.cut_in=True;self.cut_event_time=self.time;fresh=True
-        high=(self.cut_in or self.brake_time>.4 or
+        # Dev calibration: hard braking alone (IDM jerk) is not a violation; it must
+        # co-occur with an actual strong speed loss, otherwise mild blocking is
+        # punished for the target's own transient braking.
+        high=(self.cut_in or
+              (self.brake_time>.4 and ell>cfg.mild_excess_threshold) or
               (self.stop_time>2 and frame.get('reference_speed',18)>8) or
               self.excess_time>=cfg.mild_excess_duration-1e-8)
         # L1 must not optimize prolonged large speed loss below the stop threshold.

@@ -109,26 +109,28 @@ class StraightEnv(gym.Env):
     def _phi(self):
         # Level-specific bounded geometric potentials for exploration guidance.
         # Contract: EXACTLY zero at every spawn state (both families), positive
-        # only inside the attack region, so a normal-driving policy sees no
-        # potential drift and levels differ only through the reward.
+        # only inside the attack region, and monotone in lateral progress from
+        # the adjacent-lane spawn toward the target lane, so a normal-driving
+        # policy sees no drift and every spawn has a gradient toward the task.
         level=self.config.level
         a,v=self.attacker,self.target
         dy=float(v.position[1]-a.position[1])
         gap=float(a.position[0]-v.position[0]-5.)
+        lateral=float(np.clip(1.-abs(dy)/4.,0.,1.))
         if level==1:
-            # Front blocking band: same lane, gap 2-15m.
-            if gap<=0 or abs(dy)>=1.5:return 0.
-            return float(np.clip((15.-gap)/8.,0.,1.))
+            # Front blocking band: gap 2-15m, lateral progress toward the target lane.
+            if gap<=0:return 0.
+            return float(np.clip((15.-gap)/8.,0.,1.))*lateral
         if level==2:
-            # Post-cut band: in the target lane, ahead, THW in the event window.
-            if gap<=0 or abs(dy)>=1.5:return 0.
+            # Post-cut band: ahead, THW in the event window, lateral progress.
+            if gap<=0:return 0.
             thw=gap/max(v.speed,2.)
-            return float(np.clip((1.2-thw)/.9,0.,1.)*np.clip((thw-.3)/.9,0.,1.))
+            return float(np.clip((1.2-thw)/.9,0.,1.)*np.clip((thw-.3)/.9,0.,1.))*lateral
         if level==3:
-            # In-lane longitudinal proximity (contact approach).
+            # Longitudinal proximity toward contact, lateral progress toward the lane.
             dx=float(v.position[0]-a.position[0])
-            if abs(dy)>=2. or abs(dx)>20.:return 0.
-            return float(np.exp(-max(abs(dx)-5.,0.)/10.))
+            if abs(dx)>20.:return 0.
+            return float(np.exp(-max(abs(dx)-5.,0.)/10.))*lateral
         return 0.
 
     def step(self,action):
