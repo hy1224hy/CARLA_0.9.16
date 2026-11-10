@@ -22,6 +22,17 @@ class RewardTests(unittest.TestCase):
         self.assertEqual(StraightConfig().risk_weight,1.)
         self.assertEqual(StraightConfig().eval_cases,32)
 
+    def test_align_thresholds_are_config_knobs(self):
+        relaxed=RewardState(StraightConfig(align_duration=.3,align_lateral=.75,align_heading=15.))
+        for i in range(5):
+            relaxed.observe(dict(attacker_lane_changed=i==0,target_lane_stable=True,aligned=True,front=True,thw=2),1/15)
+        self.assertTrue(relaxed.geometric_cut,'5 frames (0.33s) must confirm with align_duration=0.3')
+        strict=RewardState(StraightConfig())
+        for i in range(5):
+            strict.observe(dict(attacker_lane_changed=i==0,target_lane_stable=True,aligned=True,front=True,thw=2),1/15)
+        self.assertFalse(strict.geometric_cut,'default 0.4s must not confirm in 5 frames')
+        with self.assertRaises(ValueError):StraightConfig(align_duration=0.).validate()
+
     def test_collision_sign_priority_and_single_payment(self):
         for level in (1,2,3):
             state=RewardState(StraightConfig(level=level))
@@ -232,6 +243,21 @@ class EnvironmentTests(unittest.TestCase):
             self.assertEqual(at_spawn, 0., (level, 'spawn lateral must be zero'))
             self.assertGreaterEqual(midway, 0., (level, 'midway'))
             self.assertGreater(in_lane, midway, (level, 'lateral progress must increase the potential'))
+
+    def test_l2_staging_potential_zero_at_spawn_and_guides_overtake(self):
+        env = StraightEnv(StraightConfig(level=2))
+        env.reset(seed=0, options={'family': 'follow'})
+        env.target.position[:] = [100., 0.]
+        env.target.speed = 18.
+        env.attacker.position[:] = [90., 4.]  # adjacent lane, 15m behind
+        env.attacker.speed = 18.
+        self.assertEqual(env._phi(), 0., 'spawn-like behind state must be zero')
+        env.attacker.speed = 21.  # overtaking speed (vA > vV + 2)
+        self.assertGreater(env._phi(), 0., 'staging potential must guide the overtake approach')
+        env.attacker.position[:] = [95., 4.]  # 10m behind, still overtaking
+        self.assertGreater(env._phi(), 0.)
+        env.attacker.position[:] = [112., 4.]  # now ahead in adjacent lane
+        self.assertEqual(env._phi(), 0., 'ahead-in-adjacent relies on the lateral factor only')
 
     def test_geometry_potential_enters_reward_components(self):
         env=StraightEnv(StraightConfig(level=1,duration=.6,geometry_weight=.5))

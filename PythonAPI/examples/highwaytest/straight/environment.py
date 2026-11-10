@@ -123,9 +123,15 @@ class StraightEnv(gym.Env):
             return float(np.clip((15.-gap)/8.,0.,1.))*lateral
         if level==2:
             # Post-cut band: ahead, THW in the event window, lateral progress.
-            if gap<=0:return 0.
-            thw=gap/max(v.speed,2.)
-            return float(np.clip((1.2-thw)/.9,0.,1.)*np.clip((thw-.3)/.9,0.,1.))*lateral
+            if gap>0:
+                thw=gap/max(v.speed,2.)
+                return float(np.clip((1.2-thw)/.9,0.,1.)*np.clip((thw-.3)/.9,0.,1.))*lateral
+            # Overtake staging: adjacent lane, 0-15m behind, clearly overtaking speed.
+            # Spawn speed difference is at most 1 m/s, so the +2 gate keeps this zero at spawn.
+            behind=float(-gap)
+            if 0.<behind<=15. and abs(dy)>2.5 and a.speed>v.speed+2.:
+                return float(np.clip(behind/15.,0.,1.))
+            return 0.
         if level==3:
             # Longitudinal proximity toward contact, lateral progress toward the lane.
             dx=float(v.position[0]-a.position[0])
@@ -161,7 +167,7 @@ class StraightEnv(gym.Env):
                 front=front,thw=gap/max(self.target.speed,2) if gap>0 else 100.,
                 acceleration=self.acceleration,target_speed=self.target.speed,reference_speed=ref.speed,
                 attacker_speed=self.attacker.speed,control_cost=cost,
-                aligned=abs(self.attacker.position[1]-4*self._lane(self.target))<.5 and abs(self.attacker.heading)<np.deg2rad(10),
+                aligned=abs(self.attacker.position[1]-4*self._lane(self.target))<self.config.align_lateral and abs(self.attacker.heading)<np.deg2rad(self.config.align_heading),
                 attacker_lane_changed=old_alane!=self._lane(self.attacker) and self._lane(self.attacker)==self._lane(self.target),
                 target_lane_stable=old_vlane==self._lane(self.target),
                 collision=collision,invalid=invalid,baseline_valid=self.baseline_valid,
