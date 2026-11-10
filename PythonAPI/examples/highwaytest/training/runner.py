@@ -152,6 +152,9 @@ def _run(config, output, *, resume=None, initialize_from=None, max_rounds=None, 
                     round_id=round_id, team=name)) if active else torch.zeros(n)
                 peer = teachers["B" if name == "A" else "A"] if active else None
                 metrics = update(model, optimizers[name], batch, config, peer, weights)
+                # The PPO-reported mutual_kl already includes sample weights.
+                metrics['effective_beta'] = config.mutual_beta if active and bool(weights.any()) else 0.0
+                metrics['mutual_loss'] = config.mutual_beta * metrics['mutual_kl']
                 torch_states[name] = torch.get_rng_state()
                 train_steps += n
                 row = metrics | {"round": round_id, "team": name, "round_end_steps": round_end_steps,

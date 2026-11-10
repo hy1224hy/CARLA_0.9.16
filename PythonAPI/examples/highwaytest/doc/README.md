@@ -1,10 +1,16 @@
 # Highway 文档索引
 
-Highway 相关设计、操作说明和验证记录统一存放在仓库根目录的 `highway/doc/`，与 `PythonAPI/examples/mappo_training/docs/` 中的 CARLA 文档分开。
+Highway 相关设计、操作说明和验证记录当前统一存放在 `PythonAPI/examples/highwaytest/doc/`，与 `PythonAPI/examples/mappo_training/docs/` 中的 CARLA 文档分开。
 
-文档迁移不改变训练入口；现有源码仍位于 [PythonAPI/examples/highwaytest](../../PythonAPI/examples/highwaytest/README.md)。
+文档迁移不改变训练入口；现有源码仍位于 [PythonAPI/examples/highwaytest](../README.md)。
 
 ## 当前一对一直道研究
+
+当前奖励开发与训练批次见[PPO 三级奖励修复与训练执行](PPO三级奖励修复与训练执行_20261110.md)。独立模型评估工具见[highway_eval 使用说明](../../highway_eval/README.md)：固定检查点、独立开发/test 场景、分场景指标及轨迹；当前 r3 另增加了两个过程标志，使用 26 维观测。
+
+第七版运行诊断见[第七版奖励与指标诊断（2026-11-10）](第七版奖励与指标诊断_20261110.md)：包含 a7 的阶段性验证结果、L2 边界阻挡复查、奖励问题及快速验证矩阵。
+
+最新整体建模见[研究点一整体实验建模报告（2026-11-10）](研究点一_整体实验建模报告_20261110.md)：覆盖当前 24 维观测、三级奖励、同任务双副本互学习、共享初始化、实验矩阵、评价统计与策略池；L2 默认一次有效切入达到次数门槛，前四次分别奖励。以下 V1 文档用于理解历史设计，参数与语义以当前报告及实际运行配置为准。
 
 旧代码审查见[代码与当前计划一致性审查](代码与当前计划一致性审查_20261109.md)。新增独立一对一协议的入口与命令见[训练操作说明](一对一直道_训练操作说明_20261109.md)；旧训练器继续保留原协议。
 

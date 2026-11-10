@@ -56,6 +56,8 @@ class StraightConfig:
     potential_lpsi:float=.5
     potential_lx:float=10.
     approach_weight:float=3.
+    guidance_weight:float=0.
+    guidance_mode:str='quality'
 
     def to_dict(self):return asdict(self)
 
@@ -66,6 +68,7 @@ class StraightConfig:
         if self.level not in (0,1,2,3) or type(self.level) is not int:raise ValueError('level must be 0/1/2/3')
         if self.method not in ('mutual','independent'):raise ValueError('unknown method')
         if self.learner not in ('ppo','sac'):raise ValueError('unknown learner')
+        if self.guidance_mode not in ('quality','tracking_cost'):raise ValueError('unknown guidance mode')
         if not 0<self.alpha or not 0<self.tau<=1:raise ValueError('invalid SAC hyperparameter')
         for name in ('total_steps','rollout_steps','epochs','minibatch','hidden','refresh_rounds',
                      'eval_interval','eval_cases','policy_frequency','simulation_frequency','threads'):
@@ -78,7 +81,7 @@ class StraightConfig:
         if min(self.duration,self.lr,self.target_speed,self.target_time_gap,self.clip)<=0:raise ValueError('invalid positive setting')
         if self.target_speed>30:raise ValueError('target speed exceeds physical bound')
         if not 0<self.gamma<=1 or not 0<=self.gae_lambda<=1:raise ValueError('invalid discount')
-        if min(self.beta,self.entropy_coef,self.geometry_weight,self.effect_weight,self.event_weight,self.risk_weight,self.approach_weight)<0:raise ValueError('negative reward/learning weight')
+        if min(self.beta,self.entropy_coef,self.geometry_weight,self.effect_weight,self.event_weight,self.risk_weight,self.approach_weight,self.guidance_weight)<0:raise ValueError('negative reward/learning weight')
         if not 0<self.mild_excess_threshold<1 or self.mild_excess_duration<=0:raise ValueError('invalid mild grade boundary')
         if min(self.align_lateral,self.align_heading,self.align_duration)<=0:raise ValueError('invalid cut-in alignment thresholds')
         if self.obs_dim<1 or type(self.obs_dim) is not int:raise ValueError('obs_dim must be a positive integer')

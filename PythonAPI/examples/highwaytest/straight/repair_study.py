@@ -8,6 +8,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 import hashlib
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -28,14 +29,30 @@ def actor_digest(actor):
     return digest.hexdigest()
 
 
+def expand_normal_observation(state, obs_dim):
+    """Zero-pad new process features; preserve the ordinary actor exactly."""
+    old_dim=state['config']['obs_dim']
+    if obs_dim<old_dim:
+        raise ValueError('Cannot discard parent observation features')
+    def expand(weights):
+        return {key: torch.nn.functional.pad(value,(0,obs_dim-old_dim))
+                if key.endswith('0.weight') else value.clone()
+                for key,value in weights.items()}
+    return dict(state,config=dict(state['config'],obs_dim=obs_dim),
+                actor=expand(state['actor']),model=expand(state['model']))
+
+
 def prepare(root, parent, steps):
     root, parent = Path(root), Path(parent)
     if root.exists():
         raise FileExistsError(root)
-    state = load_state(parent)
+    parent_bytes = parent.read_bytes()
+    state = torch.load(io.BytesIO(parent_bytes), map_location='cpu', weights_only=False)
     if (state['config']['level'] != 0 or not state.get('qualified')
             or state.get('attack_level') is not None or state.get('repertoire')):
         raise ValueError('Only a qualified ordinary-driving initializer is allowed')
+    parent_actor_sha256=actor_digest(state['actor'])
+    state=expand_normal_observation(state,26)
     cfg = StraightConfig(level=0, seed=state['config']['seed'],
                          hidden=state['config']['hidden'], obs_dim=state['config']['obs_dim'])
     for key in ('duration', 'policy_frequency', 'simulation_frequency',
@@ -57,20 +74,22 @@ def prepare(root, parent, steps):
     root.mkdir(parents=True)
     (root / 'configs').mkdir()
     (root / 'base').mkdir()
-    origin = dict(path=str(parent.resolve()), file_sha256=hashlib.sha256(parent.read_bytes()).hexdigest(),
-                  source_sha256=state['source_sha256'], actor_sha256=actor_digest(state['actor']))
+    origin = dict(path=str(parent.resolve()), file_sha256=hashlib.sha256(parent_bytes).hexdigest(),
+                  source_sha256=state['source_sha256'], parent_actor_sha256=parent_actor_sha256,
+                  expanded_actor_sha256=actor_digest(state['actor']))
     new_state = dict(state, config=cfg.to_dict(), source_sha256=source_digest(),
                      packages=runtime_versions(), qualification=gate,
                      requalification=dict(parent=origin, driving=gate, lane=lane))
     save(root / 'base' / 'driver.pt', new_state)
     manifest = dict(source_sha256=source_digest(), parent=origin, gate=gate['overall'],
                     lane_gate=lane['overall'], budget='A+B environment decisions',
-                    initialization='unchanged ordinary-driving actor; current-source gate requalification')
+                    initialization='ordinary-driving actor with zero-padded phase inputs; identical outputs; gate requalified')
     (root / 'study.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     for level in (1, 2, 3):
         train_cfg = replace(cfg, level=level, method='independent', total_steps=steps,
-                            lr=1e-4, entropy_coef=.003, clip=.15,
-                            geometry_weight=.5, approach_weight=3., potential_ly=1.5,
+                            lr=3e-4, entropy_coef=.005, clip=.2,
+                            geometry_weight=0., approach_weight=0., guidance_weight=6.,
+                            guidance_mode='tracking_cost',potential_ly=1.5,
                             eval_interval=20000, lane_cross_bonus=0.)
         train_cfg.validate()
         name = f'L{level}_independent_s{cfg.seed}'
@@ -79,13 +98,15 @@ def prepare(root, parent, steps):
     return manifest
 
 
-def train_all(root):
+def train_all(root,max_rounds=None):
     root = Path(root).resolve()
     (root / 'logs').mkdir(exist_ok=True)
     def job(config):
         output = root / 'train' / config.stem
         cmd = [sys.executable, '-m', 'highwaytest.straight', 'train',
                '--config', str(config), '--output', str(output)]
+        if max_rounds is not None:
+            cmd += ['--max-rounds',str(max_rounds)]
         if (output / 'latest.pt').exists():
             cmd += ['--resume', str(output / 'latest.pt')]
         else:
@@ -143,13 +164,16 @@ def main():
     parser.add_argument('--root', required=True)
     parser.add_argument('--parent')
     parser.add_argument('--steps', type=int, default=200000)
+    parser.add_argument('--max-rounds',type=int,help='Bound each pilot segment; resume explicitly after diagnosis')
     args = parser.parse_args()
     if args.command == 'prepare':
         if not args.parent:
             parser.error('prepare requires --parent')
         result = prepare(args.root, args.parent, args.steps)
+    elif args.command=='train':
+        result=train_all(args.root,args.max_rounds)
     else:
-        result = {'train': train_all, 'status': status, 'evaluate': final_evaluate}[args.command](args.root)
+        result = {'status': status, 'evaluate': final_evaluate}[args.command](args.root)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 

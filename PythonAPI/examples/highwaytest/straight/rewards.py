@@ -34,6 +34,11 @@ def tri(x, star, vmax):
     return (vmax - x) / (vmax - star)
 
 
+def tracking_score(error,scale):
+    """Negative smooth absolute error: zero at the goal, no far-error plateau."""
+    return 1.-float(np.hypot(1.,error/scale))
+
+
 class RewardState:
     def __init__(self,config):
         self.config=config
@@ -51,6 +56,7 @@ class RewardState:
         self.speed_ratio_sum=0.;self.speed_ratio_n=0;self.avg_speed_ratio=0.
         self.cut_count=0;self.cut_first_thw=None;self.last_cut_time=None
         self.cut_times=[]
+        self.preparation_paid=False
         self.lane_cross_count=0
         self.stop_qualified=False
         self.contact_orientation='none'
@@ -137,7 +143,7 @@ class RewardState:
         if cfg.level==0:
             dense=float(np.clip(frame.get('attacker_speed',0)/cfg.target_speed,0,1))-.05*cost
         elif cfg.level==1:
-            dense=2*cfg.effect_weight*tri(ell,cfg.l1_star,cfg.mild_excess_threshold)-.05*cost
+            dense=2*cfg.effect_weight*float(front)*tri(ell,cfg.l1_star,cfg.mild_excess_threshold)-.05*cost
         elif cfg.level==2:
             lateral=float(frame.get('lateral',4.))
             alignment=float(frame.get('lane_alignment',1.))
@@ -146,14 +152,20 @@ class RewardState:
         else:
             dense=-.05*cost
         approach=cfg.approach_weight*float(frame.get('approach_quality',0.)) if cfg.level>0 else 0.
+        guidance=cfg.guidance_weight*(.45*frame.get('guidance_speed_quality',0.)+
+            .45*frame.get('guidance_lateral_quality',0.)+.10*frame.get('guidance_progress',0.)) if cfg.level>0 else 0.
         parts={'dense':dt/cfg.duration*dense,'approach':dt/cfg.duration*approach,
-               'event':0.,'success':0.,'failure':0.,'geometry':0.}
+               'guidance':dt/cfg.duration*guidance,
+               'milestone':0.,'event':0.,'success':0.,'failure':0.,'geometry':0.}
         if invalid:parts['failure']=-20.
         elif collision:
             parts['event']=20.*cfg.event_weight if cfg.level==3 else -20.
             self.success=cfg.level==3
         elif self.grade_violation:parts['failure']=-10.
         else:
+            if cfg.guidance_mode=='tracking_cost' and frame.get('preparation_complete') and not self.preparation_paid:
+                self.preparation_paid=True
+                parts['milestone']=.5*cfg.event_weight
             if fresh and cfg.level==2 and self.cut_count<=cfg.cut_reward_cap:
                 parts['event']=2.*cfg.event_weight
             if cross_reward>0:
@@ -163,6 +175,7 @@ class RewardState:
                     or cfg.level==1 and self.blocking_time>=1.5-1e-8
                     or cfg.level==2 and sum(self.time-t>=1.-1e-8 for t in self.cut_times)>=cfg.cut_success_min)
                 if self.success:parts['success']={0:1.,1:4.,2:5.,3:0.}[cfg.level]*cfg.event_weight
+                elif cfg.level>0 and cfg.guidance_mode=='tracking_cost':parts['failure']=-2.*cfg.event_weight
         for key,value in parts.items():self.components[key]=self.components.get(key,0.)+value
         return dict(reward=float(sum(parts.values())),components=parts,done=self.done,
                     success=bool(self.success),grade_violation=self.grade_violation)

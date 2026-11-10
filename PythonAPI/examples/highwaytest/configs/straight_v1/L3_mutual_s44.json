@@ -1,7 +1,10 @@
 {
   "level": 3,
   "seed": 44,
-  "total_steps": 200000,
+  "learner": "ppo",
+  "alpha": 0.2,
+  "tau": 0.005,
+  "total_steps": 300000,
   "rollout_steps": 512,
   "epochs": 4,
   "minibatch": 128,
@@ -24,10 +27,16 @@
   "target_speed": 18.0,
   "target_time_gap": 1.5,
   "threads": 1,
-  "geometry_weight": 0.0,
+  "geometry_weight": 0.5,
   "effect_weight": 1.0,
   "event_weight": 1.0,
   "risk_weight": 1.0,
   "mild_excess_threshold": 0.35,
-  "mild_excess_duration": 1.0
+  "mild_excess_duration": 1.0,
+  "align_lateral": 0.5,
+  "align_heading": 10.0,
+  "align_duration": 0.4,
+  "obs_dim": 24,
+  "cut_reward_cap": 4,
+  "cut_success_min": 1
 }

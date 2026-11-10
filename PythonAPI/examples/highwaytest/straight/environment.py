@@ -5,7 +5,7 @@ from gymnasium import spaces
 from highway_env.road.road import Road,RoadNetwork
 from highway_env.vehicle.kinematics import Vehicle
 from highway_env.vehicle.behavior import IDMVehicle
-from .rewards import RewardState, tri
+from .rewards import RewardState, tri, tracking_score
 
 
 class ContactMixin:
@@ -94,6 +94,10 @@ class StraightEnv(gym.Env):
         self._script_cut_lane=None
         self._script_cut_phase='stage'
         self._script_cut_hold=0
+        self._l2_ready=self._lane(self.attacker)!=self._lane(self.target)
+        self._l2_last_failures=0
+        self._l3_contact_ready=abs(float(self.attacker.position[0]-self.target.position[0]))<=6.
+        self._preparation_pending=False
         return self._observation(),self._info()
 
     @staticmethod
@@ -122,7 +126,70 @@ class StraightEnv(gym.Env):
              min(self.tracker.stop_time/2,1),min(self.tracker.brake_time/.4,1),
              min(self.tracker.cut_count,self.config.cut_reward_cap)/self.config.cut_reward_cap,
              0. if self.tracker.last_cut_time is None else min((self.tracker.time-self.tracker.last_cut_time)/4.,1.)]
+        if self.config.obs_dim==26:
+            row.extend([float(self._l2_ready),float(self._l3_contact_ready)])
         return np.clip(np.asarray(row,dtype=np.float32),-3,3)
+
+    def _update_task_phase(self):
+        a,v=self.attacker,self.target
+        old_l2,old_l3=self._l2_ready,self._l3_contact_ready
+        failures=self.tracker.diag['thw_miss']+self.tracker.diag['react_miss']
+        if self.config.level==2 and failures>self._l2_last_failures and not self.tracker.cut_count:
+            self._l2_ready=False
+        self._l2_last_failures=failures
+        if (not self._l2_ready and self._lane(a)!=self._lane(v)
+                and abs(a.position[1]-4*self._lane(a))<.5 and abs(a.heading)<np.deg2rad(10)):
+            self._l2_ready=True
+        dx=abs(float(a.position[0]-v.position[0]))
+        if dx<=6.:self._l3_contact_ready=True
+        elif dx>10.:self._l3_contact_ready=False
+        if ((self.config.level==2 and not old_l2 and self._l2_ready) or
+                (self.config.level==3 and not old_l3 and self._l3_contact_ready)):
+            self._preparation_pending=True
+
+    def _guidance(self):
+        """Task-space velocity goals, evaluated on motion, never used as controls.
+
+        Separate longitudinal/lateral feedback avoids multiplicative dead zones.
+        The two task phase flags are exposed in the 26-dimensional observation.
+        """
+        a,v=self.attacker,self.target
+        cfg=self.config
+        ref=max(float(self.reference.vehicles[1].speed),5.)
+        gap=float(a.position[0]-v.position[0]-5.)
+        target_y=4.*self._lane(v)
+        other_y=4.*(1-self._lane(v))
+        if cfg.level==1:
+            staging=abs(a.position[1]-target_y)>2. and gap<1.5*ref
+            goal_y=other_y if staging else target_y
+            desired_speed=(v.speed+np.clip(.4*(1.5*ref-gap),2.,8.) if staging else
+                           (1.-cfg.l1_star)*ref+.2*(1.8*ref-gap))
+        elif cfg.level==2:
+            goal_y=target_y if self._l2_ready else other_y
+            if not self._l2_ready:
+                desired_speed=max(v.speed,.9*ref)
+            elif self.tracker.cut_count:
+                desired_speed=ref+1.
+            else:
+                desired_speed=max(.7*ref,v.speed+.4*(cfg.tau_star*max(v.speed,5.)-gap))
+        elif cfg.level==3:
+            goal_y=target_y if self._l3_contact_ready else other_y
+            dx=float(a.position[0]-v.position[0])
+            desired_speed=v.speed+.6*(1.-dx)
+        else:
+            goal_y=4.*self._lane(a)
+            desired_speed=cfg.target_speed
+        desired_speed=float(np.clip(desired_speed,2. if cfg.level==1 else 0.,28.))
+        desired_lateral=float(np.clip(.9*(goal_y-a.position[1]),-2.,2.))
+        if cfg.guidance_mode=='tracking_cost':
+            speed_quality=tracking_score(a.velocity[0]-desired_speed,3. if cfg.level==1 else 6.)
+            lateral_quality=tracking_score(a.velocity[1]-desired_lateral,.7)
+        else:
+            speed_quality=float(np.exp(-abs(a.velocity[0]-desired_speed)/3.))
+            lateral_quality=float(np.exp(-abs(a.velocity[1]-desired_lateral)/.7))
+        return dict(goal_y=float(goal_y),desired_speed=desired_speed,
+                    desired_lateral=desired_lateral,
+                    speed_quality=speed_quality,lateral_quality=lateral_quality)
 
     def _phi(self):
         # Continuous approach potentials (2026-11-11 revision, user design):
@@ -196,6 +263,9 @@ class StraightEnv(gym.Env):
         phi=self._phi();reward=0.;parts={}
         dt=1/self.config.simulation_frequency
         for _ in range(self.config.simulation_frequency//self.config.policy_frequency):
+            self._update_task_phase()
+            guidance=self._guidance()
+            old_lateral_error=abs(float(self.attacker.position[1])-guidance['goal_y'])
             old_alane=self._lane(self.attacker);old_vlane=self._lane(self.target)
             before_speed=float(self.target.velocity[0])
             self.target.act();self.attacker.act({'acceleration':5*float(u[0]),'steering':.25*float(u[1])})
@@ -224,12 +294,18 @@ class StraightEnv(gym.Env):
                 lateral=abs(self.attacker.position[1]-self.target.position[1]),
                 lane_alignment=float(np.exp(-(abs(self.attacker.position[1]-4*self._lane(self.target))/1.2)**2)),
                 approach_quality=self._approach(),
+                guidance_speed_quality=guidance['speed_quality'],
+                guidance_lateral_quality=guidance['lateral_quality'],
+                preparation_complete=self._preparation_pending,
+                guidance_progress=float(np.clip((old_lateral_error-abs(float(self.attacker.position[1])-guidance['goal_y']))/(2.*dt),-1.,1.)),
                 contact_orientation=orientation,spawn_overlap=self.spawn_overlap,
                 normal_progress=self.attacker.position[0]-self.initial_attacker_x)
             self.last_result=self.tracker.observe(frame,dt)
+            self._preparation_pending=False
             reward+=self.last_result['reward']
             for k,value in self.last_result['components'].items():parts[k]=parts.get(k,0.)+value
             if self.last_result['done']:break
+        self._update_task_phase()
         self.steps+=1;self.ended=self.tracker.done
         geometry=self.config.geometry_weight*(self.config.gamma*(0. if self.ended else self._phi())-phi)
         reward+=geometry;parts['geometry']=geometry
