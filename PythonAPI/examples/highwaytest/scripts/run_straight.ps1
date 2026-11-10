@@ -25,11 +25,6 @@ foreach ($trainingSeed in $Seeds) {
     if (-not (Test-Path -LiteralPath (Join-Path $baseRoot 'driver.pt'))) {
         Invoke-Straight bootstrap --seed $trainingSeed --output $baseRoot
     }
-    foreach ($level in 1,2,3) {
-        if (-not (Test-Path -LiteralPath (Join-Path $baseRoot ('attack_L'+$level+'.pt')))) {
-            Invoke-Straight bootstrap --seed $trainingSeed --attack-level $level --output $baseRoot
-        }
-    }
 }
 
 # 2. Training blocks: main, beta, reward-ablation (reused runs are not retrained).

@@ -127,10 +127,9 @@ def batch(args):
     initializers={}
     if args.initialize_from_dir:
         for c in configs:
-            root=Path(args.initialize_from_dir).resolve()/f'base_s{c.seed}'
-            preferred=root/f'attack_L{c.level}.pt'
-            fallback=root/'driver.pt'
-            path=preferred if preferred.is_file() else fallback
+            # Shared normal-driving initialization for all levels and algorithms:
+            # levels differ only through the reward (frozen design decision).
+            path=Path(args.initialize_from_dir).resolve()/f'base_s{c.seed}'/'driver.pt'
             if not path.is_file():
                 raise FileNotFoundError(path)
             initializers[(c.seed,c.level)]=path

@@ -17,11 +17,6 @@ for training_seed in "${seed_values[@]}"; do
   if [[ ! -f "$STUDY/base_s${training_seed}/driver.pt" ]]; then
     "$PYTHON" -u -m highwaytest.straight bootstrap --seed "$training_seed" --output "$STUDY/base_s${training_seed}"
   fi
-  for level in 1 2 3; do
-    if [[ ! -f "$STUDY/base_s${training_seed}/attack_L${level}.pt" ]]; then
-      "$PYTHON" -u -m highwaytest.straight bootstrap --seed "$training_seed" --attack-level "$level" --output "$STUDY/base_s${training_seed}"
-    fi
-  done
 done
 
 # 2. Training blocks: main, beta, reward-ablation (reused runs are not retrained).

@@ -163,33 +163,46 @@ class EnvironmentTests(unittest.TestCase):
         self.assertTrue(np.isfinite(info['avg_speed_ratio']))
         self.assertLessEqual(info['max_target_brake'],0.)
 
-    def test_level_potentials_guide_task_geometry(self):
-        env=StraightEnv(StraightConfig(level=1))
-        env.reset(seed=0,options={'family':'follow'})
-        env.target.position[:]=[100.,0.];env.target.speed=18.
-        env.attacker.position[:]=[108.,0.]
-        phi_front=env._phi()
-        env.attacker.position[:]=[92.,0.]
-        self.assertEqual(env._phi(),0.,'L1 potential must be zero behind the target')
-        self.assertGreater(phi_front,0.)
-        env.attacker.position[:]=[108.,4.]
-        self.assertLess(env._phi(),phi_front,'L1 potential lower in the adjacent lane')
-        env2=StraightEnv(StraightConfig(level=2))
-        env2.reset(seed=0,options={'family':'follow'})
-        env2.target.position[:]=[100.,0.];env2.target.speed=18.
-        env2.attacker.position[:]=[94.,4.]
-        phi_stage=env2._phi()
-        env2.attacker.position[:]=[140.,4.]
-        self.assertGreater(phi_stage,env2._phi(),'L2 potential peaks at the adjacent staging position')
-        env2.attacker.position[:]=[94.,0.]
-        self.assertLess(env2._phi(),phi_stage,'L2 potential lower in the target lane')
-        env3=StraightEnv(StraightConfig(level=3))
-        env3.reset(seed=0,options={'family':'follow'})
-        env3.target.position[:]=[100.,0.];env3.target.speed=18.
-        env3.attacker.position[:]=[108.,0.]
-        close=env3._phi()
-        env3.attacker.position[:]=[160.,0.]
-        self.assertGreater(close,env3._phi(),'L3 potential grows with proximity')
+    def test_potentials_zero_at_all_spawn_regions(self):
+        # Strict shared-initialization contract: the geometric potential must be
+        # exactly zero at every possible spawn state, so a normal-driving policy
+        # experiences no potential drift and levels differ only through rewards.
+        for level in (1, 2, 3):
+            env = StraightEnv(StraightConfig(level=level))
+            env.reset(seed=0, options={'family': 'follow'})
+            env.target.position[:] = [100., 0.]
+            env.target.speed = 18.
+            for ax in (135., 145., 155.):
+                env.attacker.position[:] = [ax, 0.]
+                env.attacker.speed = 18.
+                self.assertEqual(env._phi(), 0., (level, 'follow', ax))
+            for ax in (92., 100., 105., 120.):
+                env.attacker.position[:] = [ax, 4.]
+                env.attacker.speed = 18.
+                self.assertEqual(env._phi(), 0., (level, 'adjacent', ax))
+
+    def test_potentials_positive_only_in_attack_regions(self):
+        env = StraightEnv(StraightConfig(level=1))
+        env.reset(seed=0, options={'family': 'follow'})
+        env.target.position[:] = [100., 0.]
+        env.target.speed = 18.
+        env.attacker.position[:] = [110., 0.]  # in front, gap 5, same lane
+        env.attacker.speed = 14.
+        self.assertGreater(env._phi(), 0., 'L1 potential must guide the front blocking band')
+        env2 = StraightEnv(StraightConfig(level=2))
+        env2.reset(seed=0, options={'family': 'follow'})
+        env2.target.position[:] = [100., 0.]
+        env2.target.speed = 18.
+        env2.attacker.position[:] = [112., 0.]  # in lane, front, THW ~0.7
+        env2.attacker.speed = 18.
+        self.assertGreater(env2._phi(), 0., 'L2 potential must guide the post-cut band')
+        env3 = StraightEnv(StraightConfig(level=3))
+        env3.reset(seed=0, options={'family': 'follow'})
+        env3.target.position[:] = [100., 0.]
+        env3.target.speed = 18.
+        env3.attacker.position[:] = [103., 0.]
+        env3.attacker.speed = 18.
+        self.assertGreater(env3._phi(), 0., 'L3 potential must guide in-lane proximity')
 
     def test_geometry_potential_enters_reward_components(self):
         env=StraightEnv(StraightConfig(level=1,duration=.6,geometry_weight=.5))
