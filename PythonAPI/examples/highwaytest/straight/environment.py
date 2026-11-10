@@ -158,10 +158,13 @@ class StraightEnv(gym.Env):
             return .45*p_g+.40*p_g*p_y+.15*p_g*p_y*p_psi
         if level==3:
             # Longitudinal proximity -> lateral overlap (no cut-chain dependency).
+            # The lane-alignment valley keeps the boundary reward-free (same as L2).
             dx=abs(float(v.position[0]-a.position[0]))
             p_x=float(np.exp(-max(dx-5.,0.)/cfg.potential_lx))
-            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))
-            return .6*p_x+.4*p_x*p_y
+            e=min(abs(dy),abs(dy+4.))
+            lane_alignment=float(np.exp(-(e/1.2)**2))
+            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))*lane_alignment
+            return .5*p_x+.5*p_x*p_y
         return 0.
 
     def step(self,action):

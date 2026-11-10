@@ -54,7 +54,7 @@ class StraightConfig:
     potential_lg:float=15.
     potential_ly:float=4.
     potential_lpsi:float=.5
-    potential_lx:float=15.
+    potential_lx:float=10.
 
     def to_dict(self):return asdict(self)
 

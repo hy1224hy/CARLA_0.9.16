@@ -111,6 +111,30 @@ class RewardTests(unittest.TestCase):
         self.assertGreater(in_lane,near,'the target lane must beat the approach')
         self.assertGreater(far_side,0.,'gradient from the adjacent side must survive')
 
+    def test_l3_crossing_bonus_and_potential_valley(self):
+        cfg=StraightConfig(level=3)
+        state=RewardState(cfg)
+        frame=dict(attacker_lane_changed=True,target_lane_stable=True,aligned=True,front=True,thw=.7)
+        r1=state.observe(dict(frame),1/15)['reward']
+        r2=state.observe(dict(frame),1/15)['reward']
+        r3=state.observe(dict(frame),1/15)['reward']
+        self.assertGreater(r1-r3,.4,'L3 crossing bonus pays')
+        self.assertGreater(r2-r3,.4)
+        self.assertLess(r3,.01,'capped after two crossings')
+        env=StraightEnv(StraightConfig(level=3))
+        env.reset(seed=0,options={'family':'follow'})
+        env.target.position[:]=[100.,0.];env.target.speed=18.
+        env.attacker.speed=18.
+        env.attacker.position[:]=[103.,2.]
+        line=env._phi()
+        env.attacker.position[:]=[103.,0.]
+        in_lane=env._phi()
+        env.attacker.position[:]=[103.,4.]
+        adjacent=env._phi()
+        self.assertLess(line,in_lane,'the line must stay a valley for L3 too')
+        self.assertLess(line,adjacent)
+        self.assertGreater(in_lane,adjacent,'the target lane must dominate')
+
     def test_align_thresholds_are_config_knobs(self):
         relaxed=RewardState(StraightConfig(align_duration=.3,align_lateral=.75,align_heading=15.))
         for i in range(5):

@@ -83,7 +83,7 @@ class RewardState:
             # Lane-crossing bonus for entering the target's lane, capped to
             # prevent weaving farming (crossings back out never trigger this).
             self.lane_cross_count+=1
-            if cfg.level==2 and self.lane_cross_count<=cfg.lane_cross_cap and cfg.lane_cross_bonus>0:
+            if cfg.level in (2,3) and self.lane_cross_count<=cfg.lane_cross_cap and cfg.lane_cross_bonus>0:
                 cross_reward=cfg.lane_cross_bonus
         if not frame.get('target_lane_stable',True):
             self.candidate=False;self.align_time=0.;self.candidate_time=None
