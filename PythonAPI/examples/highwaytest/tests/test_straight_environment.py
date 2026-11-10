@@ -27,6 +27,7 @@ class RewardTests(unittest.TestCase):
             return RewardState(StraightConfig(level=1)).observe(dict(ell=ell,front=True),1/15)['reward']
         self.assertGreater(dense(.25),dense(.5),'mild band must beat stronger slowdown')
         self.assertAlmostEqual(dense(.6),dense(0.),places=6,msg='zero outside the band')
+        self.assertGreater(dense(.02),dense(0.),'discovery slope must start at ell=0')
         self.assertGreater(dense(.25),dense(.02),'band guides from below')
 
     def test_h_band_matches_success_window(self):
@@ -76,6 +77,30 @@ class RewardTests(unittest.TestCase):
         self.assertEqual(state.diag['react_miss'],1)
         self.assertEqual(state.diag['react_hit'],0)
         self.assertEqual(state.cut_count,0,'no reaction means no qualified cut')
+
+    def test_l2_adjacent_taper_bridges_natural_spacing_into_window(self):
+        env = StraightEnv(StraightConfig(level=2))
+        env.reset(seed=0, options={'family': 'follow'})
+        env.target.position[:] = [100., 0.]
+        env.target.speed = 18.
+        env.attacker.speed = 18.
+        def phi(x):
+            env.attacker.position[:] = [x, 4.]
+            return env._phi()
+        env.previous_action[:] = [0., 0.]
+        self.assertEqual(phi(120.), 0., 'spawn-like state must stay zero while inactive')
+        env.previous_action[:] = [0.3, 0.]
+        far = phi(154.)   # thw = (154-105)/18 ~ 2.7s
+        near = phi(115.)  # thw = 10/18 ~ 0.56s, inside the taper
+        self.assertGreater(near, 0., 'taper active while maneuvering')
+        self.assertGreater(near, far, 'taper must pull the spacing toward the window')
+
+    def test_l3_risk_stays_monotone_for_contact_approach(self):
+        def h3(thw):
+            state = RewardState(StraightConfig(level=3))
+            state.geometric_cut = True
+            return state.observe(dict(thw=thw, front=True, ell=0.), 1/15)['reward']
+        self.assertGreater(h3(.5), h3(.9), 'L3 h must keep rewarding closer approach')
 
     def test_align_thresholds_are_config_knobs(self):
         relaxed=RewardState(StraightConfig(align_duration=.3,align_lateral=.75,align_heading=15.))

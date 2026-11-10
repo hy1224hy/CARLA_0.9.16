@@ -126,9 +126,15 @@ class StraightEnv(gym.Env):
             if gap<=0:return 0.
             return float(np.clip((15.-gap)/8.,0.,1.))*lateral
         if level==2:
-            # Post-cut band: ahead, THW in the event window, lateral progress.
+            # Post-cut band / adjacent approach taper.
             if gap>0:
                 thw=gap/max(v.speed,2.)
+                if abs(dy)>2.5:
+                    # Adjacent lane: long taper from the natural lane-change spacing
+                    # (THW up to 6s) into the success window; active only while
+                    # maneuvering, so spawn states remain exactly zero.
+                    active=float(np.abs(self.previous_action).max()>.1)
+                    return float(np.clip((thw-.15)/.15,0.,1.)*np.clip((6.-thw)/4.8,0.,1.))*active
                 return float(np.clip((1.2-thw)/.9,0.,1.)*np.clip((thw-.3)/.9,0.,1.))*lateral
             # Overtake staging: adjacent lane, 0-15m behind, clearly overtaking speed.
             # Spawn speed difference is at most 1 m/s, so the +2 gate keeps this zero at spawn.

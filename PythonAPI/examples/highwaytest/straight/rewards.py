@@ -110,15 +110,21 @@ class RewardState:
         invalid=bool(frame.get('invalid',False) or not frame.get('baseline_valid',True) or (collision and spawn_overlap))
         horizon=self.time>=cfg.duration-1e-8
         self.done=invalid or collision or self.grade_violation or horizon
-        # h: band-shaped around the success window; no gradient below it toward collision.
-        h=band(frame.get('thw',100),.3,1.2,.15) if self.geometric_cut and front else 0.
+        # Risk term: L2 band-shaped around the success window (no gradient toward
+        # collision); L3 monotone (post-cut contact approach guidance, doc 4.4).
+        if cfg.level==2:
+            h=band(frame.get('thw',100),.3,1.2,.15) if self.geometric_cut and front else 0.
+        elif cfg.level==3:
+            h=float(np.clip(1-frame.get('thw',100)/1.5,0.,1.)) if self.geometric_cut and front else 0.
+        else:
+            h=0.
         cost=float(frame.get('control_cost',0.))
         if cfg.level==0:
             dense=float(np.clip(frame.get('attacker_speed',0)/cfg.target_speed,0,1))-.05*cost
         elif cfg.level==1:
-            # Peak reward inside the mild band; zero beyond it so the main term
-            # never pushes the policy past the mild grade boundary.
-            d_band=float(np.clip(ell,0.,1.))*band(ell,.10,.35,.05)
+            # Peak reward inside the mild band, zero beyond it; the slope starts
+            # at ell=0 so discovery has a gradient from normal driving.
+            d_band=float(np.clip(ell,0.,1.))*band(ell,.10,.35,.10)
             dense=2*cfg.effect_weight*d_band+float(mild)-.05*cost
         elif cfg.level==2:
             dense=cfg.effect_weight*d+2*cfg.risk_weight*h-.05*cost
