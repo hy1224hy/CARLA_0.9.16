@@ -55,10 +55,10 @@ class StraightEnv(gym.Env):
             else:apos=[100.+float(self.np_random.uniform(-8,20)),4.]
             speed=float(np.clip(v+self.np_random.uniform(-1,1),0,30))
         else:
-            # Structured grid cell (training resets only).
-            idx=getattr(self,'_grid_index',0)
-            self.family,off,v=GRID[idx%len(GRID)]
-            self._grid_index=idx+1
+            # Structured grid cell driven by the episode RNG (training resets only):
+            # the cell set is fixed and uniformly covered, and the draw restores
+            # bit-exactly on resume because the RNG state lives in the checkpoint.
+            self.family,off,v=GRID[int(self.np_random.integers(0,len(GRID)))]
             apos=[100.+float(off),0. if self.family=='follow' else 4.]
             speed=float(v)
         if self.family not in ('follow','adjacent'):raise ValueError('unknown family')

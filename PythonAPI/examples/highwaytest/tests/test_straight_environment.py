@@ -320,18 +320,22 @@ class EnvironmentTests(unittest.TestCase):
         env3.attacker.position[:]=[103.,4.]
         self.assertLess(env3._phi(),close,'lateral offset lowers the L3 potential')
 
-    def test_scenario_grid_cycles_deterministic_cells(self):
+    def test_scenario_grid_sampling_is_rng_driven_and_deterministic(self):
         env=StraightEnv(StraightConfig(level=1))
-        cells=set()
-        for _ in range(12):
-            env.reset(seed=900001)
-            cells.add((env.family,round(env.attacker.position[0],1),round(env.target.speed,1)))
-        self.assertEqual(len(cells),12,'twelve distinct grid cells per cycle')
         env.reset(seed=900001)
-        first=(env.family,round(env.attacker.position[0],1),round(env.target.speed,1))
-        self.assertEqual(first,('follow',135.0,17.0),'cycle restarts at the first cell')
+        cell=(env.family,round(env.attacker.position[0],1),round(env.target.speed,1))
+        env.reset(seed=900001)
+        self.assertEqual(cell,(env.family,round(env.attacker.position[0],1),round(env.target.speed,1)),
+                     'same seed must draw the same grid cell (bit-exact resume)')
+        cells=set()
+        for i in range(60):
+            env.reset(seed=900010+i)
+            cells.add((env.family,round(env.attacker.position[0],1),round(env.target.speed,1)))
+        self.assertGreater(len(cells),3,'variety across seeds')
+        for family,x,v in cells:
+            self.assertIn((family,round(x-100.,1),round(v,1)),GRID,'cells must come from the frozen grid')
         env.reset(seed=900001,options={'family':'follow'})
-        self.assertEqual(env.family,'follow')
+        self.assertEqual(env.family,'follow','explicit family option bypasses the grid')
 
     def test_l2_success_latches_after_hold_and_extra_cuts_do_not_revoke(self):
         cfg=StraightConfig(level=2,duration=6.)
