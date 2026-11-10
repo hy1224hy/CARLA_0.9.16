@@ -86,6 +86,7 @@ def parser():
     b.add_argument('--seed',type=int,default=42)
     b.add_argument('--episodes',type=int,default=128); b.add_argument('--epochs',type=int,default=40)
     b.add_argument('--attack-level',type=int,choices=(1,2,3),help='second-stage scripted attack BC: attack_L<level>.pt in the same output dir')
+    b.add_argument('--repertoire',action='store_true',help='shared multi-behavior repertoire BC: repertoire.pt in the same output dir')
     t=sub.add_parser('train')
     t.add_argument('--config',required=True); t.add_argument('--output',required=True)
     t.add_argument('--initialize-from'); t.add_argument('--resume'); t.add_argument('--max-rounds',type=int)
@@ -127,9 +128,11 @@ def batch(args):
     initializers={}
     if args.initialize_from_dir:
         for c in configs:
-            # Shared normal-driving initialization for all levels and algorithms:
+            # Shared repertoire initialization for all levels and algorithms:
             # levels differ only through the reward (frozen design decision).
-            path=Path(args.initialize_from_dir).resolve()/f'base_s{c.seed}'/'driver.pt'
+            root=Path(args.initialize_from_dir).resolve()/f'base_s{c.seed}'
+            path=root/'repertoire.pt'
+            if not path.is_file():path=root/'driver.pt'
             if not path.is_file():
                 raise FileNotFoundError(path)
             initializers[(c.seed,c.level)]=path
@@ -196,7 +199,7 @@ def main(argv=None):
         elif args.command=='bootstrap':
             from .config import StraightConfig
             cfg=replace(load_config(args.config),level=0,seed=args.seed) if args.config else StraightConfig(level=0,seed=args.seed)
-            result=runner.bootstrap(cfg,args.output,episodes=args.episodes,epochs=args.epochs,attack_level=args.attack_level)
+            result=runner.bootstrap(cfg,args.output,episodes=args.episodes,epochs=args.epochs,attack_level=args.attack_level,repertoire=args.repertoire)
         elif args.command=='evaluate':
             result=runner.evaluate(args.checkpoint,split=args.split,cases=args.cases,output=args.output,gif=args.gif)
         else: result=runner.report(args.runs,args.output)

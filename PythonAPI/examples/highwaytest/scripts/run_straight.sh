@@ -17,6 +17,9 @@ for training_seed in "${seed_values[@]}"; do
   if [[ ! -f "$STUDY/base_s${training_seed}/driver.pt" ]]; then
     "$PYTHON" -u -m highwaytest.straight bootstrap --seed "$training_seed" --output "$STUDY/base_s${training_seed}"
   fi
+  if [[ ! -f "$STUDY/base_s${training_seed}/repertoire.pt" ]]; then
+    "$PYTHON" -u -m highwaytest.straight bootstrap --seed "$training_seed" --repertoire --output "$STUDY/base_s${training_seed}"
+  fi
 done
 
 # 2. Training blocks: main, beta, reward-ablation (reused runs are not retrained).
