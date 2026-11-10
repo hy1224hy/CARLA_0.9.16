@@ -25,6 +25,15 @@ def band(x, lo, hi, half):
     return (hi + half - x) / half
 
 
+def tri(x, star, vmax):
+    """Triangular preference: 0 at 0, 1 at star, back to 0 at vmax."""
+    if x <= 0 or x >= vmax:
+        return 0.
+    if x <= star:
+        return x / star
+    return (vmax - x) / (vmax - star)
+
+
 class RewardState:
     def __init__(self,config):
         self.config=config
@@ -110,26 +119,22 @@ class RewardState:
         invalid=bool(frame.get('invalid',False) or not frame.get('baseline_valid',True) or (collision and spawn_overlap))
         horizon=self.time>=cfg.duration-1e-8
         self.done=invalid or collision or self.grade_violation or horizon
-        # Risk term: L2 band-shaped around the success window (no gradient toward
-        # collision); L3 monotone (post-cut contact approach guidance, doc 4.4).
-        if cfg.level==2:
-            h=band(frame.get('thw',100),.3,1.2,.15) if self.geometric_cut and front else 0.
-        elif cfg.level==3:
-            h=float(np.clip(1-frame.get('thw',100)/1.5,0.,1.)) if self.geometric_cut and front else 0.
-        else:
-            h=0.
+        # Dense impact terms (process guides, events define the attack):
+        # L1: triangular preference peaking inside the mild band (shared parameter
+        # source with the grade threshold); L2: weakened speed-loss term plus a
+        # smoothly activating THW-window feedback (no geometric-cut precondition);
+        # L3: control cost only -- approach guidance lives in the potential.
         cost=float(frame.get('control_cost',0.))
         if cfg.level==0:
             dense=float(np.clip(frame.get('attacker_speed',0)/cfg.target_speed,0,1))-.05*cost
         elif cfg.level==1:
-            # Peak reward inside the mild band, zero beyond it; the slope starts
-            # at ell=0 so discovery has a gradient from normal driving.
-            d_band=float(np.clip(ell,0.,1.))*band(ell,.10,.35,.10)
-            dense=2*cfg.effect_weight*d_band+float(mild)-.05*cost
+            dense=2*cfg.effect_weight*tri(ell,cfg.l1_star,cfg.mild_excess_threshold)-.05*cost
         elif cfg.level==2:
-            dense=cfg.effect_weight*d+2*cfg.risk_weight*h-.05*cost
+            lateral=float(frame.get('lateral',4.))
+            h_smooth=band(frame.get('thw',100),.3,1.2,.15)*float(front)*float(np.exp(-lateral/cfg.potential_ly))
+            dense=cfg.l2_effect_coef*cfg.effect_weight*d+2*cfg.risk_weight*h_smooth-.05*cost
         else:
-            dense=.2*cfg.effect_weight*d+.5*cfg.risk_weight*h-.05*cost
+            dense=-.05*cost
         parts={'dense':dt/cfg.duration*dense,'event':0.,'success':0.,'failure':0.,'geometry':0.}
         if invalid:parts['failure']=-20.
         elif collision:

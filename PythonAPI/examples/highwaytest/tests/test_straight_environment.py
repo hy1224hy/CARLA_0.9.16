@@ -7,15 +7,13 @@ from highwaytest.straight.rewards import RewardState
 
 class RewardTests(unittest.TestCase):
     def test_risk_weight_scales_geometry_terms_and_ablates_them(self):
-        frame=dict(ell=0.,front=True,thw=.5,acceleration=0.,target_speed=18.,reference_speed=18.,
+        frame=dict(ell=0.,front=True,thw=.5,lateral=.5,acceleration=0.,target_speed=18.,reference_speed=18.,
             attacker_speed=18.,control_cost=0.,collision=False,invalid=False,baseline_valid=True,
             attacker_lane_changed=False,target_lane_stable=True)
-        for level in (2,3):
-            full=RewardState(StraightConfig(level=level,risk_weight=1.))
-            off=RewardState(StraightConfig(level=level,risk_weight=0.))
-            full.geometric_cut=True;off.geometric_cut=True
-            self.assertGreater(full.observe(dict(frame),1/15)['reward'],
-                               off.observe(dict(frame),1/15)['reward'],level)
+        full=RewardState(StraightConfig(level=2,risk_weight=1.))
+        off=RewardState(StraightConfig(level=2,risk_weight=0.))
+        self.assertGreater(full.observe(dict(frame),1/15)['reward'],
+                           off.observe(dict(frame),1/15)['reward'],2)
 
     def test_risk_weight_validation_and_eval_cases_default(self):
         with self.assertRaises(ValueError):StraightConfig(risk_weight=-.1).validate()
@@ -78,29 +76,7 @@ class RewardTests(unittest.TestCase):
         self.assertEqual(state.diag['react_hit'],0)
         self.assertEqual(state.cut_count,0,'no reaction means no qualified cut')
 
-    def test_l2_adjacent_taper_bridges_natural_spacing_into_window(self):
-        env = StraightEnv(StraightConfig(level=2))
-        env.reset(seed=0, options={'family': 'follow'})
-        env.target.position[:] = [100., 0.]
-        env.target.speed = 18.
-        env.attacker.speed = 18.
-        def phi(x):
-            env.attacker.position[:] = [x, 4.]
-            return env._phi()
-        env.previous_action[:] = [0., 0.]
-        self.assertEqual(phi(120.), 0., 'spawn-like state must stay zero while inactive')
-        env.previous_action[:] = [0.3, 0.]
-        far = phi(154.)   # thw = (154-105)/18 ~ 2.7s
-        near = phi(115.)  # thw = 10/18 ~ 0.56s, inside the taper
-        self.assertGreater(near, 0., 'taper active while maneuvering')
-        self.assertGreater(near, far, 'taper must pull the spacing toward the window')
 
-    def test_l3_risk_stays_monotone_for_contact_approach(self):
-        def h3(thw):
-            state = RewardState(StraightConfig(level=3))
-            state.geometric_cut = True
-            return state.observe(dict(thw=thw, front=True, ell=0.), 1/15)['reward']
-        self.assertGreater(h3(.5), h3(.9), 'L3 h must keep rewarding closer approach')
 
     def test_align_thresholds_are_config_knobs(self):
         relaxed=RewardState(StraightConfig(align_duration=.3,align_lateral=.75,align_heading=15.))
@@ -263,23 +239,6 @@ class EnvironmentTests(unittest.TestCase):
         self.assertTrue(np.isfinite(info['avg_speed_ratio']))
         self.assertLessEqual(info['max_target_brake'],0.)
 
-    def test_potentials_zero_at_all_spawn_regions(self):
-        # Strict shared-initialization contract: the geometric potential must be
-        # exactly zero at every possible spawn state, so a normal-driving policy
-        # experiences no potential drift and levels differ only through rewards.
-        for level in (1, 2, 3):
-            env = StraightEnv(StraightConfig(level=level))
-            env.reset(seed=0, options={'family': 'follow'})
-            env.target.position[:] = [100., 0.]
-            env.target.speed = 18.
-            for ax in (135., 145., 155.):
-                env.attacker.position[:] = [ax, 0.]
-                env.attacker.speed = 18.
-                self.assertEqual(env._phi(), 0., (level, 'follow', ax))
-            for ax in (92., 100., 105., 120.):
-                env.attacker.position[:] = [ax, 4.]
-                env.attacker.speed = 18.
-                self.assertEqual(env._phi(), 0., (level, 'adjacent', ax))
 
     def test_potentials_positive_only_in_attack_regions(self):
         env = StraightEnv(StraightConfig(level=1))
@@ -304,40 +263,88 @@ class EnvironmentTests(unittest.TestCase):
         env3.attacker.speed = 18.
         self.assertGreater(env3._phi(), 0., 'L3 potential must guide in-lane proximity')
 
-    def test_potentials_have_lateral_progress_gradient_from_adjacent_spawn(self):
-        # From the adjacent-lane spawn the potential must grow as the attacker
-        # moves toward the target lane, giving the cut/block approach a gradient
-        # while staying exactly zero at the spawn itself.
-        for level in (1, 2, 3):
-            env = StraightEnv(StraightConfig(level=level))
-            env.reset(seed=0, options={'family': 'follow'})
-            env.target.position[:] = [100., 0.]
-            env.target.speed = 18.
-            env.attacker.speed = 14.
-            env.attacker.position[:] = [112., 4.]  # adjacent lane, at spawn-like dy
-            at_spawn = env._phi()
-            env.attacker.position[:] = [112., 2.]  # halfway across
-            midway = env._phi()
-            env.attacker.position[:] = [112., 0.]  # fully in the target lane
-            in_lane = env._phi()
-            self.assertEqual(at_spawn, 0., (level, 'spawn lateral must be zero'))
-            self.assertGreaterEqual(midway, 0., (level, 'midway'))
-            self.assertGreater(in_lane, midway, (level, 'lateral progress must increase the potential'))
 
-    def test_l2_staging_potential_zero_at_spawn_and_guides_overtake(self):
-        env = StraightEnv(StraightConfig(level=2))
-        env.reset(seed=0, options={'family': 'follow'})
-        env.target.position[:] = [100., 0.]
-        env.target.speed = 18.
-        env.attacker.position[:] = [90., 4.]  # adjacent lane, 15m behind
-        env.attacker.speed = 18.
-        self.assertEqual(env._phi(), 0., 'spawn-like behind state must be zero')
-        env.attacker.speed = 21.  # overtaking speed (vA > vV + 2)
-        self.assertGreater(env._phi(), 0., 'staging potential must guide the overtake approach')
-        env.attacker.position[:] = [95., 4.]  # 10m behind, still overtaking
-        self.assertGreater(env._phi(), 0.)
-        env.attacker.position[:] = [112., 4.]  # now ahead in adjacent lane
-        self.assertEqual(env._phi(), 0., 'ahead-in-adjacent relies on the lateral factor only')
+
+    def test_l1_triangular_preference(self):
+        def dense(ell):
+            return RewardState(StraightConfig(level=1)).observe(dict(ell=ell,front=True),1/15)['reward']
+        self.assertGreater(dense(.2),dense(.1),'preference rises toward the peak')
+        self.assertGreater(dense(.2),dense(.3),'preference falls past the peak')
+        self.assertAlmostEqual(dense(.35),dense(.5),places=6,msg='zero at and above the mild boundary')
+        self.assertGreater(dense(.05),dense(0.),'slope starts at zero loss')
+
+    def test_l2_smooth_risk_activates_without_geometric_cut(self):
+        def r(thw):
+            state=RewardState(StraightConfig(level=2))
+            return state.observe(dict(thw=thw,front=True,lateral=.5,ell=0.),1/15)['reward']
+        self.assertGreater(r(.7),0.,'in-window front proximity gives feedback without any cut history')
+        self.assertAlmostEqual(r(1.4),0.,places=6)
+        self.assertGreater(r(.7),r(1.4))
+
+    def test_l3_dense_is_control_cost_only(self):
+        state=RewardState(StraightConfig(level=3))
+        state.geometric_cut=True
+        r=state.observe(dict(ell=.5,front=True,thw=.5),1/15)['reward']
+        self.assertEqual(r,0.,'no d/h leakage into L3 dense')
+
+    def test_continuous_potentials_guide_levels(self):
+        env=StraightEnv(StraightConfig(level=1))
+        env.reset(seed=0,options={'family':'follow'})
+        env.target.position[:]=[100.,0.];env.target.speed=18.
+        env.reference.vehicles[1].speed=18.
+        env.attacker.speed=18.
+        env.attacker.position[:]=[130.,0.]
+        far=env._phi()
+        env.attacker.position[:]=[113.,0.]  # gap 8 = preferred front position
+        self.assertGreater(env._phi(),far,'L1 potential must prefer the front position')
+        env.attacker.position[:]=[95.,0.]
+        self.assertEqual(env._phi(),0.,'behind stays zero')
+        env2=StraightEnv(StraightConfig(level=2))
+        env2.reset(seed=0,options={'family':'follow'})
+        env2.target.position[:]=[100.,0.];env2.target.speed=18.
+        env2.attacker.speed=18.
+        env2.attacker.position[:]=[114.,0.]  # gap 9, close to g*=14.4
+        near=env2._phi()
+        env2.attacker.position[:]=[140.,0.]  # gap 35, far from g*
+        self.assertGreater(near,env2._phi(),'L2 potential peaks near the target spacing')
+        env2.attacker.position[:]=[114.,4.]
+        self.assertLess(env2._phi(),near,'lateral offset lowers the L2 potential')
+        env3=StraightEnv(StraightConfig(level=3))
+        env3.reset(seed=0,options={'family':'follow'})
+        env3.target.position[:]=[100.,0.];env3.target.speed=18.
+        env3.attacker.speed=18.
+        env3.attacker.position[:]=[103.,0.]
+        close=env3._phi()
+        env3.attacker.position[:]=[130.,0.]
+        self.assertGreater(close,env3._phi(),'L3 potential grows with proximity')
+        env3.attacker.position[:]=[103.,4.]
+        self.assertLess(env3._phi(),close,'lateral offset lowers the L3 potential')
+
+    def test_scenario_grid_cycles_deterministic_cells(self):
+        env=StraightEnv(StraightConfig(level=1))
+        cells=set()
+        for _ in range(12):
+            env.reset(seed=900001)
+            cells.add((env.family,round(env.attacker.position[0],1),round(env.target.speed,1)))
+        self.assertEqual(len(cells),12,'twelve distinct grid cells per cycle')
+        env.reset(seed=900001)
+        first=(env.family,round(env.attacker.position[0],1),round(env.target.speed,1))
+        self.assertEqual(first,('follow',135.0,17.0),'cycle restarts at the first cell')
+        env.reset(seed=900001,options={'family':'follow'})
+        self.assertEqual(env.family,'follow')
+
+    def test_l2_success_latches_after_hold_and_extra_cuts_do_not_revoke(self):
+        cfg=StraightConfig(level=2,duration=6.)
+        state=RewardState(cfg)
+        def do_cut():
+            for i in range(6):
+                state.observe(dict(attacker_lane_changed=i==0,target_lane_stable=True,aligned=True,front=True,thw=.7),1/15)
+            state.observe(dict(reference_speed=18.,target_speed=10.),1/15)
+        do_cut();do_cut()
+        while not state.done:
+            state.observe(dict(),1/15)
+        self.assertTrue(state.success)
+        self.assertEqual(state.cut_count,2,'extra cuts after the hold must not revoke success')
 
     def test_geometry_potential_enters_reward_components(self):
         env=StraightEnv(StraightConfig(level=1,duration=.6,geometry_weight=.5))

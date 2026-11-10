@@ -210,7 +210,7 @@ def _train(config,output,initialize_from=None,resume=None,max_rounds=None):
         for key,value in row.items():
             if key in allowed and isinstance(value,(int,float,bool)) and np.isfinite(value):writer.add_scalar(prefix+'/'+key,value,row['train_steps'])
     def log_episodes(episodes,name,step):
-        for key in ('return','attack_success','collision','offroad','grade_violation'):
+        for key in ('return','attack_success','collision','offroad','grade_violation','blocking_time','cut_count','stop_time'):
             values=[e[key] for e in episodes if key in e]
             if values:writer.add_scalar('rollout/'+name+'/'+key,float(np.mean(values)),step)
         for key in sorted({k for e in episodes for k in e.get('reward_components',{})}):

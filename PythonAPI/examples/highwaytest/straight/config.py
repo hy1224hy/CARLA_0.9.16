@@ -46,6 +46,13 @@ class StraightConfig:
     obs_dim:int=24
     cut_reward_cap:int=4
     cut_success_min:int=1
+    l1_star:float=.20
+    l2_effect_coef:float=.3
+    tau_star:float=.8
+    potential_lg:float=15.
+    potential_ly:float=4.
+    potential_lpsi:float=.5
+    potential_lx:float=15.
 
     def to_dict(self):return asdict(self)
 
@@ -73,6 +80,8 @@ class StraightConfig:
         if min(self.align_lateral,self.align_heading,self.align_duration)<=0:raise ValueError('invalid cut-in alignment thresholds')
         if self.obs_dim<1 or type(self.obs_dim) is not int:raise ValueError('obs_dim must be a positive integer')
         if min(self.cut_reward_cap,self.cut_success_min)<1:raise ValueError('invalid repeated-cut settings')
+        if not 0<self.l1_star<self.mild_excess_threshold:raise ValueError('l1_star must sit inside the mild band')
+        if min(self.l2_effect_coef,self.tau_star,self.potential_lg,self.potential_ly,self.potential_lpsi,self.potential_lx)<=0:raise ValueError('invalid potential/preference parameters')
         if self.simulation_frequency%self.policy_frequency:raise ValueError('physics must divide policy interval')
         n=self.duration*self.policy_frequency
         if n<1 or abs(n-round(n))>1e-6:raise ValueError('finite horizon needs integer decisions')

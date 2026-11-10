@@ -5,7 +5,7 @@ from gymnasium import spaces
 from highway_env.road.road import Road,RoadNetwork
 from highway_env.vehicle.kinematics import Vehicle
 from highway_env.vehicle.behavior import IDMVehicle
-from .rewards import RewardState
+from .rewards import RewardState, tri
 
 
 class ContactMixin:
@@ -18,6 +18,12 @@ class ContactMixin:
 
 class Attacker(ContactMixin,Vehicle):pass
 class Driver(ContactMixin,IDMVehicle):pass
+
+# Structured training scenario grid: 2 families x 3 offsets x 2 target speeds,
+# deterministic cells cycled round-robin per environment instance. Evaluation
+# and demonstration resets always pass an explicit family and bypass the grid.
+GRID=[('follow',35,17),('follow',45,19),('follow',55,17),('follow',35,19),('follow',45,17),('follow',55,19),
+      ('adjacent',-8,17),('adjacent',6,19),('adjacent',20,17),('adjacent',-8,19),('adjacent',6,17),('adjacent',20,19)]
 
 
 class StraightEnv(gym.Env):
@@ -42,12 +48,20 @@ class StraightEnv(gym.Env):
     def reset(self,*,seed=None,options=None):
         super().reset(seed=seed)
         options=options or {}
-        self.family=options.get('family',str(self.np_random.choice(['follow','adjacent'])))
+        if 'family' in options:
+            self.family=options['family']
+            v=float(self.np_random.uniform(16,20))
+            if self.family=='follow':apos=[100.+float(self.np_random.uniform(35,55)),0.]
+            else:apos=[100.+float(self.np_random.uniform(-8,20)),4.]
+            speed=float(np.clip(v+self.np_random.uniform(-1,1),0,30))
+        else:
+            # Structured grid cell (training resets only).
+            idx=getattr(self,'_grid_index',0)
+            self.family,off,v=GRID[idx%len(GRID)]
+            self._grid_index=idx+1
+            apos=[100.+float(off),0. if self.family=='follow' else 4.]
+            speed=float(v)
         if self.family not in ('follow','adjacent'):raise ValueError('unknown family')
-        v=float(self.np_random.uniform(16,20))
-        if self.family=='follow':apos=[100.+float(self.np_random.uniform(35,55)),0.]
-        else:apos=[100.+float(self.np_random.uniform(-8,20)),4.]
-        speed=float(np.clip(v+self.np_random.uniform(-1,1),0,30))
         demonstration=bool(options.get('demonstration',False))
         heading=0.
         if demonstration:
@@ -111,42 +125,39 @@ class StraightEnv(gym.Env):
         return np.clip(np.asarray(row,dtype=np.float32),-3,3)
 
     def _phi(self):
-        # Level-specific bounded geometric potentials for exploration guidance.
-        # Contract: EXACTLY zero at every spawn state (both families), positive
-        # only inside the attack region, and monotone in lateral progress from
-        # the adjacent-lane spawn toward the target lane, so a normal-driving
-        # policy sees no drift and every spawn has a gradient toward the task.
-        level=self.config.level
+        # Continuous approach potentials (2026-11-11 revision, user design):
+        # no event preconditions and no hard switches -- the potential guides the
+        # whole path from normal driving to the attack geometry. Spawn states may
+        # carry nonzero values (constant-offset argument for the first decision);
+        # terminal handling stays Phi=0. Process-vs-substep convention unchanged.
+        cfg=self.config
+        level=cfg.level
         a,v=self.attacker,self.target
         dy=float(v.position[1]-a.position[1])
         gap=float(a.position[0]-v.position[0]-5.)
-        lateral=float(np.clip(1.-abs(dy)/4.,0.,1.))
         if level==1:
-            # Front blocking band: gap 2-15m, lateral progress toward the target lane.
+            # Front interaction position -> lateral alignment -> mild impact.
             if gap<=0:return 0.
-            return float(np.clip((15.-gap)/8.,0.,1.))*lateral
+            p_front=float(np.exp(-abs(gap-8.)/cfg.potential_lg))
+            p_lat=float(np.exp(-abs(dy)/cfg.potential_ly))
+            ref_speed=float(self.reference.vehicles[1].speed)
+            ell=(ref_speed-float(v.speed))/max(ref_speed,5.)
+            i1=tri(ell,cfg.l1_star,cfg.mild_excess_threshold)
+            return .55*p_front+.30*p_front*p_lat+.15*p_front*p_lat*i1
         if level==2:
-            # Post-cut band / adjacent approach taper.
-            if gap>0:
-                thw=gap/max(v.speed,2.)
-                if abs(dy)>2.5:
-                    # Adjacent lane: long taper from the natural lane-change spacing
-                    # (THW up to 6s) into the success window; active only while
-                    # maneuvering, so spawn states remain exactly zero.
-                    active=float(np.abs(self.previous_action).max()>.1)
-                    return float(np.clip((thw-.15)/.15,0.,1.)*np.clip((6.-thw)/4.8,0.,1.))*active
-                return float(np.clip((1.2-thw)/.9,0.,1.)*np.clip((thw-.3)/.9,0.,1.))*lateral
-            # Overtake staging: adjacent lane, 0-15m behind, clearly overtaking speed.
-            # Spawn speed difference is at most 1 m/s, so the +2 gate keeps this zero at spawn.
-            behind=float(-gap)
-            if 0.<behind<=15. and abs(dy)>2.5 and a.speed>v.speed+2.:
-                return float(np.clip(behind/15.,0.,1.))
-            return 0.
+            # Longitudinal positioning -> lateral closeness -> heading alignment.
+            g_star=cfg.tau_star*max(v.speed,2.)
+            p_g=float(np.exp(-abs(gap-g_star)/cfg.potential_lg))
+            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))
+            dpsi=abs(float(v.heading-a.heading))
+            p_psi=float(np.exp(-dpsi/cfg.potential_lpsi))
+            return .55*p_g+.30*p_g*p_y+.15*p_g*p_y*p_psi
         if level==3:
-            # Longitudinal proximity toward contact, lateral progress toward the lane.
-            dx=float(v.position[0]-a.position[0])
-            if abs(dx)>20.:return 0.
-            return float(np.exp(-max(abs(dx)-5.,0.)/10.))*lateral
+            # Longitudinal proximity -> lateral overlap (no cut-chain dependency).
+            dx=abs(float(v.position[0]-a.position[0]))
+            p_x=float(np.exp(-max(dx-5.,0.)/cfg.potential_lx))
+            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))
+            return .6*p_x+.4*p_x*p_y
         return 0.
 
     def step(self,action):
@@ -182,6 +193,7 @@ class StraightEnv(gym.Env):
                 target_lane_stable=old_vlane==self._lane(self.target),
                 collision=collision,invalid=invalid,baseline_valid=self.baseline_valid,
                 speed_ratio=float(self.attacker.speed)/max(float(self.target.speed),.1),
+                lateral=abs(self.attacker.position[1]-self.target.position[1]),
                 contact_orientation=orientation,spawn_overlap=self.spawn_overlap,
                 normal_progress=self.attacker.position[0]-self.initial_attacker_x)
             self.last_result=self.tracker.observe(frame,dt)
