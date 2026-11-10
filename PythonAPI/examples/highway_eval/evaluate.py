@@ -118,6 +118,10 @@ def evaluate_suite(runs, output, split='development', cases=100, checkpoint='sel
     sources=([runs] if runs.is_file() else [runs/(checkpoint+'.pt')]
              if (runs/(checkpoint+'.pt')).is_file() else sorted(runs.glob('*/'+checkpoint+'.pt')))
     if not sources:raise FileNotFoundError('No matching checkpoints under '+str(runs))
+    first=torch.load(io.BytesIO(sources[0].read_bytes()),map_location='cpu',weights_only=False)
+    if first.get('protocol')=='highway_hybrid_twin_v1':
+        from highway_hybrid.runner import evaluate_suite as hybrid_evaluate
+        return hybrid_evaluate(runs,output,split,cases,checkpoint,team)
     current_source=source_digest();versions=runtime_versions();frozen=[]
     # Freeze every input BEFORE the first rollout so live training cannot replace it.
     for path in sources:
