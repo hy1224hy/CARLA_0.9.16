@@ -50,6 +50,7 @@ class RewardState:
         self.max_target_brake=0.
         self.speed_ratio_sum=0.;self.speed_ratio_n=0;self.avg_speed_ratio=0.
         self.cut_count=0;self.cut_first_thw=None;self.last_cut_time=None
+        self.lane_cross_count=0
         self.stop_qualified=False
         self.contact_orientation='none'
         self.diag={'candidates':0,'geometric':0,'thw_ok':0,'thw_miss':0,'react_hit':0,'react_miss':0}
@@ -75,9 +76,15 @@ class RewardState:
         mild=front and .10<=ell<=.35 and a>=-3
         self.blocking_time+=dt*float(mild)
         # --- cut-in attempt chain (all levels; L1 uses cut_in for its grade gate) ---
+        cross_reward=0.
         if frame.get('attacker_lane_changed',False) and frame.get('target_lane_stable',False):
             self.candidate=True;self.align_time=0.;self.attempt_registered=False
             self.candidate_time=None;self.diag['candidates']+=1
+            # Lane-crossing bonus for entering the target's lane, capped to
+            # prevent weaving farming (crossings back out never trigger this).
+            self.lane_cross_count+=1
+            if cfg.level==2 and self.lane_cross_count<=cfg.lane_cross_cap and cfg.lane_cross_bonus>0:
+                cross_reward=cfg.lane_cross_bonus
         if not frame.get('target_lane_stable',True):
             self.candidate=False;self.align_time=0.;self.candidate_time=None
             if self.cut_time is not None:self.cut_time=None
@@ -144,6 +151,8 @@ class RewardState:
         else:
             if fresh and cfg.level==2 and self.cut_count<=cfg.cut_reward_cap:
                 parts['event']=2.*cfg.event_weight
+            if cross_reward>0:
+                parts['event']+=cross_reward*cfg.event_weight
             if horizon:
                 self.success=(cfg.level==0 and frame.get('normal_progress',0)>=.5*cfg.target_speed*cfg.duration
                     or cfg.level==1 and self.blocking_time>=1.5-1e-8

@@ -151,7 +151,7 @@ class StraightEnv(gym.Env):
             p_y=float(np.exp(-abs(dy)/cfg.potential_ly))
             dpsi=abs(float(v.heading-a.heading))
             p_psi=float(np.exp(-dpsi/cfg.potential_lpsi))
-            return .55*p_g+.30*p_g*p_y+.15*p_g*p_y*p_psi
+            return .45*p_g+.40*p_g*p_y+.15*p_g*p_y*p_psi
         if level==3:
             # Longitudinal proximity -> lateral overlap (no cut-chain dependency).
             dx=abs(float(v.position[0]-a.position[0]))
