@@ -1,5 +1,29 @@
-"""Causal physical-substep events and grade-specific finite horizon rewards."""
+"""Causal physical-substep events and grade-specific finite horizon rewards.
+
+2026-11-11 semantic revision (user priority list):
+- L2 targets REPEATED cutting-in: every qualified cut earns its event reward
+  (capped), so repetition is encouraged; success requires cut_success_min
+  qualified cuts (default 1) -- encouragement is not a requirement. The
+  attempt machinery re-arms after each reaction so weaving re-entry can retry.
+- The risk term h is band-shaped around the success THW window, so the dense
+  gradient no longer pushes below the qualification window toward collision.
+- L1's dense effect reward peaks inside the mild band and vanishes outside it,
+  so the main reward no longer pushes the policy toward grade violations.
+- Per-episode gate-failure diagnostics record where the cut chain breaks.
+"""
 import numpy as np
+
+
+def band(x, lo, hi, half):
+    """Trapezoid: 1 inside [lo,hi], linear to 0 at lo-half and hi+half."""
+    if x <= lo - half or x >= hi + half:
+        return 0.
+    if lo <= x <= hi:
+        return 1.
+    if x < lo:
+        return (x - (lo - half)) / half
+    return (hi + half - x) / half
+
 
 class RewardState:
     def __init__(self,config):
@@ -9,15 +33,17 @@ class RewardState:
         self.excess_time=0.
         self.attempt_registered=False
         self.geometric_cut=self.cut_in=self.done=self.success=False
-        self.cut_time=self.candidate_time=self.cut_event_time=None
+        self.cut_time=self.candidate_time=None
         self.candidate=False
+        self.react_checked=True
         self.grade_violation=False
         self.components={}
         self.max_target_brake=0.
         self.speed_ratio_sum=0.;self.speed_ratio_n=0;self.avg_speed_ratio=0.
-        self.cut_count=0;self.cut_first_thw=None
+        self.cut_count=0;self.cut_first_thw=None;self.last_cut_time=None
         self.stop_qualified=False
         self.contact_orientation='none'
+        self.diag={'candidates':0,'geometric':0,'thw_ok':0,'thw_miss':0,'react_hit':0,'react_miss':0}
 
     def observe(self,frame,dt):
         if self.done:raise RuntimeError('episode already terminated')
@@ -39,46 +65,65 @@ class RewardState:
         if orientation:self.contact_orientation=str(orientation)
         mild=front and .10<=ell<=.35 and a>=-3
         self.blocking_time+=dt*float(mild)
-        # Target lane changes alone never start an attacker lane crossing.
+        # --- cut-in attempt chain (all levels; L1 uses cut_in for its grade gate) ---
         if frame.get('attacker_lane_changed',False) and frame.get('target_lane_stable',False):
             self.candidate=True;self.align_time=0.;self.attempt_registered=False
-            self.candidate_time=None
+            self.candidate_time=None;self.diag['candidates']+=1
         if not frame.get('target_lane_stable',True):
             self.candidate=False;self.align_time=0.;self.candidate_time=None
-            if not self.cut_in:self.cut_time=None
+            if self.cut_time is not None:self.cut_time=None
         self.align_time=self.align_time+dt if self.candidate and front and frame.get('aligned',False) else 0.
-        if self.align_time>=.4-1e-8 and not self.attempt_registered:
+        if self.align_time>=cfg.align_duration-1e-8 and not self.attempt_registered:
             self.attempt_registered=True
-            self.geometric_cut=True;self.cut_time=self.time
-            self.cut_count+=1
+            self.geometric_cut=True;self.cut_time=self.time;self.react_checked=False
+            self.diag['geometric']+=1
             thw=frame.get('thw',np.nan)
             if self.cut_first_thw is None and np.isfinite(thw):self.cut_first_thw=float(thw)
-            self.candidate_time=self.time if .3<=frame.get('thw',100)<=1.2 else None
+            if .3<=frame.get('thw',100)<=1.2:
+                self.candidate_time=self.time;self.diag['thw_ok']+=1
+            else:
+                self.candidate_time=None;self.diag['thw_miss']+=1
         fresh=False
-        if not self.cut_in and self.candidate_time is not None and self.time-self.candidate_time<=1.0+1e-8:
-            if self.brake_time>=.2-1e-8 or frame.get('reference_speed',18)-frame.get('target_speed',18)>=3:
-                self.cut_in=True;self.cut_event_time=self.time;fresh=True
+        # The reaction window anchors at a THW-qualified confirmation only:
+        # a geometric cut outside the spacing window never earns a reaction check.
+        if self.candidate_time is not None and not self.react_checked:
+            if self.time-self.candidate_time<=1.0+1e-8:
+                if self.brake_time>=.2-1e-8 or frame.get('reference_speed',18)-frame.get('target_speed',18)>=3:
+                    # Qualified cut: reaction-confirmed. Re-arm the chain for the next cut.
+                    self.cut_count+=1;self.last_cut_time=self.time;self.cut_in=True
+                    self.react_checked=True;self.diag['react_hit']+=1
+                    self.cut_time=None;self.candidate=False;self.candidate_time=None
+                    self.align_time=0.;self.attempt_registered=False;self.brake_time=0.
+                    fresh=True
+            else:
+                self.react_checked=True;self.diag['react_miss']+=1
+                self.cut_time=None;self.candidate=False;self.candidate_time=None
         # Dev calibration: hard braking alone (IDM jerk) is not a violation; it must
-        # co-occur with an actual strong speed loss, otherwise mild blocking is
-        # punished for the target's own transient braking.
+        # co-occur with an actual strong speed loss.
         high=(self.cut_in or
               (self.brake_time>.4 and ell>cfg.mild_excess_threshold) or
               (self.stop_time>2 and frame.get('reference_speed',18)>8) or
               self.excess_time>=cfg.mild_excess_duration-1e-8)
-        # L1 must not optimize prolonged large speed loss below the stop threshold.
         self.grade_violation=cfg.level==1 and high
         collision=bool(frame.get('collision',False))
         spawn_overlap=bool(frame.get('spawn_overlap',False))
         invalid=bool(frame.get('invalid',False) or not frame.get('baseline_valid',True) or (collision and spawn_overlap))
         horizon=self.time>=cfg.duration-1e-8
         self.done=invalid or collision or self.grade_violation or horizon
-        h=float(np.clip(1-frame.get('thw',100)/1.5,0,1)) if self.geometric_cut and front else 0.
+        # h: band-shaped around the success window; no gradient below it toward collision.
+        h=band(frame.get('thw',100),.3,1.2,.15) if self.geometric_cut and front else 0.
         cost=float(frame.get('control_cost',0.))
         if cfg.level==0:
             dense=float(np.clip(frame.get('attacker_speed',0)/cfg.target_speed,0,1))-.05*cost
+        elif cfg.level==1:
+            # Peak reward inside the mild band; zero beyond it so the main term
+            # never pushes the policy past the mild grade boundary.
+            d_band=float(np.clip(ell,0.,1.))*band(ell,.10,.35,.05)
+            dense=2*cfg.effect_weight*d_band+float(mild)-.05*cost
+        elif cfg.level==2:
+            dense=cfg.effect_weight*d+2*cfg.risk_weight*h-.05*cost
         else:
-            dense={1:2*cfg.effect_weight*d+float(mild),2:cfg.effect_weight*d+2*cfg.risk_weight*h,
-                   3:.2*cfg.effect_weight*d+.5*cfg.risk_weight*h}[cfg.level]-.05*cost
+            dense=.2*cfg.effect_weight*d+.5*cfg.risk_weight*h-.05*cost
         parts={'dense':dt/cfg.duration*dense,'event':0.,'success':0.,'failure':0.,'geometry':0.}
         if invalid:parts['failure']=-20.
         elif collision:
@@ -86,11 +131,13 @@ class RewardState:
             self.success=cfg.level==3
         elif self.grade_violation:parts['failure']=-10.
         else:
-            if fresh and cfg.level==2:parts['event']=2.*cfg.event_weight
+            if fresh and cfg.level==2 and self.cut_count<=cfg.cut_reward_cap:
+                parts['event']=2.*cfg.event_weight
             if horizon:
                 self.success=(cfg.level==0 and frame.get('normal_progress',0)>=.5*cfg.target_speed*cfg.duration
                     or cfg.level==1 and self.blocking_time>=1.5-1e-8
-                    or cfg.level==2 and self.cut_in and self.time-self.cut_event_time>=1.)
+                    or cfg.level==2 and self.cut_count>=cfg.cut_success_min
+                        and self.last_cut_time is not None and self.time-self.last_cut_time>=1.-1e-8)
                 if self.success:parts['success']={0:1.,1:4.,2:5.,3:0.}[cfg.level]*cfg.event_weight
         for key,value in parts.items():self.components[key]=self.components.get(key,0.)+value
         return dict(reward=float(sum(parts.values())),components=parts,done=self.done,

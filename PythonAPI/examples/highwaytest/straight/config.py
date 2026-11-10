@@ -40,6 +40,12 @@ class StraightConfig:
     risk_weight:float=1.
     mild_excess_threshold:float=.35
     mild_excess_duration:float=1.
+    align_lateral:float=.5
+    align_heading:float=10.
+    align_duration:float=.4
+    obs_dim:int=24
+    cut_reward_cap:int=4
+    cut_success_min:int=1
 
     def to_dict(self):return asdict(self)
 
@@ -64,6 +70,9 @@ class StraightConfig:
         if not 0<self.gamma<=1 or not 0<=self.gae_lambda<=1:raise ValueError('invalid discount')
         if min(self.beta,self.entropy_coef,self.geometry_weight,self.effect_weight,self.event_weight,self.risk_weight)<0:raise ValueError('negative reward/learning weight')
         if not 0<self.mild_excess_threshold<1 or self.mild_excess_duration<=0:raise ValueError('invalid mild grade boundary')
+        if min(self.align_lateral,self.align_heading,self.align_duration)<=0:raise ValueError('invalid cut-in alignment thresholds')
+        if self.obs_dim<1 or type(self.obs_dim) is not int:raise ValueError('obs_dim must be a positive integer')
+        if min(self.cut_reward_cap,self.cut_success_min)<1:raise ValueError('invalid repeated-cut settings')
         if self.simulation_frequency%self.policy_frequency:raise ValueError('physics must divide policy interval')
         n=self.duration*self.policy_frequency
         if n<1 or abs(n-round(n))>1e-6:raise ValueError('finite horizon needs integer decisions')

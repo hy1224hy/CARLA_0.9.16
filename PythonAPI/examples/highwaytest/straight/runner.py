@@ -26,8 +26,9 @@ def load_state(path):
 
 def model_from_state(state):
     from .sac import SACActorCritic
+    raw=state['config']
     cls=SACActorCritic if state.get('learner')=='sac' else ActorCritic
-    model=cls(state['config']['hidden'])
+    model=cls(raw['hidden'],raw.get('obs_dim',24))
     model.load_state_dict(state['model'])
     return model
 
@@ -47,8 +48,10 @@ def rank_report(report,level):
     collision=report.get('collision_rate',0.) if level!=3 else 0.
     violation=report.get('grade_violation_rate',0.)
     eligible=valid and invalid<=.125 and collision<=.125 and violation<=.125
-    return (int(eligible),report['success_rate' if level==0 else 'attack_success_rate'] if eligible else -invalid-collision-violation,
-            report.get('utility',0.) if eligible else 0.)
+    primary=report['success_rate' if level==0 else 'attack_success_rate'] if eligible else -invalid-collision-violation
+    secondary=report.get('utility',0.)
+    if level==2:secondary=secondary+0.05*report.get('cut_count',0.)
+    return (int(eligible),primary,secondary)
 
 
 def evaluate_model(model,cfg,split,cases,demonstration=False,capture=False):
@@ -150,7 +153,7 @@ def _train(config,output,initialize_from=None,resume=None,max_rounds=None):
     models={};optimizers={};rngs={};torch_states={}
     for j,name in enumerate(('A','B')):
         torch.manual_seed(cfg.seed+10007*j)
-        models[name]=ActorCritic(cfg.hidden)
+        models[name]=ActorCritic(cfg.hidden,cfg.obs_dim)
         optimizers[name]=torch.optim.Adam(models[name].parameters(),lr=cfg.lr,eps=1e-5)
         rngs[name]=np.random.default_rng(cfg.seed+10007*j)
         torch_states[name]=torch.get_rng_state()
@@ -304,7 +307,7 @@ def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episod
                 if term or trunc:break
     finally:env.close()
     x=torch.as_tensor(np.asarray(observations),dtype=torch.float32);y=torch.as_tensor(np.asarray(actions),dtype=torch.float32)
-    model=ActorCritic(cfg.hidden)
+    model=ActorCritic(cfg.hidden,cfg.obs_dim)
     fit(model,x,y,epochs)
     # DAgger: relabel the model's own rollouts with the teacher's corrective actions,
     # so the controller surface is learned in exactly the states the model visits.
@@ -367,7 +370,7 @@ def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episod
         finally:env.close()
         if not script_obs:raise ValueError('no clean repertoire demonstrations collected')
         sx=torch.as_tensor(np.asarray(script_obs),dtype=torch.float32);sy=torch.as_tensor(np.asarray(script_act),dtype=torch.float32)
-        rep=ActorCritic(cfg.hidden);rep.actor.load_state_dict(model.actor.state_dict())
+        rep=ActorCritic(cfg.hidden,cfg.obs_dim);rep.actor.load_state_dict(model.actor.state_dict())
         fit(rep,torch.cat([x,sx]),torch.cat([y,sy]),max(12,epochs//2))
         if dagger_rounds:
             env2=StraightEnv(cfg)
@@ -435,7 +438,7 @@ def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episod
     finally:env.close()
     if not script_obs:raise ValueError('no clean script demonstrations collected')
     sx=torch.as_tensor(np.asarray(script_obs),dtype=torch.float32);sy=torch.as_tensor(np.asarray(script_act),dtype=torch.float32)
-    attack=ActorCritic(cfg.hidden);attack.actor.load_state_dict(model.actor.state_dict())
+    attack=ActorCritic(cfg.hidden,cfg.obs_dim);attack.actor.load_state_dict(model.actor.state_dict())
     fit(attack,sx,sy,max(12,epochs//2))
     if dagger_rounds:
         # DAgger on the attack policy: relabel the model's own staging rollouts with

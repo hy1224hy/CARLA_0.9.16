@@ -6,10 +6,11 @@ from torch.distributions import Normal
 
 
 class ActorCritic(nn.Module):
-    def __init__(self,hidden=128):
+    def __init__(self,hidden=128,obs_dim=24):
         super().__init__()
         def network(n):
-            return nn.Sequential(nn.Linear(22,hidden),nn.Tanh(),nn.Linear(hidden,hidden),nn.Tanh(),nn.Linear(hidden,n))
+            return nn.Sequential(nn.Linear(obs_dim,hidden),nn.Tanh(),nn.Linear(hidden,hidden),nn.Tanh(),nn.Linear(hidden,n))
+        self.obs_dim=obs_dim
         self.actor=network(2)
         self.critic=network(1)
         self.log_std=nn.Parameter(torch.tensor([-.7,-1.9]))

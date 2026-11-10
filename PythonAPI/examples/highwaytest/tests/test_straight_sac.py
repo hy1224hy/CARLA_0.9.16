@@ -14,7 +14,7 @@ from highwaytest.straight.sac import SACActorCritic,ReplayBuffer,sac_update
 class SACTests(unittest.TestCase):
     def test_sac_q_networks_depend_on_action(self):
         model=SACActorCritic(hidden=16)
-        s=torch.randn(7,22)
+        s=torch.randn(7,24)
         a1=torch.zeros(7,2)
         a2=torch.rand(7,2)
         q11,q12=model.q_values(s,a1)
@@ -36,8 +36,8 @@ class SACTests(unittest.TestCase):
         buffer=ReplayBuffer(capacity=4000)
         rng=np.random.default_rng(7)
         for i in range(2000):
-            buffer.push(rng.standard_normal(22).astype(np.float32),rng.standard_normal(2).astype(np.float32),
-                        float(rng.standard_normal()),rng.standard_normal(22).astype(np.float32),bool(i%5==0))
+            buffer.push(rng.standard_normal(24).astype(np.float32),rng.standard_normal(2).astype(np.float32),
+                        float(rng.standard_normal()),rng.standard_normal(24).astype(np.float32),bool(i%5==0))
         first=None
         for _ in range(150):
             stats=sac_update(model,target,optimizer,buffer,256,cfg,None,0.,rng)
@@ -57,8 +57,8 @@ class SACTests(unittest.TestCase):
         buffer=ReplayBuffer(capacity=1000)
         rng=np.random.default_rng(3)
         for i in range(500):
-            buffer.push(rng.standard_normal(22).astype(np.float32),rng.standard_normal(2).astype(np.float32),
-                        float(rng.standard_normal()),rng.standard_normal(22).astype(np.float32),bool(i%5==0))
+            buffer.push(rng.standard_normal(24).astype(np.float32),rng.standard_normal(2).astype(np.float32),
+                        float(rng.standard_normal()),rng.standard_normal(24).astype(np.float32),bool(i%5==0))
         before=[p.detach().clone() for p in teacher.parameters()]
         stats=sac_update(a,target,opt,buffer,128,cfg,teacher,.02,rng)
         self.assertTrue(np.isfinite(stats['mutual_kl']))

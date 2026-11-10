@@ -24,10 +24,10 @@ from .runner import PROTOCOL, load_state, configuration, append, evaluate_model,
 class SACActorCritic(ActorCritic):
     """Policy reuses the gaussian tanh-squashed ActorCritic; action-conditioned twin Q networks."""
 
-    def __init__(self, hidden=128):
-        super().__init__(hidden)
+    def __init__(self, hidden=128, obs_dim=24):
+        super().__init__(hidden, obs_dim)
         def qnet():
-            return nn.Sequential(nn.Linear(24, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
+            return nn.Sequential(nn.Linear(obs_dim + 2, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
         self.q1 = qnet()
         self.q2 = qnet()
 
@@ -37,14 +37,15 @@ class SACActorCritic(ActorCritic):
 
 
 class ReplayBuffer:
-    def __init__(self, capacity=200000):
+    def __init__(self, capacity=200000, obs_dim=24):
         self.capacity = capacity
+        self.obs_dim = obs_dim
         self.cursor = 0
         self.length = 0
-        self.obs = np.zeros((capacity, 22), dtype=np.float32)
+        self.obs = np.zeros((capacity, obs_dim), dtype=np.float32)
         self.act = np.zeros((capacity, 2), dtype=np.float32)
         self.reward = np.zeros(capacity, dtype=np.float32)
-        self.nxt = np.zeros((capacity, 22), dtype=np.float32)
+        self.nxt = np.zeros((capacity, obs_dim), dtype=np.float32)
         self.done = np.zeros(capacity, dtype=np.float32)
 
     def __len__(self):
@@ -73,7 +74,7 @@ class ReplayBuffer:
 
     @classmethod
     def from_state(cls, state):
-        buffer = cls(state['capacity'])
+        buffer = cls(state['capacity'], state['obs'].shape[1])
         buffer.cursor = state['cursor']
         buffer.length = state['length']
         buffer.obs[:] = state['obs']
@@ -144,10 +145,10 @@ def train_sac(config, output, initialize_from=None, resume=None, max_rounds=None
     torch_states = {}
     for j, name in enumerate(('A', 'B')):
         torch.manual_seed(cfg.seed + 10007 * j)
-        models[name] = SACActorCritic(cfg.hidden)
+        models[name] = SACActorCritic(cfg.hidden, cfg.obs_dim)
         optimizers[name] = torch.optim.Adam(models[name].parameters(), lr=cfg.lr, eps=1e-5)
         targets[name] = copy.deepcopy(models[name]).eval().requires_grad_(False)
-        buffers[name] = ReplayBuffer()
+        buffers[name] = ReplayBuffer(obs_dim=cfg.obs_dim)
         rngs[name] = np.random.default_rng(cfg.seed + 10007 * j)
         torch_states[name] = torch.get_rng_state()
     teachers = {k: copy.deepcopy(v).eval().requires_grad_(False) for k, v in models.items()}

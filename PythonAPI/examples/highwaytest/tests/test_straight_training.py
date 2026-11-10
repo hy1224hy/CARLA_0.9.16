@@ -28,7 +28,7 @@ class TrainingTests(unittest.TestCase):
 
     def test_same_input_peer_is_frozen(self):
         a,b=ActorCritic(),ActorCritic()
-        obs=torch.randn(9,22)
+        obs=torch.randn(9,24)
         loss=peer_loss(a,b,obs)
         loss.backward()
         self.assertTrue(any(p.grad is not None for p in a.parameters()))
@@ -36,7 +36,7 @@ class TrainingTests(unittest.TestCase):
 
     def test_action_probability(self):
         model=ActorCritic()
-        obs=torch.randn(7,22)
+        obs=torch.randn(7,24)
         action,z,lp=model.sample(obs)
         self.assertTrue((action.abs()<=1).all())
         torch.testing.assert_close(lp,model.log_prob(model.distribution(obs),z))

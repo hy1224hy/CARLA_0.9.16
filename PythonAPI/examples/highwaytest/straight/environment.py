@@ -24,7 +24,7 @@ class StraightEnv(gym.Env):
     metadata={'render_modes':['rgb_array']}
     def __init__(self,config,render_mode=None):
         self.config=config.validate();self.render_mode=render_mode
-        self.observation_space=spaces.Box(-3.,3.,shape=(22,),dtype=np.float32)
+        self.observation_space=spaces.Box(-3.,3.,shape=(self.config.obs_dim,),dtype=np.float32)
         self.action_space=spaces.Box(-1.,1.,shape=(2,),dtype=np.float32)
         self.ended=True
 
@@ -78,6 +78,8 @@ class StraightEnv(gym.Env):
         self.reward_components={};self.last_result={};self._last_target_speed=v
         self._teacher=None
         self._script_cut_lane=None
+        self._script_cut_phase='stage'
+        self._script_cut_hold=0
         return self._observation(),self._info()
 
     @staticmethod
@@ -103,7 +105,9 @@ class StraightEnv(gym.Env):
              1.,dp[0]/60,dp[1]/8,dv[0]/30,dv[1]/10,
              np.sin(v.heading-a.heading),np.cos(v.heading-a.heading),self.acceleration/6,
              float(self.tracker.geometric_cut),self.tracker.front_time/self.config.duration,
-             min(self.tracker.stop_time/2,1),min(self.tracker.brake_time/.4,1)]
+             min(self.tracker.stop_time/2,1),min(self.tracker.brake_time/.4,1),
+             min(self.tracker.cut_count,self.config.cut_reward_cap)/self.config.cut_reward_cap,
+             0. if self.tracker.last_cut_time is None else min((self.tracker.time-self.tracker.last_cut_time)/4.,1.)]
         return np.clip(np.asarray(row,dtype=np.float32),-3,3)
 
     def _phi(self):
@@ -206,7 +210,8 @@ class StraightEnv(gym.Env):
             max_target_brake=self.tracker.max_target_brake,avg_speed_ratio=self.tracker.avg_speed_ratio,
             cut_count=self.tracker.cut_count,cut_first_thw=self.tracker.cut_first_thw,
             stop_qualified=self.tracker.stop_qualified,contact_orientation=self.tracker.contact_orientation,
-            spawn_overlap=self.spawn_overlap)
+            spawn_overlap=self.spawn_overlap,last_cut_time=self.tracker.last_cut_time,
+            cut_diag=dict(self.tracker.diag))
 
     def normal_action(self):
         a=self.attacker
@@ -251,14 +256,27 @@ def scripted_action(env,kind='normal'):
     if kind=='cut':
         gap=float(a.position[0]-v.position[0]-5.)
         desired=.5*max(v.speed,5.)
-        if env._script_cut_lane is None and abs(gap-desired)<2:
-            env._script_cut_lane=env._lane(v)
+        target_lane=env._lane(v)
+        phase=env._script_cut_phase
+        if phase=='stage' and abs(gap-desired)<2:
+            phase='in';env._script_cut_phase='in';env._script_cut_lane=target_lane;env._script_cut_hold=0
         lane=env._lane(a) if env._script_cut_lane is None else env._script_cut_lane
-        steer=np.clip(env._teacher.steering_control(('0','1',lane))/.25,-1,1)
-        desired_speed=v.speed+.6*(desired-gap)
-        if env._script_cut_lane is not None and abs(a.position[1]-4*lane)<.5:
-            desired_speed=max(v.speed-2,8.)
-        return np.array([np.clip((desired_speed-a.speed)/3,-.6,.6),steer])
+        if phase=='in':
+            if abs(a.position[1]-4*lane)<.5:
+                env._script_cut_hold+=1
+                if env._script_cut_hold>10:
+                    phase='out';env._script_cut_phase='out';env._script_cut_hold=0
+            desired_speed=v.speed+.6*(desired-gap) if env._script_cut_hold==0 and not (abs(a.position[1]-4*lane)<.5) else max(v.speed-2,8.)
+            steer=np.clip(env._teacher.steering_control(('0','1',lane))/.25,-1,1)
+            return np.array([np.clip((desired_speed-a.speed)/3,-.6,.6),steer])
+        if phase=='out':
+            lane=1-lane
+            if abs(a.position[1]-4*lane)<.5:
+                phase='stage';env._script_cut_phase='stage';env._script_cut_lane=None;env._script_cut_hold=0
+            steer=np.clip(env._teacher.steering_control(('0','1',lane))/.25,-1,1)
+            return np.array([np.clip((v.speed+.6*(desired-gap)-a.speed)/3,-.6,.6),steer])
+        steer=np.clip(env._teacher.steering_control(('0','1',env._lane(a)))/.25,-1,1)
+        return np.array([np.clip((v.speed+.6*(desired-gap)-a.speed)/3,-.6,.6),steer])
     if kind=='collision':
         desired_x=float(v.position[0]+1.)
         accel=np.clip((v.speed+.5*(desired_x-a.position[0])-a.speed)/5,-1,1)

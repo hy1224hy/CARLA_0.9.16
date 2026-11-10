@@ -22,6 +22,61 @@ class RewardTests(unittest.TestCase):
         self.assertEqual(StraightConfig().risk_weight,1.)
         self.assertEqual(StraightConfig().eval_cases,32)
 
+    def test_l1_reward_peaks_in_mild_band(self):
+        def dense(ell):
+            return RewardState(StraightConfig(level=1)).observe(dict(ell=ell,front=True),1/15)['reward']
+        self.assertGreater(dense(.25),dense(.5),'mild band must beat stronger slowdown')
+        self.assertAlmostEqual(dense(.6),dense(0.),places=6,msg='zero outside the band')
+        self.assertGreater(dense(.25),dense(.02),'band guides from below')
+
+    def test_h_band_matches_success_window(self):
+        def h(thw):
+            state=RewardState(StraightConfig(level=2));state.geometric_cut=True
+            return state.observe(dict(thw=thw,front=True,ell=0.),1/15)['reward']
+        self.assertGreater(h(.7),h(.1),'in-window beats below-window')
+        self.assertGreater(h(.7),h(1.4),'in-window beats above-window')
+        self.assertAlmostEqual(h(.1),0.,places=6)
+        self.assertAlmostEqual(h(1.4),0.,places=6)
+
+    def test_l2_cut_success_after_one_qualified_cut_and_repeats_earn_more(self):
+        cfg=StraightConfig(level=2,duration=4.)
+        def do_cut(state):
+            for i in range(6):
+                state.observe(dict(attacker_lane_changed=i==0,target_lane_stable=True,aligned=True,front=True,thw=.7),1/15)
+            state.observe(dict(reference_speed=18.,target_speed=10.),1/15)
+        state=RewardState(cfg)
+        do_cut(state)
+        self.assertEqual(state.cut_count,1)
+        self.assertAlmostEqual(state.components['event'],2.)
+        while not state.done:
+            state.observe(dict(),1/15)
+        self.assertTrue(state.success,'E2 needs ONE qualified cut plus 1s clean, not two')
+        self.assertAlmostEqual(state.components['success'],5.)
+        # Repetition is encouraged via per-cut event rewards, not the success gate.
+        state2=RewardState(cfg)
+        do_cut(state2);do_cut(state2)
+        self.assertEqual(state2.cut_count,2)
+        self.assertAlmostEqual(state2.components['event'],4.,'two cuts earn twice the event reward')
+
+    def test_cut_chain_diagnostics_record_gate_failures(self):
+        state=RewardState(StraightConfig(level=2))
+        # Attempt 1: geometric cut outside the THW window -> no reaction check at all.
+        for i in range(6):
+            state.observe(dict(attacker_lane_changed=i==0,target_lane_stable=True,aligned=True,front=True,thw=2.),1/15)
+        for _ in range(16):
+            state.observe(dict(),1/15)
+        self.assertEqual(state.diag['geometric'],1)
+        self.assertEqual(state.diag['thw_miss'],1)
+        # Attempt 2: THW-qualified cut but the target never reacts -> reaction miss.
+        for i in range(6):
+            state.observe(dict(attacker_lane_changed=i==0,target_lane_stable=True,aligned=True,front=True,thw=.7),1/15)
+        for _ in range(16):
+            state.observe(dict(),1/15)
+        self.assertEqual(state.diag['thw_ok'],1)
+        self.assertEqual(state.diag['react_miss'],1)
+        self.assertEqual(state.diag['react_hit'],0)
+        self.assertEqual(state.cut_count,0,'no reaction means no qualified cut')
+
     def test_align_thresholds_are_config_knobs(self):
         relaxed=RewardState(StraightConfig(align_duration=.3,align_lateral=.75,align_heading=15.))
         for i in range(5):
@@ -125,7 +180,7 @@ class EnvironmentTests(unittest.TestCase):
         obs,info=left.reset(seed=42,options={'family':'adjacent'})
         obs2,_=right.reset(seed=42,options={'family':'adjacent'})
         np.testing.assert_array_equal(obs,obs2)
-        self.assertEqual(obs.shape,(22,))
+        self.assertEqual(obs.shape,(24,))
         self.assertEqual(len(left.road.vehicles),2)
         self.assertTrue(left.target.enable_lane_change)
         for _ in range(4):
