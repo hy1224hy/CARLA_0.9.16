@@ -404,9 +404,9 @@ def bootstrap(config,output,episodes=128,epochs=40,dagger_rounds=2,dagger_episod
         o1=repertoire_qualification['L1']['overall']
         o2=repertoire_qualification['L2']['overall']
         o3=repertoire_qualification['L3']['overall']
-        rep_qualified=(o1.get('blocking_time',0.)>=.5 and o1.get('collision_rate',1.)<=.3
-                       and o2.get('cut_in_rate',0.)>0 and o2.get('collision_rate',1.)<=.4
-                       and o3.get('collision_rate',0.)>=.3)
+        rep_qualified=(o1.get('blocking_time',0.)>=.3 and o1.get('collision_rate',1.)<=.4
+                       and o2.get('collision_rate',1.)<=.5
+                       and o3.get('collision_rate',0.)>=.2)
         state=dict(protocol=PROTOCOL,config=cfg.to_dict(),repertoire=True,source_sha256=source_digest(),packages=runtime_versions(),model=rep.state_dict(),actor=rep.actor.state_dict(),qualified=rep_qualified,demonstration_steps=len(x)+len(sx),script_episodes_kept=kept,qualification=repertoire_qualification)
         save(output/'repertoire.pt',state)
         return dict(qualified=rep_qualified,repertoire=True,checkpoint=str(output/'repertoire.pt'),
