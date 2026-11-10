@@ -146,9 +146,13 @@ class StraightEnv(gym.Env):
             return .55*p_front+.30*p_front*p_lat+.15*p_front*p_lat*i1
         if level==2:
             # Longitudinal positioning -> lateral closeness -> heading alignment.
+            # A lane-alignment factor puts a reward valley exactly on the lane
+            # boundary so hugging the line cannot harvest the lateral terms.
             g_star=cfg.tau_star*max(v.speed,2.)
             p_g=float(np.exp(-abs(gap-g_star)/cfg.potential_lg))
-            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))
+            e=min(abs(dy),abs(dy+4.))  # distance to the nearest lane center (dy convention)
+            lane_alignment=float(np.exp(-(e/1.2)**2))
+            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))*lane_alignment
             dpsi=abs(float(v.heading-a.heading))
             p_psi=float(np.exp(-dpsi/cfg.potential_lpsi))
             return .45*p_g+.40*p_g*p_y+.15*p_g*p_y*p_psi
@@ -194,6 +198,8 @@ class StraightEnv(gym.Env):
                 collision=collision,invalid=invalid,baseline_valid=self.baseline_valid,
                 speed_ratio=float(self.attacker.speed)/max(float(self.target.speed),.1),
                 lateral=abs(self.attacker.position[1]-self.target.position[1]),
+                lane_alignment=float(np.exp(-(min(abs(self.attacker.position[1]-self.target.position[1]),
+                                                   abs(self.attacker.position[1]-self.target.position[1]-4.))/1.2)**2)),
                 contact_orientation=orientation,spawn_overlap=self.spawn_overlap,
                 normal_progress=self.attacker.position[0]-self.initial_attacker_x)
             self.last_result=self.tracker.observe(frame,dt)

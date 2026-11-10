@@ -138,7 +138,8 @@ class RewardState:
             dense=2*cfg.effect_weight*tri(ell,cfg.l1_star,cfg.mild_excess_threshold)-.05*cost
         elif cfg.level==2:
             lateral=float(frame.get('lateral',4.))
-            h_smooth=band(frame.get('thw',100),.3,1.2,.15)*float(front)*float(np.exp(-lateral/cfg.potential_ly))
+            alignment=float(frame.get('lane_alignment',1.))
+            h_smooth=band(frame.get('thw',100),.3,1.2,.15)*float(front)*float(np.exp(-lateral/cfg.potential_ly))*alignment
             dense=cfg.l2_effect_coef*cfg.effect_weight*d+2*cfg.risk_weight*h_smooth-.05*cost
         else:
             dense=-.05*cost

@@ -92,6 +92,25 @@ class RewardTests(unittest.TestCase):
         # Crossing back out is not an attacker_lane_changed-into-target-lane event: no bonus path exists.
         self.assertEqual(state.lane_cross_count,3)
 
+    def test_l2_lateral_terms_valley_at_the_lane_line(self):
+        # The lane boundary must not harvest lateral rewards (line-hugging exploit).
+        env=StraightEnv(StraightConfig(level=2))
+        env.reset(seed=0,options={'family':'follow'})
+        env.target.position[:]=[100.,0.];env.target.speed=18.
+        env.attacker.speed=18.
+        env.attacker.position[:]=[114.,2.]  # exactly on the line
+        line=env._phi()
+        env.attacker.position[:]=[114.,1.]
+        near=env._phi()
+        env.attacker.position[:]=[114.,3.]
+        far_side=env._phi()
+        env.attacker.position[:]=[114.,0.]
+        in_lane=env._phi()
+        self.assertLess(line,near,'the line must be a reward valley')
+        self.assertLess(line,far_side)
+        self.assertGreater(in_lane,near,'the target lane must beat the approach')
+        self.assertGreater(far_side,0.,'gradient from the adjacent side must survive')
+
     def test_align_thresholds_are_config_knobs(self):
         relaxed=RewardState(StraightConfig(align_duration=.3,align_lateral=.75,align_heading=15.))
         for i in range(5):
