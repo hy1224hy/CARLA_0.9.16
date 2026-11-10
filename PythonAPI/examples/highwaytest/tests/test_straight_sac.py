@@ -12,6 +12,16 @@ from highwaytest.straight.sac import SACActorCritic,ReplayBuffer,sac_update
 
 
 class SACTests(unittest.TestCase):
+    def test_sac_q_networks_depend_on_action(self):
+        model=SACActorCritic(hidden=16)
+        s=torch.randn(7,22)
+        a1=torch.zeros(7,2)
+        a2=torch.rand(7,2)
+        q11,q12=model.q_values(s,a1)
+        q21,q22=model.q_values(s,a2)
+        self.assertFalse(torch.allclose(q11,q21),'Q1 must be action-conditioned')
+        self.assertFalse(torch.allclose(q12,q22),'Q2 must be action-conditioned')
+
     def test_learner_validation_and_dispatch(self):
         self.assertEqual(StraightConfig(learner='sac').validate().learner,'sac')
         self.assertEqual(StraightConfig(learner='ppo').validate().learner,'ppo')

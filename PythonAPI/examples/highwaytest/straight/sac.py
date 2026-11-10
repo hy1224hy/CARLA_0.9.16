@@ -22,16 +22,18 @@ from .runner import PROTOCOL, load_state, configuration, append, evaluate_model,
 
 
 class SACActorCritic(ActorCritic):
-    """Policy reuses the gaussian tanh-squashed ActorCritic; twin Q networks."""
+    """Policy reuses the gaussian tanh-squashed ActorCritic; action-conditioned twin Q networks."""
 
     def __init__(self, hidden=128):
         super().__init__(hidden)
-        def network(n):
-            return nn.Sequential(nn.Linear(22, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, n))
-        self.q2 = network(1)
+        def qnet():
+            return nn.Sequential(nn.Linear(24, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
+        self.q1 = qnet()
+        self.q2 = qnet()
 
-    def q_values(self, obs):
-        return self.critic(obs).squeeze(-1), self.q2(obs).squeeze(-1)
+    def q_values(self, obs, action):
+        x = torch.cat([obs, action], dim=-1)
+        return self.q1(x).squeeze(-1), self.q2(x).squeeze(-1)
 
 
 class ReplayBuffer:
@@ -87,15 +89,17 @@ def sac_update(model, target, optimizer, buffer, batch, cfg, teacher, beta, rng)
     with torch.no_grad():
         dist2 = model.distribution(s2)
         z2 = dist2.rsample()
+        a2 = z2.tanh()
         lp2 = model.log_prob(dist2, z2)
-        q1t, q2t = target.q_values(s2)
+        q1t, q2t = target.q_values(s2, a2)
         y = r + cfg.gamma * (1 - done) * (torch.min(q1t, q2t) - cfg.alpha * lp2)
-    q1, q2 = model.q_values(s)
+    q1, q2 = model.q_values(s, a)
     q_loss = ((q1 - y).square() + (q2 - y).square()).mean()
     dist = model.distribution(s)
     z = dist.rsample()
+    a_new = z.tanh()
     lp = model.log_prob(dist, z)
-    q1p, q2p = model.q_values(s)
+    q1p, q2p = model.q_values(s, a_new)
     policy_loss = (cfg.alpha * lp - torch.min(q1p, q2p)).mean()
     mutual = torch.zeros(())
     if teacher is not None and beta > 0:
