@@ -47,7 +47,7 @@ class RewardTests(unittest.TestCase):
         state=RewardState(cfg)
         do_cut(state)
         self.assertEqual(state.cut_count,1)
-        self.assertAlmostEqual(state.components['event'],2.5,'cut event + one lane-cross bonus')
+        self.assertAlmostEqual(state.components['event'],2.,'only a qualified cut earns the default event reward')
         while not state.done:
             state.observe(dict(),1/15)
         self.assertTrue(state.success,'E2 needs ONE qualified cut plus 1s clean, not two')
@@ -56,7 +56,7 @@ class RewardTests(unittest.TestCase):
         state2=RewardState(cfg)
         do_cut(state2);do_cut(state2)
         self.assertEqual(state2.cut_count,2)
-        self.assertAlmostEqual(state2.components['event'],5.,'two cuts plus two capped crossing bonuses')
+        self.assertAlmostEqual(state2.components['event'],4.,'two qualified cuts')
 
     def test_cut_chain_diagnostics_record_gate_failures(self):
         state=RewardState(StraightConfig(level=2))
@@ -80,7 +80,7 @@ class RewardTests(unittest.TestCase):
 
 
     def test_lane_cross_bonus_capped_and_directional(self):
-        cfg=StraightConfig(level=2)
+        cfg=StraightConfig(level=2,lane_cross_bonus=.5)
         state=RewardState(cfg)
         def cross():
             return state.observe(dict(attacker_lane_changed=True,target_lane_stable=True,
@@ -92,8 +92,8 @@ class RewardTests(unittest.TestCase):
         # Crossing back out is not an attacker_lane_changed-into-target-lane event: no bonus path exists.
         self.assertEqual(state.lane_cross_count,3)
 
-    def test_l2_lateral_terms_valley_at_the_lane_line(self):
-        # The lane boundary must not harvest lateral rewards (line-hugging exploit).
+    def test_l2_lateral_terms_guide_through_the_lane_line(self):
+        # A legal lane change must not cross a shaping valley.
         env=StraightEnv(StraightConfig(level=2))
         env.reset(seed=0,options={'family':'follow'})
         env.target.position[:]=[100.,0.];env.target.speed=18.
@@ -107,12 +107,12 @@ class RewardTests(unittest.TestCase):
         env.attacker.position[:]=[114.,0.]
         in_lane=env._phi()
         self.assertLess(line,near,'the line must be a reward valley')
-        self.assertLess(line,far_side)
+        self.assertGreater(line,far_side)
         self.assertGreater(in_lane,near,'the target lane must beat the approach')
         self.assertGreater(far_side,0.,'gradient from the adjacent side must survive')
 
-    def test_l3_crossing_bonus_and_potential_valley(self):
-        cfg=StraightConfig(level=3)
+    def test_l3_optional_crossing_bonus_and_monotone_potential(self):
+        cfg=StraightConfig(level=3,lane_cross_bonus=.5)
         state=RewardState(cfg)
         frame=dict(attacker_lane_changed=True,target_lane_stable=True,aligned=True,front=True,thw=.7)
         r1=state.observe(dict(frame),1/15)['reward']
@@ -132,7 +132,7 @@ class RewardTests(unittest.TestCase):
         env.attacker.position[:]=[103.,4.]
         adjacent=env._phi()
         self.assertLess(line,in_lane,'the line must stay a valley for L3 too')
-        self.assertLess(line,adjacent)
+        self.assertGreater(line,adjacent)
         self.assertGreater(in_lane,adjacent,'the target lane must dominate')
 
     def test_align_thresholds_are_config_knobs(self):
@@ -350,9 +350,9 @@ class EnvironmentTests(unittest.TestCase):
         env.target.position[:]=[100.,0.];env.target.speed=18.
         env.reference.vehicles[1].speed=18.
         env.attacker.speed=18.
-        env.attacker.position[:]=[130.,0.]
+        env.attacker.position[:]=[160.,0.]
         far=env._phi()
-        env.attacker.position[:]=[113.,0.]  # gap 8 = preferred front position
+        env.attacker.position[:]=[132.,0.]  # gap 27 = 1.5 s at 18 m/s
         self.assertGreater(env._phi(),far,'L1 potential must prefer the front position')
         env.attacker.position[:]=[95.,0.]
         self.assertEqual(env._phi(),0.,'behind stays zero')

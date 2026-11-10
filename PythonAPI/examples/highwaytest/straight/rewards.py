@@ -50,6 +50,7 @@ class RewardState:
         self.max_target_brake=0.
         self.speed_ratio_sum=0.;self.speed_ratio_n=0;self.avg_speed_ratio=0.
         self.cut_count=0;self.cut_first_thw=None;self.last_cut_time=None
+        self.cut_times=[]
         self.lane_cross_count=0
         self.stop_qualified=False
         self.contact_orientation='none'
@@ -107,6 +108,7 @@ class RewardState:
                 if self.brake_time>=.2-1e-8 or frame.get('reference_speed',18)-frame.get('target_speed',18)>=3:
                     # Qualified cut: reaction-confirmed. Re-arm the chain for the next cut.
                     self.cut_count+=1;self.last_cut_time=self.time;self.cut_in=True
+                    self.cut_times.append(self.time)
                     self.react_checked=True;self.diag['react_hit']+=1
                     self.cut_time=None;self.candidate=False;self.candidate_time=None
                     self.align_time=0.;self.attempt_registered=False;self.brake_time=0.
@@ -143,7 +145,9 @@ class RewardState:
             dense=cfg.l2_effect_coef*cfg.effect_weight*d+2*cfg.risk_weight*h_smooth-.05*cost
         else:
             dense=-.05*cost
-        parts={'dense':dt/cfg.duration*dense,'event':0.,'success':0.,'failure':0.,'geometry':0.}
+        approach=cfg.approach_weight*float(frame.get('approach_quality',0.)) if cfg.level>0 else 0.
+        parts={'dense':dt/cfg.duration*dense,'approach':dt/cfg.duration*approach,
+               'event':0.,'success':0.,'failure':0.,'geometry':0.}
         if invalid:parts['failure']=-20.
         elif collision:
             parts['event']=20.*cfg.event_weight if cfg.level==3 else -20.
@@ -157,8 +161,7 @@ class RewardState:
             if horizon:
                 self.success=(cfg.level==0 and frame.get('normal_progress',0)>=.5*cfg.target_speed*cfg.duration
                     or cfg.level==1 and self.blocking_time>=1.5-1e-8
-                    or cfg.level==2 and self.cut_count>=cfg.cut_success_min
-                        and self.last_cut_time is not None and self.time-self.last_cut_time>=1.-1e-8)
+                    or cfg.level==2 and sum(self.time-t>=1.-1e-8 for t in self.cut_times)>=cfg.cut_success_min)
                 if self.success:parts['success']={0:1.,1:4.,2:5.,3:0.}[cfg.level]*cfg.event_weight
         for key,value in parts.items():self.components[key]=self.components.get(key,0.)+value
         return dict(reward=float(sum(parts.values())),components=parts,done=self.done,

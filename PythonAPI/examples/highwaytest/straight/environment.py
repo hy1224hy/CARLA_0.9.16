@@ -138,7 +138,7 @@ class StraightEnv(gym.Env):
         if level==1:
             # Front interaction position -> lateral alignment -> mild impact.
             if gap<=0:return 0.
-            p_front=float(np.exp(-abs(gap-8.)/cfg.potential_lg))
+            p_front=float(np.exp(-abs(gap-1.5*max(v.speed,5.))/cfg.potential_lg))
             p_lat=float(np.exp(-abs(dy)/cfg.potential_ly))
             ref_speed=float(self.reference.vehicles[1].speed)
             ell=(ref_speed-float(v.speed))/max(ref_speed,5.)
@@ -146,25 +146,46 @@ class StraightEnv(gym.Env):
             return .55*p_front+.30*p_front*p_lat+.15*p_front*p_lat*i1
         if level==2:
             # Longitudinal positioning -> lateral closeness -> heading alignment.
-            # A lane-alignment factor puts a reward valley exactly on the lane
-            # boundary so hugging the line cannot harvest the lateral terms.
             g_star=cfg.tau_star*max(v.speed,2.)
             p_g=float(np.exp(-abs(gap-g_star)/cfg.potential_lg))
-            e=min(abs(dy),abs(dy+4.))  # distance to the nearest lane center (dy convention)
-            lane_alignment=float(np.exp(-(e/1.2)**2))
-            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))*lane_alignment
+            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))
             dpsi=abs(float(v.heading-a.heading))
             p_psi=float(np.exp(-dpsi/cfg.potential_lpsi))
             return .45*p_g+.40*p_g*p_y+.15*p_g*p_y*p_psi
         if level==3:
             # Longitudinal proximity -> lateral overlap (no cut-chain dependency).
-            # The lane-alignment valley keeps the boundary reward-free (same as L2).
             dx=abs(float(v.position[0]-a.position[0]))
             p_x=float(np.exp(-max(dx-5.,0.)/cfg.potential_lx))
-            e=min(abs(dy),abs(dy+4.))
-            lane_alignment=float(np.exp(-(e/1.2)**2))
-            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))*lane_alignment
+            p_y=float(np.exp(-abs(dy)/cfg.potential_ly))
             return .5*p_x+.5*p_x*p_y
+        return 0.
+
+    def _approach(self):
+        """Bounded task shaping before the first rare event; no action teacher.
+
+        This dense objective is distinct from potential shaping and must be
+        reported/ablated separately. It never increments attack-success counters.
+        """
+        cfg=self.config
+        a,v=self.attacker,self.target
+        dy=abs(float(a.position[1]-v.position[1]))
+        gap=float(a.position[0]-v.position[0]-5.)
+        lateral=float(np.exp(-dy/cfg.potential_ly))
+        heading=float(np.exp(-abs(a.heading-v.heading)/cfg.potential_lpsi))
+        if cfg.level==1:
+            ref=max(float(self.reference.vehicles[1].speed),5.)
+            speed=float(np.exp(-abs(a.speed-(1.-cfg.l1_star)*ref)/4.))
+            front=float(1./(1.+np.exp(-np.clip(gap/5.,-30,30))))
+            return lateral*heading*front*speed
+        if cfg.level==2:
+            target_gap=cfg.tau_star*max(v.speed,2.)
+            position=float(np.exp(-abs(gap-target_gap)/cfg.potential_lg))
+            desired_relative=float(np.clip(.3*(target_gap-gap),-5.,5.))
+            velocity=float(np.exp(-abs((a.velocity[0]-v.velocity[0])-desired_relative)/3.))
+            return position*lateral*heading*(.3+.7*velocity)
+        if cfg.level==3:
+            dx=abs(float(a.position[0]-v.position[0]))
+            return float(np.exp(-max(dx-5.,0.)/cfg.potential_lx))*lateral
         return 0.
 
     def step(self,action):
@@ -201,8 +222,8 @@ class StraightEnv(gym.Env):
                 collision=collision,invalid=invalid,baseline_valid=self.baseline_valid,
                 speed_ratio=float(self.attacker.speed)/max(float(self.target.speed),.1),
                 lateral=abs(self.attacker.position[1]-self.target.position[1]),
-                lane_alignment=float(np.exp(-(min(abs(self.attacker.position[1]-self.target.position[1]),
-                                                   abs(self.attacker.position[1]-self.target.position[1]-4.))/1.2)**2)),
+                lane_alignment=float(np.exp(-(abs(self.attacker.position[1]-4*self._lane(self.target))/1.2)**2)),
+                approach_quality=self._approach(),
                 contact_orientation=orientation,spawn_overlap=self.spawn_overlap,
                 normal_progress=self.attacker.position[0]-self.initial_attacker_x)
             self.last_result=self.tracker.observe(frame,dt)

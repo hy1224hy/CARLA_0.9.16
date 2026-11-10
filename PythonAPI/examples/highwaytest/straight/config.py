@@ -48,13 +48,14 @@ class StraightConfig:
     cut_success_min:int=1
     l1_star:float=.20
     l2_effect_coef:float=.5
-    lane_cross_bonus:float=.5
+    lane_cross_bonus:float=0.
     lane_cross_cap:int=2
     tau_star:float=.8
     potential_lg:float=15.
     potential_ly:float=4.
     potential_lpsi:float=.5
     potential_lx:float=10.
+    approach_weight:float=3.
 
     def to_dict(self):return asdict(self)
 
@@ -77,7 +78,7 @@ class StraightConfig:
         if min(self.duration,self.lr,self.target_speed,self.target_time_gap,self.clip)<=0:raise ValueError('invalid positive setting')
         if self.target_speed>30:raise ValueError('target speed exceeds physical bound')
         if not 0<self.gamma<=1 or not 0<=self.gae_lambda<=1:raise ValueError('invalid discount')
-        if min(self.beta,self.entropy_coef,self.geometry_weight,self.effect_weight,self.event_weight,self.risk_weight)<0:raise ValueError('negative reward/learning weight')
+        if min(self.beta,self.entropy_coef,self.geometry_weight,self.effect_weight,self.event_weight,self.risk_weight,self.approach_weight)<0:raise ValueError('negative reward/learning weight')
         if not 0<self.mild_excess_threshold<1 or self.mild_excess_duration<=0:raise ValueError('invalid mild grade boundary')
         if min(self.align_lateral,self.align_heading,self.align_duration)<=0:raise ValueError('invalid cut-in alignment thresholds')
         if self.obs_dim<1 or type(self.obs_dim) is not int:raise ValueError('obs_dim must be a positive integer')
